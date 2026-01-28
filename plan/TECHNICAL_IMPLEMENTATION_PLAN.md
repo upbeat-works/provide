@@ -3,9 +3,10 @@
 ## Table of Contents
 1. [Current Architecture Overview](#1-current-architecture-overview)
 2. [Phase 1: Projects Hub Implementation](#2-phase-1-projects-hub-implementation)
-3. [Phase 2: GeoServer + MVT Migration](#3-phase-2-geoserver--mvt-migration)
-4. [Phase 3: Case Studies Enhancement](#4-phase-3-case-studies-enhancement)
-5. [Questions for Stakeholders](#5-questions-for-stakeholders)
+3. [Phase 2: Indicator Catalog](#3-phase-2-indicator-catalog)
+4. [Phase 3: GeoServer + MVT Migration](#4-phase-3-geoserver--mvt-migration)
+5. [Phase 4: Case Studies Enhancement](#5-phase-4-case-studies-enhancement)
+6. [Questions for Stakeholders](#6-questions-for-stakeholders)
 
 ---
 
@@ -116,11 +117,90 @@ The main site header will be updated to include a "Projects" link alongside the 
 
 ---
 
-## 3. Phase 2: GeoServer + MVT Migration
+## 3. Phase 2: Indicator Catalog
+
+**Priority: High**
+
+### 3.1 Overview
+
+The Indicator Catalog provides a unified system for managing climate and environmental indicators with rich metadata support. It enables users to browse, filter, and visualize indicators through category dropdowns, tag-based filtering, and time series charts. The catalog bridges metadata management with time series storage in ixmp4.
+
+For detailed technical design, see the [Indicator Catalog Design Document](./INDICATOR_CATALOG.md).
+
+### 3.2 Hybrid Architecture
+
+The solution uses a hybrid approach due to ixmp4's lack of native metadata support. A separate metadata store handles indicator information including names, descriptions, categories, and tags. The ixmp4 backend stores time series data with region, year, and value dimensions. A link field (`ixmp4Variable`) connects records in both systems.
+
+```mermaid
+flowchart LR
+    subgraph Frontend["User Interface"]
+        browser["Indicator Browser"]
+        chart["Time Series Chart"]
+    end
+
+    subgraph Service["Catalog Service"]
+        meta["Metadata Queries"]
+        ts["Time Series Queries"]
+    end
+
+    subgraph Storage["Data Storage"]
+        metadata["Metadata Store"]
+        ixmp4["ixmp4 Backend"]
+    end
+
+    browser --> meta --> metadata
+    chart --> ts --> ixmp4
+    metadata <-.->|"ixmp4Variable"| ixmp4
+```
+
+### 3.3 Metadata Store Options
+
+Two implementation options are available for the metadata store. The choice depends on infrastructure preferences and content management workflows.
+
+**SQLite + Drizzle ORM** provides a self-contained, embedded solution with type-safe queries and no external dependencies. Best suited for developer-managed data with simple deployment requirements. See [SQLite Implementation](./INDICATOR_CATALOG_SQLITE.md) for details.
+
+**Strapi CMS** provides an external headless CMS with a built-in admin interface. Best suited for workflows involving content editors and non-technical users who need to manage indicator metadata. See [Strapi Implementation](./INDICATOR_CATALOG_STRAPI.md) for details.
+
+### 3.4 Core Features
+
+**Indicator Browser** allows users to explore indicators through a category dropdown for high-level filtering, a tag multi-select for granular filtering, and a searchable list displaying indicator names and descriptions.
+
+**Time Series Visualization** displays indicator data as interactive charts. When a user selects an indicator, the system fetches time series data from ixmp4 using the linked variable name and renders it with region and year dimensions.
+
+**Upload Interface** enables adding new indicators through a form capturing metadata fields plus a CSV file containing time series data. The upload process validates input, stores metadata, and imports time series data into ixmp4.
+
+### 3.5 Implementation Checklist
+
+**Metadata Store Setup**
+- Choose and configure metadata store (SQLite or Strapi)
+- Define schema for indicators, categories, and tags
+- Set up development and production environments
+
+**Catalog Service Development**
+- Create repository layer for metadata queries
+- Implement category and tag listing endpoints
+- Implement indicator filtering with category/tag/search support
+- Integrate ixmp4-ts for time series queries
+
+**Frontend Components**
+- Create indicator browser with category dropdown and tag filter
+- Create indicator list with search functionality
+- Create time series chart component
+- Create upload form with CSV validation
+
+**Quality Assurance**
+- Test filtering combinations
+- Test time series data retrieval and chart rendering
+- Test upload flow with validation errors
+- Test error handling and rollback scenarios
+
+---
+
+## 4. Phase 3: GeoServer + MVT Migration
 
 **Priority: Medium**
 
-### 3.1 Current Data Flow
+### 4.1 Current Data Flow
 
 ```mermaid
 flowchart LR
@@ -130,7 +210,7 @@ flowchart LR
 
 Currently, the application fetches geographic data as GeoJSON from the data API and processes it client-side. This includes converting grid coordinates to GeoJSON polygons, generating D3 contours, and applying clipping masks via a web worker using Turf.js. While this approach works, it places significant computational burden on the client and limits the ability to efficiently serve large datasets or support complex styling at multiple zoom levels.
 
-### 3.2 Target Architecture
+### 4.2 Target Architecture
 
 ```mermaid
 flowchart LR
@@ -140,25 +220,25 @@ flowchart LR
 
 The migration will move geographic data processing to the server side using GeoServer with PostGIS. Impact data and boundary geometries will be stored in PostGIS and served as Mapbox Vector Tiles (MVT) through GeoServer's GeoWebCache. This enables pre-generated tiles at multiple zoom levels, dramatically reduces client-side processing, and allows Mapbox GL to render the data natively with efficient styling through expressions.
 
-### 3.3 Environment and Configuration
+### 4.3 Environment and Configuration
 
 The application will require new environment variables for the GeoServer URL and workspace name. The config will be extended with layer name mappings and a function to generate MVT tile URLs in the format expected by Mapbox GL. This centralized configuration ensures consistency across all components that consume vector tiles.
 
-### 3.4 Frontend Components
+### 4.4 Frontend Components
 
 A new `VectorTileLayer` Svelte component will be created to handle adding vector tile sources and layers to the Mapbox map. This component will accept props for the layer configuration, paint properties, layout settings, and filter expressions. It will manage the lifecycle of sources and layers, cleaning them up when the component is destroyed, and will reactively update paint properties and filters when props change.
 
 The existing Maps component in the explore section will be updated to use the new VectorTileLayer component instead of the current GeoJSON-based approach. Color scales currently implemented with D3 will be converted to Mapbox style expressions that interpolate colors based on feature properties. Filters will be constructed to show only data for the currently selected scenario and year.
 
-### 3.5 API Utilities
+### 4.5 API Utilities
 
 New utility functions will be added to the API module for interacting with GeoServer. These include fetching layer capabilities via WMS GetCapabilities, retrieving available property values via WFS GetPropertyValue, and getting feature information for clicked points via WMS GetFeatureInfo. These utilities enable the application to dynamically discover available data and provide interactive features like tooltips on hover or click.
 
-### 3.6 Cleanup
+### 4.6 Cleanup
 
 Once the MVT migration is complete and validated, several client-side processing components can be removed. The geomask web worker will no longer be needed since clipping is handled server-side. The coordinate-to-polygon and contour generation functions in the geo utilities can be removed, though color scale utilities should be retained for other uses.
 
-### 3.7 Implementation Checklist
+### 4.7 Implementation Checklist
 
 **Infrastructure Setup**
 - Deploy and configure GeoServer instance with GeoWebCache extension
@@ -186,37 +266,37 @@ Once the MVT migration is complete and validated, several client-side processing
 
 ---
 
-## 4. Phase 3: Case Studies Enhancement
+## 5. Phase 4: Case Studies Enhancement
 
 **Priority: Medium**
 
-### 4.1 Current Structure
+### 5.1 Current Structure
 
 The case studies section (adaptation) currently displays city-based case studies loaded from Strapi CMS. Each case study has a dedicated page with various content sections including avoiding impacts visualizations, future impacts data, image sliders, and explorer links. The landing page presents all case studies in a simple list format.
 
-### 4.2 Strapi Schema Enhancements
+### 5.2 Strapi Schema Enhancements
 
 Two new collections will be added to Strapi: categories and tags. Categories provide high-level classification (e.g., "Flooding", "Heat Stress", "Infrastructure") with optional color coding for visual distinction. Tags offer more granular topic labeling that can be applied across categories. Both collections will have many-to-many relationships with case studies, allowing flexible organization and filtering.
 
 The existing case study collection will be extended with relations to these new collections and a publishedAt field for tracking when studies are published. This enables both categorical browsing and chronological sorting.
 
-### 4.3 Filter Components
+### 5.3 Filter Components
 
 New UI components will be created for displaying categories and tags. Category badges will be styled with the category's color and can function as both labels and clickable filters. Tag chips will have a more subtle style with visual feedback when selected. These components will be used both on case study cards and in the filter interface.
 
-### 4.4 Landing Page Updates
+### 5.4 Landing Page Updates
 
 The adaptation landing page will be enhanced with filter controls at the top, allowing users to filter case studies by category and/or tags. Filters will be reflected in the URL query parameters, enabling shareable filtered views. A new "Recent Case Studies" section will highlight the most recently published or updated studies in a featured grid layout, providing quick access to new content.
 
 The server-side data loading will be updated to fetch categories and tags alongside case studies, apply any active filters from URL parameters, and sort results by date. The page component will handle filter toggle interactions and URL updates using SvelteKit's navigation functions.
 
-### 4.5 New Visualization Components
+### 5.5 New Visualization Components
 
 To enrich case study content, several new visualization components will be developed. A DataTable component will display tabular data with optional sorting capabilities. StatCards will present key metrics in a grid of highlighted cards with optional trend indicators. A Timeline component will show chronological events or milestones. A ComparisonChart component will render bar or line charts for comparing values across categories. An EmbedMap component will allow embedding external map views with proper attribution.
 
 These components will be integrated with Strapi's dynamic zones feature, allowing content editors to add rich visualizations to case studies without developer intervention.
 
-### 4.6 Implementation Checklist
+### 5.6 Implementation Checklist
 
 **CMS Configuration**
 - Create categories collection with name, slug, description, and color fields
@@ -241,7 +321,13 @@ These components will be integrated with Strapi's dynamic zones feature, allowin
 
 ---
 
-## 5. Questions for Stakeholders
+## 6. Questions for Stakeholders
+
+### Indicator Catalog
+1. Which metadata store approach is preferred (SQLite or Strapi)?
+2. What categories and tags should be pre-defined?
+3. Who will be responsible for managing indicator metadata?
+4. What is the expected volume of indicators?
 
 ### GeoServer Migration
 1. Is there an existing GeoServer instance available?
@@ -259,3 +345,11 @@ These components will be integrated with Strapi's dynamic zones feature, allowin
 2. What category/topic taxonomy should be pre-defined?
 3. Should "Recent" show by creation date or last update date?
 4. Expected maximum number of case studies (pagination needs)?
+
+---
+
+## Related Documents
+
+- [Indicator Catalog Design](./INDICATOR_CATALOG.md) - Core architecture and data model
+- [Indicator Catalog - SQLite Implementation](./INDICATOR_CATALOG_SQLITE.md) - Embedded database approach
+- [Indicator Catalog - Strapi Implementation](./INDICATOR_CATALOG_STRAPI.md) - Headless CMS approach
