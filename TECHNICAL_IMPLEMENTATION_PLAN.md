@@ -5,7 +5,7 @@
 2. [Phase 1: Projects Hub Implementation](#2-phase-1-projects-hub-implementation)
 3. [Phase 2: GeoServer + MVT Migration](#3-phase-2-geoserver--mvt-migration)
 4. [Phase 3: Case Studies Enhancement](#4-phase-3-case-studies-enhancement)
-5. [Implementation Checklist](#5-implementation-checklist)
+5. [Questions for Stakeholders](#5-questions-for-stakeholders)
 
 ---
 
@@ -66,19 +66,23 @@ The application centralizes its configuration in a dedicated config file that de
 
 ## 2. Phase 1: Projects Hub Implementation
 
+**Priority: High**
+
 ### 2.1 Overview
 
 The Projects Hub will serve as a dedicated landing page for specialized analytical tools built on the PROVIDE climate data. The first project to be featured is "Avoiding Future Impacts," which will be migrated from its current location at `/impacts/avoid` to a new `/projects/avoiding-future-impact` route. This reorganization creates a scalable structure for adding future projects while improving discoverability.
 
-### 2.2 New Route Structure
+### 2.2 Projects Content Management via Strapi
+
+Projects will be managed through Strapi CMS, allowing content editors to add and configure new projects without code changes. A new "Projects" collection will be created with fields for slug, title, description, thumbnail, compatible geography types, available scenarios, and publication status. The projects landing page will fetch this data at build time, rendering only published projects.
+
+This approach provides flexibility for stakeholders to manage project metadata, update descriptions, and control visibility directly from the CMS. Project-specific settings like geography constraints and scenario availability can be configured per-project, enabling diverse project types to coexist within the hub.
+
+### 2.3 New Route Structure
 
 A new `/projects` route will be created with a landing page displaying project cards in a grid layout. Each project card will show a thumbnail, title, and description, linking to the project's dedicated page. The "Avoiding Future Impacts" project will have its own nested route with a custom layout that includes a back link to the projects hub, main controls, and project-specific introductory content.
 
 The project page itself will retain all the functionality of the current avoid page, including the reference selector, certainty level picker, study location selector, and the threshold visualization sections. The components will be imported from their existing locations or migrated as needed.
-
-### 2.3 Configuration Updates
-
-The config file will be extended with new constants for the projects path and label, plus a projects registry array. Each project entry will define its slug, title, description, thumbnail path, compatible geography types, available scenarios, and an active flag. This registry drives both the landing page rendering and any compatibility checks elsewhere in the application.
 
 ### 2.4 Backward Compatibility
 
@@ -88,32 +92,33 @@ To ensure existing links and bookmarks continue to work, the original `/impacts/
 
 The main site header will be updated to include a "Projects" link alongside the existing navigation items. Additionally, a new component will be created for the Future Impacts explore page that detects when the current selection (indicator and geography) is compatible with the "Avoiding Future Impacts" project and displays a contextual link inviting users to explore avoidance scenarios for their current selection.
 
-### 2.6 Implementation Tasks
+### 2.6 Implementation Checklist
 
-**Configuration & Setup**
-- Add projects-related constants and registry to the config file
-- Update prerender entries in the SvelteKit configuration
-- Add project thumbnail image to static assets
+**Strapi Configuration**
+- Create Projects collection with slug, title, description, thumbnail, geographyTypes, scenarios, and isPublished fields
+- Add initial "Avoiding Future Impacts" project entry
+- Configure media upload for project thumbnails
 
-**Route Creation**
-- Create the projects landing page with grid layout
-- Create the avoiding-future-impact project layout and page
-- Set up redirect from the legacy avoid route
+**Route Development**
+- Create projects landing page that fetches from Strapi
+- Create avoiding-future-impact project layout and page
+- Implement legacy route redirect with parameter preservation
 
-**Navigation Integration**
-- Update the header component with projects navigation link
-- Create the contextual link component for the explore page
-- Update store logic to recognize the new project route
+**Integration**
+- Update header navigation with Projects link
+- Create contextual deep linking component for explore page
+- Update state management to recognize the new project route
 
-**Testing & Validation**
-- Verify navigation flow between projects hub and project pages
-- Confirm backward compatibility redirect works with query parameters
-- Test deep linking from explore page to project
+**Quality Assurance**
+- Test navigation flow between projects hub and project pages
+- Verify backward compatibility redirect with query parameters
 - Validate URL parameter persistence across navigation
 
 ---
 
 ## 3. Phase 2: GeoServer + MVT Migration
+
+**Priority: Medium**
 
 ### 3.1 Current Data Flow
 
@@ -153,7 +158,7 @@ New utility functions will be added to the API module for interacting with GeoSe
 
 Once the MVT migration is complete and validated, several client-side processing components can be removed. The geomask web worker will no longer be needed since clipping is handled server-side. The coordinate-to-polygon and contour generation functions in the geo utilities can be removed, though color scale utilities should be retained for other uses.
 
-### 3.7 Implementation Tasks
+### 3.7 Implementation Checklist
 
 **Infrastructure Setup**
 - Deploy and configure GeoServer instance with GeoWebCache extension
@@ -183,6 +188,8 @@ Once the MVT migration is complete and validated, several client-side processing
 
 ## 4. Phase 3: Case Studies Enhancement
 
+**Priority: Medium**
+
 ### 4.1 Current Structure
 
 The case studies section (adaptation) currently displays city-based case studies loaded from Strapi CMS. Each case study has a dedicated page with various content sections including avoiding impacts visualizations, future impacts data, image sliders, and explorer links. The landing page presents all case studies in a simple list format.
@@ -209,17 +216,18 @@ To enrich case study content, several new visualization components will be devel
 
 These components will be integrated with Strapi's dynamic zones feature, allowing content editors to add rich visualizations to case studies without developer intervention.
 
-### 4.6 Implementation Tasks
+### 4.6 Implementation Checklist
 
 **CMS Configuration**
-- Create categories collection in Strapi with name, slug, description, and color fields
+- Create categories collection with name, slug, description, and color fields
 - Create tags collection with name and slug fields
 - Add category and tag relations to case study content type
 - Ensure publishedAt field is available and populated
+- Create visualization component schemas in Strapi
 
 **Filter System**
 - Create CategoryBadge and TagChip UI components
-- Update landing page server load function to fetch and apply filters
+- Update landing page to fetch and apply filters
 - Implement filter toggle handlers with URL synchronization
 - Add Recent Case Studies section with date-based sorting
 
@@ -233,119 +241,7 @@ These components will be integrated with Strapi's dynamic zones feature, allowin
 
 ---
 
-## 5. Implementation Checklist
-
-### Phase 1: Projects Hub (Priority: High)
-
-**Configuration & Setup**
-- Add projects constants and registry to config
-- Update SvelteKit prerender configuration
-- Add project thumbnail assets
-
-**Route Development**
-- Create projects landing page with card grid
-- Create avoiding-future-impact project route
-- Implement legacy route redirect with parameter preservation
-
-**Integration**
-- Update header navigation
-- Create contextual deep linking component
-- Update state management for project context
-
-**Quality Assurance**
-- Test complete navigation flow
-- Verify backward compatibility
-- Validate URL parameter handling
-
----
-
-### Phase 2: GeoServer Migration (Priority: Medium)
-
-**Infrastructure**
-- Deploy GeoServer with GeoWebCache
-- Configure PostGIS database
-- Set up CORS and security
-
-**Data Pipeline**
-- Import boundary and impact data
-- Configure tile generation
-- Establish update procedures
-
-**Frontend Migration**
-- Create VectorTileLayer component
-- Update map components to use MVT
-- Implement feature interactions
-
-**Completion**
-- Performance testing
-- Remove deprecated code
-- Documentation updates
-
----
-
-### Phase 3: Case Studies Enhancement (Priority: Medium)
-
-**CMS Updates**
-- Create categories and tags collections
-- Configure content type relations
-- Create visualization component schemas
-
-**Filter Implementation**
-- Build category and tag filter components
-- Implement URL-based filtering
-- Add Recent section with date sorting
-
-**Visualization Development**
-- Create DataTable component
-- Create StatCards component
-- Create Timeline component
-- Create ComparisonChart component
-- Integrate with Strapi dynamic zones
-
----
-
-## Appendix A: File Changes Summary
-
-| File | Action | Phase |
-|------|--------|-------|
-| `src/config.js` | Modify | 1, 2 |
-| `svelte.config.js` | Modify | 1 |
-| `src/lib/site/Header.svelte` | Modify | 1 |
-| `src/stores/state.js` | Modify | 1 |
-| `src/routes/(default)/projects/+page.svelte` | Create | 1 |
-| `src/routes/(default)/projects/+page.server.js` | Create | 1 |
-| `src/routes/(default)/projects/avoiding-future-impact/+layout.svelte` | Create | 1 |
-| `src/routes/(default)/projects/avoiding-future-impact/+page.svelte` | Create | 1 |
-| `src/routes/(default)/projects/avoiding-future-impact/+page.server.js` | Create | 1 |
-| `src/routes/(default)/impacts/avoid/+page.server.js` | Modify | 1 |
-| `src/routes/(default)/impacts/explore/ImpactGeo/LinkSection.svelte` | Create | 1 |
-| `src/lib/MapboxMap/VectorTileLayer.svelte` | Create | 2 |
-| `src/lib/api/api.js` | Modify | 2 |
-| `src/routes/(default)/impacts/explore/ImpactGeo/Maps.svelte` | Modify | 2 |
-| `src/lib/utils/geo.js` | Modify | 2 |
-| `src/lib/workers/geomask.js` | Remove | 2 |
-| `src/lib/helper/CategoryBadge.svelte` | Create | 3 |
-| `src/lib/helper/TagChip.svelte` | Create | 3 |
-| `src/routes/(default)/adaptation/+page.svelte` | Modify | 3 |
-| `src/routes/(default)/adaptation/+page.server.js` | Modify | 3 |
-| `src/routes/(default)/adaptation/[city]/+page.server.js` | Modify | 3 |
-| `src/routes/(default)/adaptation/[city]/sections/DataTable.svelte` | Create | 3 |
-| `src/routes/(default)/adaptation/[city]/sections/StatCards.svelte` | Create | 3 |
-
----
-
-## Appendix B: Dependencies
-
-No new npm dependencies are required for Phase 1 and Phase 3.
-
-Phase 2 (GeoServer Migration) requires:
-- GeoServer 2.23+ with GeoWebCache extension
-- PostGIS 3.x database
-- Server infrastructure for tile hosting
-
----
-
-## Appendix C: Questions for Stakeholders
+## 5. Questions for Stakeholders
 
 ### GeoServer Migration
 1. Is there an existing GeoServer instance available?
