@@ -76,37 +76,41 @@ src/routes/(default)/impacts/avoid/
 
 ### 1.3 State Management Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         URL Parameters                               │
-│  ?indicator=X&geography=Y&level_of_impact=Z&certainty_level=W       │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      urlToState() in +layout.svelte                  │
-│                    Syncs URL params to Svelte stores                 │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Svelte Stores                                │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
-│  │   state.js       │  │    avoid.js      │  │    meta.js       │   │
-│  │ ─────────────────│  │ ─────────────────│  │ ─────────────────│   │
-│  │ CURRENT_GEOGRAPHY│  │ SELECTED_        │  │ LIKELIHOODS      │   │
-│  │ CURRENT_INDICATOR│  │ LIKELIHOOD_LEVEL │  │ STUDY_LOCATIONS  │   │
-│  │ CURRENT_SCENARIOS│  │ SELECTED_        │  │ INDICATORS       │   │
-│  │ IS_AVOID_PAGE    │  │ STUDY_LOCATION   │  │ GEOGRAPHIES      │   │
-│  │ ...              │  │ LEVEL_OF_IMPACT  │  │ ...              │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘   │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      Components Subscribe                            │
-│         fetchData(store, { endpoint, params }) → API                 │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph URL["URL Parameters"]
+        params["?indicator=X&geography=Y&level_of_impact=Z&certainty_level=W"]
+    end
+
+    subgraph Sync["urlToState() in +layout.svelte"]
+        sync["Syncs URL params to Svelte stores"]
+    end
+
+    subgraph Stores["Svelte Stores"]
+        subgraph state["state.js"]
+            s1["CURRENT_GEOGRAPHY"]
+            s2["CURRENT_INDICATOR"]
+            s3["CURRENT_SCENARIOS"]
+            s4["IS_AVOID_PAGE"]
+        end
+        subgraph avoid["avoid.js"]
+            a1["SELECTED_LIKELIHOOD_LEVEL"]
+            a2["SELECTED_STUDY_LOCATION"]
+            a3["LEVEL_OF_IMPACT"]
+        end
+        subgraph meta["meta.js"]
+            m1["LIKELIHOODS"]
+            m2["STUDY_LOCATIONS"]
+            m3["INDICATORS"]
+            m4["GEOGRAPHIES"]
+        end
+    end
+
+    subgraph Components["Components Subscribe"]
+        fetch["fetchData(store, { endpoint, params }) → API"]
+    end
+
+    URL --> Sync --> Stores --> Components
 ```
 
 ### 1.4 Key Configuration Constants
@@ -497,18 +501,10 @@ export const IS_AVOID_PAGE = derived(CURRENT_PAGE, ($currentPage) =>
 
 ### 3.1 Current Data Flow (Client-Side GeoJSON)
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Data API      │────▶│  Client JS      │────▶│   Mapbox GL     │
-│  (JSON/GeoJSON) │     │  Processing     │     │   Rendering     │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                        ┌─────────────────┐
-                        │   Web Worker    │
-                        │   geomask.js    │
-                        │  (Turf.js clip) │
-                        └─────────────────┘
+```mermaid
+flowchart LR
+    API["Data API<br/>(JSON/GeoJSON)"] --> Client["Client JS<br/>Processing"] --> Mapbox["Mapbox GL<br/>Rendering"]
+    Client --> Worker["Web Worker<br/>geomask.js<br/>(Turf.js clip)"]
 ```
 
 **Current processing in `src/lib/utils/geo.js`:**
@@ -518,18 +514,10 @@ export const IS_AVOID_PAGE = derived(CURRENT_PAGE, ($currentPage) =>
 
 ### 3.2 Target Architecture (Server-Side MVT)
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│    PostGIS      │────▶│   GeoServer     │────▶│   Mapbox GL     │
-│   Database      │     │  + GeoWebCache  │     │   Native MVT    │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                        ┌─────────────────┐
-                        │  Vector Tiles   │
-                        │     (MVT)       │
-                        │  Pre-generated  │
-                        └─────────────────┘
+```mermaid
+flowchart LR
+    PostGIS["PostGIS<br/>Database"] --> GeoServer["GeoServer<br/>+ GeoWebCache"] --> Mapbox["Mapbox GL<br/>Native MVT"]
+    GeoServer --> Tiles["Vector Tiles<br/>(MVT)<br/>Pre-generated"]
 ```
 
 ### 3.3 Environment Configuration
