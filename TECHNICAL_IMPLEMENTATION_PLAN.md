@@ -11,70 +11,13 @@
 
 ## 1. Current Architecture Overview
 
-### 1.1 Directory Structure
+### 1.1 Application Structure
 
-```
-provide/
-├── src/
-│   ├── config.js                    # Global constants & configuration
-│   ├── stores/
-│   │   ├── state.js                 # Main app state (589 lines)
-│   │   ├── avoid.js                 # Avoiding impacts state (107 lines)
-│   │   ├── meta.js                  # Metadata derived stores
-│   │   └── impact.js                # Impact data store
-│   ├── routes/
-│   │   ├── (default)/
-│   │   │   ├── +layout.svelte       # Main layout with Header/Footer
-│   │   │   ├── impacts/
-│   │   │   │   ├── +layout.svelte   # Impacts layout with tabs
-│   │   │   │   ├── avoid/           # Avoiding Future Impacts module
-│   │   │   │   ├── explore/         # Future Impacts module
-│   │   │   │   ├── MainControls/    # Shared controls
-│   │   │   │   └── UnavoidableRisk/ # Risk visualization
-│   │   │   ├── adaptation/          # Case studies
-│   │   │   └── [other pages...]
-│   │   └── (embed)/                 # Embed routes
-│   ├── lib/
-│   │   ├── api/                     # API client
-│   │   ├── charts/                  # Chart components (LayerCake)
-│   │   ├── MapboxMap/               # Map components
-│   │   ├── helper/                  # Utility components
-│   │   └── utils/                   # Utilities including geo.js
-│   └── styles/                      # TailwindCSS & theme
-├── svelte.config.js                 # SvelteKit configuration
-└── package.json                     # Dependencies
-```
+The PROVIDE application is built with SvelteKit and follows a modular architecture. The source code is organized into configuration files, Svelte stores for state management, route handlers for different pages, and a library of reusable components. The main modules include the "Avoiding Future Impacts" and "Future Impacts" explorers, case studies (adaptation), and various supporting pages like documentation and contact information.
 
-### 1.2 Avoiding Future Impacts Module Structure
+The "Avoiding Future Impacts" module is particularly complex, featuring a reference selector for impact levels, certainty/probability selectors, study location pickers, and interactive threshold visualization components. These components work together to allow users to explore which climate scenarios minimize risk from certain impacts in cities.
 
-```
-src/routes/(default)/impacts/avoid/
-├── +page.svelte                     # Main page (79 lines)
-├── +page.server.js                  # Server load function
-├── Reference/
-│   ├── Reference.svelte             # Impact level reference selector
-│   ├── ImpactLevel.svelte           # Slider display
-│   ├── Text.svelte                  # Reference text
-│   └── Slider/Knob.svelte           # Custom slider control
-├── Selection/
-│   ├── CertaintyLevels/
-│   │   ├── CertaintyLevels.svelte   # Probability selector
-│   │   └── CertaintyLevelsList.svelte
-│   └── StudyLocations/
-│       ├── StudyLocations.svelte    # Location selector
-│       └── LocationsList.svelte
-├── ThresholdLevels/
-│   ├── ThresholdLevels.svelte       # Main threshold section
-│   ├── Interactive.svelte           # Interactive chart
-│   ├── Text.svelte
-│   └── Important.svelte
-└── StudyLocations/
-    ├── StudyLocations.svelte        # Locations display
-    ├── Locations.svelte
-    └── Map.svelte                   # Location map
-```
-
-### 1.3 State Management Flow
+### 1.2 State Management Flow
 
 ```mermaid
 flowchart TD
@@ -113,393 +56,66 @@ flowchart TD
     URL --> Sync --> Stores --> Components
 ```
 
-### 1.4 Key Configuration Constants
+The application uses URL-based state management where query parameters are synchronized with Svelte stores. When the URL changes, the `urlToState()` function in the layout component updates the relevant stores. Components subscribe to these stores and trigger API calls when their dependencies change. This approach enables deep linking and shareable URLs while maintaining a reactive data flow throughout the application.
 
-```javascript
-// From src/config.js
+### 1.3 Key Configuration
 
-// Route paths
-export const PATH_EXPLORE = 'impacts';
-export const PATH_AVOID = 'avoid';
-export const PATH_IMPACT = 'explore';
-
-// Labels
-export const LABEL_AVOID_IMPACTS = 'Avoiding future impacts';
-export const LABEL_FUTURE_IMPACTS = 'Future impacts';
-
-// API endpoints
-export const END_AVOIDING_IMPACTS = 'avoiding-impacts';
-export const END_AVOIDING_REFERENCE = 'avoiding-reference';
-
-// Constraints for Avoiding Impacts
-export const GEOGRAPHY_TYPE_CITY = 'cities';
-export const GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS = [GEOGRAPHY_TYPE_CITY];
-export const SCENARIOS_IN_AVOIDING_IMPACTS = ['gs', 'sp', 'curpol'];
-
-// LocalStorage keys
-export const LOCALSTORE_LIKELIHOOD = 'likelihood';
-export const LOCALSTORE_STUDY_LOCATION = 'study_location';
-export const LOCALSTORE_LEVEL_OF_IMACT = 'level_of_impact';
-```
+The application centralizes its configuration in a dedicated config file that defines route paths, display labels, API endpoints, and constraints specific to each module. For the "Avoiding Future Impacts" feature, this includes restrictions on which geography types (currently only cities) and which scenarios are available. The config also manages localStorage keys for persisting user preferences like likelihood levels and study locations.
 
 ---
 
 ## 2. Phase 1: Projects Hub Implementation
 
-### 2.1 New Route Structure
+### 2.1 Overview
 
-```
-src/routes/(default)/
-├── projects/
-│   ├── +page.svelte                      # Landing page with project cards
-│   ├── +page.server.js                   # Load project metadata
-│   └── avoiding-future-impact/
-│       ├── +page.svelte                  # Standalone project page
-│       ├── +page.server.js               # Server load
-│       └── +layout.svelte                # Project-specific layout
-└── impacts/
-    └── avoid/
-        └── +page.server.js               # Redirect to new location
-```
+The Projects Hub will serve as a dedicated landing page for specialized analytical tools built on the PROVIDE climate data. The first project to be featured is "Avoiding Future Impacts," which will be migrated from its current location at `/impacts/avoid` to a new `/projects/avoiding-future-impact` route. This reorganization creates a scalable structure for adding future projects while improving discoverability.
 
-### 2.2 Configuration Updates
+### 2.2 New Route Structure
 
-**File: `src/config.js`**
+A new `/projects` route will be created with a landing page displaying project cards in a grid layout. Each project card will show a thumbnail, title, and description, linking to the project's dedicated page. The "Avoiding Future Impacts" project will have its own nested route with a custom layout that includes a back link to the projects hub, main controls, and project-specific introductory content.
 
-```javascript
-// Add new constants
-export const PATH_PROJECTS = 'projects';
-export const LABEL_PROJECTS = 'Projects';
+The project page itself will retain all the functionality of the current avoid page, including the reference selector, certainty level picker, study location selector, and the threshold visualization sections. The components will be imported from their existing locations or migrated as needed.
 
-// Projects registry
-export const PROJECTS = [
-  {
-    slug: 'avoiding-future-impact',
-    title: 'Avoiding Future Impacts',
-    description: 'Explore which scenarios minimise the risk from certain impacts in cities.',
-    thumbnail: '/images/projects/avoiding-future-impact.png',
-    geographyTypes: [GEOGRAPHY_TYPE_CITY],
-    scenarios: SCENARIOS_IN_AVOIDING_IMPACTS,
-    isActive: true,
-  },
-];
-```
+### 2.3 Configuration Updates
 
-### 2.3 Projects Landing Page
+The config file will be extended with new constants for the projects path and label, plus a projects registry array. Each project entry will define its slug, title, description, thumbnail path, compatible geography types, available scenarios, and an active flag. This registry drives both the landing page rendering and any compatibility checks elsewhere in the application.
 
-**File: `src/routes/(default)/projects/+page.svelte`**
+### 2.4 Backward Compatibility
 
-```svelte
-<script>
-  import PageIntro from '$lib/site/PageIntro.svelte';
-  import { LABEL_PROJECTS, PATH_PROJECTS } from '$config';
+To ensure existing links and bookmarks continue to work, the original `/impacts/avoid` route will be converted to a redirect. When users visit the old URL, they will be automatically redirected to the new project location with a 301 (permanent) redirect. Query parameters will be preserved during the redirect so that shared links with specific indicator and geography selections remain functional.
 
-  export let data;
-</script>
+### 2.5 Navigation and Deep Linking
 
-<PageIntro>
-  <h1 class="text-3xl font-bold mb-4">{LABEL_PROJECTS}</h1>
-  <p class="text-lg max-w-xl mb-8">
-    Explore specialized tools and analyses built on climate risk data.
-  </p>
-</PageIntro>
+The main site header will be updated to include a "Projects" link alongside the existing navigation items. Additionally, a new component will be created for the Future Impacts explore page that detects when the current selection (indicator and geography) is compatible with the "Avoiding Future Impacts" project and displays a contextual link inviting users to explore avoidance scenarios for their current selection.
 
-<div class="mx-auto max-w-7xl px-6 py-12">
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-    {#each data.projects as project}
-      <a
-        href="/{PATH_PROJECTS}/{project.slug}"
-        class="group block bg-surface-weaker rounded-lg overflow-hidden
-               hover:shadow-lg transition-shadow"
-      >
-        <div class="aspect-video bg-surface-weakest">
-          {#if project.thumbnail}
-            <img
-              src={project.thumbnail}
-              alt={project.title}
-              class="w-full h-full object-cover"
-            />
-          {/if}
-        </div>
-        <div class="p-6">
-          <h3 class="text-xl font-bold text-theme-base group-hover:underline">
-            {project.title}
-          </h3>
-          <p class="mt-2 text-text-weaker">{project.description}</p>
-        </div>
-      </a>
-    {/each}
-  </div>
-</div>
-```
+### 2.6 Implementation Tasks
 
-**File: `src/routes/(default)/projects/+page.server.js`**
+**Configuration & Setup**
+- Add projects-related constants and registry to the config file
+- Update prerender entries in the SvelteKit configuration
+- Add project thumbnail image to static assets
 
-```javascript
-import { generatePageTitle } from '$utils/meta.js';
-import { LABEL_PROJECTS, PROJECTS } from '$config';
+**Route Creation**
+- Create the projects landing page with grid layout
+- Create the avoiding-future-impact project layout and page
+- Set up redirect from the legacy avoid route
 
-export const load = async () => {
-  return {
-    title: generatePageTitle(LABEL_PROJECTS),
-    projects: PROJECTS.filter(p => p.isActive),
-  };
-};
-```
+**Navigation Integration**
+- Update the header component with projects navigation link
+- Create the contextual link component for the explore page
+- Update store logic to recognize the new project route
 
-### 2.4 Avoiding Future Impact Project Page
-
-**File: `src/routes/(default)/projects/avoiding-future-impact/+layout.svelte`**
-
-```svelte
-<script>
-  import { page } from '$app/stores';
-  import MainControls from '$routes/(default)/impacts/MainControls/MainControls.svelte';
-  import PageIntro from '$lib/site/PageIntro.svelte';
-  import ShareLink from '$routes/(default)/impacts/ShareLink/ShareLink.svelte';
-  import { urlToState } from '$utils/url';
-  import { PATH_PROJECTS, PATH_DOCUMENTATION } from '$config';
-
-  $: urlToState($page.url);
-</script>
-
-<PageIntro backLink={{ href: `/${PATH_PROJECTS}`, label: 'All Projects' }}>
-  <MainControls />
-  <div class="flex flex-col gap-y-1">
-    <h1 class="text-3xl font-bold">Avoiding Future Impacts in Cities</h1>
-    <p class="text-lg mt-3.5 max-w-xl mb-8">
-      Explore which scenarios minimise the risk from certain impacts in cities
-      and their rural surroundings. Understand the likelihood of exceeding
-      the impact levels you would like to avoid.
-    </p>
-    <div class="flex justify-between items-center">
-      <a href="/{PATH_DOCUMENTATION}" class="text-sm font-bold text-theme-base hover:underline">
-        Learn more about the methodology
-      </a>
-      <ShareLink />
-    </div>
-  </div>
-</PageIntro>
-
-<slot />
-```
-
-**File: `src/routes/(default)/projects/avoiding-future-impact/+page.svelte`**
-
-```svelte
-<script>
-  // Import components from original location (or copy them)
-  import ThresholdLevels from '$routes/(default)/impacts/avoid/ThresholdLevels/ThresholdLevels.svelte';
-  import StudyLocations from '$routes/(default)/impacts/avoid/StudyLocations/StudyLocations.svelte';
-  import Reference from '$routes/(default)/impacts/avoid/Reference/Reference.svelte';
-  import ScrollContent from '$lib/helper/ScrollContent/ScrollContent.svelte';
-  import SimpleNav from '$lib/helper/ScrollContent/SimpleNav.svelte';
-  import FallbackMessage from '$lib/helper/FallbackMessage.svelte';
-  import SelectionCertaintyLevels from '$routes/(default)/impacts/avoid/Selection/CertaintyLevels/CertaintyLevels.svelte';
-  import SelectionStudyLocations from '$routes/(default)/impacts/avoid/Selection/StudyLocations/StudyLocations.svelte';
-
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, SELECTABLE_SCENARIOS } from '$stores/state';
-  import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
-  import { SCENARIOS_IN_AVOIDING_IMPACTS, KEY_SCENARIO_ENDYEAR } from '$config';
-  import THEME from '$styles/theme-store.js';
-  import { writable } from 'svelte/store';
-
-  $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE
-                        && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
-
-  let THRESHOLD_LEVELS_DATA = writable({});
-  let REFERENCE_STORE = writable({});
-
-  $: currentScenarios = SCENARIOS_IN_AVOIDING_IMPACTS
-    .map((uid) => $SELECTABLE_SCENARIOS.find((scenario) => scenario.uid === uid))
-    .filter(Boolean)
-    .map(({ uid, label, [KEY_SCENARIO_ENDYEAR]: timeframe }, i) => ({
-      uid, label, [KEY_SCENARIO_ENDYEAR]: timeframe,
-      color: $THEME.color.category.base[i]
-    }));
-
-  $: sections = [
-    { component: FallbackMessage, disabled: isValidSelection },
-    {
-      slug: 'threshold-levels',
-      title: 'Impact Level',
-      description: 'When will the impact level be exceeded?',
-      component: ThresholdLevels,
-      disabled: !isValidSelection,
-      props: { store: THRESHOLD_LEVELS_DATA, tagline: 'Impact Level' },
-    },
-    {
-      slug: 'locations',
-      title: 'Locations',
-      description: 'When will the impact level be exceeded across different locations?',
-      component: StudyLocations,
-      disabled: !isValidSelection,
-      props: { store: THRESHOLD_LEVELS_DATA, tagline: 'Locations' },
-    },
-  ];
-</script>
-
-<ScrollContent let:query {sections} isFullWidth={true} hasActiveScetionBar={true}>
-  <aside slot="navigation" class="flex flex-col gap-4 pb-24">
-    <div class="mr-2 mb-2 border-b border-contour-weakest pb-6 flex flex-col gap-y-6 pr-6 lg:pr-12">
-      <Reference store={REFERENCE_STORE} />
-      <SelectionCertaintyLevels />
-      <SelectionStudyLocations />
-    </div>
-    <SimpleNav {sections} />
-  </aside>
-  {#each sections as section}
-    {#if !section.disabled}
-      <section id={section.slug} name={section.slug}
-               class="scroll-mt-4 mb-16 {query} border-b pb-14 border-contour-weaker last:border-none">
-        <svelte:component this={section.component} {...section.props} />
-      </section>
-    {/if}
-  {/each}
-</ScrollContent>
-```
-
-### 2.5 Backward Compatibility Redirect
-
-**File: `src/routes/(default)/impacts/avoid/+page.server.js`** (updated)
-
-```javascript
-import { redirect } from '@sveltejs/kit';
-import { PATH_PROJECTS } from '$config';
-
-export const load = async ({ url }) => {
-  // Preserve query parameters when redirecting
-  const queryString = url.search;
-  throw redirect(301, `/${PATH_PROJECTS}/avoiding-future-impact${queryString}`);
-};
-```
-
-### 2.6 Header Navigation Update
-
-**File: `src/lib/site/Header.svelte`**
-
-```svelte
-<script>
-  import {
-    PATH_KEY_CONCEPTS,
-    LABEL_KEY_CONCEPTS,
-    LABEL_EXPLORE,
-    PATH_EXPLORE,
-    PATH_IMPACT,
-    LABEL_DOCUMENTATION,
-    LABEL_CONTACT,
-    LABEL_ABOUT,
-    PATH_ABOUT,
-    PATH_CONTACT,
-    PATH_DOCUMENTATION,
-    PATH_ADAPTATION,
-    LABEL_ADAPTATION,
-    PATH_PROJECTS,      // Add
-    LABEL_PROJECTS,     // Add
-  } from '$config';
-  import NavLink from '$lib/helper/NavLink.svelte';
-  import Logo from './Logo.svelte';
-
-  const items = [
-    { href: `/${PATH_EXPLORE}/${PATH_IMPACT}`, label: LABEL_EXPLORE },
-    { href: `/${PATH_PROJECTS}`, label: LABEL_PROJECTS },  // Add Projects link
-    { href: `/${PATH_ADAPTATION}`, label: LABEL_ADAPTATION },
-    { href: `/${PATH_DOCUMENTATION}`, label: LABEL_DOCUMENTATION },
-    { href: `/${PATH_KEY_CONCEPTS}`, label: LABEL_KEY_CONCEPTS },
-    { href: `/${PATH_ABOUT}`, label: LABEL_ABOUT },
-    { href: `/${PATH_CONTACT}`, label: LABEL_CONTACT },
-  ];
-</script>
-<!-- Rest of component unchanged -->
-```
-
-### 2.7 Deep Linking from Explore Page
-
-**File: `src/routes/(default)/impacts/explore/ImpactGeo/LinkSection.svelte`** (new component)
-
-```svelte
-<script>
-  import { CURRENT_GEOGRAPHY, CURRENT_INDICATOR_UID, CURRENT_SCENARIOS_UID } from '$stores/state';
-  import { GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS, SCENARIOS_IN_AVOIDING_IMPACTS, PATH_PROJECTS } from '$config';
-
-  // Check if current selection is compatible with Avoiding Future Impacts
-  $: isCompatible =
-    $CURRENT_GEOGRAPHY?.geographyType &&
-    GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS.includes($CURRENT_GEOGRAPHY.geographyType) &&
-    $CURRENT_INDICATOR_UID &&
-    $CURRENT_SCENARIOS_UID?.some(s => SCENARIOS_IN_AVOIDING_IMPACTS.includes(s));
-
-  // Build URL with current parameters
-  $: projectUrl = isCompatible
-    ? `/${PATH_PROJECTS}/avoiding-future-impact?indicator=${$CURRENT_INDICATOR_UID}&geography=${$CURRENT_GEOGRAPHY?.uid}`
-    : null;
-</script>
-
-{#if isCompatible}
-  <div class="mt-4 p-4 bg-surface-weaker rounded-lg">
-    <p class="text-sm text-text-weaker mb-2">
-      Want to explore impact avoidance scenarios for this indicator?
-    </p>
-    <a
-      href={projectUrl}
-      class="text-theme-base font-bold hover:underline inline-flex items-center gap-2"
-    >
-      View in Avoiding Future Impacts
-      <span aria-hidden="true">→</span>
-    </a>
-  </div>
-{/if}
-```
-
-### 2.8 Prerender Configuration Update
-
-**File: `svelte.config.js`**
-
-```javascript
-// Add to prerender.entries array:
-prerender: {
-  handleMissingId: 'warn',
-  entries: [
-    '/',
-    '/about',
-    '/adaptation',
-    '/contact',
-    '/impacts/avoid',      // Keep for redirect
-    '/impacts/explore',
-    '/issues',
-    '/keyconcepts',
-    '/methodology',
-    '/projects',           // Add
-    '/projects/avoiding-future-impact',  // Add
-    '/embed/impact-time',
-    '/embed/impact-geo',
-    '/embed/unavoidable-risk',
-  ],
-},
-```
-
-### 2.9 Store Updates for Project Context
-
-**File: `src/stores/state.js`** (additions)
-
-```javascript
-// Add PATH_PROJECTS import
-import {
-  // ... existing imports
-  PATH_PROJECTS,
-} from '../config.js';
-
-// Update IS_AVOID_PAGE to include project route
-export const IS_AVOID_PAGE = derived(CURRENT_PAGE, ($currentPage) =>
-  $currentPage === PATH_AVOID || $currentPage === 'avoiding-future-impact'
-);
-```
+**Testing & Validation**
+- Verify navigation flow between projects hub and project pages
+- Confirm backward compatibility redirect works with query parameters
+- Test deep linking from explore page to project
+- Validate URL parameter persistence across navigation
 
 ---
 
 ## 3. Phase 2: GeoServer + MVT Migration
 
-### 3.1 Current Data Flow (Client-Side GeoJSON)
+### 3.1 Current Data Flow
 
 ```mermaid
 flowchart LR
@@ -507,12 +123,9 @@ flowchart LR
     Client --> Worker["Web Worker<br/>geomask.js<br/>(Turf.js clip)"]
 ```
 
-**Current processing in `src/lib/utils/geo.js`:**
-- `coordinatesToRectGrid()` - Grid data → GeoJSON polygons
-- `coordinatesToContours()` - Grid data → D3 contours
-- `getColorScale()` - D3 Lab color interpolation
+Currently, the application fetches geographic data as GeoJSON from the data API and processes it client-side. This includes converting grid coordinates to GeoJSON polygons, generating D3 contours, and applying clipping masks via a web worker using Turf.js. While this approach works, it places significant computational burden on the client and limits the ability to efficiently serve large datasets or support complex styling at multiple zoom levels.
 
-### 3.2 Target Architecture (Server-Side MVT)
+### 3.2 Target Architecture
 
 ```mermaid
 flowchart LR
@@ -520,778 +133,103 @@ flowchart LR
     GeoServer --> Tiles["Vector Tiles<br/>(MVT)<br/>Pre-generated"]
 ```
 
-### 3.3 Environment Configuration
+The migration will move geographic data processing to the server side using GeoServer with PostGIS. Impact data and boundary geometries will be stored in PostGIS and served as Mapbox Vector Tiles (MVT) through GeoServer's GeoWebCache. This enables pre-generated tiles at multiple zoom levels, dramatically reduces client-side processing, and allows Mapbox GL to render the data natively with efficient styling through expressions.
 
-**File: `.env`**
+### 3.3 Environment and Configuration
 
-```bash
-# Existing
-VITE_DATA_API_URL=...
-VITE_MAPBOX_STYLE_LIGHT=...
-VITE_MAPBOX_STYLE_SATELLITE=...
-VITE_MAPBOX_STYLE_STUDY_LOCATIONS=...
-VITE_MAPBOX_STYLE_GLOBE=...
+The application will require new environment variables for the GeoServer URL and workspace name. The config will be extended with layer name mappings and a function to generate MVT tile URLs in the format expected by Mapbox GL. This centralized configuration ensures consistency across all components that consume vector tiles.
 
-# New GeoServer configuration
-VITE_GEOSERVER_URL=https://geoserver.example.com/geoserver
-VITE_GEOSERVER_WORKSPACE=provide
-VITE_GEOSERVER_LAYER_BOUNDARIES=boundaries
-VITE_GEOSERVER_LAYER_IMPACT_GRID=impact_grid
-```
+### 3.4 Frontend Components
 
-**File: `src/config.js`** (additions)
+A new `VectorTileLayer` Svelte component will be created to handle adding vector tile sources and layers to the Mapbox map. This component will accept props for the layer configuration, paint properties, layout settings, and filter expressions. It will manage the lifecycle of sources and layers, cleaning them up when the component is destroyed, and will reactively update paint properties and filters when props change.
 
-```javascript
-// GeoServer configuration
-export const GEOSERVER_URL = import.meta.env.VITE_GEOSERVER_URL;
-export const GEOSERVER_WORKSPACE = import.meta.env.VITE_GEOSERVER_WORKSPACE;
+The existing Maps component in the explore section will be updated to use the new VectorTileLayer component instead of the current GeoJSON-based approach. Color scales currently implemented with D3 will be converted to Mapbox style expressions that interpolate colors based on feature properties. Filters will be constructed to show only data for the currently selected scenario and year.
 
-// Layer name mappings
-export const GEOSERVER_LAYERS = {
-  boundaries: `${GEOSERVER_WORKSPACE}:boundaries`,
-  impactGrid: `${GEOSERVER_WORKSPACE}:impact_grid`,
-  cities: `${GEOSERVER_WORKSPACE}:cities`,
-};
+### 3.5 API Utilities
 
-// MVT tile URL template
-export const MVT_TILE_URL = (layer) =>
-  `${GEOSERVER_URL}/gwc/service/tms/1.0.0/${layer}@EPSG:900913@pbf/{z}/{x}/{-y}.pbf`;
-```
+New utility functions will be added to the API module for interacting with GeoServer. These include fetching layer capabilities via WMS GetCapabilities, retrieving available property values via WFS GetPropertyValue, and getting feature information for clicked points via WMS GetFeatureInfo. These utilities enable the application to dynamically discover available data and provide interactive features like tooltips on hover or click.
 
-### 3.4 New VectorTileLayer Component
+### 3.6 Cleanup
 
-**File: `src/lib/MapboxMap/VectorTileLayer.svelte`**
+Once the MVT migration is complete and validated, several client-side processing components can be removed. The geomask web worker will no longer be needed since clipping is handled server-side. The coordinate-to-polygon and contour generation functions in the geo utilities can be removed, though color scale utilities should be retained for other uses.
 
-```svelte
-<script>
-  import { getContext, onMount, onDestroy } from 'svelte';
-  import { MVT_TILE_URL, GEOSERVER_LAYERS } from '$config';
+### 3.7 Implementation Tasks
 
-  export let id;
-  export let layer;           // GeoServer layer name
-  export let sourceLayer;     // Source layer within the MVT
-  export let type = 'fill';   // Mapbox layer type
-  export let paint = {};      // Paint properties
-  export let layout = {};     // Layout properties
-  export let filter = null;   // Optional filter expression
-  export let beforeId = null; // Layer ordering
-  export let minzoom = 0;
-  export let maxzoom = 14;
+**Infrastructure Setup**
+- Deploy and configure GeoServer instance with GeoWebCache extension
+- Set up PostGIS database connection
+- Configure CORS for frontend access
+- Define tile caching rules and zoom level coverage
 
-  const { getMap } = getContext('map');
-  const map = getMap();
+**Data Pipeline**
+- Import boundary geometries to PostGIS
+- Import gridded impact data with appropriate schema
+- Configure data update/refresh procedures
+- Test tile generation at various zoom levels
 
-  const sourceId = `${id}-source`;
+**Frontend Development**
+- Create the VectorTileLayer component
+- Add GeoServer API utility functions
+- Update Maps component to use vector tiles
+- Convert D3 color scales to Mapbox expressions
+- Implement hover and click interactions
 
-  onMount(() => {
-    // Add vector tile source
-    if (!map.getSource(sourceId)) {
-      map.addSource(sourceId, {
-        type: 'vector',
-        tiles: [MVT_TILE_URL(layer)],
-        minzoom,
-        maxzoom,
-      });
-    }
-
-    // Add layer
-    const layerConfig = {
-      id,
-      type,
-      source: sourceId,
-      'source-layer': sourceLayer,
-      paint,
-      layout,
-    };
-
-    if (filter) layerConfig.filter = filter;
-
-    map.addLayer(layerConfig, beforeId);
-  });
-
-  onDestroy(() => {
-    if (map.getLayer(id)) map.removeLayer(id);
-    if (map.getSource(sourceId)) map.removeSource(sourceId);
-  });
-
-  // Reactive paint updates
-  $: if (map.getLayer(id)) {
-    Object.entries(paint).forEach(([prop, value]) => {
-      map.setPaintProperty(id, prop, value);
-    });
-  }
-
-  // Reactive filter updates
-  $: if (map.getLayer(id) && filter) {
-    map.setFilter(id, filter);
-  }
-</script>
-```
-
-### 3.5 Updated Maps Component
-
-**File: `src/routes/(default)/impacts/explore/ImpactGeo/Maps.svelte`** (key changes)
-
-```svelte
-<script>
-  import { GEOSERVER_LAYERS, GEOSERVER_URL } from '$config';
-  import VectorTileLayer from '$lib/MapboxMap/VectorTileLayer.svelte';
-  import MapProvider from '$lib/MapboxMap/MapProvider.svelte';
-
-  // Props
-  export let data;
-  export let scenario;
-  export let colorScale;
-
-  // Build Mapbox style expression from color scale
-  $: fillColorExpression = buildColorExpression(colorScale, data);
-
-  function buildColorExpression(scale, data) {
-    if (!scale || !data) return '#ccc';
-
-    const { domain, range } = scale;
-    const stops = domain.map((d, i) => [d, range[i]]);
-
-    return [
-      'interpolate',
-      ['linear'],
-      ['get', 'value'],  // Property from vector tile
-      ...stops.flat()
-    ];
-  }
-
-  // Build filter for current scenario/year
-  $: layerFilter = [
-    'all',
-    ['==', ['get', 'scenario'], scenario.uid],
-    ['==', ['get', 'year'], selectedYear],
-  ];
-</script>
-
-<MapProvider>
-  <VectorTileLayer
-    id="impact-fill"
-    layer={GEOSERVER_LAYERS.impactGrid}
-    sourceLayer="impact_grid"
-    type="fill"
-    paint={{
-      'fill-color': fillColorExpression,
-      'fill-opacity': 0.85,
-    }}
-    filter={layerFilter}
-  />
-
-  <VectorTileLayer
-    id="boundaries-line"
-    layer={GEOSERVER_LAYERS.boundaries}
-    sourceLayer="boundaries"
-    type="line"
-    paint={{
-      'line-color': '#333',
-      'line-width': 1,
-    }}
-  />
-</MapProvider>
-```
-
-### 3.6 API Updates for GeoServer Metadata
-
-**File: `src/lib/api/api.js`** (additions)
-
-```javascript
-import { GEOSERVER_URL, GEOSERVER_WORKSPACE } from '$config';
-
-/**
- * Fetch GeoServer layer capabilities
- */
-export async function getGeoServerCapabilities(layer) {
-  const url = `${GEOSERVER_URL}/wms?service=WMS&version=1.1.1&request=GetCapabilities`;
-  const response = await fetch(url);
-  const text = await response.text();
-  // Parse XML and extract layer info
-  return parseCapabilities(text, layer);
-}
-
-/**
- * Fetch available values for a vector tile property
- */
-export async function getVectorTilePropertyValues(layer, property) {
-  const url = `${GEOSERVER_URL}/wfs?` + new URLSearchParams({
-    service: 'WFS',
-    version: '2.0.0',
-    request: 'GetPropertyValue',
-    typeNames: layer,
-    valueReference: property,
-  });
-  const response = await fetch(url);
-  return response.json();
-}
-
-/**
- * Get feature info for clicked point
- */
-export async function getFeatureInfo(layer, coordinates, zoom) {
-  const [lng, lat] = coordinates;
-  const url = `${GEOSERVER_URL}/wms?` + new URLSearchParams({
-    service: 'WMS',
-    version: '1.1.1',
-    request: 'GetFeatureInfo',
-    layers: layer,
-    query_layers: layer,
-    info_format: 'application/json',
-    x: 128,
-    y: 128,
-    width: 256,
-    height: 256,
-    srs: 'EPSG:4326',
-    bbox: calculateBBox(lng, lat, zoom),
-  });
-  const response = await fetch(url);
-  return response.json();
-}
-```
-
-### 3.7 Files to Remove/Deprecate
-
-After MVT migration is complete:
-
-```
-src/lib/workers/geomask.js           # No longer needed
-src/lib/utils/geo.js                 # Remove coordinatesToContours(),
-                                     # coordinatesToRectGrid()
-                                     # Keep getColorScale() and other utils
-```
-
-### 3.8 Migration Checklist
-
-```
-[ ] GeoServer Setup
-    [ ] Deploy GeoServer instance
-    [ ] Configure PostGIS connection
-    [ ] Import boundary data
-    [ ] Import gridded impact data
-    [ ] Configure GeoWebCache for MVT
-    [ ] Set up CORS for frontend access
-
-[ ] Data Pipeline
-    [ ] Create data ingestion scripts
-    [ ] Define tile schemas (zoom levels, properties)
-    [ ] Test tile generation
-    [ ] Set up update automation
-
-[ ] Frontend Updates
-    [ ] Add VectorTileLayer component
-    [ ] Update Maps.svelte
-    [ ] Update ImpactGeo components
-    [ ] Add GeoServer API utilities
-    [ ] Update color scale handling
-    [ ] Add feature interaction (hover, click)
-
-[ ] Testing
-    [ ] Test all zoom levels
-    [ ] Test different scenarios/indicators
-    [ ] Performance testing
-    [ ] Cross-browser testing
-
-[ ] Cleanup
-    [ ] Remove unused GeoJSON processing code
-    [ ] Remove web worker
-    [ ] Update documentation
-```
+**Migration & Cleanup**
+- Conduct performance testing and comparison
+- Remove deprecated client-side processing code
+- Update documentation to reflect new architecture
 
 ---
 
 ## 4. Phase 3: Case Studies Enhancement
 
-### 4.1 Current Case Studies Structure
+### 4.1 Current Structure
 
-```
-src/routes/(default)/adaptation/
-├── +page.svelte              # Landing page
-├── +page.server.js           # Loads from Strapi
-├── sections/
-│   ├── Outro.svelte
-│   └── Publications.svelte
-└── [city]/
-    ├── +page.svelte          # Dynamic case study page
-    ├── +page.server.js       # Loads case study data
-    └── sections/
-        ├── AvoidingImpacts.svelte
-        ├── ExplorerLink.svelte
-        ├── FutureImpacts.svelte
-        └── ImageSlider.svelte
-```
+The case studies section (adaptation) currently displays city-based case studies loaded from Strapi CMS. Each case study has a dedicated page with various content sections including avoiding impacts visualizations, future impacts data, image sliders, and explorer links. The landing page presents all case studies in a simple list format.
 
-### 4.2 Strapi Schema Updates
+### 4.2 Strapi Schema Enhancements
 
-**New Collection: `categories`**
+Two new collections will be added to Strapi: categories and tags. Categories provide high-level classification (e.g., "Flooding", "Heat Stress", "Infrastructure") with optional color coding for visual distinction. Tags offer more granular topic labeling that can be applied across categories. Both collections will have many-to-many relationships with case studies, allowing flexible organization and filtering.
 
-```json
-{
-  "kind": "collectionType",
-  "collectionName": "categories",
-  "attributes": {
-    "name": { "type": "string", "required": true },
-    "slug": { "type": "uid", "targetField": "name" },
-    "description": { "type": "text" },
-    "color": { "type": "string" },
-    "case_studies": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::case-study-dynamic.case-study-dynamic",
-      "mappedBy": "categories"
-    }
-  }
-}
-```
+The existing case study collection will be extended with relations to these new collections and a publishedAt field for tracking when studies are published. This enables both categorical browsing and chronological sorting.
 
-**New Collection: `tags`**
+### 4.3 Filter Components
 
-```json
-{
-  "kind": "collectionType",
-  "collectionName": "tags",
-  "attributes": {
-    "name": { "type": "string", "required": true },
-    "slug": { "type": "uid", "targetField": "name" },
-    "case_studies": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::case-study-dynamic.case-study-dynamic",
-      "mappedBy": "tags"
-    }
-  }
-}
-```
+New UI components will be created for displaying categories and tags. Category badges will be styled with the category's color and can function as both labels and clickable filters. Tag chips will have a more subtle style with visual feedback when selected. These components will be used both on case study cards and in the filter interface.
 
-**Updated: `case-study-dynamics`** (add relations)
+### 4.4 Landing Page Updates
 
-```json
-{
-  // ... existing attributes
-  "categories": {
-    "type": "relation",
-    "relation": "manyToMany",
-    "target": "api::category.category",
-    "inversedBy": "case_studies"
-  },
-  "tags": {
-    "type": "relation",
-    "relation": "manyToMany",
-    "target": "api::tag.tag",
-    "inversedBy": "case_studies"
-  },
-  "publishedAt": {
-    "type": "datetime"
-  }
-}
-```
+The adaptation landing page will be enhanced with filter controls at the top, allowing users to filter case studies by category and/or tags. Filters will be reflected in the URL query parameters, enabling shareable filtered views. A new "Recent Case Studies" section will highlight the most recently published or updated studies in a featured grid layout, providing quick access to new content.
 
-### 4.3 Category & Tag Components
-
-**File: `src/lib/helper/CategoryBadge.svelte`**
-
-```svelte
-<script>
-  export let category;
-  export let href = null;
-
-  $: style = category.color ? `background-color: ${category.color}20; color: ${category.color}` : '';
-</script>
-
-<svelte:element
-  this={href ? 'a' : 'span'}
-  {href}
-  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-  {style}
->
-  {category.name}
-</svelte:element>
-```
-
-**File: `src/lib/helper/TagChip.svelte`**
-
-```svelte
-<script>
-  export let tag;
-  export let href = null;
-  export let selected = false;
-</script>
-
-<svelte:element
-  this={href ? 'a' : 'span'}
-  {href}
-  class="inline-flex items-center px-3 py-1 rounded-md text-sm border transition-colors"
-  class:bg-theme-base={selected}
-  class:text-white={selected}
-  class:border-contour-weaker={!selected}
-  class:hover:border-theme-base={!selected}
->
-  {tag.name}
-</svelte:element>
-```
-
-### 4.4 Updated Adaptation Landing Page
-
-**File: `src/routes/(default)/adaptation/+page.server.js`** (updated)
-
-```javascript
-import { loadFromStrapi } from '$utils/apis.js';
-import { parse } from 'marked';
-
-export const load = async ({ fetch, parent, url }) => {
-  const { meta } = await parent();
-  const { attributes } = await loadFromStrapi('adaptation', fetch);
-
-  // Load case studies with categories and tags
-  const caseStudiesRaw = await loadFromStrapi(
-    'case-study-dynamics',
-    fetch,
-    'populate[categories]=*&populate[tags]=*'
-  );
-
-  // Load all categories and tags for filters
-  const categoriesRaw = await loadFromStrapi('categories', fetch);
-  const tagsRaw = await loadFromStrapi('tags', fetch);
-
-  // Parse URL filters
-  const selectedCategory = url.searchParams.get('category');
-  const selectedTags = url.searchParams.get('tags')?.split(',').filter(Boolean) || [];
-
-  // Process case studies
-  let caseStudies = caseStudiesRaw.map((study) => ({
-    city: meta.cities.find((d) => d.uid === study.attributes.CityUid) || { uid: study.attributes.CityUid, label: study.attributes.CityUid },
-    abstract: study.attributes.Abstract,
-    categories: study.attributes.categories?.data || [],
-    tags: study.attributes.tags?.data || [],
-    publishedAt: study.attributes.publishedAt,
-    updatedAt: study.attributes.updatedAt,
-  }));
-
-  // Apply filters
-  if (selectedCategory) {
-    caseStudies = caseStudies.filter(cs =>
-      cs.categories.some(c => c.attributes.slug === selectedCategory)
-    );
-  }
-  if (selectedTags.length) {
-    caseStudies = caseStudies.filter(cs =>
-      selectedTags.every(tag => cs.tags.some(t => t.attributes.slug === tag))
-    );
-  }
-
-  // Sort by date (most recent first)
-  caseStudies.sort((a, b) =>
-    new Date(b.publishedAt || b.updatedAt) - new Date(a.publishedAt || a.updatedAt)
-  );
-
-  // Get recent studies (top 5)
-  const recentStudies = caseStudies.slice(0, 5);
-
-  return {
-    caseStudies,
-    recentStudies,
-    categories: categoriesRaw.map(c => c.attributes),
-    tags: tagsRaw.map(t => t.attributes),
-    selectedCategory,
-    selectedTags,
-    // ... rest of existing return values
-  };
-};
-```
-
-**File: `src/routes/(default)/adaptation/+page.svelte`** (updated sections)
-
-```svelte
-<script>
-  import ContentPageLayout from '$src/lib/helper/ContentPages/ContentPageLayout.svelte';
-  import CategoryBadge from '$lib/helper/CategoryBadge.svelte';
-  import TagChip from '$lib/helper/TagChip.svelte';
-  import { LABEL_ADAPTATION, PATH_ADAPTATION } from '$config';
-  import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
-
-  export let data;
-
-  // Filter handling
-  function toggleCategory(slug) {
-    const url = new URL($page.url);
-    if (data.selectedCategory === slug) {
-      url.searchParams.delete('category');
-    } else {
-      url.searchParams.set('category', slug);
-    }
-    goto(url.toString(), { replaceState: true });
-  }
-
-  function toggleTag(slug) {
-    const url = new URL($page.url);
-    const tags = new Set(data.selectedTags);
-    if (tags.has(slug)) {
-      tags.delete(slug);
-    } else {
-      tags.add(slug);
-    }
-    if (tags.size) {
-      url.searchParams.set('tags', [...tags].join(','));
-    } else {
-      url.searchParams.delete('tags');
-    }
-    goto(url.toString(), { replaceState: true });
-  }
-</script>
-
-<!-- Add filters section -->
-<div class="mb-8">
-  <h3 class="text-sm font-bold uppercase tracking-wider text-text-weaker mb-3">Categories</h3>
-  <div class="flex flex-wrap gap-2">
-    {#each data.categories as category}
-      <button on:click={() => toggleCategory(category.slug)}>
-        <CategoryBadge
-          {category}
-          selected={data.selectedCategory === category.slug}
-        />
-      </button>
-    {/each}
-  </div>
-</div>
-
-<div class="mb-8">
-  <h3 class="text-sm font-bold uppercase tracking-wider text-text-weaker mb-3">Topics</h3>
-  <div class="flex flex-wrap gap-2">
-    {#each data.tags as tag}
-      <button on:click={() => toggleTag(tag.slug)}>
-        <TagChip
-          {tag}
-          selected={data.selectedTags.includes(tag.slug)}
-        />
-      </button>
-    {/each}
-  </div>
-</div>
-
-<!-- Recent section -->
-{#if data.recentStudies.length}
-  <section class="mb-12">
-    <h2 class="text-2xl font-bold mb-6">Recent Case Studies</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each data.recentStudies as study}
-        <a href="/{PATH_ADAPTATION}/{study.city.uid}" class="group">
-          <article class="bg-surface-weaker p-6 rounded-lg hover:shadow-md transition-shadow">
-            <div class="flex gap-2 mb-3">
-              {#each study.categories as cat}
-                <CategoryBadge category={cat.attributes} />
-              {/each}
-            </div>
-            <h3 class="font-bold text-lg group-hover:underline">{study.city.label}</h3>
-            <p class="text-text-weaker mt-2 line-clamp-2">{study.abstract}</p>
-            <time class="text-xs text-text-weakest mt-3 block">
-              {new Date(study.publishedAt || study.updatedAt).toLocaleDateString()}
-            </time>
-          </article>
-        </a>
-      {/each}
-    </div>
-  </section>
-{/if}
-```
+The server-side data loading will be updated to fetch categories and tags alongside case studies, apply any active filters from URL parameters, and sort results by date. The page component will handle filter toggle interactions and URL updates using SvelteKit's navigation functions.
 
 ### 4.5 New Visualization Components
 
-**Generic Component Template for Strapi Dynamic Zones:**
+To enrich case study content, several new visualization components will be developed. A DataTable component will display tabular data with optional sorting capabilities. StatCards will present key metrics in a grid of highlighted cards with optional trend indicators. A Timeline component will show chronological events or milestones. A ComparisonChart component will render bar or line charts for comparing values across categories. An EmbedMap component will allow embedding external map views with proper attribution.
 
-```svelte
-<!-- Template: src/routes/(default)/adaptation/[city]/sections/GenericVisualization.svelte -->
-<script>
-  export let title;
-  export let data;
-  export let type; // 'table', 'chart', 'timeline', etc.
-</script>
+These components will be integrated with Strapi's dynamic zones feature, allowing content editors to add rich visualizations to case studies without developer intervention.
 
-<section class="my-12">
-  <h3 class="text-xl font-bold mb-4">{title}</h3>
+### 4.6 Implementation Tasks
 
-  {#if type === 'data-table'}
-    <DataTable {data} />
-  {:else if type === 'comparison-chart'}
-    <ComparisonChart {data} />
-  {:else if type === 'timeline'}
-    <Timeline {data} />
-  {:else if type === 'stat-cards'}
-    <StatCards {data} />
-  {/if}
-</section>
-```
+**CMS Configuration**
+- Create categories collection in Strapi with name, slug, description, and color fields
+- Create tags collection with name and slug fields
+- Add category and tag relations to case study content type
+- Ensure publishedAt field is available and populated
 
-**File: `src/routes/(default)/adaptation/[city]/sections/DataTable.svelte`**
+**Filter System**
+- Create CategoryBadge and TagChip UI components
+- Update landing page server load function to fetch and apply filters
+- Implement filter toggle handlers with URL synchronization
+- Add Recent Case Studies section with date-based sorting
 
-```svelte
-<script>
-  export let title = '';
-  export let description = '';
-  export let columns = [];
-  export let rows = [];
-  export let sortable = false;
-
-  let sortColumn = null;
-  let sortDirection = 'asc';
-
-  $: sortedRows = sortable && sortColumn
-    ? [...rows].sort((a, b) => {
-        const aVal = a[sortColumn];
-        const bVal = b[sortColumn];
-        const dir = sortDirection === 'asc' ? 1 : -1;
-        return aVal > bVal ? dir : -dir;
-      })
-    : rows;
-
-  function handleSort(column) {
-    if (!sortable) return;
-    if (sortColumn === column) {
-      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-      sortColumn = column;
-      sortDirection = 'asc';
-    }
-  }
-</script>
-
-<div class="overflow-x-auto">
-  {#if title}
-    <h4 class="text-lg font-bold mb-2">{title}</h4>
-  {/if}
-  {#if description}
-    <p class="text-text-weaker mb-4">{description}</p>
-  {/if}
-
-  <table class="min-w-full divide-y divide-contour-weaker">
-    <thead class="bg-surface-weaker">
-      <tr>
-        {#each columns as column}
-          <th
-            class="px-4 py-3 text-left text-xs font-medium text-text-weaker uppercase tracking-wider"
-            class:cursor-pointer={sortable}
-            on:click={() => handleSort(column.key)}
-          >
-            {column.label}
-            {#if sortable && sortColumn === column.key}
-              <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
-            {/if}
-          </th>
-        {/each}
-      </tr>
-    </thead>
-    <tbody class="bg-white divide-y divide-contour-weakest">
-      {#each sortedRows as row}
-        <tr>
-          {#each columns as column}
-            <td class="px-4 py-4 whitespace-nowrap text-sm">
-              {row[column.key]}
-            </td>
-          {/each}
-        </tr>
-      {/each}
-    </tbody>
-  </table>
-</div>
-```
-
-**File: `src/routes/(default)/adaptation/[city]/sections/StatCards.svelte`**
-
-```svelte
-<script>
-  export let title = '';
-  export let stats = [];
-</script>
-
-<div>
-  {#if title}
-    <h4 class="text-lg font-bold mb-4">{title}</h4>
-  {/if}
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    {#each stats as stat}
-      <div class="bg-surface-weaker rounded-lg p-4">
-        <dt class="text-sm text-text-weaker">{stat.label}</dt>
-        <dd class="mt-1 flex items-baseline gap-2">
-          <span class="text-2xl font-bold">{stat.value}</span>
-          {#if stat.unit}
-            <span class="text-sm text-text-weaker">{stat.unit}</span>
-          {/if}
-        </dd>
-        {#if stat.trend}
-          <div class="mt-1 text-xs" class:text-green-600={stat.trend > 0} class:text-red-600={stat.trend < 0}>
-            {stat.trend > 0 ? '↑' : '↓'} {Math.abs(stat.trend)}%
-          </div>
-        {/if}
-      </div>
-    {/each}
-  </div>
-</div>
-```
-
-### 4.6 Case Study Page Server Handler Updates
-
-**File: `src/routes/(default)/adaptation/[city]/+page.server.js`** (component handler additions)
-
-```javascript
-// Add to the component processing switch statement:
-
-case 'data-table.data-table':
-  return {
-    type,
-    title: c.Title,
-    description: c.Description,
-    columns: c.Columns?.map(col => ({ key: col.Key, label: col.Label })) || [],
-    rows: c.Rows?.map(row => row.Data) || [],
-    sortable: c.Sortable || false,
-  };
-
-case 'stat-cards.stat-cards':
-  return {
-    type,
-    title: c.Title,
-    stats: c.Stats?.map(stat => ({
-      label: stat.Label,
-      value: stat.Value,
-      unit: stat.Unit,
-      trend: stat.Trend,
-    })) || [],
-  };
-
-case 'timeline.timeline':
-  return {
-    type,
-    title: c.Title,
-    events: c.Events?.map(event => ({
-      date: event.Date,
-      title: event.Title,
-      description: event.Description,
-    })) || [],
-  };
-
-case 'comparison-chart.comparison-chart':
-  return {
-    type,
-    title: c.Title,
-    chartType: c.ChartType, // 'bar' | 'line'
-    series: c.Series?.map(s => ({
-      name: s.Name,
-      data: s.Data,
-      color: s.Color,
-    })) || [],
-    labels: c.Labels || [],
-  };
-
-case 'embed-map.embed-map':
-  return {
-    type,
-    title: c.Title,
-    embedUrl: c.EmbedUrl,
-    height: c.Height || 400,
-    attribution: c.Attribution,
-  };
-```
+**Visualization Components**
+- Create DataTable component with optional sorting
+- Create StatCards component for metrics display
+- Create Timeline component for chronological events
+- Create ComparisonChart component using existing chart library
+- Create EmbedMap component for external map integration
+- Add server-side handlers for new Strapi component types
 
 ---
 
@@ -1299,102 +237,70 @@ case 'embed-map.embed-map':
 
 ### Phase 1: Projects Hub (Priority: High)
 
-```
-[ ] Configuration
-    [ ] Add PATH_PROJECTS, LABEL_PROJECTS to config.js
-    [ ] Add PROJECTS array to config.js
-    [ ] Update svelte.config.js prerender entries
+**Configuration & Setup**
+- Add projects constants and registry to config
+- Update SvelteKit prerender configuration
+- Add project thumbnail assets
 
-[ ] Routes
-    [ ] Create /projects/+page.svelte (landing)
-    [ ] Create /projects/+page.server.js
-    [ ] Create /projects/avoiding-future-impact/+layout.svelte
-    [ ] Create /projects/avoiding-future-impact/+page.svelte
-    [ ] Create /projects/avoiding-future-impact/+page.server.js
-    [ ] Update /impacts/avoid/+page.server.js (redirect)
+**Route Development**
+- Create projects landing page with card grid
+- Create avoiding-future-impact project route
+- Implement legacy route redirect with parameter preservation
 
-[ ] Navigation
-    [ ] Update Header.svelte with Projects link
-    [ ] Add project thumbnail to /static/images/projects/
+**Integration**
+- Update header navigation
+- Create contextual deep linking component
+- Update state management for project context
 
-[ ] Deep Linking
-    [ ] Create LinkSection.svelte for explore page
-    [ ] Add compatibility check logic
-    [ ] Integrate into ImpactGeo section
+**Quality Assurance**
+- Test complete navigation flow
+- Verify backward compatibility
+- Validate URL parameter handling
 
-[ ] Store Updates
-    [ ] Update IS_AVOID_PAGE derived store
-    [ ] Test URL parameter persistence
-
-[ ] Testing
-    [ ] Test navigation flow
-    [ ] Test backward compatibility redirect
-    [ ] Test deep linking conditions
-    [ ] Test URL parameter passing
-```
+---
 
 ### Phase 2: GeoServer Migration (Priority: Medium)
 
-```
-[ ] Infrastructure
-    [ ] Provision GeoServer instance
-    [ ] Configure PostGIS database
-    [ ] Set up GeoWebCache
-    [ ] Configure CORS
+**Infrastructure**
+- Deploy GeoServer with GeoWebCache
+- Configure PostGIS database
+- Set up CORS and security
 
-[ ] Data Migration
-    [ ] Import boundary geometries
-    [ ] Import gridded impact data
-    [ ] Create tile caching rules
-    [ ] Test tile generation
+**Data Pipeline**
+- Import boundary and impact data
+- Configure tile generation
+- Establish update procedures
 
-[ ] Frontend Components
-    [ ] Create VectorTileLayer.svelte
-    [ ] Update DataSource.svelte
-    [ ] Create GeoServer API utilities
-    [ ] Update Maps.svelte
+**Frontend Migration**
+- Create VectorTileLayer component
+- Update map components to use MVT
+- Implement feature interactions
 
-[ ] Styling Migration
-    [ ] Convert D3 color scales to Mapbox expressions
-    [ ] Implement feature state management
-    [ ] Add hover/click interactions
+**Completion**
+- Performance testing
+- Remove deprecated code
+- Documentation updates
 
-[ ] Cleanup
-    [ ] Remove geomask.js worker
-    [ ] Remove unused geo.js functions
-    [ ] Update documentation
-```
+---
 
 ### Phase 3: Case Studies Enhancement (Priority: Medium)
 
-```
-[ ] Strapi Updates
-    [ ] Create categories collection
-    [ ] Create tags collection
-    [ ] Add relations to case-study-dynamics
-    [ ] Add publishedAt field if missing
-    [ ] Create new visualization components
+**CMS Updates**
+- Create categories and tags collections
+- Configure content type relations
+- Create visualization component schemas
 
-[ ] Frontend - Filters
-    [ ] Create CategoryBadge.svelte
-    [ ] Create TagChip.svelte
-    [ ] Update adaptation/+page.server.js
-    [ ] Update adaptation/+page.svelte
-    [ ] Add URL-based filtering
+**Filter Implementation**
+- Build category and tag filter components
+- Implement URL-based filtering
+- Add Recent section with date sorting
 
-[ ] Frontend - Recent Section
-    [ ] Add date sorting logic
-    [ ] Create Recent section component
-    [ ] Add date display to cards
-
-[ ] Frontend - Visualizations
-    [ ] Create DataTable.svelte
-    [ ] Create StatCards.svelte
-    [ ] Create Timeline.svelte
-    [ ] Create ComparisonChart.svelte
-    [ ] Create EmbedMap.svelte
-    [ ] Update page.server.js handlers
-```
+**Visualization Development**
+- Create DataTable component
+- Create StatCards component
+- Create Timeline component
+- Create ComparisonChart component
+- Integrate with Strapi dynamic zones
 
 ---
 
@@ -1430,9 +336,9 @@ case 'embed-map.embed-map':
 
 ## Appendix B: Dependencies
 
-No new npm dependencies required for Phase 1 and 3.
+No new npm dependencies are required for Phase 1 and Phase 3.
 
-Phase 2 (GeoServer) may require:
+Phase 2 (GeoServer Migration) requires:
 - GeoServer 2.23+ with GeoWebCache extension
 - PostGIS 3.x database
 - Server infrastructure for tile hosting
