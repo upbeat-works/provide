@@ -1,21 +1,6 @@
 # PROVIDE Project - Technical Plan
 
-## Table of Contents
-1. [Current Architecture Overview](#1-current-architecture-overview)
-2. [Implementation Timeline](#2-implementation-timeline)
-3. [Deliverable 1: Landing Page + Design System](#3-deliverable-1-landing-page--design-system)
-4. [Deliverable 2: Methodology & Key Concepts](#4-deliverable-2-methodology--key-concepts)
-5. [Deliverable 3: Tools](#5-deliverable-3-tools)
-6. [Deliverable 4: Indicator Catalog](#6-deliverable-4-indicator-catalog)
-7. [Deliverable 5: GeoServer + MVT Migration](#7-deliverable-5-geoserver--mvt-migration)
-8. [Deliverable 6: EU Scoreboard](#8-deliverable-6-eu-scoreboard)
-9. [Deliverable 7: Case Studies Enhancement](#9-deliverable-7-case-studies-enhancement)
-10. [Deliverable 8: Project Landing Pages](#10-deliverable-8-project-landing-pages)
-11. [Indicator Catalog Design](#11-indicator-catalog-design)
-
----
-
-## 1. Current Architecture Overview
+## Current Architecture Overview
 
 SvelteKit application with modular architecture: Svelte stores for state management, URL-synced query parameters for deep linking, and a centralized config for routes, labels, API endpoints, and per-module constraints.
 
@@ -25,14 +10,14 @@ SvelteKit application with modular architecture: Svelte stores for state managem
 |---------|------|------------|
 | **Time Series** | Climate indicator data storage and querying | ixmp4 |
 | **GIS** | Geographic data, vector tiles, spatial queries | GeoServer + PostGIS |
-| **Metadata Catalog** | Indicator metadata, categories, tags, filtering | Embedded SQL |
+| **Indicator Catalog DB** | Indicator metadata, categories, tags, filtering | Embedded SQL |
 | **Content** | CMS-managed pages, case studies, tool descriptions | Strapi |
 
-The SvelteKit frontend orchestrates across these services — for example, the Indicator Catalog combines Metadata Catalog queries (for browsing/filtering) with Time Series queries (for charting), while the EU Scoreboard additionally pulls geographic boundaries from the GIS service and editorial content from Strapi.
+The SvelteKit frontend orchestrates across these services — for example, the Indicator Catalog combines Indicator Catalog DB queries (for browsing/filtering) with Time Series queries (for charting), while the EU Scoreboard additionally pulls geographic boundaries from the GIS service and editorial content from Strapi.
 
 ---
 
-## 2. Implementation Timeline
+## Implementation Timeline
 
 ```mermaid
 gantt
@@ -73,7 +58,7 @@ gantt
 
 ---
 
-## 3. Deliverable 1: Landing Page + Design System
+## Landing Page + Design System
 
 Redesign the landing page to improve discoverability and communicate the platform's purpose. Update the design system color palette for better hierarchy, accessibility, and brand consistency.
 
@@ -85,13 +70,13 @@ Redesign the landing page to improve discoverability and communicate the platfor
 
 ---
 
-## 4. Deliverable 2: Methodology & Key Concepts
+## Methodology & Key Concepts
 
 Merge the existing Methodology and Key Concepts sections into a single browsable knowledge base with categories, search, sidebar/index navigation, in-page cross-links, and breadcrumbs.
 
 ---
 
-## 5. Deliverable 3: Tools
+## Tools
 
 Dedicated `/tools` hub for analytical tools. First entry: "Avoiding Future Impacts" migrated from `/impacts/avoid` to `/tools/avoiding-future-impact`.
 
@@ -102,11 +87,11 @@ Dedicated `/tools` hub for analytical tools. First entry: "Avoiding Future Impac
 
 ---
 
-## 6. Deliverable 4: Indicator Catalog
+## Indicator Catalog
 
-Unified system for browsing, filtering, and visualizing climate indicators. Bridges the Metadata Catalog service with ixmp4 for time series. See [Section 11](#11-indicator-catalog-design) for detailed design.
+Unified system for browsing, filtering, and visualizing climate indicators. Bridges the Indicator Catalog DB service with ixmp4 for time series. See [Indicator Catalog Design](#indicator-catalog-design) for detailed design.
 
-- **Hybrid architecture** — metadata store for names/descriptions/categories/tags, ixmp4 for time series, linked via `ixmp4Variable`.
+- **Hybrid architecture** — Indicator Catalog DB for names/descriptions/categories/tags, ixmp4 for time series, linked via `ixmp4Variable`.
 - **Metadata store** — embedded SQL with type-safe ORM; no external dependencies.
 - **Indicator browser** — category dropdown, tag multi-select, searchable list, detail view with chart.
 - **Time series visualization** — fetches from ixmp4 by linked variable, renders region × year chart.
@@ -114,7 +99,7 @@ Unified system for browsing, filtering, and visualizing climate indicators. Brid
 
 ---
 
-## 7. Deliverable 5: GeoServer + MVT Migration
+## GeoServer + MVT Migration
 
 Migrate geographic data processing from client-side (GeoJSON + D3 contours + Turf.js clipping) to server-side vector tiles.
 
@@ -131,7 +116,7 @@ flowchart LR
 
 ---
 
-## 8. Deliverable 6: EU Scoreboard
+## EU Scoreboard
 
 Comparative view of climate performance metrics across EU countries, added as a new Tool.
 
@@ -143,7 +128,7 @@ Comparative view of climate performance metrics across EU countries, added as a 
 
 ---
 
-## 9. Deliverable 7: Case Studies Enhancement
+## Case Studies Enhancement
 
 Enhance the adaptation case studies section with filtering and richer visualizations.
 
@@ -152,13 +137,13 @@ Enhance the adaptation case studies section with filtering and richer visualizat
 
 ---
 
-## 10. Deliverable 8: Project Landing Pages
+## Project Landing Pages
 
 Unlisted, shareable landing pages for individual PROVIDE projects. Each page has a title, short description, and CTAs linking to the relevant Explore view and Tools page. Managed via a Strapi content type with SEO metadata (title, description, Open Graph tags).
 
 ---
 
-## 11. Indicator Catalog Design
+## Indicator Catalog Design
 
 ### Goals
 
@@ -169,7 +154,7 @@ Unlisted, shareable landing pages for individual PROVIDE projects. Each page has
 
 ### Constraint
 
-ixmp4 lacks native metadata support, necessitating a hybrid architecture with a separate metadata store.
+ixmp4 lacks native metadata support, necessitating a hybrid architecture with a separate Indicator Catalog DB.
 
 ### Hybrid Architecture
 
@@ -187,7 +172,7 @@ flowchart TB
         timeseries["Time Series Queries"]
     end
 
-    subgraph MetadataStore["Metadata Store"]
+    subgraph MetadataStore["Indicator Catalog DB"]
         indicators["Indicators"]
         categories["Categories"]
         tagsTable["Tags"]
@@ -204,6 +189,10 @@ flowchart TB
     timeseries --> ixmp4
     indicators <-->|"ixmp4Variable"| variable
 ```
+
+### ixmp4-ts Integration
+
+Uses `platform.iamc.tabulate()` for queries and `run.iamc.add()` for uploads. The `ixmp4Variable` field bridges the Indicator Catalog DB and ixmp4.
 
 ### Data Model
 
@@ -267,35 +256,3 @@ sequenceDiagram
 
 **CSV format:** three columns — region, year, value.
 
-### Error Handling
-
-| Error Type | Response | User Message |
-|------------|----------|--------------|
-| Missing required fields | 400 | "Name and unit are required" |
-| Invalid CSV format | 400 | "CSV must have region, year, value columns" |
-| Duplicate indicator | 409 | "An indicator with this name already exists" |
-| Metadata store unavailable | 503 | "Metadata service temporarily unavailable" |
-| ixmp4 unavailable | 503 | "Time series service temporarily unavailable" |
-| Partial failure | 500 | "Upload partially failed, please retry" |
-
-### Implementation Options
-
-| Aspect | Embedded SQL + ORM | Strapi CMS |
-|--------|------------------|------------|
-| Deployment | Embedded in application | Separate service |
-| Admin Interface | Custom or dev tooling | Built-in CMS |
-| Query Performance | Local, very fast | Network latency |
-| Type Safety | Full TypeScript inference | Manual types |
-| Content Editors | Requires custom UI | Built-in workflows |
-| Infrastructure | Single file, no hosting | Requires hosting |
-
-**Decision:** Embedded SQL with a type-safe ORM was chosen for the metadata store.
-
-### UI Components
-
-- **Indicator Browser** — category dropdown, tag multi-select, searchable list, detail view with time series chart.
-- **Upload Form** — all metadata fields + CSV picker; validates before submission; progress and error feedback.
-
-### ixmp4-ts Integration
-
-Uses `platform.iamc.tabulate()` for queries and `run.iamc.add()` for uploads. The `ixmp4Variable` field bridges the metadata store and ixmp4.
