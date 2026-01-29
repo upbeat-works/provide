@@ -10,6 +10,7 @@
 7. [Deliverable 5: GeoServer + MVT Migration](#7-deliverable-5-geoserver--mvt-migration)
 8. [Deliverable 6: EU Scoreboard](#8-deliverable-6-eu-scoreboard)
 9. [Deliverable 7: Case Studies Enhancement](#9-deliverable-7-case-studies-enhancement)
+10. [Deliverable 8: Project Landing Pages](#10-deliverable-8-project-landing-pages)
 
 ---
 
@@ -70,7 +71,7 @@ The application centralizes its configuration in a dedicated config file that de
 
 ## 2. Implementation Timeline
 
-The following Gantt chart illustrates the planned sequence and dependencies between deliverables. Deliverables 1 (Landing Page) and 2 (Methodology & Key Concepts) run in parallel as the foundation. Deliverables 3 (Tools) and 4 (Indicator Catalog) can proceed in parallel after that. Deliverable 5 (GeoServer) runs concurrently as infrastructure work. Deliverable 6 (EU Scoreboard) depends on the Tools, Indicator Catalog, and GeoServer being in place. Deliverable 7 (Case Studies) follows as the final enhancement.
+The following Gantt chart illustrates the planned sequence and dependencies between deliverables. Deliverables 1 (Landing Page) and 2 (Methodology & Key Concepts) run in parallel as the foundation. Deliverables 3 (Tools) and 4 (Indicator Catalog) can proceed in parallel after that. Deliverable 5 (GeoServer) runs concurrently as infrastructure work. Deliverable 6 (EU Scoreboard) depends on the Tools, Indicator Catalog, and GeoServer being in place. Deliverable 7 (Case Studies) follows as an enhancement. Deliverable 8 (Project Landing Pages) only requires the design system and can run independently after Deliverable 1.
 
 ```mermaid
 gantt
@@ -93,6 +94,7 @@ gantt
 
     section Enhancements
     Case Studies Enhancement               :d7, after d6, 6w
+    Project Landing Pages                  :d8, after d1, 4w
 ```
 
 ### Dependencies
@@ -106,6 +108,7 @@ gantt
 | 5. GeoServer + MVT | 1 | 6 |
 | 6. EU Scoreboard | 3, 4, 5 | 7 |
 | 7. Case Studies | 6 | — |
+| 8. Project Landing Pages | 1 | — |
 
 ---
 
@@ -389,6 +392,24 @@ These components will be integrated with Strapi's dynamic zones feature, allowin
 - CMS Configuration
 - Filter System
 - Visualization Components
+
+---
+
+## 10. Deliverable 8: Project Landing Pages
+
+### 10.1 Overview
+
+Unlisted project landing pages will serve as shareable entry points for individual PROVIDE projects. Each page provides a brief description of the project and links to its relevant Explore view and Tools page. These pages are not listed in the main navigation but can be shared externally, improving SEO and providing a clean onboarding path for users arriving from external links.
+
+### 10.2 Page Structure
+
+Each project landing page will include a title, short description, and prominent call-to-action links to the Explore interface (pre-filtered for that project's indicators and geography) and the corresponding Tools page. The pages will use the new design system and follow a consistent, minimal template.
+
+### 10.3 Implementation Checklist
+
+- Page Template & Route Setup
+- Strapi Content Type for Project Pages
+- SEO Metadata (title, description, Open Graph tags)
 
 ---
 
