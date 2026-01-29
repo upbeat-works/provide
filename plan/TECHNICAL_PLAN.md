@@ -9,7 +9,7 @@ SvelteKit application with modular architecture: Svelte stores for state managem
 | Service | Role | Technology |
 |---------|------|------------|
 | **Time Series** | Climate indicator data storage and querying | ixmp4 |
-| **GIS** | Geographic data, vector tiles, spatial queries | GeoServer + PostGIS |
+| **GIS** | Geographic data, vector/raster tiles, spatial queries | GeoServer + PostGIS |
 | **Indicator Catalog DB** | Indicator metadata, categories, tags, filtering | Embedded SQL |
 | **Content** | CMS-managed pages, case studies, tool descriptions | Strapi |
 
@@ -108,7 +108,7 @@ flowchart LR
     PostGIS["PostGIS"] --> GeoServer["GeoServer + GeoWebCache"] --> Mapbox["Mapbox GL (native MVT)"]
 ```
 
-- **Target** — PostGIS stores impact data and boundaries; GeoServer serves pre-generated MVT tiles.
+- **Target** — PostGIS stores impact data and boundaries; GeoServer serves pre-generated MVT vector tiles and raster tiles (e.g. climate/land-use grids).
 - **Config** — new env vars for GeoServer URL/workspace; layer name mappings and tile URL generation.
 - **Frontend** — new `VectorTileLayer` Svelte component; existing Maps component migrated from GeoJSON to MVT; D3 color scales replaced with Mapbox style expressions.
 - **API utilities** — WMS GetCapabilities, WFS GetPropertyValue, WMS GetFeatureInfo.
@@ -159,35 +159,22 @@ ixmp4 lacks native metadata support, necessitating a hybrid architecture with a 
 ### Hybrid Architecture
 
 ```mermaid
-flowchart TB
-    subgraph UI["User Interface"]
-        dropdown["Category Dropdown"]
-        tags["Tags Multi-select"]
-        list["Indicator List"]
-        chart["Indicator Chart"]
-    end
+C4Component
+    title PROVIDE Platform - Component Architecture
+ 
+    ComponentDb(catalogDB, "Indicator Catalog DB", "SQL", "Indicator metadata, categories, tags")
+    Component(catalog, "Indicator Catalog Service", "API", "Browse, filter, search indicators")
+    ComponentDb(ixmp4DB, "Time Series (ixmp4)", "REST API", "Variables, time series, datapoints")
+    Component(content, "Content Service", "Strapi", "CMS pages, case studies")
+    Component(gis, "GIS Service", "GeoServer", "Vector/raster tiles, spatial queries")    
 
-    subgraph Service["Indicator Catalog Service"]
-        metadata["Metadata Queries"]
-        timeseries["Time Series Queries"]
-    end
+    Component(ui, "SvelteKit App", "SvelteKit", "Pages, stores, URL-synced state")
 
-    subgraph MetadataStore["Indicator Catalog DB"]
-        indicators["Indicators"]
-        categories["Categories"]
-        tagsTable["Tags"]
-    end
-
-    subgraph ixmp4["ixmp4 Backend"]
-        variable["Variables"]
-        ts["Time Series"]
-        datapoints["Datapoints"]
-    end
-
-    UI --> Service
-    metadata --> MetadataStore
-    timeseries --> ixmp4
-    indicators <-->|"ixmp4Variable"| variable
+    Rel(ui, content, "Fetches content")
+    Rel(ui, gis, "Loads map tiles")
+    Rel(ui, catalog, "Queries indicators")
+    Rel(catalog, catalogDB, "Reads metadata")
+    Rel(catalog, ixmp4DB, "Resolves variables")
 ```
 
 ### ixmp4-ts Integration
