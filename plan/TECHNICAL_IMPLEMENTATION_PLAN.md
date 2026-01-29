@@ -5,7 +5,7 @@
 2. [Implementation Timeline](#2-implementation-timeline)
 3. [Deliverable 1: Landing Page + Design System](#3-deliverable-1-landing-page--design-system)
 4. [Deliverable 2: Methodology & Key Concepts](#4-deliverable-2-methodology--key-concepts)
-5. [Deliverable 3: Deep Dives](#5-deliverable-3-deep-dives)
+5. [Deliverable 3: Tools](#5-deliverable-3-tools)
 6. [Deliverable 4: Indicator Catalog](#6-deliverable-4-indicator-catalog)
 7. [Deliverable 5: GeoServer + MVT Migration](#7-deliverable-5-geoserver--mvt-migration)
 8. [Deliverable 6: EU Scoreboard](#8-deliverable-6-eu-scoreboard)
@@ -70,7 +70,7 @@ The application centralizes its configuration in a dedicated config file that de
 
 ## 2. Implementation Timeline
 
-The following Gantt chart illustrates the planned sequence and dependencies between deliverables. Deliverables 1 (Landing Page) and 2 (Methodology & Key Concepts) run in parallel as the foundation. Deliverables 3 (Deep Dives) and 4 (Indicator Catalog) can proceed in parallel after that. Deliverable 5 (GeoServer) runs concurrently as infrastructure work. Deliverable 6 (EU Scoreboard) depends on the Deep Dives, Indicator Catalog, and GeoServer being in place. Deliverable 7 (Case Studies) follows as the final enhancement.
+The following Gantt chart illustrates the planned sequence and dependencies between deliverables. Deliverables 1 (Landing Page) and 2 (Methodology & Key Concepts) run in parallel as the foundation. Deliverables 3 (Tools) and 4 (Indicator Catalog) can proceed in parallel after that. Deliverable 5 (GeoServer) runs concurrently as infrastructure work. Deliverable 6 (EU Scoreboard) depends on the Tools, Indicator Catalog, and GeoServer being in place. Deliverable 7 (Case Studies) follows as the final enhancement.
 
 ```mermaid
 gantt
@@ -82,7 +82,7 @@ gantt
     Methodology & Key Concepts             :d2, 2026-02-01, 6w
 
     section Core Features
-    Deep Dives                             :d3, after d1, 6w
+    Tools                             :d3, after d1, 6w
     Indicator Catalog                      :d4, after d1, 8w
 
     section Infrastructure
@@ -101,7 +101,7 @@ gantt
 |-------------|------------|---------|
 | 1. Landing Page | — | 3, 4, 5 |
 | 2. Methodology & Key Concepts | — | — |
-| 3. Deep Dives | 1 | 6 |
+| 3. Tools | 1 | 6 |
 | 4. Indicator Catalog | 1 | 6 |
 | 5. GeoServer + MVT | 1 | 6 |
 | 6. EU Scoreboard | 3, 4, 5 | 7 |
@@ -121,7 +121,7 @@ The landing page will feature a crisp mission line that establishes the platform
 
 Each quick action will link to the most relevant tool or workflow, with brief explanatory text helping users understand what they'll find.
 
-### 3.3 Deep Dives Cards
+### 3.3 Tools Cards
 
 The landing page will showcase project and tool cards linking to specialized analytical features. These cards provide visual entry points to key areas of the platform:
 
@@ -183,21 +183,21 @@ The browsing experience will be improved with a sidebar or index view listing al
 
 ---
 
-## 5. Deliverable 3: Deep Dives
+## 5. Deliverable 3: Tools
 
 ### 5.1 Overview
 
-The Deep Dives will serve as a dedicated landing page for specialized analytical tools built on the PROVIDE climate data. The first project to be featured is "Avoiding Future Impacts," which will be migrated from its current location at `/impacts/avoid` to a new `/deep-dives/avoiding-future-impact` route. This reorganization creates a scalable structure for adding future tools while improving discoverability.
+The Tools will serve as a dedicated landing page for specialized analytical tools built on the PROVIDE climate data. The first project to be featured is "Avoiding Future Impacts," which will be migrated from its current location at `/impacts/avoid` to a new `/tools/avoiding-future-impact` route. This reorganization creates a scalable structure for adding future tools while improving discoverability.
 
 ### 5.2 Content Management via Strapi
 
-Deep Dives will be managed through Strapi CMS, allowing content editors to add and configure new tools without code changes. A new "Deep Dives" collection will be created with fields for slug, title, description, thumbnail, compatible geography types, available scenarios, and publication status. The hub page will fetch this data at build time, rendering only published items.
+Tools will be managed through Strapi CMS, allowing content editors to add and configure new tools without code changes. A new "Tools" collection will be created with fields for slug, title, description, thumbnail, compatible geography types, available scenarios, and publication status. The hub page will fetch this data at build time, rendering only published items.
 
 This approach provides flexibility for stakeholders to manage project metadata, update descriptions, and control visibility directly from the CMS. Project-specific settings like geography constraints and scenario availability can be configured per-item, enabling diverse analytical tools to coexist within the hub.
 
 ### 5.3 Route Structure
 
-A new `/deep-dives` route will be created with a landing page displaying project cards in a grid layout. Each card will show a thumbnail, title, and description, linking to the project's dedicated page. The "Avoiding Future Impacts" project will have its own nested route with a custom layout that includes a back link to the hub, main controls, and project-specific introductory content.
+A new `/tools` route will be created with a landing page displaying project cards in a grid layout. Each card will show a thumbnail, title, and description, linking to the project's dedicated page. The "Avoiding Future Impacts" project will have its own nested route with a custom layout that includes a back link to the hub, main controls, and project-specific introductory content.
 
 The project page itself will retain all the functionality of the current avoid page, including the reference selector, certainty level picker, study location selector, and the threshold visualization sections. The components will be imported from their existing locations or migrated as needed.
 
@@ -207,7 +207,7 @@ To ensure existing links and bookmarks continue to work, the original `/impacts/
 
 ### 5.5 Navigation and Deep Linking
 
-The main site header will be updated to include a "Deep Dives" link alongside the existing navigation items. Additionally, a new component will be created for the Future Impacts explore page that detects when the current selection (indicator and geography) is compatible with a deep dive and displays a contextual link inviting users to explore that tool with their current selection.
+The main site header will be updated to include a "Tools" link alongside the existing navigation items. Additionally, a new component will be created for the Future Impacts explore page that detects when the current selection (indicator and geography) is compatible with a deep dive and displays a contextual link inviting users to explore that tool with their current selection.
 
 ### 5.6 Implementation Checklist
 
@@ -328,7 +328,7 @@ Once the MVT migration is complete and validated, several client-side processing
 
 ### 8.1 Overview
 
-The EU Scoreboard is a new project to be added to the Deep Dives, providing a comparative view of climate performance metrics across European countries and regions. It enables users to explore how different EU member states are performing on key climate indicators, compare trajectories, and understand regional variations in climate risk and adaptation progress.
+The EU Scoreboard is a new project to be added to the Tools, providing a comparative view of climate performance metrics across European countries and regions. It enables users to explore how different EU member states are performing on key climate indicators, compare trajectories, and understand regional variations in climate risk and adaptation progress.
 
 ### 8.2 Core Features
 
