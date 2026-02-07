@@ -138,6 +138,54 @@
   </section>
 
   <section class="space-y-4">
+    <h2 class="text-2xl font-semibold text-contour-base">Sky Colors - Category Blue (50-900)</h2>
+    <div class="flex gap-2 flex-wrap">
+      <div class="w-20 h-20 bg-sky-50 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">50</span></div>
+      <div class="w-20 h-20 bg-sky-100 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">100</span></div>
+      <div class="w-20 h-20 bg-sky-200 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">200</span></div>
+      <div class="w-20 h-20 bg-sky-300 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">300</span></div>
+      <div class="w-20 h-20 bg-sky-400 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">400</span></div>
+      <div class="w-20 h-20 bg-sky-500 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">500</span></div>
+      <div class="w-20 h-20 bg-sky-600 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">600</span></div>
+      <div class="w-20 h-20 bg-sky-700 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">700</span></div>
+      <div class="w-20 h-20 bg-sky-800 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">800</span></div>
+      <div class="w-20 h-20 bg-sky-900 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">900</span></div>
+    </div>
+  </section>
+
+  <section class="space-y-4">
+    <h2 class="text-2xl font-semibold text-contour-base">Grass Colors - Category Green (50-900)</h2>
+    <div class="flex gap-2 flex-wrap">
+      <div class="w-20 h-20 bg-grass-50 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">50</span></div>
+      <div class="w-20 h-20 bg-grass-100 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">100</span></div>
+      <div class="w-20 h-20 bg-grass-200 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">200</span></div>
+      <div class="w-20 h-20 bg-grass-300 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">300</span></div>
+      <div class="w-20 h-20 bg-grass-400 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">400</span></div>
+      <div class="w-20 h-20 bg-grass-500 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">500</span></div>
+      <div class="w-20 h-20 bg-grass-600 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">600</span></div>
+      <div class="w-20 h-20 bg-grass-700 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">700</span></div>
+      <div class="w-20 h-20 bg-grass-800 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">800</span></div>
+      <div class="w-20 h-20 bg-grass-900 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">900</span></div>
+    </div>
+  </section>
+
+  <section class="space-y-4">
+    <h2 class="text-2xl font-semibold text-contour-base">Orange Colors - Category Orange (50-900)</h2>
+    <div class="flex gap-2 flex-wrap">
+      <div class="w-20 h-20 bg-orange-50 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">50</span></div>
+      <div class="w-20 h-20 bg-orange-100 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">100</span></div>
+      <div class="w-20 h-20 bg-orange-200 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">200</span></div>
+      <div class="w-20 h-20 bg-orange-300 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">300</span></div>
+      <div class="w-20 h-20 bg-orange-400 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">400</span></div>
+      <div class="w-20 h-20 bg-orange-500 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">500</span></div>
+      <div class="w-20 h-20 bg-orange-600 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">600</span></div>
+      <div class="w-20 h-20 bg-orange-700 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">700</span></div>
+      <div class="w-20 h-20 bg-orange-800 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">800</span></div>
+      <div class="w-20 h-20 bg-orange-900 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">900</span></div>
+    </div>
+  </section>
+
+  <section class="space-y-4">
     <h2 class="text-2xl font-semibold text-contour-base">Usage Examples</h2>
 
     <div class="space-y-4">
@@ -204,6 +252,10 @@
       <p>✓ All 10 numbered theme shades (50-900) are working</p>
       <p>✓ All 4 semantic theme names (weakest, weaker, base, stronger) are working</p>
       <p>✓ All 10 petrol base colors (50-900) are working</p>
+      <p>✓ All 10 sky colors (50-900) are working</p>
+      <p>✓ All 10 grass colors (50-900) are working</p>
+      <p>✓ All 10 orange colors (50-900) are working</p>
+      <p>✓ Category semantic names still work (weakest, weaker, weak, base, strong, stronger, strongest)</p>
       <p>✓ Semantic names correctly map to numbered equivalents</p>
       <p>✓ Colors have smooth progression from light to dark</p>
     </div>
