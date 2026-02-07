@@ -186,6 +186,38 @@
   </section>
 
   <section class="space-y-4">
+    <h2 class="text-2xl font-semibold text-contour-base">Pink Colors - Category Pink (50-900)</h2>
+    <div class="flex gap-2 flex-wrap">
+      <div class="w-20 h-20 bg-pink-50 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">50</span></div>
+      <div class="w-20 h-20 bg-pink-100 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">100</span></div>
+      <div class="w-20 h-20 bg-pink-200 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">200</span></div>
+      <div class="w-20 h-20 bg-pink-300 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">300</span></div>
+      <div class="w-20 h-20 bg-pink-400 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">400</span></div>
+      <div class="w-20 h-20 bg-pink-500 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">500</span></div>
+      <div class="w-20 h-20 bg-pink-600 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">600</span></div>
+      <div class="w-20 h-20 bg-pink-700 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">700</span></div>
+      <div class="w-20 h-20 bg-pink-800 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">800</span></div>
+      <div class="w-20 h-20 bg-pink-900 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">900</span></div>
+    </div>
+  </section>
+
+  <section class="space-y-4">
+    <h2 class="text-2xl font-semibold text-contour-base">Gold Colors - Category Gold (50-900)</h2>
+    <div class="flex gap-2 flex-wrap">
+      <div class="w-20 h-20 bg-gold-50 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">50</span></div>
+      <div class="w-20 h-20 bg-gold-100 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">100</span></div>
+      <div class="w-20 h-20 bg-gold-200 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">200</span></div>
+      <div class="w-20 h-20 bg-gold-300 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">300</span></div>
+      <div class="w-20 h-20 bg-gold-400 rounded shadow flex items-center justify-center"><span class="text-xs font-mono">400</span></div>
+      <div class="w-20 h-20 bg-gold-500 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">500</span></div>
+      <div class="w-20 h-20 bg-gold-600 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">600</span></div>
+      <div class="w-20 h-20 bg-gold-700 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">700</span></div>
+      <div class="w-20 h-20 bg-gold-800 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">800</span></div>
+      <div class="w-20 h-20 bg-gold-900 rounded shadow flex items-center justify-center"><span class="text-xs font-mono text-surface-base">900</span></div>
+    </div>
+  </section>
+
+  <section class="space-y-4">
     <h2 class="text-2xl font-semibold text-contour-base">Usage Examples</h2>
 
     <div class="space-y-4">
@@ -255,6 +287,8 @@
       <p>✓ All 10 sky colors (50-900) are working</p>
       <p>✓ All 10 grass colors (50-900) are working</p>
       <p>✓ All 10 orange colors (50-900) are working</p>
+      <p>✓ All 10 pink colors (50-900) are working</p>
+      <p>✓ All 10 gold colors (50-900) are working</p>
       <p>✓ Category semantic names still work (weakest, weaker, weak, base, strong, stronger, strongest)</p>
       <p>✓ Semantic names correctly map to numbered equivalents</p>
       <p>✓ Colors have smooth progression from light to dark</p>
