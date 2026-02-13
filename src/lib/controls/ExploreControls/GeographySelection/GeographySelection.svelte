@@ -68,6 +68,7 @@
 
 <PopoverSelect
   {label}
+  size="md"
   category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
   buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
   panelClass="w-screen-p max-w-4xl"

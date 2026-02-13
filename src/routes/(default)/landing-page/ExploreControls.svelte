@@ -18,24 +18,24 @@
 </script>
 
 <section class="border-y border-contour-weakest">
-  <header class="grid lg:grid-cols-2 gap-x-24 gap-y-6 mb-12 mt-20 px-12">
-    <h2 class="text-3xl font-light text-theme-800 leading-tight">
+  <header class="grid lg:grid-cols-2 gap-x-16 gap-y-4 mb-12 mt-16 px-8">
+    <h2 class="text-3xl font-thin text-theme-800 leading-tight max-w-sm">
       From cities to continents: assess climate risk with the Explorer
     </h2>
-    <p class="text-md text-text-weaker leading-relaxed self-center">
+    <p class="text-sm text-text-weaker leading-relaxed self-end">
       See how different levels of climate action will lead to different climate impacts for countries, cities, and more.
     </p>
   </header>
 
-  <div class="bg-surface-weaker rounded-lg p-12">
-    <SelectionControls showStepLabels />
+  <div class="pt-16 pb-12 bg-surface-weaker p-8 border-t border-contour-weakest">
+    <SelectionControls showStepLabels size="md" />
 
-    <div class="flex justify-end mt-6">
+    <div class="flex justify-end mt-8">
     <button
       type="button"
       on:click={viewResults}
       disabled={!isValidSelection}
-      class="inline-flex items-center gap-x-2 px-6 py-3 rounded font-bold transition-colors"
+      class="inline-flex items-center gap-x-2 px-4 py-2 rounded font-bold text-sm transition-colors"
       class:bg-theme-base={isValidSelection}
       class:text-surface-base={isValidSelection}
       class:hover:bg-theme-stronger={isValidSelection}

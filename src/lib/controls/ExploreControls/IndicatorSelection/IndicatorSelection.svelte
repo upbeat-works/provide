@@ -18,6 +18,7 @@
 
 <PopoverSelect
   {label}
+  size="md"
   buttonLabel={$CURRENT_INDICATOR?.label}
   buttonClass="border-theme-base/20 border"
   panelClass="w-screen-p max-w-3xl"

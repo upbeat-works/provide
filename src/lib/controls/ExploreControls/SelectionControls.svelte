@@ -30,7 +30,7 @@
     <GeographySelection label={geographyLabel} />
   </div>
 
-  <div class="hidden md:flex items-center justify-center order-2">
+  <div class="hidden md:flex items-center justify-center order-2 pt-8">
     <SwapButton on:click={toggleMode} />
   </div>
 

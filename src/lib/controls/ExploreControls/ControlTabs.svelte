@@ -23,7 +23,7 @@
   {#each tabs as { value, label, icon }}
     <RadioGroupOption {value} let:checked class="cursor-pointer">
       <div
-        class="flex items-center gap-x-2 pb-3 text-sm font-bold tracking-wider transition-colors border-b-2 -mb-px"
+        class="flex items-center gap-x-2 pb-3 text-xs font-bold tracking-wider transition-colors border-b-2 -mb-px"
         class:border-theme-base={checked}
         class:text-theme-base={checked}
         class:border-transparent={!checked}
