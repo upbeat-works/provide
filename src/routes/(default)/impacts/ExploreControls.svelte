@@ -1,5 +1,5 @@
 <script>
-  import { SelectionControls, IndicatorParameters } from '$lib/controls/MainControls';
+  import { SelectionControls, IndicatorParameters } from '$lib/controls/ExploreControls';
 </script>
 
 <div class="pb-4 border-b border-contour-weakest">

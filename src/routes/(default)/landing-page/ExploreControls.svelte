@@ -3,7 +3,7 @@
   import { PATH_EXPLORE, PATH_IMPACT, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR } from '$config';
   import { IS_EMPTY_GEOGRAPHY, IS_EMPTY_INDICATOR, IS_COMBINATION_AVAILABLE_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_UID } from '$stores/state.js';
   import { buildURL } from '$lib/utils/url.js';
-  import { SelectionControls } from '$lib/controls/MainControls';
+  import { SelectionControls } from '$lib/controls/ExploreControls';
   import LinkArrow from '$lib/helper/icons/LinkArrow.svelte';
 
   $: isValidSelection = !$IS_EMPTY_GEOGRAPHY && !$IS_EMPTY_INDICATOR && $IS_COMBINATION_AVAILABLE_INDICATOR;
