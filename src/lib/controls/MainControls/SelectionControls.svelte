@@ -11,6 +11,9 @@
   $: geographyStep = mode === 'geography' ? 1 : 2;
   $: indicatorStep = mode === 'geography' ? 2 : 1;
 
+  $: geographyLabel = showStepLabels ? `Step ${geographyStep} - Geography` : 'Geography';
+  $: indicatorLabel = showStepLabels ? `Step ${indicatorStep} - Indicator` : 'Indicator';
+
   function toggleMode() {
     mode = mode === 'geography' ? 'indicator' : 'geography';
   }
@@ -19,17 +22,12 @@
 <ControlTabs bind:mode />
 
 <div
-  class="grid gap-4 md:gap-6 mt-6 items-start"
+  class="grid gap-4 md:gap-6 mt-6 items-center"
   class:md:grid-cols-[1fr_auto_1fr]={true}
   class:grid-cols-1={true}
 >
   <div class="order-1" class:md:order-1={mode === 'geography'} class:md:order-3={mode === 'indicator'}>
-    {#if showStepLabels}
-      <span class="block text-xs font-bold tracking-widest text-text-weaker uppercase mb-2">
-        Step {geographyStep} - Geography
-      </span>
-    {/if}
-    <GeographySelection />
+    <GeographySelection label={geographyLabel} />
   </div>
 
   <div class="hidden md:flex items-center justify-center order-2">
@@ -37,11 +35,6 @@
   </div>
 
   <div class="order-3" class:md:order-3={mode === 'geography'} class:md:order-1={mode === 'indicator'}>
-    {#if showStepLabels}
-      <span class="block text-xs font-bold tracking-widest text-text-weaker uppercase mb-2">
-        Step {indicatorStep} - Indicator
-      </span>
-    {/if}
-    <IndicatorSelection />
+    <IndicatorSelection label={indicatorLabel} />
   </div>
 </div>

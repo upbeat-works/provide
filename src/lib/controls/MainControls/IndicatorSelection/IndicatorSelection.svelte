@@ -4,6 +4,8 @@
   import Content from '$lib/controls/PopoverSelect/Content.svelte';
   import { derived } from 'svelte/store';
 
+  export let label = 'Indicator';
+
   let currentFilterUid;
 
   const DISABLED = derived(IS_EMPTY_GEOGRAPHY, ($isEmptyGeography) => {
@@ -15,7 +17,7 @@
 </script>
 
 <PopoverSelect
-  label="Indicator"
+  {label}
   buttonLabel={$CURRENT_INDICATOR?.label}
   buttonClass="border-theme-base/20 border"
   panelClass="w-screen-p max-w-3xl"

@@ -10,6 +10,8 @@
   import Map from './Map.svelte';
   import LoadingWrapper from '$lib/helper/LoadingWrapper.svelte';
 
+  export let label = 'Geography';
+
   let GEO_SHAPE_DATA = writable({});
 
   $: geographyTypes = $AVAILABLE_GEOGRAPHY_TYPES;
@@ -65,7 +67,7 @@
 </script>
 
 <PopoverSelect
-  label="Geography"
+  {label}
   category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
   buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
   panelClass="w-screen-p max-w-4xl"
