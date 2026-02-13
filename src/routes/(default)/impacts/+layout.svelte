@@ -1,7 +1,7 @@
 <script>
   import { page } from '$app/stores';
   import { checkCurrentLink } from '$utils/url.js';
-  import MainControls from './MainControls/MainControls.svelte';
+  import ExploreControls from './ExploreControls.svelte';
   import { urlToState } from '$utils/url';
   import BigTabs from '$lib/helper/BigTabs.svelte';
   import PageIntro from '$lib/site/PageIntro.svelte';
@@ -42,7 +42,7 @@
 </script>
 
 <PageIntro>
-  <MainControls />
+  <ExploreControls />
   <BigTabs {tabs} />
   {#if currentTitle && currentIntro}
     <div class="flex flex-col gap-y-1">
