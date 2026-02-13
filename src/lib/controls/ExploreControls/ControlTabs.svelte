@@ -1,5 +1,7 @@
 <script>
   import { RadioGroup, RadioGroupOption } from '@rgossiaux/svelte-headlessui';
+  import Globe from '$lib/helper/icons/Globe.svelte';
+  import Chart from '$lib/helper/icons/Chart.svelte';
 
   export let mode = 'geography';
 
@@ -7,12 +9,12 @@
     {
       value: 'geography',
       label: 'BY GEOGRAPHY',
-      icon: 'globe',
+      icon: Globe,
     },
     {
       value: 'indicator',
       label: 'BY INDICATOR',
-      icon: 'chart',
+      icon: Chart,
     },
   ];
 </script>
@@ -28,19 +30,7 @@
         class:text-text-weaker={!checked}
         class:hover:text-theme-base={!checked}
       >
-        {#if icon === 'globe'}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
-            <path d="M2 12H22" stroke="currentColor" stroke-width="2" />
-            <path d="M12 2C14.5 4.5 16 8 16 12C16 16 14.5 19.5 12 22" stroke="currentColor" stroke-width="2" />
-            <path d="M12 2C9.5 4.5 8 8 8 12C8 16 9.5 19.5 12 22" stroke="currentColor" stroke-width="2" />
-          </svg>
-        {:else if icon === 'chart'}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 3V21H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M7 14L12 9L16 13L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        {/if}
+        <svelte:component this={icon} />
         <span>{label}</span>
       </div>
     </RadioGroupOption>
