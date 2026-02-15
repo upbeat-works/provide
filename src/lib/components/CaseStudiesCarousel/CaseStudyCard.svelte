@@ -11,7 +11,7 @@
 
 <a
 	href="/{PATH_ADAPTATION}/{study.city.uid}"
-	class="block bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow group h-full"
+	class="block bg-white rounded overflow-hidden border border-contour-weakest group h-full"
 >
 	<div class="relative aspect-[4/3] overflow-hidden">
 		<img
@@ -23,9 +23,9 @@
 	</div>
 
 	<div class="p-6 flex flex-col gap-2">
-		<h3 class="font-bold text-xl text-theme-stronger uppercase">{study.city.label}</h3>
+		<h3 class="font-normal text-xl text-theme-stronger uppercase">{study.city.label}</h3>
 		<p class="text-theme-base text-sm line-clamp-3">{study.abstract}</p>
-		<div class="mt-4 text-theme-base">
+		<div class="mt-4 w-10 h-10 bg-surface-weaker flex items-center justify-center text-theme-base group-hover:bg-theme-base group-hover:text-white transition-colors">
 			<LinkArrow />
 		</div>
 	</div>

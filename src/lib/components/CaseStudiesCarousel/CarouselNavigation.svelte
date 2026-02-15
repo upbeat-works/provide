@@ -13,8 +13,7 @@
 	<button
 		on:click={() => dispatch('prev')}
 		disabled={!canGoPrev}
-		class="w-8 h-8 rounded-full border border-contour-weakest flex items-center justify-center
-           hover:bg-surface-weaker disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+		class="w-8 h-8 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
 		aria-label="Previous slides"
 	>
 		<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -37,8 +36,7 @@
 	<button
 		on:click={() => dispatch('next')}
 		disabled={!canGoNext}
-		class="w-8 h-8 rounded-full border border-contour-weakest flex items-center justify-center
-           hover:bg-surface-weaker disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+		class="w-8 h-8 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
 		aria-label="Next slides"
 	>
 		<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
