@@ -18,7 +18,7 @@
 		</div>
 	</div>
 
-	{#if caseStudies.length}
+	<!-- {#if caseStudies.length}
 		<CaseStudiesCarousel {caseStudies} />
-	{/if}
+	{/if} -->
 </section>
