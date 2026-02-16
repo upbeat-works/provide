@@ -7,7 +7,7 @@
   export let videos = [];
 </script>
 
-<header class="py-20 justify-center flex-col max-w-7xl mx-auto gap-x-4 lg:gap-x-24 grid lg:grid-cols-2">
+<header class="py-20 px-12 justify-center flex-col max-w-7xl mx-auto gap-x-4 lg:gap-x-24 grid lg:grid-cols-2">
   <div>
     <span class="block font-bold text-3xl mb-3">Explore risks of climate overshoots</span>
     <p class="leading-normal text-base sm:text-lg mb-5">
@@ -49,7 +49,7 @@
     </div>
   </EntrypointAdaptation>
 </div>
-<div class="py-20 justify-center flex-col max-w-7xl mx-auto gap-x-4 lg:gap-x-24 grid lg:grid-cols-2">
+<div class="py-20 px-12 justify-center flex-col max-w-7xl mx-auto gap-x-4 lg:gap-x-24 grid lg:grid-cols-2">
   <div>
     <span class="block font-bold text-3xl mb-3">The PROVIDE project</span>
     <p class="leading-normal text-base sm:text-lg">
@@ -60,7 +60,7 @@
   </div>
 </div>
 {#if videos.length}
-  <div class="py-20 justify-center flex-col max-w-7xl mx-auto gap-x-4 lg:gap-x-24 grid lg:grid-cols-2">
+  <div class="py-20 px-12 justify-center flex-col max-w-7xl mx-auto gap-x-4 lg:gap-x-24 grid lg:grid-cols-2">
     <div>
       <span class="block font-bold text-3xl mb-3">Want to learn more about the Climate risk dashboard?</span>
       <p class="leading-normal text-base sm:text-lg">Watch the tutorial or interviews with the tool’s developers to learn how to use the tool and the scientific concepts behind the tool.</p>
