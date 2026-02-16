@@ -10,11 +10,11 @@
 </script>
 
 <div class="inline-flex {classes}">
-  <h1 class="text-theme-base font-bold uppercase tracking-widest">
+  <h1 class="text-white font-bold uppercase tracking-widest">
     {TITLE_PROJECT}
   </h1>
-  <span class="text-contour-weakest" role="presentation" aria-hidden="true"
+  <span class="text-white" role="presentation" aria-hidden="true"
     >|</span
   >
-  <span class="text-contour-weak">{TITLE_SITE}</span>
+  <span class="text-white">{TITLE_SITE}</span>
 </div>

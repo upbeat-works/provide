@@ -27,14 +27,14 @@
   ];
 </script>
 
-<nav class="border-b border-contour-weakest py-7">
-  <div class="mx-auto max-w-7xl px-6 flex justify-between gap-y-4 flex-col lg:flex-row">
-    <NavLink href="/" class="hover:text-theme-base transition-colors"><Logo /></NavLink>
-    <ul class="flex flex-wrap gap-x-3 md:gap-x-4 lg:gap-x-5">
+<nav class="bg-sky-700 py-4">
+  <div class="mx-auto max-w-7xl px-6 flex justify-between items-center gap-y-4 flex-col lg:flex-row">
+    <NavLink href="/" class="hover:text-sky-100 transition-colors"><Logo /></NavLink>
+    <ul class="flex flex-wrap gap-x-6 lg:gap-x-8">
       {#each items as { label, href }}
         <NavLink
-          activeClass="text-theme-base font-bold underline decoration-contour-weakest underline-offset-4"
-          class="text-contour-weak hover:text-theme-base text-sm md:text-base transition-colors"
+          activeClass="text-white font-medium"
+          class="text-white hover:text-sky-100 text-sm md:text-base transition-colors"
           {href}>{label}</NavLink
         >
       {/each}
