@@ -34,7 +34,7 @@ jobs:
         run: npm run build
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
-          BUILD_ENV: static
+          BUILD_ENV: ${{ vars.BUILD_ENV }}
           VITE_DATA_API_URL: ${{ secrets.VITE_DATA_API_URL }}
           VITE_HEROKU_URL: ${{ secrets.VITE_HEROKU_URL }}
           VITE_STRAPI_LOCALE: ${{ vars.VITE_STRAPI_LOCALE }}
