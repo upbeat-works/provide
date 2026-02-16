@@ -1,16 +1,22 @@
 <script>
-  import Entrypoints from './landing-page/Entrypoints.svelte';
-  import Globe from './landing-page/Globe.svelte';
-  import ExploreControls from './landing-page/ExploreControls.svelte';
+  import SectionHero from './landing-page/SectionHero.svelte';
+  import SectionExplore from './landing-page/SectionExplore.svelte';
+  import SectionAnalysis from './landing-page/SectionAnalysis.svelte';
+  import SectionCaseStudies from './landing-page/SectionCaseStudies.svelte';
+  import SectionProject from './landing-page/SectionProject.svelte';
 
   export let data;
   $: ({ stories, caseStudies, videos } = data);
 </script>
 
-<Globe {stories} />
-
-
-<div class="mx-auto max-w-7xl border border-contour-weakest">
-  <ExploreControls />
-  <Entrypoints {caseStudies} {videos} />
+<SectionHero {stories} />
+<div class="mx-auto max-w-7xl border-x border-contour-weakest">
+  <SectionExplore />
+  <SectionAnalysis />
+</div>
+<div class="bg-gold-50 border-t border-contour-weakest py-12">
+  <div class="mx-auto max-w-7xl">
+    <SectionCaseStudies {caseStudies} />
+    <SectionProject />
+  </div>
 </div>
