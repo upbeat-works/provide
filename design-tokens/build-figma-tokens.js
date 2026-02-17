@@ -16,7 +16,18 @@ modes.forEach((mode) => {
       )
       .join(',');
     const color = `rgba(${rgbString})`;
-    _.set(acc, variable.name.replace(/\//g, '.'), color);
+
+    // Custom setter that preserves numeric keys as object properties
+    const path = variable.name.split('/');
+    let current = acc;
+    for (let i = 0; i < path.length - 1; i++) {
+      if (!current[path[i]]) {
+        current[path[i]] = {};
+      }
+      current = current[path[i]];
+    }
+    current[path[path.length - 1]] = color;
+
     return acc;
   }, {});
 
