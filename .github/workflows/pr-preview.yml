@@ -52,8 +52,8 @@ jobs:
         run: |
           # Convert branch name to lowercase and replace invalid characters
           SANITIZED_BRANCH=$(echo "${{ github.event.pull_request.head.ref }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
-          # Limit length to avoid Cloudflare naming issues
-          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | cut -c1-20)
+          # Limit length to avoid Cloudflare naming issues and strip trailing hyphens
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | cut -c1-20 | sed 's/-*$//')
           echo "branch=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
           echo "alias=pr-${{ github.event.pull_request.number }}-$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
 
@@ -61,7 +61,7 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         id: deploy
         with:
-          command: versions upload --preview-alias ${{ steps.sanitize.outputs.alias }}
+          command: deploy --name iiasa-sparccle-${{ steps.sanitize.outputs.alias }}
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
 
@@ -87,7 +87,7 @@ jobs:
             );
 
             const alias = '${{ steps.sanitize.outputs.alias }}';
-            const previewUrl = `https://${alias}-iiasa-sparccle.workers.dev`;
+            const previewUrl = `https://iiasa-sparccle-${alias}.miguelangel-6d1.workers.dev`;
 
             const commentBody = `🚀 **PR Preview**\n\nYour changes have been deployed for preview.\n\n**🔗 Preview URL:** ${previewUrl}\n\n📋 **Details:**\n- Branch: \`${branch_name}\`\n- Commit: \`${sha}\`\n\n_This preview will update automatically with new commits._`;
 
