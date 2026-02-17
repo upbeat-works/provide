@@ -87,7 +87,7 @@ jobs:
             );
 
             const alias = '${{ steps.sanitize.outputs.alias }}';
-            const previewUrl = `https://iiasa-sparccle-${alias}.miguelangel-6d1.workers.dev`;
+            const previewUrl = `https://iiasa-sparccle-${alias}.upbeat-sl.workers.dev`;
 
             const commentBody = `🚀 **PR Preview**\n\nYour changes have been deployed for preview.\n\n**🔗 Preview URL:** ${previewUrl}\n\n📋 **Details:**\n- Branch: \`${branch_name}\`\n- Commit: \`${sha}\`\n\n_This preview will update automatically with new commits._`;
 
