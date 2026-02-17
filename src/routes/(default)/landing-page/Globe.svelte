@@ -4,8 +4,8 @@
   import { writable } from 'svelte/store';
   import { END_IMPACT_GEO, END_GEO_SHAPE, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_SCENARIO, COLOR_SCALES } from '$config';
   import LoadingWrapper from '$lib/helper/LoadingWrapper.svelte';
-  import MaMaskedData from './components/MaskedData.svelte';
-  import Tabs from './components/Tabs.svelte';
+  import MaMaskedData from './MaskedData.svelte';
+  import Tabs from './Tabs.svelte';
   import { onDestroy } from 'svelte';
   import { coordinatesToRectGrid, getColorScale, coordinatesToContours } from '$lib/utils/geo';
   import mask from '@turf/mask';
