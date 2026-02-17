@@ -40,7 +40,6 @@ const config = {
         '/embed/impact-time',
         '/embed/impact-geo',
         '/embed/unavoidable-risk',
-        '/color-test',
       ],
     },
   },
