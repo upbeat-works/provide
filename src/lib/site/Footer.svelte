@@ -1,5 +1,5 @@
 <script>
-  import { LABEL_DOCUMENTATION, LABEL_CONTACT, LABEL_ABOUT, PATH_ABOUT, PATH_CONTACT, PATH_DOCUMENTATION, PATH_EXPLORE, LABEL_EXPLORE, PATH_ADAPTATION, TITLE_PROJECT, TITLE_SITE } from '$config';
+  import { LABEL_DOCUMENTATION, LABEL_CONTACT, LABEL_ABOUT, PATH_ABOUT, PATH_CONTACT, PATH_DOCUMENTATION, PATH_EXPLORE, PATH_IMPACT, LABEL_EXPLORE, PATH_ADAPTATION, TITLE_PROJECT, TITLE_SITE } from '$config';
   import { version } from '$app/environment';
   export let buildDate;
 </script>
@@ -27,7 +27,7 @@
     <!-- Middle: Navigation Links -->
     <nav class="md:pl-12">
       <ul class="space-y-2">
-        <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_EXPLORE}">{LABEL_EXPLORE}</a></li>
+        <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_EXPLORE}/{PATH_IMPACT}">{LABEL_EXPLORE}</a></li>
         <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_ADAPTATION}">Case Studies</a></li>
         <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_DOCUMENTATION}">{LABEL_DOCUMENTATION}</a></li>
         <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_ABOUT}">{LABEL_ABOUT}</a></li>
