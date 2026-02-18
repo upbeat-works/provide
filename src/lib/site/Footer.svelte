@@ -8,7 +8,7 @@
 <footer class="bg-surface-weaker">
   <div class="mx-auto max-w-7xl pt-10 px-6 flex gap-x-6 justify-between">
     <div class="flex gap-3">
-      <Logo />
+      <Logo color="petrol-800" />
     </div>
   </div>
   <div class="mx-auto max-w-7xl pt-4 pb-10 px-6 grid grid-cols-1 sm:grid-cols-5 gap-y-12 gap-x-12">

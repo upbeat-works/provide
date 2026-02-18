@@ -43,7 +43,7 @@
 <div class="embed p-6 pb-0">
   <svelte:component this={component} {...urlParams} />
   <div class="flex justify-between text-sm text-contour-weak border-t border-contour-weak pt-3 pb-4">
-    <Logo size="sm" />
+    <Logo size="sm" color="petrol-800" />
     {#if url}
       <div>
         Visit <a class="text-theme-base" href={url.url}>{url.host}</a> for more information
