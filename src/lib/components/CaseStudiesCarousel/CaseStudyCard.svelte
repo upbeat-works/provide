@@ -6,7 +6,7 @@
 
 	export let study;
 
-	$: imageUrl = study.image ? getStrapiImageAtSize(study.image) : '/img/case-study-placeholder.jpg';
+	$: imageUrl = study.image ? getStrapiImageAtSize(study.image) : null;
 </script>
 
 <a
@@ -14,11 +14,15 @@
 	class="block bg-white rounded overflow-hidden border border-contour-weakest group h-full"
 >
 	<div class="relative aspect-[4/3] overflow-hidden">
-		<img
-			src={imageUrl}
-			alt={study.image?.alternativeText ?? study.city.label}
-			class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-		/>
+		{#if imageUrl}
+			<img
+				src={imageUrl}
+				alt={study.image?.alternativeText ?? study.city.label}
+				class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+			/>
+		{:else}
+			<div class="w-full h-full bg-gray-200" />
+		{/if}
 		<CategoryBadge category={study.category} />
 	</div>
 
