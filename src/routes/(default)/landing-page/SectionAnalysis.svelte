@@ -111,7 +111,7 @@
 				{#each cards as card}
 					<a
 						href={`/${PATH_EXPLORE}/${card.path}`}
-						class="flex-shrink-0 w-[85%] md:w-[60%] bg-white group"
+						class="flex-shrink-0 w-[85%] md:w-[60%] bg-white hover:bg-surface-weaker transition-colors group"
 						style="scroll-snap-align: start;"
 					>
 						<figure class="m-0 overflow-hidden bg-surface-weaker">
@@ -121,7 +121,7 @@
 								class="w-full aspect-video object-contain group-hover:scale-[1.02] transition-transform duration-300"
 							/>
 						</figure>
-						<div class="pt-4">
+						<div class="p-4">
 							<p class="text-xl font-normal text-theme-800 leading-snug mb-4 lg:max-w-[80%]">{card.description}</p>
 							<hr class="border-contour-weakest mb-4" />
 							<dl class="grid grid-cols-3 gap-4 text-sm">
