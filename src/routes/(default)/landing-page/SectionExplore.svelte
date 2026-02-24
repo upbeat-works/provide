@@ -17,7 +17,7 @@
   }
 </script>
 
-<section class="border-y border-contour-weakest">
+<section class="border-t border-contour-weakest">
   <header class="grid lg:grid-cols-2 gap-x-16 gap-y-4 mb-12 mt-16 px-8">
     <h2 class="text-3xl font-thin text-theme-800 leading-tight max-w-sm">
       From cities to continents: assess climate risk with the Explorer
@@ -35,8 +35,8 @@
       type="button"
       on:click={viewResults}
       disabled={!isValidSelection}
-      class="inline-flex items-center gap-x-2 px-4 py-2 rounded font-bold text-sm transition-colors"
-      class:bg-theme-base={isValidSelection}
+      class="inline-flex items-center gap-x-2 px-4 py-2 rounded-sm font-bold text-sm transition-colors"
+      class:bg-theme-800={isValidSelection}
       class:text-surface-base={isValidSelection}
       class:hover:bg-theme-stronger={isValidSelection}
       class:bg-contour-weakest={!isValidSelection}
