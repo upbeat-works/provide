@@ -1,0 +1,55 @@
+name: 🚀 Deploy Staging
+
+on:
+  push:
+    branches:
+      - dev
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: 🚀 Deploy Staging
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
+
+      - name: ⎔ Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 📥 Download deps
+        uses: bahmutov/npm-install@v1
+
+      - name: 🏗️ Build app
+        run: npm run build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+          BUILD_ENV: ${{ vars.BUILD_ENV }}
+          VITE_DATA_API_URL: ${{ secrets.VITE_DATA_API_URL }}
+          VITE_HEROKU_URL: ${{ secrets.VITE_HEROKU_URL }}
+          VITE_STRAPI_LOCALE: ${{ vars.VITE_STRAPI_LOCALE }}
+          VITE_MAPBOX_ACCESS_TOKEN: ${{ secrets.VITE_MAPBOX_ACCESS_TOKEN }}
+          VITE_MAPBOX_STYLE_LIGHT: ${{ secrets.VITE_MAPBOX_STYLE_LIGHT }}
+          VITE_MAPBOX_STYLE_SATELLITE: ${{ secrets.VITE_MAPBOX_STYLE_SATELLITE }}
+          VITE_MAPBOX_STYLE_GLOBE: ${{ secrets.VITE_MAPBOX_STYLE_GLOBE }}
+          VITE_MAPBOX_STYLE_STUDY_LOCATIONS: ${{ secrets.VITE_MAPBOX_STYLE_STUDY_LOCATIONS }}
+          VITE_APP_URL: ${{ secrets.VITE_APP_URL }}
+          VITE_SCREENSHOT_URL: ${{ secrets.VITE_SCREENSHOT_URL }}
+          VITE_COMMIT_SHA: ${{ github.sha }}
+
+      - name: 🚀 Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          command: deploy --name iiasa-sparccle-staging
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
