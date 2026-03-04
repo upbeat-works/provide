@@ -53,10 +53,10 @@
 </script>
 
 <section class="py-20">
-	<div class="grid md:grid-cols-[1fr_2fr]">
+	<div class="grid md:grid-cols-[2fr_3fr]">
 		<!-- Left: heading and navigation -->
 		<div
-			class="flex flex-col px-8 md:px-12 py-2 md:py-4 border-b md:border-b-0 md:border-r border-contour-weakest"
+			class="flex flex-col px-8 md:px-12 py-2 md:py-4 border-b md:border-b-0 md:border-r border-contour-weakest border-dashed"
 		>
 			<div class="w-14 h-14 mb-8">
 				<AnalysisTools class="w-full h-full" />
@@ -101,7 +101,7 @@
 		</div>
 
 		<!-- Right: carousel -->
-		<div class="overflow-hidden py-2 md:py-4 pl-8 md:pl-12">
+		<div class="py-2 md:py-4 pl-8 min-w-0">
 			<div
 				bind:this={scrollContainer}
 				on:scroll={handleScroll}
@@ -111,37 +111,37 @@
 				{#each cards as card}
 					<a
 						href={`/${PATH_EXPLORE}/${card.path}`}
-						class="flex-shrink-0 w-[85%] md:w-[60%] bg-white hover:bg-surface-weaker transition-colors group"
+						class="flex-shrink-0 w-[85%] lg:w-[600px] bg-white hover:bg-surface-weaker transition-colors group"
 						style="scroll-snap-align: start;"
 					>
-						<figure class="m-0 overflow-hidden bg-surface-weaker">
+            <div class="p-4">
+						<figure class="m-0 mb-8 overflow-hidden bg-grass-50 border border-grass-200 rounded-[2px]">
 							<img
 								src={card.image}
 								alt={card.imageAlt}
 								class="w-full aspect-video object-contain group-hover:scale-[1.02] transition-transform duration-300"
 							/>
 						</figure>
-						<div class="p-4">
-							<p class="text-xl font-normal text-theme-800 leading-snug mb-4 lg:max-w-[80%]">{card.description}</p>
-							<hr class="border-contour-weakest mb-4" />
-							<dl class="grid grid-cols-3 gap-4 text-sm">
+							<p class="text-xl font-normal text-theme-800 leading-snug mb-8 lg:max-w-[80%]">{card.description}</p>
+							<hr class="border-theme-200 mb-4 height-[2px]" />
+							<dl class="grid grid-cols-3 gap-4 text-sm mb-8">
 								<div>
-									<dt class="uppercase text-xs tracking-widest text-text-weaker font-medium mb-1">
+									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">
 										Project
 									</dt>
-									<dd class="text-theme-base">{card.project}</dd>
+									<dd class="text-theme-base text-base font-semibold">{card.project}</dd>
 								</div>
 								<div>
-									<dt class="uppercase text-xs tracking-widest text-text-weaker font-medium mb-1">
+									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">
 										Geography
 									</dt>
-									<dd class="text-theme-base">{card.geography}</dd>
+									<dd class="text-theme-base text-base font-semibold">{card.geography}</dd>
 								</div>
 								<div>
-									<dt class="uppercase text-xs tracking-widest text-text-weaker font-medium mb-1">
+									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">
 										Data source
 									</dt>
-									<dd class="text-theme-base">{card.dataSource}</dd>
+									<dd class="text-theme-base text-base font-semibold">{card.dataSource}</dd>
 								</div>
 							</dl>
 						</div>
