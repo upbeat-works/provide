@@ -42,7 +42,7 @@
           </div>
         {/each}
       </div>
-      <a href={url} class="text-center bg-theme-base text-white hover:bg-theme-stronger disabled:text-theme-weaker w-full py-2 text-theme-base text-sm px-3" download>Download data</a>
+      <a href={url} class="text-center bg-petrol-800 text-white hover:bg-petrol-900 disabled:text-theme-weaker w-full py-2 text-sm px-3" download>Download data</a>
     </div>
   </PopoverButton>
 {:else}

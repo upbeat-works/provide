@@ -82,7 +82,7 @@
     >
       <a
         slot="header-link"
-        class="text-sm leading-tight text-theme-base font-bold flex items-center rounded-sm bg-theme-base text-white px-3 sm:px-4 md:px-6 py-1 sm:py-2 md:py-3 gap-2 hover:bg-theme-stronger transition-colors"
+        class="text-sm leading-tight font-bold flex items-center rounded-sm bg-petrol-800 text-white px-3 sm:px-4 md:px-6 py-1 sm:py-2 md:py-3 gap-2 hover:bg-petrol-900 transition-colors"
         href={`/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}
       >
         <span>Which scenario should I select?</span>

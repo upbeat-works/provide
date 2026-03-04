@@ -36,9 +36,9 @@
       on:click={viewResults}
       disabled={!isValidSelection}
       class="inline-flex items-center gap-x-2 px-4 py-2 rounded font-bold text-sm transition-colors"
-      class:bg-theme-base={isValidSelection}
+      class:bg-petrol-800={isValidSelection}
       class:text-surface-base={isValidSelection}
-      class:hover:bg-theme-stronger={isValidSelection}
+      class:hover:bg-petrol-900={isValidSelection}
       class:bg-contour-weakest={!isValidSelection}
       class:text-text-weaker={!isValidSelection}
       class:cursor-not-allowed={!isValidSelection}
