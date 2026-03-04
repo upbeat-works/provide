@@ -13,6 +13,9 @@ module.exports = {
       colors: {
         ...themeLight,
       },
+      fontSize: {
+        'heading-lg': ['34px', { lineHeight: '1.2' }],
+      },
       boxShadow: {
         lg: '0 3px 15px -3px rgb(0 0 0 / 0.1), 0 1px 6px -4px rgb(0 0 0 / 0.1);',
         xl: '0 5px 23px -3px rgb(0 0 0 / 0.15), 0 2px 10px -4px rgb(0 0 0 / 0.1);',

@@ -43,7 +43,7 @@
 	{#each cards as { path, title, intro, audience, image, imageAlt }}
 		<a
 			href={`/${PATH_EXPLORE}/${path}`}
-			class="hover:bg-surface-weakest hover:text-theme-base transition-colors grid grid-rows-[1fr_auto_auto] bg-surface-weaker p-4 sm:p-10 md:p-12"
+			class="hover:bg-surface-weakest hover:text-theme-base transition-colors grid grid-rows-[1fr_auto_auto] bg-[#FCFDF6] p-4 sm:p-10 md:p-12"
 		>
 			<div class="flex flex-col gap-y-2 my-4">
 				<span class="uppercase text-center font-bold text-xl tracking-wide text-current">{title}</span>
