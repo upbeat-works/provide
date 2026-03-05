@@ -15,7 +15,7 @@
   <SectionAnalysis />
 </div>
 <div class="bg-gold-50 border-t border-contour-weakest py-12">
-  <div class="mx-auto max-w-7xl">
+  <div class="mx-auto max-w-7xl px-8 lg:px-0">
     <SectionCaseStudies {caseStudies} />
     <SectionProject />
   </div>
