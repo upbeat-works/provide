@@ -10,11 +10,11 @@
 </script>
 
 <SectionHero {stories} />
-<div class="mx-auto max-w-7xl border-x border-contour-weakest">
+<div class="mx-auto max-w-7xl border-x border-dashed border-contour-weakest">
   <SectionExplore />
   <SectionAnalysis />
 </div>
-<div class="bg-gold-50 border-t border-contour-weakest py-12">
+<div class="bg-gold-50 border-t border-contour-weakest py-24">
   <div class="mx-auto max-w-7xl">
     <SectionCaseStudies {caseStudies} />
     <SectionProject />

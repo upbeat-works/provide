@@ -17,7 +17,7 @@
   }
 </script>
 
-<section class="border-y border-contour-weakest">
+<section class="border-t border-contour-weakest">
   <header class="grid lg:grid-cols-2 gap-x-16 gap-y-4 mb-12 mt-16 px-8">
     <h2 class="text-3xl font-thin text-theme-800 leading-tight max-w-sm">
       From cities to continents: assess climate risk with the Explorer

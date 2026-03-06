@@ -1,78 +1,135 @@
 <script>
 	import { PATH_EXPLORE, PATH_IMPACT, PATH_AVOID } from '$config';
+	import AnalysisTools from '$lib/helper/icons/AnalysisTools.svelte';
 
 	const cards = [
 		{
-			path: PATH_IMPACT,
-			title: 'Explore future impacts',
-			intro: [
-				'This mode allows you to explore different climate futures and how they will affect the environment and people.',
-				'Choose your geography type and choose an indicator to explore how future climate impacts will develop under various emission scenarios.'
-			],
-			audience: [
-				'Climate scientists (terrestrial, marine and urban)',
-				'Experts working on climate risks',
-				'Climate litigation experts',
-				'Science communicators',
-				'National policy makers'
-			],
-			image: '/img/impacts.png',
-			imageAlt: 'One scenario and many resulting impacts'
+			path: PATH_AVOID,
+			image: '/img/emission-scenarios.png',
+			imageAlt: 'Chart showing compatible scenarios and impact levels',
+			description:
+				'Avoiding future impacts explores which scenarios minimise the risk from certain impacts in cities and their rural surroundings.',
+			project: 'Provide',
+			geography: 'Cities',
+			dataSource: 'CMIP6'
 		},
 		{
-			path: PATH_AVOID,
-			title: 'Avoiding future impacts',
-			intro: [
-				'In this mode you can explore how we can avoid reaching undesirable climate impact levels in urban areas.',
-				'You can choose a city, an urban heat indicator and the level of impact, and see when your selected level of impact will be exceeded. You can then explore which climate action pathway might help your city avoid this impact level.'
-			],
-			audience: [
-				'Urban planners, policy makers and climate adaptation experts',
-				'Science communicators',
-				'Experts working on climate risks'
-			],
-			image: '/img/emission-scenarios.png',
-			imageAlt: 'One scenario and many resulting impacts'
+			path: PATH_IMPACT,
+			image: '/img/impacts.png',
+			imageAlt: 'Map showing future climate impacts across geographies',
+			description:
+				'Explore future impacts shows how different climate futures will affect the environment and people across different emission scenarios.',
+			project: 'Provide',
+			geography: 'Global',
+			dataSource: 'CMIP6'
 		}
 	];
+
+	let scrollContainer;
+	let currentIndex = 0;
+
+	$: canGoPrev = currentIndex > 0;
+	$: canGoNext = currentIndex < cards.length - 1;
+
+	function scrollToCard(index) {
+		if (!scrollContainer) return;
+		const cardWidth = scrollContainer.scrollWidth / cards.length;
+		scrollContainer.scrollTo({ left: index * cardWidth, behavior: 'smooth' });
+	}
+
+	function handleScroll() {
+		if (!scrollContainer) return;
+		const cardWidth = scrollContainer.scrollWidth / cards.length;
+		currentIndex = Math.round(scrollContainer.scrollLeft / cardWidth);
+	}
+
+	function handlePrev() {
+		if (canGoPrev) scrollToCard(currentIndex - 1);
+	}
+
+	function handleNext() {
+		if (canGoNext) scrollToCard(currentIndex + 1);
+	}
 </script>
 
 <section class="max-w-7xl mx-auto">
-	<h2 class="text-3xl text-center p-16 text-theme-800 border-b">Go deeper with our tools for advanced analysis</h2>
-	<div class="p-12 grid md:grid-cols-2 gap-y-6 gap-x-4 lg:gap-x-24 lg:gap-y-24">
-	{#each cards as { path, title, intro, audience, image, imageAlt }}
-		<a
-			href={`/${PATH_EXPLORE}/${path}`}
-			class="hover:bg-surface-weakest hover:text-theme-base transition-colors grid grid-rows-[1fr_auto_auto] bg-[#FCFDF6] p-4 sm:p-10 md:p-12"
-		>
-			<div class="flex flex-col gap-y-2 my-4">
-				<span class="uppercase text-center font-bold text-xl tracking-wide text-current">{title}</span>
-				<div class="block text-center text-base sm:text-lg md:leading-normal text-black">
-					{#each intro as paragraph, i}
-						<p class:mb-5={i === 0}>{paragraph}</p>
-					{/each}
-				</div>
+	<div class="p-12 grid md:grid-cols-[1fr_2fr] gap-x-24 items-start">
+
+		<!-- Left: heading + nav -->
+		<div class="flex flex-col gap-8">
+			<div class="w-14 h-14">
+				<AnalysisTools class="w-full h-full" />
 			</div>
-			{#if audience.length}
-				<span class="text-contour-weaker text-sm mt-6">Most suitable for:</span>
-				<ul class="my-2 flex gap-y-2 flex-col text-base">
-					{#each audience as label}
-						<li class="flex items-center gap-x-2">
-							<svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-								<path
-									d="M3.17688 7.73688C2.77774 7.36946 2.14852 7.38691 1.77148 7.77585C1.39443 8.1648 1.41234 8.77795 1.81147 9.14537L5.71148 12.7355C6.12186 13.1132 6.77232 13.0826 7.1434 12.668L15.255 3.6056C15.6159 3.20239 15.5731 2.59041 15.1593 2.23871C14.7455 1.88702 14.1175 1.92878 13.7566 2.332L6.32492 10.6347L3.17688 7.73688Z"
-									fill="#316F91"
+			<h2 class="text-2xl md:text-3xl text-theme-800 leading-snug">
+				<span class="text-theme-base">Go deeper</span> with our tools for advanced analysis
+			</h2>
+			<div class="flex gap-2">
+				<button
+					on:click={handlePrev}
+					disabled={!canGoPrev}
+					class="w-9 h-9 flex items-center justify-center bg-surface-weaker hover:bg-surface-weakest transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+					aria-label="Previous card"
+				>
+					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+						<path d="M10 4L6 8L10 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
+				<button
+					on:click={handleNext}
+					disabled={!canGoNext}
+					class="w-9 h-9 flex items-center justify-center bg-surface-weaker hover:bg-surface-weakest transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+					aria-label="Next card"
+				>
+					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+						<path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
+			</div>
+		</div>
+
+		<!-- Right: carousel -->
+		<div class="py-2 md:py-4 min-w-0">
+			<div
+				bind:this={scrollContainer}
+				on:scroll={handleScroll}
+				class="flex gap-6 overflow-x-auto scrollbar-hide"
+				style="scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;"
+			>
+				{#each cards as card}
+					<a
+						href={`/${PATH_EXPLORE}/${card.path}`}
+						class="flex-shrink-0 w-[85%] lg:w-[600px] bg-white hover:bg-surface-weaker transition-colors group"
+						style="scroll-snap-align: start;"
+					>
+						<div class="p-4">
+							<figure class="m-0 mb-8 overflow-hidden bg-grass-50 border border-grass-200 rounded-[2px]">
+								<img
+									src={card.image}
+									alt={card.imageAlt}
+									class="w-full aspect-video object-contain group-hover:scale-[1.02] transition-transform duration-300"
 								/>
-							</svg>
-							<span class="text-black">{label}</span>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-			<figure class="p-0 md:p-0 py-6 sm:px-6 sm:pt-4 md:pt-8 pb-4">
-				<img src={image} alt={imageAlt} />
-			</figure>
-		</a>
-	{/each}
+							</figure>
+							<p class="text-xl font-normal text-theme-800 leading-snug mb-8 lg:max-w-[80%]">{card.description}</p>
+							<hr class="border-theme-200 mb-4" />
+							<dl class="grid grid-cols-3 gap-4 text-sm mb-8">
+								<div>
+									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">Project</dt>
+									<dd class="text-theme-base text-base font-semibold">{card.project}</dd>
+								</div>
+								<div>
+									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">Geography</dt>
+									<dd class="text-theme-base text-base font-semibold">{card.geography}</dd>
+								</div>
+								<div>
+									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">Data source</dt>
+									<dd class="text-theme-base text-base font-semibold">{card.dataSource}</dd>
+								</div>
+							</dl>
+						</div>
+					</a>
+				{/each}
+			</div>
+		</div>
+
 	</div>
 </section>
