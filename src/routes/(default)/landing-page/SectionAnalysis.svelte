@@ -53,7 +53,7 @@
 </script>
 
 <section class="max-w-7xl mx-auto">
-	<div class="p-12 grid md:grid-cols-[1fr_2fr] gap-x-24 items-start">
+	<div class="pl-6 py-12 grid md:grid-cols-[1fr_2fr] gap-x-24 items-start">
 
 		<!-- Left: heading + nav -->
 		<div class="flex flex-col gap-8">
@@ -88,7 +88,7 @@
 		</div>
 
 		<!-- Right: carousel -->
-		<div class="py-2 md:py-4 min-w-0">
+		<div class="py-2 md:py-4 min-w-0 -ml-4 md:pl-0">
 			<div
 				bind:this={scrollContainer}
 				on:scroll={handleScroll}

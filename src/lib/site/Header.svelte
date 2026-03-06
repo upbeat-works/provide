@@ -28,7 +28,7 @@
 </script>
 
 <nav class="bg-sky-700 fixed top-0 left-0 right-0 z-50">
-  <div class="mx-auto w-full max-w-7xl h-[70px] px-8 lg:px-0 flex justify-between items-center">
+  <div class="mx-auto w-full max-w-7xl h-[70px] px-6 flex justify-between items-center">
     <NavLink href="/" class="hover:text-sky-100 transition-colors"><Logo /></NavLink>
     <ul class="flex flex-wrap gap-x-6 lg:gap-x-8">
       {#each items as { label, href }}

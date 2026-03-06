@@ -15,7 +15,7 @@
     <rect width="100%" height="100%" filter="url(#hero-grain)" />
   </svg>
 
-  <div class="max-w-6xl mx-auto px-6 md:px-12 py-14 md:py-20 lg:py-28 md:min-h-[600px] flex flex-col sm:flex-row items-center gap-8 lg:gap-12 relative z-10">
+  <div class="max-w-6xl mx-auto px-6 py-14 md:py-20 lg:py-28 md:min-h-[600px] flex flex-col sm:flex-row items-center gap-8 lg:gap-12 relative z-10">
 
     <!-- Text content -->
     <div class="text-white flex-1 min-w-0">
