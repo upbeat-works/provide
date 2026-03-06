@@ -35,7 +35,7 @@
       type="button"
       on:click={viewResults}
       disabled={!isValidSelection}
-      class="inline-flex items-center gap-x-2 px-4 py-2 rounded font-bold text-sm transition-colors"
+      class="inline-flex items-center gap-x-2 px-4 py-2 rounded-sm font-bold text-sm transition-colors"
       class:bg-petrol-800={isValidSelection}
       class:text-surface-base={isValidSelection}
       class:hover:bg-petrol-900={isValidSelection}

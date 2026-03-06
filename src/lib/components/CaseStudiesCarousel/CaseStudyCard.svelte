@@ -11,7 +11,7 @@
 
 <a
 	href="/{PATH_ADAPTATION}/{study.city.uid}"
-	class="flex flex-col bg-white rounded overflow-hidden border border-contour-weakest group h-full"
+	class="flex flex-col bg-white rounded-sm overflow-hidden border border-contour-weakest group h-full"
 >
 	<div class="relative aspect-[4/3] overflow-hidden">
 		{#if imageUrl}
