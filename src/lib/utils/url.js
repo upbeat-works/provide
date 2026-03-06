@@ -97,7 +97,7 @@ export function urlToState(currentUrl) {
       changeStoreToValue(store, param, { isIndicatorArray });
     }
   });
-  if (browser) goto(url.href, { replaceState: false, noScroll: true, keepFocus: true });
+  if (browser) goto(url.href, { replaceState: true, noScroll: true, keepFocus: true });
 }
 
 export function buildURL(url, params = {}) {
