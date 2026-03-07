@@ -23,22 +23,28 @@
   }
 </script>
 
-<ControlTabs bind:mode />
-
-<div
-  class="grid gap-4 md:gap-6 mt-6 items-center"
-  class:md:grid-cols-[1fr_auto_1fr]={true}
-  class:grid-cols-1={true}
->
-  <div class="order-1" class:md:order-1={mode === 'geography'} class:md:order-3={mode === 'indicator'}>
-    <GeographySelection label={geographyLabel} />
+<div class="bg-slate-50 py-8">
+  <div class="mx-auto max-w-7xl px-2 sm:px-6">
+    <ControlTabs bind:mode />
   </div>
 
-  <div class="hidden md:flex items-center justify-center order-2 pt-8">
-    <SwapButton on:click={toggleMode} />
-  </div>
+  <hr class="border-t border-contour-weakest" />
 
-  <div class="order-3" class:md:order-3={mode === 'geography'} class:md:order-1={mode === 'indicator'}>
-    <IndicatorSelection label={indicatorLabel} />
+  <div
+    class="grid gap-4 md:gap-6 items-center mx-auto max-w-7xl px-2 sm:px-6 mt-6"
+    class:md:grid-cols-[1fr_auto_1fr]={true}
+    class:grid-cols-1={true}
+  >
+    <div class="order-1" class:md:order-1={mode === 'geography'} class:md:order-3={mode === 'indicator'}>
+      <GeographySelection label={geographyLabel} />
+    </div>
+
+    <div class="hidden md:flex items-center justify-center order-2 pt-8">
+      <SwapButton on:click={toggleMode} />
+    </div>
+
+    <div class="order-3" class:md:order-3={mode === 'geography'} class:md:order-1={mode === 'indicator'}>
+      <IndicatorSelection label={indicatorLabel} />
+    </div>
   </div>
 </div>

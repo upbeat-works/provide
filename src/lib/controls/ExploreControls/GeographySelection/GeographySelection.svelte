@@ -75,7 +75,7 @@
   category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
   buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
   panelClass="w-screen-p max-w-4xl"
-  buttonClass="border-theme-base/20 border aria-expanded:border-theme-base/60"
+  buttonClass="border-theme-base/20 border aria-expanded:border-theme-base/60 rounded-sm"
   placeholder={$IS_EMPTY_GEOGRAPHY ? 'Select a geography' : undefined}
 >
   <Content filters={geographyTypes} filterKey="geographyType" filterLabel="Pick a location" currentUid={$CURRENT_GEOGRAPHY_UID} items={selectableGeographies} bind:currentFilterUid allowWrap={true}>

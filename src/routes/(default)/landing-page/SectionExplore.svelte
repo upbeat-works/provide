@@ -27,10 +27,10 @@
     </p>
   </header>
 
-  <div class="pt-16 pb-12 bg-surface-weaker p-8 border-t border-contour-weakest">
+  <div class="pt-16 pb-12 bg-surface-weaker border-t border-contour-weakest">
     <SelectionControls showStepLabels size="md" />
 
-    <div class="flex justify-end mt-8">
+    <div class="flex justify-end mt-8 px-6">
     <button
       type="button"
       on:click={viewResults}

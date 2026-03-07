@@ -19,7 +19,7 @@
   ];
 </script>
 
-<RadioGroup bind:value={mode} class="flex gap-x-6 border-b border-contour-weakest">
+<RadioGroup bind:value={mode} class="flex gap-x-6">
   {#each tabs as { value, label, icon }}
     <RadioGroupOption {value} let:checked class="cursor-pointer">
       <div

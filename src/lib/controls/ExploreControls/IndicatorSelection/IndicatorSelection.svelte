@@ -20,7 +20,7 @@
   {label}
   size="md"
   buttonLabel={$CURRENT_INDICATOR?.label}
-  buttonClass="border-theme-base/20 border"
+  buttonClass="border-theme-base/20 border rounded-sm"
   panelClass="w-screen-p max-w-3xl"
   warning={!$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
   disabled={$DISABLED}
