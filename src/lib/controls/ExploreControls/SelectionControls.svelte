@@ -6,6 +6,7 @@
   import { SELECTION_MODE } from '$stores/state.js';
 
   export let showStepLabels = false;
+  export let sticky = false;
 
   let mode = $SELECTION_MODE;
 
@@ -23,15 +24,17 @@
   }
 </script>
 
-<div class="bg-slate-50 py-8">
+<div class="bg-slate-50 pt-8">
   <div class="mx-auto max-w-7xl px-2 sm:px-6">
     <ControlTabs bind:mode />
   </div>
+</div>
 
-  <hr class="border-t border-contour-weakest" />
+<hr class="border-t border-contour-weakest" />
 
+<div class="bg-slate-50 py-8" class:sticky={sticky} class:top-0={sticky} class:z-40={sticky} class:border-b={sticky} class:border-contour-weakest={sticky}>
   <div
-    class="grid gap-4 md:gap-6 items-center mx-auto max-w-7xl px-2 sm:px-6 mt-6"
+    class="grid gap-4 md:gap-6 items-center mx-auto max-w-7xl px-2 sm:px-6"
     class:md:grid-cols-[1fr_auto_1fr]={true}
     class:grid-cols-1={true}
   >
