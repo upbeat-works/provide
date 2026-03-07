@@ -27,7 +27,7 @@
   ];
 </script>
 
-<nav class="bg-sky-700 py-4">
+<nav class="bg-sky-700 py-4 sticky top-0 z-50 border-b border-dashed border-sky-600">
   <div class="mx-auto max-w-7xl px-6 flex justify-between items-center gap-y-4 flex-col lg:flex-row">
     <NavLink href="/" class="hover:text-sky-100 transition-colors"><Logo /></NavLink>
     <ul class="flex flex-wrap gap-x-6 lg:gap-x-8">
