@@ -1,9 +1,8 @@
 <script>
   import { slugify } from '$src/lib/utils';
-  import { getContext } from 'svelte';
   export let sections = [];
   export let contentRef;
-  const { index, query } = getContext('scrollContent');
+  export let activeIndex = 0;
 
   // Holds key/values for all open sections
   let openSections = {};
@@ -12,7 +11,7 @@
   let preventReset = false;
 
   // Allow again reactive opening whenever user scrolled past a section
-  $: if ($index !== undefined) {
+  $: if (activeIndex !== undefined) {
     preventReset = false;
   }
 
@@ -88,7 +87,7 @@
         title: section.props?.title ?? section.title,
         slug: section.props?.slug ?? section.slug,
         index: acc.counter,
-        isActive: $index === acc.counter++,
+        isActive: activeIndex === acc.counter++,
         hasContent: Boolean(section.content) || children.some(({ props }) => Boolean(props.content)),
         sections: children.map((s) => ({
           title: s.props?.titleShort ?? s.props?.title,
@@ -96,7 +95,7 @@
           index: acc.counter,
           // Highlighting subsections doesn't work when creating the toc dynamically so we
           // only set isActive and increase counter on main sections
-          isActive: !dynamicNavSections && $index === acc.counter++,
+          isActive: !dynamicNavSections && activeIndex === acc.counter++,
         })),
       });
       return acc;
@@ -106,9 +105,9 @@
 
   // Whenever user scrolls past major section, we update the open sections to only
   // have the one open that is currently in view
-  $: isMajorSection = navSections.find((s) => s.index === $index);
+  $: isMajorSection = navSections.find((s) => s.index === activeIndex);
   $: if (!preventReset && isMajorSection) {
-    openSections = { [$index]: true };
+    openSections = { [activeIndex]: true };
   }
 
   // Final sections take into account whether a child section is active and whether
@@ -131,7 +130,7 @@
 </script>
 
 <nav class="md:flex-col gap-10 hidden md:flex">
-  <ul data-index={$index}>
+  <ul data-index={activeIndex}>
     {#each processedSections as { title, slug, isActive, index, isOpen, sections, hasContent }}
       {#if hasContent}
         <li class="py-2 border-b border-contour-weakest pr-1 last:border-b-0">

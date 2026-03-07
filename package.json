@@ -46,7 +46,6 @@
     "@mapbox/mapbox-gl-sync-move": "^0.3.1",
     "@popperjs/core": "^2.11.6",
     "@rgossiaux/svelte-headlessui": "^2.0.0",
-    "@sveltejs/svelte-scroller": "^2.0.7",
     "@sveltejs/svelte-virtual-list": "^3.0.1",
     "@turf/bbox": "^6.5.0",
     "@turf/centroid": "^6.5.0",

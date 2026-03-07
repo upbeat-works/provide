@@ -11,8 +11,6 @@
   import THEME from '$styles/theme-store.js';
   import { LABEL_SCENARIOS_TIMELINES, LABEL_SCENARIOS_TIMEFRAMES, MAX_NUMBER_SELECTABLE_SCENARIOS, MEAN_TEMPERATURE_UID, EMISSIONS_UID, PATH_DOCUMENTATION } from '$config';
   import DefinitionItem from '$lib/helper/chart-description/DefinitionItem.svelte';
-  import { getContext } from 'svelte';
-  const { query } = getContext('scrollContent');
 
   export let scenarios;
   export let selectableTimeframes;
@@ -40,7 +38,7 @@
   }
 </script>
 
-<div class="flex flex-col gap-y-10 mt-10 pt-10 {query}">
+<div class="flex flex-col gap-y-10 mt-10 pt-10">
   <div>
     <SubsectionHeadline title={LABEL_SCENARIOS_TIMEFRAMES} subtitle="2100 for the majority of climate impacts, 2300 for longer term impacts (glaciers and oceans)." />
     <PillGroup bind:currentUid={selectedTimeframe} options={selectableTimeframes} />

@@ -1,12 +1,11 @@
 <script>
-  import { getContext } from 'svelte';
   export let sections = [];
-  const { index } = getContext('scrollContent');
+  export let activeIndex = 0;
   // role="link" -> https://www.scottohara.me/blog/2021/05/28/disabled-links.html
 </script>
 
 {#each sections.filter(({ slug }) => slug) as { slug, title, description, disabled }, i}
-  {@const isActive = $index === i}
+  {@const isActive = activeIndex === i}
   <a
     class:cursor-not-allowed={disabled}
     class:opacity-50={disabled}

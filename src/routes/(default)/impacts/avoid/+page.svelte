@@ -3,7 +3,6 @@
   import StudyLocations from './StudyLocations/StudyLocations.svelte';
   import UnAvoidableRisk from '../UnavoidableRisk/UnavoidableRisk.svelte';
   import Reference from './Reference/Reference.svelte';
-  import ScrollContent from '$lib/helper/ScrollContent/ScrollContent.svelte';
   import SimpleNav from '$lib/helper/ScrollContent/SimpleNav.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, SELECTABLE_SCENARIOS } from '$stores/state';
   import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
@@ -58,22 +57,35 @@
     //   },
     // },
   ];
+
+  let activeIndex = 0;
+
+  function observeSection(node, index) {
+    const io = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) activeIndex = index; },
+      { threshold: 0.1 }
+    );
+    io.observe(node);
+    return { destroy: () => io.disconnect() };
+  }
 </script>
 
-<ScrollContent let:query {sections} isFullWidth={true} hasActiveScetionBar={true}>
-  <aside slot="navigation" class="flex flex-col gap-4 pb-24">
+<div class="grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 gap-10 md:gap-6 lg:gap-10 mx-auto max-w-7xl px-2 sm:px-6">
+  <aside class="pt-8 flex flex-col gap-4 pb-24 md:border-r border-contour-weakest sticky top-[174px] h-fit">
     <div class="mr-2 mb-2 border-b border-contour-weakest pb-6 flex flex-col gap-y-6 pr-6 lg:pr-12">
       <Reference store={REFERENCE_STORE} />
       <SelectionCertaintyLevels />
       <SelectionStudyLocations />
     </div>
-    <SimpleNav {sections} />
+    <SimpleNav {sections} {activeIndex} />
   </aside>
-  {#each sections as section}
-    {#if !section.disabled}
-      <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 {query} border-b pb-14 border-contour-weaker last:border-none">
-        <svelte:component this={section.component} {...section.props} />
-      </section>
-    {/if}
-  {/each}
-</ScrollContent>
+  <div class="md:pt-8">
+    {#each sections as section, i}
+      {#if !section.disabled}
+        <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 border-b pb-14 border-contour-weaker last:border-none">
+          <svelte:component this={section.component} {...section.props} />
+        </section>
+      {/if}
+    {/each}
+  </div>
+</div>
