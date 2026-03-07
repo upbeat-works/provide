@@ -26,7 +26,7 @@
 {#key sections}
   <div class="grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] lg:grid-cols-[280px_1fr] md:grid-rows-1 gap-10 md:gap-6 lg:gap-10 mx-auto max-w-7xl px-2 sm:px-6">
     <div class="pt-8 {navContainerClass} md:border-r border-contour-weakest" class:pr-10={!hasActiveScetionBar}>
-      <div class="sticky top-8 z-[3]">
+      <div class="sticky top-[174px]">
         <slot name="navigation" />
       </div>
     </div>

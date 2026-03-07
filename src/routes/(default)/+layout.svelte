@@ -28,7 +28,7 @@
 <ThemeProvider theme="light">
   <div class="grid grid-rows-[auto_1fr_auto] h-screen flex-col">
     <Header />
-    <div class="overflow-y-auto">
+    <div class="relative overflow-y-auto">
       <main>
         <slot />
       </main>

@@ -4,7 +4,7 @@
   export let description = undefined;
 </script>
 
-<div class="bg-theme-700 border-b border-dashed border-sky-600 overflow-hidden relative">
+<div class="bg-theme-700 overflow-hidden relative">
   <svg class="absolute inset-0 w-full h-full opacity-[0.18] pointer-events-none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
     <filter id="page-hero-grain">
       <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch" />
