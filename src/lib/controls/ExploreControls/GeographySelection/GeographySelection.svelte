@@ -1,6 +1,6 @@
 <script>
   import Geographies from './Geographies.svelte';
-  import { CURRENT_GEOGRAPHY_LABEL, AVAILABLE_GEOGRAPHY_TYPES, IS_EMPTY_GEOGRAPHY, CURRENT_GEOGRAPHY_UID, CURRENT_GEOGRAPHY, CURRENT_GEOGRAPHY_TYPE } from '$stores/state.js';
+  import { CURRENT_GEOGRAPHY_LABEL, AVAILABLE_GEOGRAPHY_TYPES, IS_EMPTY_GEOGRAPHY, CURRENT_GEOGRAPHY_UID, CURRENT_GEOGRAPHY, CURRENT_GEOGRAPHY_TYPE, SELECTION_MODE, AVAILABLE_GEOGRAPHIES_FOR_INDICATOR } from '$stores/state.js';
   import { END_GEO_SHAPE } from '$src/config.js';
   import { writable } from 'svelte/store';
   import { fetchData } from '$lib/api/api';
@@ -19,8 +19,11 @@
   let hoveredItem;
   let currentFilterUid = $CURRENT_GEOGRAPHY_TYPE?.uid; // This stores the currently displayed geography type
 
+  // In indicator-first mode, use geographies filtered by the selected indicator; otherwise show all
+  $: geographiesSource = $SELECTION_MODE === 'indicator' ? $AVAILABLE_GEOGRAPHIES_FOR_INDICATOR : $GEOGRAPHIES;
+
   // currentFilterUid gets updated by the Content component
-  $: selectableGeographies = $GEOGRAPHIES[currentFilterUid] ?? [];
+  $: selectableGeographies = geographiesSource[currentFilterUid] ?? [];
 
   $: currentFilterUid &&
     fetchData(GEO_SHAPE_DATA, [

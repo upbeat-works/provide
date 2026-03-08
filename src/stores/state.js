@@ -35,6 +35,13 @@ export const CURRENT_PAGE = writable('/');
 export const IS_AVOID_PAGE = derived(CURRENT_PAGE, ($currentPage) => $currentPage === PATH_AVOID);
 
 /*
+ * SELECTION MODE
+ * Controls whether the user is selecting geography-first or indicator-first.
+ * 'geography' = geography-first (default), 'indicator' = indicator-first
+ */
+export const SELECTION_MODE = writable('geography');
+
+/*
  * GEOGRAPHY STATE
  */
 
@@ -178,7 +185,12 @@ export const AVAILABLE_GEOGOGRAPHIES = derived([GEOGRAPHIES, CURRENT_GEOGRAPHY_T
  * Derived store that holds a list of available indicators based on the geography type
  * @type {Readable<Object[]>}
  */
-export const AVAILABLE_INDICATORS = derived([INDICATORS, CURRENT_GEOGRAPHY_TYPE, CURRENT_GEOGRAPHY_UID, SECTORS], ([$indicators, $type, $geography, $sectors]) => {
+export const AVAILABLE_INDICATORS = derived([INDICATORS, CURRENT_GEOGRAPHY_TYPE, CURRENT_GEOGRAPHY_UID, SECTORS, SELECTION_MODE], ([$indicators, $type, $geography, $sectors, $mode]) => {
+  // In indicator-first mode, show all indicators without geography filtering
+  if ($mode === 'indicator') {
+    return [...$indicators].sort((a, b) => a.label.localeCompare(b.label));
+  }
+
   // Geography types have specific indicators available
   const listOfAvailableIndicatorsForThisGeographyType = get($type, 'availableIndicators', []);
   // Filter the list of indicators if they are included for the current geography type
@@ -197,19 +209,24 @@ export const AVAILABLE_INDICATORS = derived([INDICATORS, CURRENT_GEOGRAPHY_TYPE,
   return indicators.sort((a, b) => a.label.localeCompare(b.label));
 });
 
-export const SELECTABLE_SECTORS = derived([SECTORS, AVAILABLE_INDICATORS, CURRENT_GEOGRAPHY_UID], ([$sectors, $indicators, $geography]) => {
+export const SELECTABLE_SECTORS = derived([SECTORS, AVAILABLE_INDICATORS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE], ([$sectors, $indicators, $geography, $mode]) => {
   return $sectors.map(({ uid, label, availableGeographies }) => {
     // Initialize indicators array to hold filtered indicator objects later
     let indicators = [];
 
-    // Check if 'availableGeographies' is not an array, is empty, or does not include the current geography ('$geography')
-    if (!Array.isArray(availableGeographies) || !availableGeographies.length || !availableGeographies.includes($geography)) {
-      // If any of the conditions above are true, keep the 'indicators' array empty
-      indicators = [];
-    } else {
-      // If 'availableGeographies' is a valid array, is not empty, and includes the current geography
-      // Filter the '$indicators' array to find indicators that have a sector matching the given 'uid'
+    if ($mode === 'indicator') {
+      // In indicator-first mode, show all sectors with their indicators (no geography filter)
       indicators = $indicators.filter(({ sector: sectorUID }) => sectorUID === uid);
+    } else {
+      // Check if 'availableGeographies' is not an array, is empty, or does not include the current geography ('$geography')
+      if (!Array.isArray(availableGeographies) || !availableGeographies.length || !availableGeographies.includes($geography)) {
+        // If any of the conditions above are true, keep the 'indicators' array empty
+        indicators = [];
+      } else {
+        // If 'availableGeographies' is a valid array, is not empty, and includes the current geography
+        // Filter the '$indicators' array to find indicators that have a sector matching the given 'uid'
+        indicators = $indicators.filter(({ sector: sectorUID }) => sectorUID === uid);
+      }
     }
 
     // NOTE: This only filters the list of selectable sectors. The indicator is still selectable.
@@ -226,6 +243,45 @@ export const SELECTABLE_SECTORS = derived([SECTORS, AVAILABLE_INDICATORS, CURREN
 });
 
 export const CURRENT_INDICATOR_UID = writable(getLocalStorage(LOCALSTORE_INDICATOR, undefined));
+
+/**
+ * Derived store that filters GEOGRAPHIES to only those compatible with the currently selected indicator.
+ * Used in indicator-first mode to restrict the geography selector.
+ * Returns the same GEOGRAPHIES structure (object keyed by geography type uid) but filtered.
+ * @type {Readable<Object>}
+ */
+export const AVAILABLE_GEOGRAPHIES_FOR_INDICATOR = derived(
+  [INDICATORS, CURRENT_INDICATOR_UID, SECTORS, GEOGRAPHY_TYPES, GEOGRAPHIES],
+  ([$indicators, $indicatorUid, $sectors, $geographyTypes, $geographies]) => {
+    if (!$indicatorUid) return $geographies; // No filter when no indicator selected
+
+    const indicator = $indicators.find(({ uid }) => uid === $indicatorUid);
+    if (!indicator) return $geographies;
+
+    const sector = $sectors.find(({ uid }) => uid === indicator.sector);
+    const result = {};
+
+    $geographyTypes.forEach(({ uid: typeUid, availableIndicators }) => {
+      // Geography type must support this indicator
+      if (!availableIndicators.includes($indicatorUid)) {
+        result[typeUid] = [];
+        return;
+      }
+
+      const geosOfType = $geographies[typeUid] ?? [];
+      result[typeUid] = geosOfType.filter(({ uid: geoUid }) => {
+        const lower = geoUid.toLowerCase();
+        const okForIndicator = !indicator.availableGeographies?.length ||
+          indicator.availableGeographies.includes(lower);
+        const okForSector = !sector?.availableGeographies?.length ||
+          sector.availableGeographies.map(d => d.toLowerCase()).includes(lower);
+        return okForIndicator && okForSector;
+      });
+    });
+
+    return result;
+  }
+);
 
 export const IS_EMPTY_INDICATOR = derived(CURRENT_INDICATOR_UID, ($uid) => {
   return !Boolean($uid);

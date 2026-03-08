@@ -3,10 +3,14 @@
   import IndicatorSelection from './IndicatorSelection/IndicatorSelection.svelte';
   import ControlTabs from './ControlTabs.svelte';
   import SwapButton from './SwapButton.svelte';
+  import { SELECTION_MODE } from '$stores/state.js';
 
   export let showStepLabels = false;
 
-  let mode = 'geography';
+  let mode = $SELECTION_MODE;
+
+  // Sync local mode variable to the store so other components can react to it
+  $: SELECTION_MODE.set(mode);
 
   $: geographyStep = mode === 'geography' ? 1 : 2;
   $: indicatorStep = mode === 'geography' ? 2 : 1;
