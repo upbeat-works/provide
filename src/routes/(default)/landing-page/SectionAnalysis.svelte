@@ -110,7 +110,7 @@
 			>
 				{#each cards as card}
 					<a
-						href={`/${PATH_EXPLORE}/${card.path}`}
+						href={card.path}
 						class="flex-shrink-0 w-[85%] lg:w-[600px] bg-white hover:bg-surface-weaker transition-colors group"
 						style="scroll-snap-align: start;"
 					>

@@ -12,6 +12,8 @@
   import SelectionCertaintyLevels from './Selection/CertaintyLevels/CertaintyLevels.svelte';
   import SelectionStudyLocations from './Selection/StudyLocations/StudyLocations.svelte';
   import { writable } from 'svelte/store';
+  import PageHero from '$lib/site/PageHero.svelte';
+  import { SelectionControls } from '$lib/controls/ExploreControls';
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
 
@@ -70,22 +72,28 @@
   }
 </script>
 
-<div class="grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 gap-10 md:gap-6 lg:gap-10 mx-auto max-w-7xl px-2 sm:px-6">
-  <aside class="pt-8 flex flex-col gap-4 pb-24 md:border-r border-contour-weakest sticky top-[174px] h-fit">
-    <div class="mr-2 mb-2 border-b border-contour-weakest pb-6 flex flex-col gap-y-6 pr-6 lg:pr-12">
+<PageHero className="bg-petrol-900" label="PROVIDE" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid." />
+
+<SelectionControls sticky />
+
+<div class="relative grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 mx-auto max-w-7xl">
+  <nav class="pl-6 py-6 flex flex-col gap-4 md:sticky md:top-[129px] h-fit">
+    <SimpleNav {sections} {activeIndex} />
+  </nav>
+  <div class="md:border-l border-contour-weakest">
+    <div class="flex md:sticky md:top-[129px] z-20 bg-white border-b border-contour-weakest">
       <Reference store={REFERENCE_STORE} />
       <SelectionCertaintyLevels />
       <SelectionStudyLocations />
     </div>
-    <SimpleNav {sections} {activeIndex} />
-  </aside>
-  <div class="md:pt-8">
-    {#each sections as section, i}
-      {#if !section.disabled}
-        <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 border-b pb-14 border-contour-weaker last:border-none">
-          <svelte:component this={section.component} {...section.props} />
-        </section>
-      {/if}
-    {/each}
+    <div class="relative px-6 py-12">
+      {#each sections as section, i}
+        {#if !section.disabled}
+          <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 border-b pb-14 border-contour-weaker last:border-none">
+            <svelte:component this={section.component} {...section.props} />
+          </section>
+        {/if}
+      {/each}
+    </div>
   </div>
 </div>

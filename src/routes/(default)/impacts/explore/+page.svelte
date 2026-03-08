@@ -7,6 +7,8 @@
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
   import FallbackMessage from '$lib/helper/FallbackMessage.svelte';
   import { IndicatorParameters } from '$lib/controls/ExploreControls';
+  import PageHero from '$lib/site/PageHero.svelte';
+  import { SelectionControls } from '$lib/controls/ExploreControls';
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE;
 
@@ -55,6 +57,10 @@
     return { destroy: () => io.disconnect() };
   }
 </script>
+
+<PageHero label="EXPLORER" title="Future impacts" description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided." />
+
+<SelectionControls sticky />
 
 <div class="relative grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 mx-auto max-w-7xl">
   <nav class="pl-6 py-6 flex flex-col gap-4 md:sticky md:top-[129px] h-fit">
