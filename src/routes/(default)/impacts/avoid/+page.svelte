@@ -14,11 +14,11 @@
   import { writable } from 'svelte/store';
   import PageHero from '$lib/site/PageHero.svelte';
   import { SelectionControls } from '$lib/controls/ExploreControls';
+  import ImpactLevel from './Reference/ImpactLevel.svelte';
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
 
   let THRESHOLD_LEVELS_DATA = writable({});
-  let REFERENCE_STORE = writable({});
 
   $: currentScenarios = SCENARIOS_IN_AVOIDING_IMPACTS.map((uid) => $SELECTABLE_SCENARIOS.find((scenario) => scenario.uid === uid))
     .filter(Boolean)
@@ -82,7 +82,7 @@
   </nav>
   <div class="md:border-l border-contour-weakest">
     <div class="flex md:sticky md:top-[129px] z-20 bg-white border-b border-contour-weakest">
-      <Reference store={REFERENCE_STORE} />
+      <ImpactLevel />
       <SelectionCertaintyLevels />
       <SelectionStudyLocations />
     </div>

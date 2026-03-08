@@ -6,7 +6,6 @@
   import { END_AVOIDING_REFERENCE, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_STUDY_LOCATION } from '$config';
   import { fetchData } from '$lib/api/api';
   import Text from './Text.svelte';
-  import ImpactLevel from './ImpactLevel.svelte';
   import Message from '$lib/helper/Message.svelte';
   import { mean } from 'd3-array';
   import { round, floor, ceil } from 'lodash-es';
@@ -80,7 +79,6 @@
       warningBackground={false}
     >
       <Text {data} />
-      <ImpactLevel {data} />
 
       <LoadingPlaceholder slot="placeholder" />
     </LoadingWrapper>
