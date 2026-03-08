@@ -56,13 +56,13 @@
   }
 </script>
 
-<div class="grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 gap-10 md:gap-6 lg:gap-10 mx-auto max-w-7xl px-2 sm:px-6">
-  <nav class="pt-8 flex flex-col gap-4 md:border-r border-contour-weakest sticky top-0 h-fit">
+<div class="grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 mx-auto max-w-7xl">
+  <nav class="pt-8 flex flex-col gap-4 md:border-r border-contour-weakest md:sticky md:top-[144px] h-fit">
     <ScenarioSelection />
     <SimpleNav {sections} {activeIndex} />
   </nav>
-  <div class="md:pt-8">
-    <div class="sticky top-0">
+  <div>
+    <div class="md:sticky md:top-[144px] z-30 bg-white">
       <IndicatorParameters/>
     </div>
     {#each sections as section, i}

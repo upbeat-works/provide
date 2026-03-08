@@ -28,10 +28,10 @@
 <ContentPageIntro {tag} {subNavigationLabel} {backLink} {title} {intro} {subNavigation} {isCaseStudy} />
 
 <div class="grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 gap-10 md:gap-6 lg:gap-10 mx-auto max-w-7xl px-2 sm:px-6">
-  <div class="pt-8 md:border-r border-contour-weakest sticky top-0 h-fit">
+  <div class="pt-8 md:pr-10 md:border-r border-contour-weakest sticky top-0 h-fit">
     <NestedNav contentRef={dynamicNavigation && contentRef} {sections} {activeIndex} />
   </div>
-  <div class="md:pt-8">
+  <div class="md:pt-8 ">
     <div bind:this={contentRef}>
       {#each sections as section, i}
         <section use:observeSection={i} class="mt-10 pt-10 border-contour-weakest first:border-0 first:mt-0 last:mb-12" class:border-t={section.title && !section.omitBorder} class:pt-12={section.title}>
