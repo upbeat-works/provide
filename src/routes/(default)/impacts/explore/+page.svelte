@@ -65,12 +65,14 @@
     <div class="md:sticky md:top-[144px] z-30 bg-white">
       <IndicatorParameters/>
     </div>
-    {#each sections as section, i}
-      {#if !section.disabled}
-        <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 pb-14 border-contour-weakest border-b last:border-none">
-          <svelte:component this={section.component} {...section.props} />
-        </section>
-      {/if}
-    {/each}
+    <div class="px-6 py-12">
+      {#each sections as section, i}
+        {#if !section.disabled}
+          <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 pb-14 border-contour-weakest border-b last:border-none">
+            <svelte:component this={section.component} {...section.props} />
+          </section>
+        {/if}
+      {/each}
+    </div>
   </div>
 </div>
