@@ -30,15 +30,15 @@
   class:md:grid-cols-[1fr_auto_1fr]={true}
   class:grid-cols-1={true}
 >
-  <div class="order-1" class:md:order-1={mode === 'geography'} class:md:order-3={mode === 'indicator'}>
-    <GeographySelection label={geographyLabel} />
+  <div class:order-1={mode === 'geography'} class:order-3={mode === 'indicator'} class:md:order-1={mode === 'geography'} class:md:order-3={mode === 'indicator'}>
+    <GeographySelection label={geographyLabel} popperOptions={{ placement: mode === 'geography' ? 'bottom-start' : 'bottom-end' }} />
   </div>
 
   <div class="hidden md:flex items-center justify-center order-2 pt-8">
     <SwapButton on:click={toggleMode} />
   </div>
 
-  <div class="order-3" class:md:order-3={mode === 'geography'} class:md:order-1={mode === 'indicator'}>
-    <IndicatorSelection label={indicatorLabel} />
+  <div class:order-3={mode === 'geography'} class:order-1={mode === 'indicator'} class:md:order-3={mode === 'geography'} class:md:order-1={mode === 'indicator'}>
+    <IndicatorSelection label={indicatorLabel} popperOptions={{ placement: mode === 'geography' ? 'bottom-end' : 'bottom-start' }} />
   </div>
 </div>

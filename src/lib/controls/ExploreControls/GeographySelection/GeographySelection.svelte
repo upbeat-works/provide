@@ -11,6 +11,7 @@
   import LoadingWrapper from '$lib/helper/LoadingWrapper.svelte';
 
   export let label = 'Geography';
+  export let popperOptions = {};
 
   let GEO_SHAPE_DATA = writable({});
 
@@ -77,6 +78,7 @@
   panelClass="w-screen-p max-w-4xl"
   buttonClass="border-theme-base/20 border aria-expanded:border-theme-base/60"
   placeholder={$IS_EMPTY_GEOGRAPHY ? 'Select a geography' : undefined}
+  {popperOptions}
 >
   <Content filters={geographyTypes} filterKey="geographyType" filterLabel="Pick a location" currentUid={$CURRENT_GEOGRAPHY_UID} items={selectableGeographies} bind:currentFilterUid allowWrap={true}>
     <div slot="items" let:items let:currentFilterUid class="max-w-full grid grid-cols-1 md:grid-cols-[1.5fr_3fr] lg:grid-cols-[1.5fr_3fr]">

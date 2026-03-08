@@ -16,6 +16,8 @@
   /** @type {string|undefined} Holds a disabled text that is conditionally displayed. This can happen if the user needs to select another option first */
   export let disabled = undefined;
   export let category = undefined;
+  /** @type {Object} Popper.js options to merge with defaults */
+  export let popperOptions = {};
 
   $: isDisabled = Boolean(disabled);
 
@@ -32,10 +34,17 @@
 
   const [popperRef, popperContent] = createPopperActions();
 
-  $: popperOptions = {
+  const defaultModifiers = [
+    { name: 'offset', options: { offset: [0, 10] } },
+    { name: 'flip', enabled: true },
+    { name: 'preventOverflow', options: { padding: 8 } },
+  ];
+
+  $: resolvedPopperOptions = {
     placement: panelPlacement,
     strategy: 'fixed',
-    modifiers: [{ name: 'offset', options: { offset: [0, 10] } }],
+    ...popperOptions,
+    modifiers: [...defaultModifiers, ...(popperOptions.modifiers ?? [])],
   };
 </script>
 
@@ -70,7 +79,7 @@
     <ExpandIcon class="min-w-[20px] grow-1 stroke-current" isOpen={open} />
   </PopoverButton>
 
-  <PopoverPanel use={[[popperContent, popperOptions]]} class={`${panelClass} bg-surface-base rounded overflow-hidden border-contour-weakest border shadow-xl z-50 relative`} let:open>
+  <PopoverPanel use={[[popperContent, resolvedPopperOptions]]} class={`${panelClass} bg-surface-base rounded overflow-hidden border-contour-weakest border shadow-xl z-50 relative`} let:open>
     <slot />
   </PopoverPanel>
 </Popover>

@@ -5,6 +5,7 @@
   import { derived } from 'svelte/store';
 
   export let label = 'Indicator';
+  export let popperOptions = {};
 
   let currentFilterUid;
 
@@ -25,6 +26,7 @@
   warning={!$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
   disabled={$DISABLED}
   placeholder={$IS_EMPTY_INDICATOR ? 'Select an indicator' : undefined}
+  {popperOptions}
 >
   <Content
     filters={$SELECTABLE_SECTORS}
