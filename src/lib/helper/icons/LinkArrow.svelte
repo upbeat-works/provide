@@ -1,12 +1,3 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  class="icon icon-tabler icon-tabler-arrow-narrow-right"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  stroke-width="2"
-  stroke="currentColor"
-  fill="none"
-  stroke-linecap="round"
-  stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M5 12l14 0" /><path d="M15 16l4 -4" /><path d="M15 8l4 4" /></svg
->
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M9.9987 3.33301L8.8237 4.50801L13.4737 9.16634H3.33203V10.833H13.4737L8.8237 15.4913L9.9987 16.6663L16.6654 9.99967L9.9987 3.33301Z" fill="currentColor"/>
+</svg>

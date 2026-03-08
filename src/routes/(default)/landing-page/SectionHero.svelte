@@ -1,6 +1,7 @@
 <script>
-  import { PATH_EXPLORE } from '$config';
+  import { PATH_IMPACT, PATH_EXPLORE } from '$config';
   import LinkArrow from '$lib/helper/icons/LinkArrow.svelte';
+  import Button from '$lib/controls/Button/Button.svelte';
   import { goto } from '$app/navigation';
 </script>
 
@@ -26,13 +27,10 @@
       <p class="text-lg text-white mb-10 leading-relaxed max-w-sm font-light">
         Compare scenarios, explore EU risks, and export evidence for your reports.
       </p>
-      <button
-        on:click={() => goto(`/${PATH_EXPLORE}`)}
-        class="inline-flex items-center gap-3 bg-theme-800 text-white font-bold px-4 py-3 text-md rounded-sm hover:bg-theme-900/80 transition-colors"
-      >
+      <Button on:click={() => goto(`/${PATH_IMPACT}/${PATH_EXPLORE}`)}>
         Explore data
         <LinkArrow />
-      </button>
+      </Button>
     </div>
 
     <!-- Right: illustration -->
