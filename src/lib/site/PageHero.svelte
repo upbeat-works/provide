@@ -12,7 +12,7 @@
     </filter>
     <rect width="100%" height="100%" filter="url(#page-hero-grain)" />
   </svg>
-  <div class="relative z-10 mx-auto max-w-6xl px-2 sm:px-6 pb-14 sm:pb-20 pt-6 sm:pt-16">
+  <div class="relative mx-auto max-w-6xl px-2 sm:px-6 pb-14 sm:pb-20 pt-6 sm:pt-16">
     {#if label}
       <p class="text-xs uppercase tracking-widest font-bold text-sky-300 mb-3">{label}</p>
     {/if}

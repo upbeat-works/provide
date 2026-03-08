@@ -1,6 +1,6 @@
 <script>
 	import { PATH_ADAPTATION } from '$config';
-	import CaseStudiesCarousel from '$lib/components/CaseStudiesCarousel/CaseStudiesCarousel.svelte';
+	import CaseStudiesCarousel from './components/CaseStudiesCarousel/CaseStudiesCarousel.svelte';
 
 	export let caseStudies = [];
 </script>

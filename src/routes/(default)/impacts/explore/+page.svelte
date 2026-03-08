@@ -56,16 +56,16 @@
   }
 </script>
 
-<div class="grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 mx-auto max-w-7xl">
-  <nav class="pt-8 flex flex-col gap-4 md:border-r border-contour-weakest md:sticky md:top-[144px] h-fit">
-    <ScenarioSelection />
+<div class="relative grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 mx-auto max-w-7xl">
+  <nav class="pl-6 py-6 flex flex-col gap-4 md:sticky md:top-[129px] h-fit">
     <SimpleNav {sections} {activeIndex} />
   </nav>
-  <div>
-    <div class="md:sticky md:top-[144px] z-30 bg-white">
+  <div class="md:border-l border-contour-weakest">
+    <div class="flex md:sticky md:top-[129px] z-20 bg-white border-b border-contour-weakest">
+      <ScenarioSelection />
       <IndicatorParameters/>
     </div>
-    <div class="px-6 py-12">
+    <div class="relative px-6 py-12">
       {#each sections as section, i}
         {#if !section.disabled}
           <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 pb-14 border-contour-weakest border-b last:border-none">

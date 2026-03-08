@@ -58,17 +58,17 @@
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-<div class="relative md:pr-6 lg:pr-10 max-w-xs">
+<div class="border-r border-contour-weakest px-6">
   <PopoverSelect
     label="Scenario"
     {buttonLabel}
     panelClass="w-screen-p max-w-4xl"
-    buttonClass={`border border-contour-weakest aria-expanded:border-contour-weaker `}
+    labelClass="mb-0 p-0 text-text-stronger uppercase text-xs leading-tight"
+    buttonClass="text-sm p-0"
+    class="flex flex-col gap-2 h-full justify-center"
     warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `Unavailable scenario${multipleScenariosSelected ? 's' : ''} selected` : undefined}
     placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
     size="md"
-    panelPlacement={windowWidth > 1200 ? 'right-start' : 'bottom-start'}
-    class=""
     disabled={$DISABLED}
   >
     <Content

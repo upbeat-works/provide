@@ -17,5 +17,5 @@
       {scenario.label}
     </label>
   {/each}
-  <a href={`/${PATH_EXPLORE}/${PATH_IMPACT}`}>View in Explorer</a>
+  <a href={`/${PATH_IMPACT}/${PATH_EXPLORE}`}>View in Explorer</a>
 </fieldset>

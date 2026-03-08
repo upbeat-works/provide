@@ -4,7 +4,7 @@
 
 	const cards = [
 		{
-			path: PATH_AVOID,
+			path: `${PATH_IMPACT}/${PATH_AVOID}`,
 			image: '/img/emission-scenarios.png',
 			imageAlt: 'Chart showing compatible scenarios and impact levels',
 			description:
@@ -14,7 +14,7 @@
 			dataSource: 'CMIP6'
 		},
 		{
-			path: PATH_IMPACT,
+			path: `${PATH_IMPACT}/${PATH_EXPLORE}`,
 			image: '/img/impacts.png',
 			imageAlt: 'Map showing future climate impacts across geographies',
 			description:

@@ -18,10 +18,10 @@
 
 <PopoverSelect
   {label}
-  size="md"
   buttonLabel={$CURRENT_INDICATOR?.label}
-  buttonClass="border-theme-base/20 border rounded-sm"
+  buttonClass="border-theme-base/20 border rounded-sm p-3"
   panelClass="w-screen-p max-w-3xl"
+  labelClass="mb-2"
   warning={!$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
   disabled={$DISABLED}
   placeholder={$IS_EMPTY_INDICATOR ? 'Select an indicator' : undefined}

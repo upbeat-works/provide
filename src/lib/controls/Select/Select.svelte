@@ -39,7 +39,7 @@
       {/if}
     </div>
     <select
-      class="py-1.5 px-2 text-sm font-bold aria-disabled:cursor-not-allowed h-[24px] {selectClass}"
+      class="text-sm font-bold aria-disabled:cursor-not-allowed h-[24px] cursor-pointer {selectClass}"
       class:text-theme-weaker={disabled}
       aria-disabled={disabled}
       {disabled}

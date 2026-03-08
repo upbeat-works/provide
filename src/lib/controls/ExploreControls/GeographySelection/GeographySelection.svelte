@@ -71,11 +71,11 @@
 
 <PopoverSelect
   {label}
-  size="md"
   category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
   buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
   panelClass="w-screen-p max-w-4xl"
-  buttonClass="border-theme-base/20 border aria-expanded:border-theme-base/60 rounded-sm"
+  labelClass="mb-2"
+  buttonClass="border-theme-base/20 border aria-expanded:border-theme-base/60 rounded-sm p-3"
   placeholder={$IS_EMPTY_GEOGRAPHY ? 'Select a geography' : undefined}
 >
   <Content filters={geographyTypes} filterKey="geographyType" filterLabel="Pick a location" currentUid={$CURRENT_GEOGRAPHY_UID} items={selectableGeographies} bind:currentFilterUid allowWrap={true}>

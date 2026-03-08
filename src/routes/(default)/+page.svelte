@@ -6,7 +6,7 @@
   import SectionProject from './landing-page/SectionProject.svelte';
 
   export let data;
-  $: ({ stories, caseStudies, videos } = data);
+  $: ({ stories, caseStudies } = data);
 </script>
 
 <SectionHero {stories} />

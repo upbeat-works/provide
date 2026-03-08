@@ -5,7 +5,6 @@
   import SwapButton from './SwapButton.svelte';
   import { SELECTION_MODE } from '$stores/state.js';
 
-  export let showStepLabels = false;
   export let sticky = false;
 
   let mode = $SELECTION_MODE;
@@ -16,8 +15,8 @@
   $: geographyStep = mode === 'geography' ? 1 : 2;
   $: indicatorStep = mode === 'geography' ? 2 : 1;
 
-  $: geographyLabel = showStepLabels ? `Step ${geographyStep} - Geography` : 'Geography';
-  $: indicatorLabel = showStepLabels ? `Step ${indicatorStep} - Indicator` : 'Indicator';
+  $: geographyLabel = `Step ${geographyStep} - Geography`;
+  $: indicatorLabel = `Step ${indicatorStep} - Indicator`;
 
   function toggleMode() {
     mode = mode === 'geography' ? 'indicator' : 'geography';
@@ -32,7 +31,7 @@
 
 <hr class="border-t border-contour-weakest" />
 
-<div class="bg-slate-50 py-8" class:md:sticky={sticky} class:md:top-0={sticky} class:md:z-40={sticky} class:md:border-b={sticky} class:md:border-contour-weakest={sticky}>
+<div class="bg-slate-50 py-6 z-50" class:md:sticky={sticky} class:md:top-0={sticky} class:md:border-b={sticky} class:md:border-contour-weakest={sticky}>
   <div
     class="grid gap-4 md:gap-6 items-center mx-auto max-w-7xl px-2 sm:px-6"
     class:md:grid-cols-[1fr_auto_1fr]={true}

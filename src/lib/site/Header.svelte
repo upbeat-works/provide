@@ -18,7 +18,7 @@
   import Logo from './Logo.svelte';
 
   const items = [
-    { href: `/${PATH_EXPLORE}/${PATH_IMPACT}`, label: LABEL_EXPLORE },
+    { href: `/${PATH_IMPACT}/${PATH_EXPLORE}`, label: LABEL_EXPLORE },
     { href: `/${PATH_ADAPTATION}`, label: LABEL_ADAPTATION },
     { href: `/${PATH_DOCUMENTATION}`, label: LABEL_DOCUMENTATION },
     { href: `/${PATH_KEY_CONCEPTS}`, label: LABEL_KEY_CONCEPTS },
