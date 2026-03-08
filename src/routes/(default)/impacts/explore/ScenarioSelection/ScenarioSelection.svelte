@@ -58,7 +58,7 @@
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-<div class="border-r border-contour-weakest px-6">
+<div class="border-r border-contour-weakest px-6 py-4">
   <PopoverSelect
     label="Scenario"
     {buttonLabel}
