@@ -29,17 +29,17 @@
 </script>
 
 {#if !$IS_STATIC}
-  <div class="flex gap-2 font-normal transition-colors px-3 {wrapperClass}">
+  <div class="flex gap-2 font-normal transition-colors px-6 {wrapperClass}">
     <div class="flex gap-2 ml-2">
       {#if label}
-        <label class="text-text-stronger uppercase text-xs leading-tight {labelClass}" class:text-theme-weaker={disabled} for={id}>{label}</label>
+        <label class="uppercase text-xs tracking-widest font-bold text-contour-weak {labelClass}" class:text-theme-weaker={disabled} for={id}>{label}</label>
       {/if}
       {#if description?.length}
         <Info {description} />
       {/if}
     </div>
     <select
-      class="py-1.5 px-2 text-sm font-bold aria-disabled:cursor-not-allowed {selectClass}"
+      class="py-1.5 px-2 text-sm font-bold aria-disabled:cursor-not-allowed h-[24px] {selectClass}"
       class:text-theme-weaker={disabled}
       aria-disabled={disabled}
       {disabled}

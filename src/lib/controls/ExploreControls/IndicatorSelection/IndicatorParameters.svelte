@@ -22,7 +22,7 @@
     });
 </script>
 
-<div class="flex gap-4 flex-wrap border-b border-contour-weakest" id="indicator-parameters">
+<div class="flex gap-4 flex-wrap" id="indicator-parameters">
   {#each parametersSorted as parameter}
     <Select
       disabled={!$IS_COMBINATION_AVAILABLE_INDICATOR}
