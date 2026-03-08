@@ -27,8 +27,8 @@
   ];
 </script>
 
-<nav class="bg-sky-700 py-4 sticky top-0 z-50 border-b border-dashed border-sky-600">
-  <div class="mx-auto max-w-7xl px-6 flex justify-between items-center gap-y-4 flex-col lg:flex-row">
+<nav class="bg-sky-700 fixed top-0 left-0 right-0 z-50 border-b border-dashed border-petrol-600">
+  <div class="mx-auto w-full max-w-7xl h-[70px] px-6 flex justify-between items-center">
     <NavLink href="/" class="hover:text-sky-100 transition-colors"><Logo /></NavLink>
     <ul class="flex flex-wrap gap-x-6 lg:gap-x-8">
       {#each items as { label, href }}

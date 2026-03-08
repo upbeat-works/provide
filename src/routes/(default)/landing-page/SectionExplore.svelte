@@ -18,7 +18,7 @@
 </script>
 
 <section class="border-t border-contour-weakest">
-  <header class="grid lg:grid-cols-2 gap-x-16 gap-y-4 mb-12 mt-16 px-8">
+  <header class="grid lg:grid-cols-2 gap-x-16 gap-y-4 mb-12 mt-16 px-6">
     <h2 class="text-3xl font-thin text-theme-800 leading-tight max-w-sm">
       From cities to continents: assess climate risk with the Explorer
     </h2>
@@ -27,7 +27,7 @@
     </p>
   </header>
 
-  <div class="pt-16 pb-12 bg-surface-weaker p-8 border-t border-contour-weakest">
+  <div class="pt-16 pb-12 bg-surface-weaker px-6 border-t border-contour-weakest">
     <SelectionControls showStepLabels size="md" />
 
     <div class="flex justify-end mt-8">
@@ -36,9 +36,9 @@
       on:click={viewResults}
       disabled={!isValidSelection}
       class="inline-flex items-center gap-x-2 px-4 py-2 rounded-sm font-bold text-sm transition-colors"
-      class:bg-theme-800={isValidSelection}
+      class:bg-petrol-800={isValidSelection}
       class:text-surface-base={isValidSelection}
-      class:hover:bg-theme-stronger={isValidSelection}
+      class:hover:bg-petrol-900={isValidSelection}
       class:bg-contour-weakest={!isValidSelection}
       class:text-text-weaker={!isValidSelection}
       class:cursor-not-allowed={!isValidSelection}
