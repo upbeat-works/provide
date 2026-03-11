@@ -27,7 +27,7 @@
     <Select
       disabled={!$IS_COMBINATION_AVAILABLE_INDICATOR}
       {...parameter}
-      wrapperClass={`flex-col border-r border-contour-weakest py-4`}
+      wrapperClass={`flex-col border-r border-contour-weakest py-4 px-6`}
       on:change={handleChange}
     />
   {/each}

@@ -18,7 +18,7 @@
   {#if scenarios.length === 2}
     <SegmentedControl options={displayOptions} bind:value={displayOption} />
   {/if}
-  <Select options={yearOptionsList} bind:value={year} label="Year" />
+  <Select options={yearOptionsList} labelClass="mr-1" bind:value={year} label="Year" />
   {#if showSatelliteOption}
     <Switch bind:value={showSatellite} label="Show satellite" />
   {/if}
