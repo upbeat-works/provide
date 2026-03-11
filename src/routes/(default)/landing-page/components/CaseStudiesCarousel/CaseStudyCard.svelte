@@ -3,6 +3,7 @@
 	import { getStrapiImageAtSize } from '$lib/utils';
 	import LinkArrow from '$lib/helper/icons/LinkArrow.svelte';
 	import CategoryBadge from './CategoryBadge.svelte';
+	import Button from '$lib/controls/Button/Button.svelte';
 
 	export let study;
 
@@ -29,8 +30,12 @@
 	<div class="p-6 flex flex-col gap-2 flex-1">
 		<h3 class="font-normal text-2xl text-theme-800 leading-normal">{study.city.label}</h3>
 		<p class="text-theme-base text-base font-normal leading-normal line-clamp-3 mb-8">{study.abstract}</p>
-		<div class="mt-auto w-10 h-10 bg-surface-weaker flex items-center justify-center text-theme-base group-hover:bg-theme-base group-hover:text-white transition-colors">
-			<LinkArrow />
-		</div>
+		<Button
+			variant="secondary"
+			tabindex="-1"
+			class="mt-auto w-10 h-10 p-0 justify-center pointer-events-none group-hover:bg-theme-base group-hover:text-white"
+		>
+			<span><LinkArrow /></span>
+		</Button>
 	</div>
 </a>
