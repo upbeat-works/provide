@@ -28,7 +28,7 @@
     </p>
   </header>
 
-  <div class="pt-16 pb-12 bg-slate-50 border-t border-contour-weakest">
+  <div class="md:pt-16 pb-6 md:pb-12 bg-slate-50 border-t border-contour-weakest">
     <SelectionControls />
     <div class="flex justify-end mt-8 px-6">
     <Button disabled={!isValidSelection} on:click={viewResults}>
