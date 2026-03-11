@@ -52,16 +52,15 @@
 	}
 </script>
 
-<section class="py-20">
-	<div class="grid md:grid-cols-[2fr_3fr]">
-		<!-- Left: heading and navigation -->
-		<div
-			class="flex flex-col px-8 md:px-12 py-2 md:py-4 border-b md:border-b-0 md:border-r border-contour-weakest border-dashed"
-		>
-			<div class="w-14 h-14 mb-8">
+<section class="max-w-7xl mx-auto">
+	<div class="pl-6 py-12 grid md:grid-cols-[1fr_2fr] gap-x-24 items-start">
+
+		<!-- Left: heading + nav -->
+		<div class="flex flex-col gap-8">
+			<div class="w-14 h-14">
 				<AnalysisTools class="w-full h-full" />
 			</div>
-			<h2 class="text-2xl md:text-3xl text-theme-800 leading-snug mb-8">
+			<h2 class="text-2xl md:text-3xl text-theme-800 leading-snug">
 				<span class="text-theme-base">Go deeper</span> with our tools for advanced analysis
 			</h2>
 			<div class="flex gap-2">
@@ -72,13 +71,7 @@
 					aria-label="Previous card"
 				>
 					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-						<path
-							d="M10 4L6 8L10 12"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
+						<path d="M10 4L6 8L10 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 					</svg>
 				</button>
 				<button
@@ -88,20 +81,14 @@
 					aria-label="Next card"
 				>
 					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-						<path
-							d="M6 4L10 8L6 12"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
+						<path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 					</svg>
 				</button>
 			</div>
 		</div>
 
 		<!-- Right: carousel -->
-		<div class="py-2 md:py-4 pl-8 min-w-0">
+		<div class="py-2 md:py-4 min-w-0 -ml-4 md:pl-0">
 			<div
 				bind:this={scrollContainer}
 				on:scroll={handleScroll}
@@ -114,33 +101,27 @@
 						class="flex-shrink-0 w-[85%] lg:w-[600px] bg-white hover:bg-surface-weaker transition-colors group"
 						style="scroll-snap-align: start;"
 					>
-            <div class="p-4">
-						<figure class="m-0 mb-8 overflow-hidden bg-grass-50 border border-grass-200 rounded-[2px]">
-							<img
-								src={card.image}
-								alt={card.imageAlt}
-								class="w-full aspect-video object-contain group-hover:scale-[1.02] transition-transform duration-300"
-							/>
-						</figure>
+						<div class="p-4">
+							<figure class="m-0 mb-8 overflow-hidden bg-grass-50 border border-grass-200 rounded-[2px]">
+								<img
+									src={card.image}
+									alt={card.imageAlt}
+									class="w-full aspect-video object-contain group-hover:scale-[1.02] transition-transform duration-300"
+								/>
+							</figure>
 							<p class="text-xl font-normal text-theme-800 leading-snug mb-8 lg:max-w-[80%]">{card.description}</p>
-							<hr class="border-theme-200 mb-4 height-[2px]" />
+							<hr class="border-theme-200 mb-4" />
 							<dl class="grid grid-cols-3 gap-4 text-sm mb-8">
 								<div>
-									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">
-										Project
-									</dt>
+									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">Project</dt>
 									<dd class="text-theme-base text-base font-semibold">{card.project}</dd>
 								</div>
 								<div>
-									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">
-										Geography
-									</dt>
+									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">Geography</dt>
 									<dd class="text-theme-base text-base font-semibold">{card.geography}</dd>
 								</div>
 								<div>
-									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">
-										Data source
-									</dt>
+									<dt class="uppercase text-xs tracking-[0.84px] text-theme-800 font-semibold mb-1">Data source</dt>
 									<dd class="text-theme-base text-base font-semibold">{card.dataSource}</dd>
 								</div>
 							</dl>
@@ -149,5 +130,6 @@
 				{/each}
 			</div>
 		</div>
+
 	</div>
 </section>
