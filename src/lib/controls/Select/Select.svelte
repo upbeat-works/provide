@@ -30,7 +30,7 @@
 
 {#if !$IS_STATIC}
   <div class="flex gap-2 font-normal transition-colors px-6 {wrapperClass}">
-    <div class="flex gap-2 ml-2">
+    <div class="flex gap-2">
       {#if label}
         <label class="uppercase text-xs tracking-widest font-bold text-contour-weak {labelClass}" class:text-theme-weaker={disabled} for={id}>{label}</label>
       {/if}
@@ -39,7 +39,7 @@
       {/if}
     </div>
     <select
-      class="text-sm font-bold aria-disabled:cursor-not-allowed h-[24px] cursor-pointer {selectClass}"
+      class="text-sm font-bold aria-disabled:cursor-not-allowed h-[24px] -ml-2 cursor-pointer {selectClass}"
       class:text-theme-weaker={disabled}
       aria-disabled={disabled}
       {disabled}

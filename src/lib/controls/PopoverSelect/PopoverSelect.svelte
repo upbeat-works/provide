@@ -11,7 +11,7 @@
   export let buttonLabel;
   /** @type {String|undefined} Holds a warning text that is conditionally displayed */
   export let warning = undefined;
-  /** @type {String|undefined} Holds a palceholder text that is conditionally displayed */
+  /** @type {String|undefined} Holds a placeholder text that is conditionally displayed */
   export let placeholder = undefined;
   /** @type {string|undefined} Holds a disabled text that is conditionally displayed. This can happen if the user needs to select another option first */
   export let disabled = undefined;
@@ -67,7 +67,7 @@
     <ExpandIcon class="min-w-[20px] grow-1 stroke-current stroke-[1.5]" isOpen={open} />
   </PopoverButton>
 
-  <PopoverPanel use={[[popperContent, resolvedPopperOptions]]} class={`${panelClass} bg-surface-base rounded overflow-hidden border-contour-weakest border shadow-xl relative`} let:open>
+  <PopoverPanel use={[[popperContent, resolvedPopperOptions]]} class={`${panelClass} bg-surface-base rounded overflow-hidden border-contour-weakest border shadow-xl relative z-50`} let:open>
     <slot />
   </PopoverPanel>
 </Popover>
