@@ -38,7 +38,7 @@
 
     <!-- Right: illustration -->
     <div class="flex w-full sm:w-auto sm:flex-shrink-0 justify-center sm:justify-end items-center lg:self-end">
-      <img src="/img/hero-illustration.svg" alt="" role="presentation" class="w-full sm:w-auto sm:max-h-[220px] md:max-h-[380px] lg:max-h-[520px] object-contain drop-shadow-2xl" />
+      <img src="/img/hero-illustration.png" alt="" role="presentation" class="w-full sm:w-auto sm:max-h-[220px] md:max-h-[380px] lg:max-h-[520px] object-contain drop-shadow-2xl" />
     </div>
 
   </div>
