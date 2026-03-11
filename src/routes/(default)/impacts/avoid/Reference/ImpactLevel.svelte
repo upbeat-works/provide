@@ -69,7 +69,7 @@
     label="Level of Impact"
     {options}
     value={selectedValue}
-    wrapperClass="flex-col border-r border-contour-weakest py-4"
+    wrapperClass="flex-col border-r border-contour-weakest py-4 px-6"
     on:change={({ detail }) => {
       selectedValue = detail.value;
       LEVEL_OF_IMPACT.set(detail.value);

@@ -8,6 +8,6 @@
   label="Location"
   options={$STUDY_LOCATIONS}
   value={$SELECTED_STUDY_LOCATION}
-  wrapperClass="flex-col border-r border-contour-weakest py-4"
+  wrapperClass="flex-col border-r border-contour-weakest py-4 px-6"
   on:change={({ detail }) => SELECTED_STUDY_LOCATION.set(detail.value)}
 />

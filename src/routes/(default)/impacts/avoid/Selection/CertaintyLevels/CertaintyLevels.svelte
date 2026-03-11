@@ -14,6 +14,6 @@
   label="Probability"
   {options}
   value={$SELECTED_LIKELIHOOD_LEVEL}
-  wrapperClass="flex-col border-r border-contour-weakest py-4"
+  wrapperClass="flex-col border-r border-contour-weakest py-4 px-6"
   on:change={({ detail }) => SELECTED_LIKELIHOOD_LEVEL.set(detail.value)}
 />

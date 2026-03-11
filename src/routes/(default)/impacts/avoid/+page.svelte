@@ -77,10 +77,10 @@
 <SelectionControls sticky />
 
 <div class="relative grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 mx-auto max-w-7xl">
-  <nav class="pl-6 py-6 flex flex-col gap-4 md:sticky md:top-[129px] h-fit">
+  <nav class="md:pl-6 md:py-6 flex flex-col gap-4 md:sticky md:top-[129px] h-fit">
     <SimpleNav {sections} {activeIndex} />
   </nav>
-  <div class="md:border-l border-contour-weakest">
+  <div class="md:border-l border-contour-weakest border-t md:border-t-0">
     <div class="flex md:sticky md:top-[129px] z-20 bg-white border-b border-contour-weakest">
       <ImpactLevel />
       <SelectionCertaintyLevels />
