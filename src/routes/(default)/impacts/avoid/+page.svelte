@@ -3,7 +3,6 @@
   import StudyLocations from './StudyLocations/StudyLocations.svelte';
   import UnAvoidableRisk from '../UnavoidableRisk/UnavoidableRisk.svelte';
   import Reference from './Reference/Reference.svelte';
-  import ScrollContent from '$lib/helper/ScrollContent/ScrollContent.svelte';
   import SimpleNav from '$lib/helper/ScrollContent/SimpleNav.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, SELECTABLE_SCENARIOS } from '$stores/state';
   import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
@@ -13,11 +12,13 @@
   import SelectionCertaintyLevels from './Selection/CertaintyLevels/CertaintyLevels.svelte';
   import SelectionStudyLocations from './Selection/StudyLocations/StudyLocations.svelte';
   import { writable } from 'svelte/store';
+  import PageHero from '$lib/site/PageHero.svelte';
+  import { SelectionControls } from '$lib/controls/ExploreControls';
+  import ImpactLevel from './Reference/ImpactLevel.svelte';
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
 
   let THRESHOLD_LEVELS_DATA = writable({});
-  let REFERENCE_STORE = writable({});
 
   $: currentScenarios = SCENARIOS_IN_AVOIDING_IMPACTS.map((uid) => $SELECTABLE_SCENARIOS.find((scenario) => scenario.uid === uid))
     .filter(Boolean)
@@ -58,22 +59,41 @@
     //   },
     // },
   ];
+
+  let activeIndex = 0;
+
+  function observeSection(node, index) {
+    const io = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) activeIndex = index; },
+      { threshold: 0.1 }
+    );
+    io.observe(node);
+    return { destroy: () => io.disconnect() };
+  }
 </script>
 
-<ScrollContent let:query {sections} isFullWidth={true} hasActiveScetionBar={true}>
-  <aside slot="navigation" class="flex flex-col gap-4 pb-24">
-    <div class="mr-2 mb-2 border-b border-contour-weakest pb-6 flex flex-col gap-y-6 pr-6 lg:pr-12">
-      <Reference store={REFERENCE_STORE} />
+<PageHero className="bg-petrol-900" label="PROVIDE" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid." />
+
+<SelectionControls sticky />
+
+<div class="relative grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 mx-auto max-w-7xl">
+  <nav class="md:pl-6 md:py-6 flex flex-col gap-4 md:sticky md:top-[129px] h-fit">
+    <SimpleNav {sections} {activeIndex} />
+  </nav>
+  <div class="md:border-l border-contour-weakest border-t md:border-t-0">
+    <div class="flex md:sticky md:top-[129px] z-20 bg-white border-b border-contour-weakest">
+      <ImpactLevel />
       <SelectionCertaintyLevels />
       <SelectionStudyLocations />
     </div>
-    <SimpleNav {sections} />
-  </aside>
-  {#each sections as section}
-    {#if !section.disabled}
-      <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 {query} border-b pb-14 border-contour-weaker last:border-none">
-        <svelte:component this={section.component} {...section.props} />
-      </section>
-    {/if}
-  {/each}
-</ScrollContent>
+    <div class="relative px-6 py-12">
+      {#each sections as section, i}
+        {#if !section.disabled}
+          <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 border-b pb-14 border-contour-weaker last:border-none">
+            <svelte:component this={section.component} {...section.props} />
+          </section>
+        {/if}
+      {/each}
+    </div>
+  </div>
+</div>

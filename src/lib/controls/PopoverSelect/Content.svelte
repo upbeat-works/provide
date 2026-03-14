@@ -55,8 +55,8 @@
   </div>
 {/if}
 <slot name="items" items={availableItems} {currentFilterUid}>
-  <div class="grid grid-cols-1 md:grid-cols-[1fr_3fr] min-h-[20rem]">
-    <div class="md:border-r border-contour-weakest">
+  <div class="grid grid-cols-1 md:grid-cols-[1fr_3fr] min-h-[20rem] max-h-[60vh] overflow-y-auto">
+    <div class="md:border-r border-contour-weakest pb-4">
       {#if itemsLabel}<Tagline class="mt-4 mb-2 px-5">{itemsLabel}</Tagline>{/if}
       <RadioGroup bind:value={currentUid} on:change={(e) => (currentUid = e.detail)}>
         {#if availableItems.length}

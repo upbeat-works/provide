@@ -7,11 +7,11 @@
   export let panelPlacement = 'bottom-start';
   export let buttonClass = '';
   export let label;
+  export let labelClass = ''
   export let buttonLabel;
-  export let size = 'xl';
   /** @type {String|undefined} Holds a warning text that is conditionally displayed */
   export let warning = undefined;
-  /** @type {String|undefined} Holds a palceholder text that is conditionally displayed */
+  /** @type {String|undefined} Holds a placeholder text that is conditionally displayed */
   export let placeholder = undefined;
   /** @type {string|undefined} Holds a disabled text that is conditionally displayed. This can happen if the user needs to select another option first */
   export let disabled = undefined;
@@ -20,17 +20,6 @@
   export let popperOptions = {};
 
   $: isDisabled = Boolean(disabled);
-
-  const sizeClasses = {
-    xl: {
-      button: 'text-xl p-5',
-    },
-    md: {
-      button: 'text-md p-3',
-    },
-  };
-
-  $: classes = sizeClasses[size] || {};
 
   const [popperRef, popperContent] = createPopperActions();
 
@@ -49,7 +38,7 @@
 </script>
 
 <Popover class={`relative w-full ${$$restProps.class}`}>
-  <span class="uppercase text-xs tracking-widest font-bold text-contour-weak pl-1 mb-2 inline-block">{label}</span>
+  <span class={`uppercase text-xs tracking-widest font-bold text-contour-weak inline-block ${labelClass}`}>{label}</span>
   <PopoverButton
     use={[popperRef]}
     let:open
@@ -59,7 +48,6 @@
     disabled={isDisabled}
     class={[
       'flex w-full rounded bg-surface-base justify-between truncate transition-colors hover:border-theme-base/40 aria-expanded:border-theme-base/60 aria-invalid:border-rose-300 text-theme-base aria-invalid:text-rose-400 aria-disabled:cursor-not-allowed',
-      classes.button,
       buttonClass,
       placeholder || isDisabled ? 'text-theme-weaker' : '', // TODO: Define global warning classes
     ].join(' ')}
@@ -76,10 +64,10 @@
         <span class="leading-tight truncate">{buttonLabel}</span>
       {/if}
     </span>
-    <ExpandIcon class="min-w-[20px] grow-1 stroke-current" isOpen={open} />
+    <ExpandIcon class="min-w-[20px] grow-1 stroke-current stroke-[1.5]" isOpen={open} />
   </PopoverButton>
 
-  <PopoverPanel use={[[popperContent, resolvedPopperOptions]]} class={`${panelClass} bg-surface-base rounded overflow-hidden border-contour-weakest border shadow-xl z-50 relative`} let:open>
+  <PopoverPanel use={[[popperContent, resolvedPopperOptions]]} class={`${panelClass} bg-surface-base rounded overflow-hidden border-contour-weakest border shadow-xl relative z-50`} let:open>
     <slot />
   </PopoverPanel>
 </Popover>

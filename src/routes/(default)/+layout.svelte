@@ -26,11 +26,13 @@
 <HtmlHead />
 
 <ThemeProvider theme="light">
-  <div class="min-h-screen grid grid-rows-[auto_1fr_auto]">
+  <div class="grid grid-rows-[auto_1fr_auto] h-screen flex-col">
     <Header />
-    <main>
-      <slot />
-    </main>
-    <Footer buildDate={data.buildDate} />
+    <div class="relative overflow-y-auto">
+      <main>
+        <slot />
+      </main>
+      <Footer buildDate={data.buildDate} />
+    </div>
   </div>
 </ThemeProvider>

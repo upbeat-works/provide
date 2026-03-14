@@ -10,9 +10,9 @@ export const ANCHOR_EXPLAINER_SCENARIOS = 'scenarios';
 export const PATH_DOCUMENTATION = 'methodology';
 export const PATH_CONTACT = 'contact';
 export const PATH_ABOUT = 'about';
-export const PATH_EXPLORE = 'impacts';
+export const PATH_IMPACT = 'impacts';
 export const PATH_AVOID = 'avoid';
-export const PATH_IMPACT = 'explore';
+export const PATH_EXPLORE = 'explore';
 export const PATH_KEY_CONCEPTS = 'keyconcepts';
 export const PATH_ADAPTATION = 'adaptation';
 

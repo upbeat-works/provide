@@ -22,8 +22,13 @@
     });
 </script>
 
-<div class="flex gap-4 flex-wrap" id="indicator-parameters">
+<div class="flex flex-wrap" id="indicator-parameters">
   {#each parametersSorted as parameter}
-    <Select disabled={!$IS_COMBINATION_AVAILABLE_INDICATOR} {...parameter} labelColor="text-theme-base" on:change={handleChange} />
+    <Select
+      disabled={!$IS_COMBINATION_AVAILABLE_INDICATOR}
+      {...parameter}
+      wrapperClass={`flex-col border-r border-contour-weakest py-4 px-6`}
+      on:change={handleChange}
+    />
   {/each}
 </div>

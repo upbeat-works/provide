@@ -1,36 +1,19 @@
 <script>
-  import PopoverSelect from '$lib/controls/PopoverSelect/PopoverSelect.svelte';
-  import Content from '$lib/controls/PopoverSelect/Content.svelte';
-  import { LIKELIHOODS } from '$stores/meta.js';
-  import { SELECTED_LIKELIHOOD_LEVEL_LABEL, SELECTED_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
-  import CertaintyLevelsList from './CertaintyLevelsList.svelte';
+  import Select from "$lib/controls/Select/Select.svelte";
+  import { formatValue } from "$lib/utils/formatting";
+  import { LIKELIHOODS } from "$stores/meta.js";
+  import { SELECTED_LIKELIHOOD_LEVEL } from "$stores/avoid.js";
 
-  $: buttonLabel = $SELECTED_LIKELIHOOD_LEVEL_LABEL;
+  $: options = $LIKELIHOODS.map(({ uid, value }) => ({
+    uid,
+    label: formatValue(value, "percent"),
+  }));
 </script>
 
-<section>
-  <PopoverSelect
-    label="Probability"
-    {buttonLabel}
-    buttonClass={`border border-contour-weakest aria-expanded:border-contour-weaker `}
-    size="md"
-    panelPlacement={'bottom-start'}
-    class=""
-  >
-    <Content
-      currentUid={$SELECTED_LIKELIHOOD_LEVEL}
-      items={$LIKELIHOODS}
-    >
-      <div
-        slot="items"
-        class="grid grid-cols-1"
-        let:items
-      >
-        <CertaintyLevelsList
-          {items}
-          bind:selected={$SELECTED_LIKELIHOOD_LEVEL}
-        />
-      </div>
-    </Content>
-  </PopoverSelect>
-</section>
+<Select
+  label="Probability"
+  {options}
+  value={$SELECTED_LIKELIHOOD_LEVEL}
+  wrapperClass="flex-col border-r border-contour-weakest py-4 px-6"
+  on:change={({ detail }) => SELECTED_LIKELIHOOD_LEVEL.set(detail.value)}
+/>

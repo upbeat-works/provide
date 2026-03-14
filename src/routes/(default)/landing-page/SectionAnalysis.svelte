@@ -1,10 +1,12 @@
 <script>
 	import { PATH_EXPLORE, PATH_IMPACT, PATH_AVOID } from '$config';
 	import AnalysisTools from '$lib/helper/icons/AnalysisTools.svelte';
+	import Button from '$lib/controls/Button/Button.svelte';
+	import LinkArrow from '$lib/helper/icons/LinkArrow.svelte';
 
 	const cards = [
 		{
-			path: PATH_AVOID,
+			path: `${PATH_IMPACT}/${PATH_AVOID}`,
 			image: '/img/emission-scenarios.png',
 			imageAlt: 'Chart showing compatible scenarios and impact levels',
 			description:
@@ -14,7 +16,7 @@
 			dataSource: 'CMIP6'
 		},
 		{
-			path: PATH_IMPACT,
+			path: `${PATH_IMPACT}/${PATH_EXPLORE}`,
 			image: '/img/impacts.png',
 			imageAlt: 'Map showing future climate impacts across geographies',
 			description:
@@ -64,26 +66,24 @@
 				<span class="text-theme-base">Go deeper</span> with our tools for advanced analysis
 			</h2>
 			<div class="flex gap-2">
-				<button
+				<Button
+					variant="secondary"
 					on:click={handlePrev}
 					disabled={!canGoPrev}
-					class="w-9 h-9 flex items-center justify-center bg-surface-weaker hover:bg-surface-weakest transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+					class="w-8 h-8 p-0 justify-center"
 					aria-label="Previous card"
 				>
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-						<path d="M10 4L6 8L10 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-					</svg>
-				</button>
-				<button
+					<span class="rotate-180"><LinkArrow /></span>
+				</Button>
+				<Button
+					variant="secondary"
 					on:click={handleNext}
 					disabled={!canGoNext}
-					class="w-9 h-9 flex items-center justify-center bg-surface-weaker hover:bg-surface-weakest transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+					class="w-8 h-8 p-0 justify-center"
 					aria-label="Next card"
 				>
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-						<path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-					</svg>
-				</button>
+					<span><LinkArrow /></span>
+				</Button>
 			</div>
 		</div>
 
@@ -97,7 +97,7 @@
 			>
 				{#each cards as card}
 					<a
-						href={`/${PATH_EXPLORE}/${card.path}`}
+						href={card.path}
 						class="flex-shrink-0 w-[85%] lg:w-[600px] bg-white hover:bg-surface-weaker transition-colors group"
 						style="scroll-snap-align: start;"
 					>
