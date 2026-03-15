@@ -3,12 +3,12 @@
   import ImpactGeo from './ImpactGeo/ImpactGeo.svelte';
   import UnAvoidableRisk from '../UnavoidableRisk/UnavoidableRisk.svelte';
   import ScenarioSelection from './ScenarioSelection/ScenarioSelection.svelte';
-  import SimpleNav from '$lib/helper/ScrollContent/SimpleNav.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
   import FallbackMessage from '$lib/helper/FallbackMessage.svelte';
-  import { IndicatorParameters } from '$lib/controls/ExploreControls';
+  import { IndicatorParameters, SelectionControls } from '$lib/controls/ExploreControls';
   import PageHero from '$lib/site/PageHero.svelte';
-  import { SelectionControls } from '$lib/controls/ExploreControls';
+  import PageLayout from '$lib/site/PageLayout.svelte';
+  import SimpleNav from '$lib/helper/ScrollContent/SimpleNav.svelte';
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE;
 
@@ -19,9 +19,7 @@
       description: 'How will this climate impact change?',
       component: ImpactTime,
       disabled: !isValidSelection,
-      props: {
-        tagline: 'Timing',
-      },
+      props: { tagline: 'Timing' },
     },
     {
       slug: 'impact-geo',
@@ -29,9 +27,7 @@
       description: 'Where will impacts hit the hardest?',
       component: ImpactGeo,
       disabled: !isValidSelection,
-      props: {
-        tagline: 'Location',
-      },
+      props: { tagline: 'Location' },
     },
     {
       slug: 'unavoidable-risk',
@@ -39,9 +35,7 @@
       description: 'What can be avoided through emissions reductions?',
       component: UnAvoidableRisk,
       disabled: !isValidSelection,
-      props: {
-        tagline: '(Un)avoidable risk',
-      },
+      props: { tagline: '(Un)avoidable risk' },
     },
     { component: FallbackMessage, disabled: isValidSelection },
   ];
@@ -58,28 +52,33 @@
   }
 </script>
 
-<PageHero label="EXPLORER" title="Future impacts" description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided." />
+<PageLayout navHeight={198}>
+  <svelte:fragment slot="hero">
+    <PageHero label="EXPLORER" title="Future impacts" description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided." />
+  </svelte:fragment>
 
-<SelectionControls sticky />
+  <svelte:fragment slot="nav">
+    <SelectionControls />
+    <div class="border-b border-contour-weakest " />
+  </svelte:fragment>
 
-<div class="relative grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 mx-auto max-w-7xl">
-  <nav class="md:pl-6 md:py-6 flex flex-col gap-4 md:sticky md:top-[128px] h-fit">
+  <svelte:fragment slot="sidebar">
     <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">Report Index</h2>
     <SimpleNav {sections} {activeIndex} />
-  </nav>
-  <div class="md:border-l border-contour-weakest border-t md:border-t-0">
-    <div class="flex md:sticky md:top-[128px] z-20 bg-white border-b border-contour-weakest">
-      <ScenarioSelection />
-      <IndicatorParameters/>
-    </div>
-    <div class="relative px-6 py-12">
-      {#each sections as section, i}
-        {#if !section.disabled}
-          <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 pb-14 border-contour-weakest border-b last:border-none">
-            <svelte:component this={section.component} {...section.props} />
-          </section>
-        {/if}
-      {/each}
-    </div>
-  </div>
-</div>
+  </svelte:fragment>
+
+  <svelte:fragment slot="filters">
+    <ScenarioSelection />
+    <IndicatorParameters />
+  </svelte:fragment>
+
+  <svelte:fragment slot="content">
+    {#each sections as section, i}
+      {#if !section.disabled}
+        <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 pb-14 border-contour-weakest border-b last:border-none">
+          <svelte:component this={section.component} {...section.props} />
+        </section>
+      {/if}
+    {/each}
+  </svelte:fragment>
+</PageLayout>
