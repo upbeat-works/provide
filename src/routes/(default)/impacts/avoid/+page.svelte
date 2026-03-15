@@ -63,9 +63,9 @@
   </svelte:fragment>
 
   <svelte:fragment slot="filters">
-      <ImpactLevel />
-      <SelectionCertaintyLevels />
-      <SelectionStudyLocations />
+    <ImpactLevel />
+    <SelectionCertaintyLevels />
+    <SelectionStudyLocations />
   </svelte:fragment>
 
   <svelte:fragment slot="content">

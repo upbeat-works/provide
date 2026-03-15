@@ -4,7 +4,9 @@
   // role="link" -> https://www.scottohara.me/blog/2021/05/28/disabled-links.html
 </script>
 
-{#each sections.filter(({ slug }) => slug) as { slug, title, description, disabled }, i}
+{#each sections as section, i}
+  {#if section.slug}
+  {@const { slug, title, description, disabled } = section}
   {@const isActive = activeIndex === i}
   <a
     class:cursor-not-allowed={disabled}
@@ -24,4 +26,5 @@
       {description}
     </div>
   </a>
+  {/if}
 {/each}
