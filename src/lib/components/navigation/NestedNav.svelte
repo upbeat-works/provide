@@ -175,7 +175,7 @@
             <ul class:h-0={!isOpen} class="overflow-hidden">
               {#each sections as { slug, title, isActive }}
                 <li class="mt-1">
-                  <a aria-current={isActive ? 'step' : 'false'} class="inline-block text-md text-contour-weak py-1 leading-5 hover:text-theme-base" class:text-theme-base={isActive} href={`#${slug}`}>
+                  <a aria-current={isActive ? 'step' : 'false'} class="inline-block text-sm font-normal py-1 leading-tight" class:text-theme-base={isActive} href={`#${slug}`}>
                     {title}
                   </a>
                 </li>

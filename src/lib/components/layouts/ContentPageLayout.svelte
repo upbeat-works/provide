@@ -7,19 +7,7 @@
   export let title;
   export let intro = undefined;
   export let label = undefined;
-  export let dynamicNavigation = false;
-
   let contentRef;
-  let activeIndex = 0;
-
-  function observeSection(node, index) {
-    const io = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) activeIndex = index; },
-      { threshold: 0.1 }
-    );
-    io.observe(node);
-    return { destroy: () => io.disconnect() };
-  }
 </script>
 
 <PageLayout>
@@ -28,13 +16,13 @@
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
-    <NestedNav contentRef={dynamicNavigation && contentRef} {sections} {activeIndex} />
+    <NestedNav {contentRef} {sections} />
   </svelte:fragment>
 
   <svelte:fragment slot="content">
     <div bind:this={contentRef}>
-      {#each sections as section, i}
-        <section use:observeSection={i} class="pt-4 pb-8 border-contour-weakest first:border-0 first:mt-0 last:mb-12" class:border-t={section.title && !section.omitBorder} class:pt-12={section.title}>
+      {#each sections as section}
+        <section class="pt-4 pb-8 border-contour-weakest first:border-0 first:mt-0 last:mb-12" class:border-t={section.title && !section.omitBorder} class:pt-12={section.title}>
           <svelte:component this={section.component} {...section.props} />
           {#each section.sections ?? [] as part1}
              <svelte:component this={part1.component} {...part1.props} />

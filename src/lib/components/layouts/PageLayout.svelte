@@ -2,7 +2,6 @@
   let navHeight = 0;
 </script>
 
-
 <slot name="hero" />
 
 {#if $$slots.nav}

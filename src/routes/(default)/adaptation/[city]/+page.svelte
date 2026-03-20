@@ -26,7 +26,6 @@
 <ContentPageLayout
   {sections}
   label="Case study"
-  dynamicNavigation={true}
   title={caseStudy.title}
   intro={caseStudy.abstract}
 >

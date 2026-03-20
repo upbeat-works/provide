@@ -54,7 +54,6 @@
 
 <ContentPageLayout
   {sections}
-  dynamicNavigation={true}
   label={LABEL_ADAPTATION}
   title="Tools"
   intro="Tools and resources for using climate data in risk assessment and planning."
