@@ -1,11 +1,11 @@
 <script>
-  import PillGroup from '$src/lib/controls/PillGroup/PillGroup.svelte';
+  import PillGroup from '$lib/components/ui/PillGroup.svelte';
   import CompareImage from 'svelte-compare-image/CompareImage.svelte';
-  import SideScrollIndicator from '$lib/helper/SideScrollIndicator.svelte';
+  import SideScrollIndicator from '$lib/components/ui/SideScrollIndicator.svelte';
   import _ from 'lodash-es';
   import { writable } from 'svelte/store';
   import ExplorerLink from './ExplorerLink.svelte';
-  import { getStrapiImageAtSize } from '$lib/utils';
+  import { getStrapiImageAtSize } from '$lib/utils/utils';
   export let explorerUrl;
   export let attributeLabel;
   export let groupingLabel;

@@ -1,14 +1,14 @@
 <script>
-  import ImpactTime from './ImpactTime/ImpactTime.svelte';
-  import ImpactGeo from './ImpactGeo/ImpactGeo.svelte';
-  import UnAvoidableRisk from '../UnavoidableRisk/UnavoidableRisk.svelte';
-  import ScenarioSelection from './ScenarioSelection/ScenarioSelection.svelte';
+  import ImpactTime from './components/ImpactTime/ImpactTime.svelte';
+  import ImpactGeo from './components/ImpactGeo/ImpactGeo.svelte';
+  import UnAvoidableRisk from '../components/UnavoidableRisk/UnavoidableRisk.svelte';
+  import ScenarioSelection from './components/ScenarioSelection/ScenarioSelection.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
-  import FallbackMessage from '$lib/helper/FallbackMessage.svelte';
-  import { IndicatorParameters, SelectionControls, ControlTabs } from '$lib/controls/ExploreControls';
-  import PageHero from '$lib/site/PageHero.svelte';
-  import PageLayout from '$lib/site/PageLayout.svelte';
-  import SimpleNav from '$lib/helper/ScrollContent/SimpleNav.svelte';
+  import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
+  import { IndicatorParameters, SelectionControls, ControlTabs } from '$lib/components/controls/ExploreControls';
+  import PageHero from '$lib/components/layouts/PageHero.svelte';
+  import PageLayout from '$lib/components/layouts/PageLayout.svelte';
+  import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE;
 

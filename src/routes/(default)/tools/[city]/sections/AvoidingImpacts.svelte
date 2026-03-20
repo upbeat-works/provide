@@ -1,5 +1,5 @@
 <script>
-  import PillGroup from '$src/lib/controls/PillGroup/PillGroup.svelte';
+  import PillGroup from '$lib/components/ui/PillGroup.svelte';
   import { uniqBy } from 'lodash-es';
   import { writable } from 'svelte/store';
   import { getContext } from 'svelte';

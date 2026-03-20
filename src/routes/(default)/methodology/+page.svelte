@@ -1,7 +1,7 @@
 <script>
-  import SectionHeadline from '$lib/helper/ContentPages/SectionHeadline.svelte';
-  import Model from './Model.svelte';
-  import ContentPageLayout from '$lib/helper/ContentPages/ContentPageLayout.svelte';
+  import SectionHeadline from '$lib/components/layouts/ContentPages/SectionHeadline.svelte';
+  import Model from './components/Model.svelte';
+  import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
   import { LABEL_DOCUMENTATION } from '$config';
 
   export let data;

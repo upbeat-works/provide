@@ -1,7 +1,7 @@
 <script>
   import { PATH_ADAPTATION } from '$src/config.js';
-  import ContentPageLayout from '$src/lib/helper/ContentPages/ContentPageLayout.svelte';
-  import SectionDefault from '$src/lib/helper/ContentPages/SectionDefault.svelte';
+  import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
+  import SectionDefault from '$lib/components/layouts/ContentPages/SectionDefault.svelte';
   import Outro from '../sections/Outro.svelte';
   import AvoidingImpacts from './sections/AvoidingImpacts.svelte';
   import FutureImpacts from './sections/FutureImpacts.svelte';

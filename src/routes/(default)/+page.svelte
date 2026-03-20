@@ -1,9 +1,9 @@
 <script>
-  import SectionHero from './landing-page/SectionHero.svelte';
-  import SectionExplore from './landing-page/SectionExplore.svelte';
-  import SectionAnalysis from './landing-page/SectionAnalysis.svelte';
-  import SectionCaseStudies from './landing-page/SectionCaseStudies.svelte';
-  import SectionProject from './landing-page/SectionProject.svelte';
+  import SectionHero from './landing-page/sections/SectionHero.svelte';
+  import SectionExplore from './landing-page/sections/SectionExplore.svelte';
+  import SectionAnalysis from './landing-page/sections/SectionAnalysis.svelte';
+  import SectionCaseStudies from './landing-page/sections/SectionCaseStudies.svelte';
+  import SectionProject from './landing-page/sections/SectionProject.svelte';
 
   export let data;
   $: ({ stories, caseStudies } = data);

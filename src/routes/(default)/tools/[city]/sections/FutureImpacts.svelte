@@ -1,6 +1,6 @@
 <script>
-  import PillGroup from '$src/lib/controls/PillGroup/PillGroup.svelte';
-  import { getStrapiImageAtSize } from '$src/lib/utils';
+  import PillGroup from '$lib/components/ui/PillGroup.svelte';
+  import { getStrapiImageAtSize } from '$lib/utils/utils';
   import ExplorerLink from './ExplorerLink.svelte';
   import _ from 'lodash-es';
   import { writable } from 'svelte/store';

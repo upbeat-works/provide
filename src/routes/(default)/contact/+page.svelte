@@ -1,7 +1,7 @@
 <script>
-  import HtmlContent from '$lib/helper/HtmlContent.svelte';
+  import HtmlContent from '$lib/components/ui/HtmlContent.svelte';
   import { LABEL_CONTACT } from '$config';
-  import ContentPageIntro from '$lib/helper/ContentPages/ContentPageIntro.svelte';
+  import ContentPageIntro from '$lib/components/layouts/ContentPages/ContentPageIntro.svelte';
   export let data;
 
   $: ({ text } = data);

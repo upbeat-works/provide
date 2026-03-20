@@ -27,10 +27,15 @@ const config = {
     },
     prerender: {
       handleMissingId: 'warn',
+      handleHttpError: ({ path, message }) => {
+        // /adaptation was renamed to /tools — suppress 404s from stale Strapi content links
+        if (path.startsWith('/adaptation')) return;
+        throw new Error(message);
+      },
       entries: [
         '/',
         '/about',
-        '/adaptation',
+        '/tools',
         '/contact',
         '/impacts/avoid',
         '/impacts/explore',

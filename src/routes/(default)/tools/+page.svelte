@@ -1,9 +1,9 @@
 <script>
-  import ContentPageLayout from '$src/lib/helper/ContentPages/ContentPageLayout.svelte';
+  import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
   import { LABEL_ADAPTATION, PATH_ADAPTATION } from '$config';
   import Publications from './sections/Publications.svelte';
 
-  import SectionDefault from '$lib/helper/ContentPages/SectionDefault.svelte';
+  import SectionDefault from '$lib/components/layouts/ContentPages/SectionDefault.svelte';
   import { kebabCase } from 'lodash-es';
   import Outro from './sections/Outro.svelte';
 

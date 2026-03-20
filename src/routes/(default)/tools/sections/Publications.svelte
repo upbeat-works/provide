@@ -2,7 +2,7 @@
   import { LABEL_ADAPTATION_RESOURCES } from '$config';
   import { timeFormat } from 'd3-time-format';
 
-  import SectionHeadline from '$src/lib/helper/ContentPages/SectionHeadline.svelte';
+  import SectionHeadline from '$lib/components/layouts/ContentPages/SectionHeadline.svelte';
   export let title;
   export let publications;
 

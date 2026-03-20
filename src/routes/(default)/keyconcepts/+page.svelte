@@ -1,9 +1,9 @@
 <script>
-  import SectionHeadline from '$lib/helper/ContentPages/SectionHeadline.svelte';
-  import TermSection from './TermSection.svelte';
-  import ContentPageLayout from '$lib/helper/ContentPages/ContentPageLayout.svelte';
-  import Scenarios from './Scenarios/Scenarios.svelte';
-  import ScenariosIntro from './Scenarios/ScenariosIntro.svelte';
+  import SectionHeadline from '$lib/components/layouts/ContentPages/SectionHeadline.svelte';
+  import TermSection from './components/TermSection.svelte';
+  import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
+  import Scenarios from './components/Scenarios/Scenarios.svelte';
+  import ScenariosIntro from './components/Scenarios/ScenariosIntro.svelte';
   import { LABEL_KEY_CONCEPTS, ANCHOR_EXPLAINER_SCENARIOS, LABEL_SCENARIOS_INTRO, LABEL_SCENARIOS_TIMEFRAMES, LABEL_SCENARIOS_PRESETS, LABEL_SCENARIOS_LIST, LABEL_SCENARIOS_TIMELINES } from '$config';
   import { kebabCase } from 'lodash-es';
 
