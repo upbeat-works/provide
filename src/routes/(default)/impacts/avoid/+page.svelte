@@ -9,7 +9,7 @@
   import SelectionStudyLocations from './Selection/StudyLocations/StudyLocations.svelte';
   import { writable } from 'svelte/store';
   import PageHero from '$lib/site/PageHero.svelte';
-  import { SelectionControls } from '$lib/controls/ExploreControls';
+  import { SelectionControls, ControlTabs } from '$lib/controls/ExploreControls';
   import ImpactLevel from './Reference/ImpactLevel.svelte';
   import PageLayout from '$lib/site/PageLayout.svelte';
 
@@ -55,7 +55,13 @@
   </svelte:fragment>
 
   <svelte:fragment slot="nav">
-    <SelectionControls sticky />
+    <div class="bg-slate-50 pt-8">
+      <div class="mx-auto max-w-7xl px-6">
+        <ControlTabs />
+      </div>
+    </div>
+    <hr class="border-t border-contour-weakest" />
+    <SelectionControls />
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">

@@ -5,7 +5,7 @@
   import ScenarioSelection from './ScenarioSelection/ScenarioSelection.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
   import FallbackMessage from '$lib/helper/FallbackMessage.svelte';
-  import { IndicatorParameters, SelectionControls } from '$lib/controls/ExploreControls';
+  import { IndicatorParameters, SelectionControls, ControlTabs } from '$lib/controls/ExploreControls';
   import PageHero from '$lib/site/PageHero.svelte';
   import PageLayout from '$lib/site/PageLayout.svelte';
   import SimpleNav from '$lib/helper/ScrollContent/SimpleNav.svelte';
@@ -55,11 +55,18 @@
 <PageLayout navHeight={198}>
   <svelte:fragment slot="hero">
     <PageHero label="EXPLORER" title="Future impacts" description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided." />
+    <div class="bg-slate-50 pt-8">
+      <div class="mx-auto max-w-7xl px-6">
+        <ControlTabs />
+      </div>
+    </div>
+    <hr class="border-t border-contour-weakest" />
   </svelte:fragment>
 
   <svelte:fragment slot="nav">
+
     <SelectionControls />
-    <div class="border-b border-contour-weakest " />
+    <div class="border-b border-contour-weakest" />
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">

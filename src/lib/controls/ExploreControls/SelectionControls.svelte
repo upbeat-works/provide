@@ -1,16 +1,10 @@
 <script>
   import GeographySelection from './GeographySelection/GeographySelection.svelte';
   import IndicatorSelection from './IndicatorSelection/IndicatorSelection.svelte';
-  import ControlTabs from './ControlTabs.svelte';
   import SwapButton from './SwapButton.svelte';
   import { SELECTION_MODE } from '$stores/state.js';
 
-  export let sticky = false;
-
-  let mode = $SELECTION_MODE;
-
-  // Sync local mode variable to the store so other components can react to it
-  $: SELECTION_MODE.set(mode);
+  $: mode = $SELECTION_MODE;
 
   $: geographyStep = mode === 'geography' ? 1 : 2;
   $: indicatorStep = mode === 'geography' ? 2 : 1;
@@ -19,19 +13,11 @@
   $: indicatorLabel = `Step ${indicatorStep} - Indicator`;
 
   function toggleMode() {
-    mode = mode === 'geography' ? 'indicator' : 'geography';
+    SELECTION_MODE.set(mode === 'geography' ? 'indicator' : 'geography');
   }
 </script>
 
-<div class="bg-slate-50 pt-8">
-  <div class="mx-auto max-w-7xl px-6">
-    <ControlTabs bind:mode />
-  </div>
-</div>
-
-<hr class="border-t border-contour-weakest" />
-
-<div class="bg-slate-50 py-6 z-50" class:md:sticky={sticky} class:md:top-0={sticky} class:md:border-b={sticky} class:md:border-contour-weakest={sticky}>
+<div class="bg-slate-50 py-6 z-50">
   <div
     class="grid gap-4 md:gap-6 items-center mx-auto max-w-7xl px-6"
     class:md:grid-cols-[1fr_auto_1fr]={true}
