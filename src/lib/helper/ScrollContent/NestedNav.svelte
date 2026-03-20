@@ -1,8 +1,11 @@
 <script>
   import { slugify } from '$src/lib/utils';
+  import { onDestroy } from 'svelte';
+
   export let sections = [];
   export let contentRef;
   export let activeIndex = 0;
+  export let title = 'Index';
 
   // Holds key/values for all open sections
   let openSections = {};
@@ -10,10 +13,9 @@
   // To prevent reactive opening when manually closing section
   let preventReset = false;
 
-  // Allow again reactive opening whenever user scrolled past a section
-  $: if (activeIndex !== undefined) {
-    preventReset = false;
-  }
+  // Internal active index for dynamic mode (tracks individual headings)
+  let dynamicActiveIndex = 0;
+  let headingObservers = [];
 
   // Takes a flat array of h2/h3 titles and turns them into a hierarchy
   const createHierarchy = (flatItems) => {
@@ -57,14 +59,27 @@
     return createLevel(flatItems, startLevel);
   };
 
-  // If containerRef is given, query all h2/h3 titles from the given container and turn them
-  // into objects for further processing
+  // If containerRef is given, query all h2/h3 titles from the given container, assign IDs,
+  // set up IntersectionObservers on each heading, and build the nav hierarchy.
   $: dynamicNavSections = (() => {
     if (!contentRef) return;
     const headings = contentRef?.querySelectorAll('h2, h3');
+
+    // Clean up previous observers
+    headingObservers.forEach((o) => o.disconnect());
+    headingObservers = [];
+
     const flatToc = [...headings].map((el, i) => {
       const slug = el.getAttribute('id') || slugify(el.innerText);
       el.setAttribute('id', slug);
+
+      // Observe each heading individually so activeIndex tracks heading index, not section index
+      const io = new IntersectionObserver(
+        ([e]) => { if (e.isIntersecting) dynamicActiveIndex = i; },
+        { threshold: 0.5 }
+      );
+      io.observe(el);
+      headingObservers.push(io);
 
       return {
         props: {
@@ -79,7 +94,22 @@
     return createHierarchy(flatToc);
   })();
 
-  // Add indexes to sections and subsections to see if section is active
+  onDestroy(() => {
+    headingObservers.forEach((o) => o.disconnect());
+  });
+
+  // In dynamic mode use the internally tracked heading index;
+  // in static mode use the activeIndex prop (tracks top-level sections).
+  $: effectiveActiveIndex = dynamicNavSections ? dynamicActiveIndex : activeIndex;
+
+  // Allow again reactive opening whenever active index changes
+  $: if (effectiveActiveIndex !== undefined) {
+    preventReset = false;
+  }
+
+  // Add indexes to sections and subsections to see if section is active.
+  // In dynamic mode children increment the counter (matching flat heading index).
+  // In static mode children do NOT increment (matching top-level section index from ContentPageLayout).
   $: navSections = (dynamicNavSections || sections).reduce(
     (acc, section) => {
       const children = section?.sections ?? [];
@@ -87,15 +117,13 @@
         title: section.props?.title ?? section.title,
         slug: section.props?.slug ?? section.slug,
         index: acc.counter,
-        isActive: activeIndex === acc.counter++,
+        isActive: effectiveActiveIndex === acc.counter++,
         hasContent: Boolean(section.content) || children.some(({ props }) => Boolean(props.content)),
         sections: children.map((s) => ({
           title: s.props?.titleShort ?? s.props?.title,
           slug: s.props?.slug,
           index: acc.counter,
-          // Highlighting subsections doesn't work when creating the toc dynamically so we
-          // only set isActive and increase counter on main sections
-          isActive: !dynamicNavSections && activeIndex === acc.counter++,
+          isActive: dynamicNavSections ? effectiveActiveIndex === acc.counter++ : false,
         })),
       });
       return acc;
@@ -105,9 +133,9 @@
 
   // Whenever user scrolls past major section, we update the open sections to only
   // have the one open that is currently in view
-  $: isMajorSection = navSections.find((s) => s.index === activeIndex);
+  $: isMajorSection = navSections.find((s) => s.index === effectiveActiveIndex);
   $: if (!preventReset && isMajorSection) {
-    openSections = { [activeIndex]: true };
+    openSections = { [effectiveActiveIndex]: true };
   }
 
   // Final sections take into account whether a child section is active and whether
@@ -129,13 +157,16 @@
   };
 </script>
 
-<nav class="md:flex-col gap-10 hidden md:flex">
-  <ul data-index={activeIndex}>
+<nav class="flex flex-col gap-6 mr-12">
+  {#if title}
+    <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">{title}</h2>
+  {/if}
+  <ul data-index={effectiveActiveIndex}>
     {#each processedSections as { title, slug, isActive, index, isOpen, sections, hasContent }}
       {#if hasContent}
-        <li class="py-2 border-b border-contour-weakest pr-1 last:border-b-0">
+        <li class="py-2 border-b border-contour-weakest pr-1">
           <div aria-expanded={String(isActive)} class:text-theme-base={isActive} class="flex justify-between items-center">
-            <a class="font-bold text-lg" href={`#${slug}`}>{title}</a>
+            <a class="font-semibold text-sm" href={`#${slug}`}>{title}</a>
             {#if sections.length}
               <button as="button" class="p-1" class:rotate-180={isOpen} on:click={() => toggleSection(index)}>▾</button>
             {/if}

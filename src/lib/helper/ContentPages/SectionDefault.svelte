@@ -8,9 +8,9 @@
 </script>
 
 {#if title}
-  <h2 id={slug || kebabCase(title)} name={slug} class="scroll-mt-4 font-bold text-3xl mb-2 mt-4 first-of-type:mt-0">{title}</h2>
+  <h2 id={slug || kebabCase(title)} name={slug} class="scroll-mt-4 font-semibold text-2xl text-theme-stronger mb-3 mt-2 first:mt-0">{title}</h2>
 {/if}
 {#if subtitle}
-  <p class="text-text-weaker">{subtitle}</p>
+  <p class="text-theme-weaker">{subtitle}</p>
 {/if}
 <HtmlContent {content} />

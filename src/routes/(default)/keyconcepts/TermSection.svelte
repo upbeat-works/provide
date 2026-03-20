@@ -9,7 +9,7 @@
 </script>
 
 <header class="flex gap-x-2 items-end scroll-mt-4 mb-2 mt-4 first-of-type:mt-0" id={slug} name={slug} data-category={category}>
-  <h3 class="font-bold text-xl">{title}</h3>
+  <h3 class="font-semibold text-xl">{title}</h3>
   {#if abbreviation}<abbr {title}>{abbreviation}</abbr>{/if}
 </header>
 <HtmlContent {content} />

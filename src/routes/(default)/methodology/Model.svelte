@@ -7,12 +7,12 @@
 
 </script>
 
-<h3 id={slug} name={slug} class="scroll-mt-4 font-bold text-2xl mb-2 mt-6 first:mt-0">
+<h3 id={slug} name={slug} class="scroll-mt-4 font-semibold text-xl mb-2 mt-4 first:mt-0">
   {title}
 </h3>
 {#each content as { slug, title, description }}
   {#if title}
-    <h4 id={slug} name={slug} class="scroll-mt-4 font-bold text-xl mb-2 mt-4 first:mt-0">
+    <h4 id={slug} name={slug} class="scroll-mt-4 font-semibold text-lg mb-2 mt-4 first:mt-0">
       {title}
     </h4>
   {/if}
