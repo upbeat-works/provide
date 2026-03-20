@@ -52,16 +52,17 @@
 <PageLayout>
   <svelte:fragment slot="hero">
     <PageHero className="bg-petrol-900" label="PROVIDE" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid." />
-  </svelte:fragment>
-
-  <svelte:fragment slot="nav">
     <div class="bg-slate-50 pt-8">
       <div class="mx-auto max-w-7xl px-6">
         <ControlTabs />
       </div>
     </div>
     <hr class="border-t border-contour-weakest" />
+  </svelte:fragment>
+
+  <svelte:fragment slot="nav">
     <SelectionControls />
+    <div class="border-b border-contour-weakest" />
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">

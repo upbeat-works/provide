@@ -52,7 +52,7 @@
   }
 </script>
 
-<PageLayout navHeight={198}>
+<PageLayout>
   <svelte:fragment slot="hero">
     <PageHero label="EXPLORER" title="Future impacts" description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided." />
     <div class="bg-slate-50 pt-8">
@@ -64,7 +64,6 @@
   </svelte:fragment>
 
   <svelte:fragment slot="nav">
-
     <SelectionControls />
     <div class="border-b border-contour-weakest" />
   </svelte:fragment>
