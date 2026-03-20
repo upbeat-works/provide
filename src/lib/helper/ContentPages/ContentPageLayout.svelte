@@ -1,16 +1,13 @@
 <script>
-  import ContentPageIntro from '$lib/helper/ContentPages/ContentPageIntro.svelte';
+  import PageHero from '$lib/site/PageHero.svelte';
   import NestedNav from '$lib/helper/ScrollContent/NestedNav.svelte';
+  import PageLayout from '$lib/site/PageLayout.svelte';
 
-  export let subNavigation;
   export let sections;
   export let title;
-  export let intro;
+  export let intro = undefined;
+  export let label = undefined;
   export let dynamicNavigation = false;
-  export let isCaseStudy;
-  export let tag;
-  export let subNavigationLabel;
-  export let backLink;
 
   let contentRef;
   let activeIndex = 0;
@@ -25,13 +22,16 @@
   }
 </script>
 
-<ContentPageIntro {tag} {subNavigationLabel} {backLink} {title} {intro} {subNavigation} {isCaseStudy} />
+<PageLayout>
+  <svelte:fragment slot="hero">
+    <PageHero {label} {title} description={intro} />
+  </svelte:fragment>
 
-<div class="grid grid-rows-[auto_auto] grid-cols-1 md:grid-cols-[280px_1fr] md:grid-rows-1 gap-10 md:gap-6 lg:gap-10 mx-auto max-w-7xl px-2 sm:px-6">
-  <div class="pt-8 md:pr-10 md:border-r border-contour-weakest sticky top-0 h-fit">
+  <svelte:fragment slot="sidebar">
     <NestedNav contentRef={dynamicNavigation && contentRef} {sections} {activeIndex} />
-  </div>
-  <div class="md:pt-8 ">
+  </svelte:fragment>
+
+  <svelte:fragment slot="content">
     <div bind:this={contentRef}>
       {#each sections as section, i}
         <section use:observeSection={i} class="mt-10 pt-10 border-contour-weakest first:border-0 first:mt-0 last:mb-12" class:border-t={section.title && !section.omitBorder} class:pt-12={section.title}>
@@ -43,5 +43,5 @@
       {/each}
     </div>
     <slot />
-  </div>
-</div>
+  </svelte:fragment>
+</PageLayout>

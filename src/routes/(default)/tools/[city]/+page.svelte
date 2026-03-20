@@ -21,18 +21,13 @@
     return { ...components[section.type], title: section.title, props: { ...section, content: section.text } };
   });
 
-  $: subNavigation = [...data.caseStudies.map((d) => ({ label: d.city.label, abstract: d.abstract, href: `/${PATH_ADAPTATION}/${d.city.uid}`, isActive: caseStudy.city.uid === d.city.uid }))];
 </script>
 
 <ContentPageLayout
   {sections}
-  isCaseStudy={false}
-  tag="Case study"
-  subNavigationLabel="Case studies"
+  label="Case study"
   dynamicNavigation={true}
   title={caseStudy.title}
-  {subNavigation}
-  backLink={{ href: `/${PATH_ADAPTATION}`, label: 'Adaptation overview' }}
   intro={caseStudy.abstract}
 >
   {#if caseStudy.authors}

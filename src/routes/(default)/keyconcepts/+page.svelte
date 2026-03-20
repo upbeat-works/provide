@@ -41,4 +41,4 @@
   ];
 </script>
 
-<ContentPageLayout {sections} title={LABEL_KEY_CONCEPTS} intro="Learn more about key concepts used in the Climate risk dashboard, including different emissions scenarios and indicator definitions." />
+<ContentPageLayout {sections} label={LABEL_KEY_CONCEPTS} title="Learn about the data" intro="Learn more about the methodology used to create the data visualised on this dashboard." />

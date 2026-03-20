@@ -1,7 +1,7 @@
 <script>
   import Study from '$lib/helper/icons/Study.svelte';
   import UrbanStudy from '$lib/helper/icons/UrbanStudy.svelte';
-  import { GEOGRAPHY_TYPE_CITY, PATH_KEY_CONCEPTS } from '$config';
+  import { GEOGRAPHY_TYPE_CITY, PATH_KEY_CONCEPTS, PATH_ADAPTATION } from '$config';
   import { GEOGRAPHIES } from '$stores/meta.js';
 
   export let geography;
@@ -16,11 +16,11 @@
     <Study class="h-14 w-14" />
     <div class="grow">
       <h4 class="text-lg font-bold mb-1">Using the data</h4>
-      <p class="mb-4">Learn more about using our information in adaptation planning and policymaking.</p>
+      <p class="mb-4">Learn more about using our information in risk assessment and policymaking.</p>
       <ul class="text-text-weaker flex flex-col gap-4">
         <li>
-          <a class="text-theme-base font-bold" href="/adaptation#overshoot-proofing-self-assessment-tool">Overshoot policy self assessment tool <span class="font-normal text-sm">→</span></a>
-          <p class="text-sm text-text-weaker">Use our quick guide to assess how you're factoring in changes in warming into your adaptation planning</p>
+          <a class="text-theme-base font-bold" href="/{PATH_ADAPTATION}#overshoot-proofing-self-assessment-tool">Overshoot policy self assessment tool <span class="font-normal text-sm">→</span></a>
+          <p class="text-sm text-text-weaker">Use our quick guide to assess how you're factoring in changes in warming into your planning</p>
         </li>
         <li>
           <a class="text-theme-base font-bold" href="/{PATH_KEY_CONCEPTS}#scenarios">About adaptation pathways <span class="font-normal text-sm">→</span></a>
@@ -35,10 +35,10 @@
       <div class="self-stretch grow flex flex-col gap-6 justify-between">
         <div class="">
           <h4 class="text-lg font-bold mb-1">Case study</h4>
-          <p class="mb-2">Learn how this data was used to assess future climate risks, and inform local studies on heat adaptation measures.</p>
+          <p class="mb-2">Learn how this data was used to assess future climate risks, and inform local studies on heat risk measures.</p>
         </div>
         <p class="text-md font-bold">
-          See <a class="text-theme-base underline underline-offset-4" href="/adaptation/{caseStudyGeography.uid}"> {caseStudyGeography.label}</a> case study<br />
+          See <a class="text-theme-base underline underline-offset-4" href="/{PATH_ADAPTATION}/{caseStudyGeography.uid}"> {caseStudyGeography.label}</a> case study<br />
         </p>
       </div>
     </div>

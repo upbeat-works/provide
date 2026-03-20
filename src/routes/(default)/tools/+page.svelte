@@ -45,16 +45,14 @@
     },
   ].map((section) => ({ ...section, slug: kebabCase(section.title), content: true }));
 
-  $: subNavigation = [...data.caseStudies.map((d) => ({ label: d.city.label, abstract: d.abstract, href: `/${PATH_ADAPTATION}/${d.city.uid}` }))];
 </script>
 
 <ContentPageLayout
   {sections}
   dynamicNavigation={true}
-  title={LABEL_ADAPTATION}
-  {subNavigation}
-  subNavigationLabel="Case studies"
-  intro="Learn how to use climate data for overshoot risk informed adaptation."
+  label={LABEL_ADAPTATION}
+  title="Tools"
+  intro="Tools and resources for using climate data in risk assessment and planning."
 >
   <Outro title={data.outroTitle} text={data.outroText} />
 </ContentPageLayout>
