@@ -1,6 +1,5 @@
 <script>
-  import SectionHeadline from '$lib/components/layouts/ContentPages/SectionHeadline.svelte';
-  import Model from './components/Model.svelte';
+  import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
   import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
   import { LABEL_DOCUMENTATION } from '$config';
 
@@ -13,32 +12,59 @@
           slug,
           title,
         },
-        component: SectionHeadline,
+        component: SectionContent,
         content: true,
         sections: [
           {
-            component: Model,
             props: {
               slug: `${slug}-models`,
               title: models.length > 1 ? 'Models' : 'Model',
-              content: models,
+              as: 'h3'
             },
+            component: SectionContent,
+            sections: [...models.map(({ slug: modelSlug, title: modelTitle, description }) => ({
+              component: SectionContent,
+              props: {
+                slug: modelSlug,
+                title: modelTitle,
+                content: description,
+                as: 'h4',
+              },
+            }))],
           },
           {
-            component: Model,
+            component: SectionContent,
             props: {
               slug: `${slug}-simulation`,
               title: simulation.length > 1 ? 'Model simulations' : 'Model simulation',
-              content: simulation,
+              as: 'h3',
             },
+            sections: [...simulation.map(({ slug: simulationSlug, title: simulationTitle, description }) => ({
+              component: SectionContent,
+              props: {
+                slug: simulationSlug,
+                title: simulationTitle,
+                content: description,
+                as: 'h4',
+              },
+            }))],
           },
           {
-            component: Model,
+            component: SectionContent,
             props: {
               slug: `${slug}-processing`,
               title: 'Data processing',
-              content: processing,
+              as: 'h3',
             },
+            sections: [...processing.map(({ slug: processingSlug, title: processingTitle, description }) => ({
+              component: SectionContent,
+              props: {
+                slug: processingSlug,
+                title: processingTitle,
+                content: description,
+                as: 'h4',
+              },
+            }))],
           },
         ],
       };

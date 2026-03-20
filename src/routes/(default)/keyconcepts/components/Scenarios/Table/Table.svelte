@@ -1,6 +1,6 @@
 <script>
   import { KEY_CHARACTERISTICS, MAX_NUMBER_SELECTABLE_SCENARIOS, LABEL_SCENARIOS_LIST } from '$config';
-  import SubsectionHeadline from '$lib/components/layouts/ContentPages/SubsectionHeadline.svelte';
+  import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
   import tooltip from '$lib/utils/tooltip';
   import chroma from 'chroma-js';
   import { extent, max } from 'd3-array';
@@ -196,7 +196,7 @@
 </script>
 
 <div>
-  <SubsectionHeadline title={LABEL_SCENARIOS_LIST} subtitle="Compare and select up to three scenarios to display them in the scenario explorer." />
+  <SectionContent title={LABEL_SCENARIOS_LIST} subtitle="Compare and select up to three scenarios to display them in the scenario explorer." />
 
   <SideScrollIndicator widthOfContent={widthColumns} distanceLeft={titleWidth} distanceRight={0} showScrollbars={true}>
     <div role="treegrid" class="grid" aria-rowcount={scenariosListed.length} style="grid-template-columns: {titleWidth}px {maxWidth};">

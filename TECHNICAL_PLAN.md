@@ -6,12 +6,12 @@ SvelteKit application with modular architecture: Svelte stores for state managem
 
 ### Service Architecture
 
-| Service | Role | Technology |
-|---------|------|------------|
-| **Time Series** | Climate indicator data storage and querying | ixmp4 |
-| **GIS** | Geographic data, vector/raster tiles, spatial queries | GeoServer + PostGIS |
-| **Indicator Catalog DB** | Indicator metadata, categories, tags, filtering | Embedded SQL |
-| **Content** | CMS-managed pages, case studies, tool descriptions | Strapi |
+| Service                  | Role                                                  | Technology          |
+| ------------------------ | ----------------------------------------------------- | ------------------- |
+| **Time Series**          | Climate indicator data storage and querying           | ixmp4               |
+| **GIS**                  | Geographic data, vector/raster tiles, spatial queries | GeoServer + PostGIS |
+| **Indicator Catalog DB** | Indicator metadata, categories, tags, filtering       | Embedded SQL        |
+| **Content**              | CMS-managed pages, case studies, tool descriptions    | Strapi              |
 
 The SvelteKit frontend orchestrates across these services — for example, the Indicator Catalog combines Indicator Catalog DB queries (for browsing/filtering) with Time Series queries (for charting), while the EU Scoreboard additionally pulls geographic boundaries from the GIS service and editorial content from Strapi.
 
@@ -45,16 +45,16 @@ gantt
 
 ### Dependencies
 
-| Deliverable | Depends On | Enables |
-|-------------|------------|---------|
-| 1. Landing Page | — | 3, 4, 5 |
-| 2. Methodology & Key Concepts | — | — |
-| 3. Tools | 1 | 6 |
-| 4. Indicator Catalog | 1 | 6 |
-| 5. GeoServer + MVT | 1 | 6 |
-| 6. EU Scoreboard | 3, 4, 5 | 7 |
-| 7. Case Studies | 6 | — |
-| 8. Project Landing Pages | 1 | — |
+| Deliverable                   | Depends On | Enables |
+| ----------------------------- | ---------- | ------- |
+| 1. Landing Page               | —          | 3, 4, 5 |
+| 2. Methodology & Key Concepts | —          | —       |
+| 3. Tools                      | 1          | 6       |
+| 4. Indicator Catalog          | 1          | 6       |
+| 5. GeoServer + MVT            | 1          | 6       |
+| 6. EU Scoreboard              | 3, 4, 5    | 7       |
+| 7. Case Studies               | 6          | —       |
+| 8. Project Landing Pages      | 1          | —       |
 
 ---
 
@@ -78,7 +78,7 @@ Merge the existing Methodology and Key Concepts sections into a single browsable
 
 ## Tools
 
-Dedicated `/tools` hub for analytical tools. First entry: "Avoiding Future Impacts" migrated from `/impacts/avoid` to `/tools/avoiding-future-impact`.
+Dedicated `/adaptation` hub for analytical tools. First entry: "Avoiding Future Impacts" migrated from `/impacts/avoid` to `/adaptation/avoiding-future-impact`.
 
 - **Strapi-managed** — "Tools" collection with slug, title, description, thumbnail, geography types, scenarios, and publication status.
 - **Route structure** — grid landing page with cards; each tool gets a nested route retaining existing functionality.
@@ -161,12 +161,12 @@ ixmp4 lacks native metadata support, necessitating a hybrid architecture with a 
 ```mermaid
 C4Component
     title PROVIDE Platform - Component Architecture
- 
+
     ComponentDb(catalogDB, "Indicator Catalog DB", "SQL", "Indicator metadata, categories, tags")
     Component(catalog, "Indicator Catalog Service", "API", "Browse, filter, search indicators")
     ComponentDb(ixmp4DB, "Time Series (ixmp4)", "REST API", "Variables, time series, datapoints")
     Component(content, "Content Service", "Strapi", "CMS pages, case studies")
-    Component(gis, "GIS Service", "GeoServer", "Vector/raster tiles, spatial queries")    
+    Component(gis, "GIS Service", "GeoServer", "Vector/raster tiles, spatial queries")
 
     Component(ui, "SvelteKit App", "SvelteKit", "Pages, stores, URL-synced state")
 
@@ -242,4 +242,3 @@ sequenceDiagram
 ```
 
 **CSV format:** three columns — region, year, value.
-

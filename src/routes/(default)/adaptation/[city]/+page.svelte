@@ -1,7 +1,7 @@
 <script>
   import { PATH_ADAPTATION } from '$src/config.js';
   import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
-  import SectionDefault from '$lib/components/layouts/ContentPages/SectionDefault.svelte';
+  import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
   import Outro from '../sections/Outro.svelte';
   import AvoidingImpacts from './sections/AvoidingImpacts.svelte';
   import FutureImpacts from './sections/FutureImpacts.svelte';
@@ -14,7 +14,7 @@
     'image-slider': { component: ImageSlider },
     'avoiding-impacts': { component: AvoidingImpacts, omitBorder: true },
     'future-impacts': { component: FutureImpacts },
-    section: { component: SectionDefault },
+    section: { component: SectionContent },
   };
 
   $: sections = caseStudy.mainContent.map((section) => {

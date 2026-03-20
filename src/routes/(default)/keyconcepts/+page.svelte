@@ -1,5 +1,5 @@
 <script>
-  import SectionHeadline from '$lib/components/layouts/ContentPages/SectionHeadline.svelte';
+  import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
   import TermSection from './components/TermSection.svelte';
   import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
   import Scenarios from './components/Scenarios/Scenarios.svelte';
@@ -13,7 +13,7 @@
 
   $: sections = [
     ...content.map(({ title, slug, sections }) => ({
-      component: SectionHeadline,
+      component: SectionContent,
       props: {
         slug,
         title,

@@ -1,5 +1,5 @@
 <script>
-  import { LABEL_DOCUMENTATION, LABEL_CONTACT, LABEL_ABOUT, PATH_ABOUT, PATH_CONTACT, PATH_DOCUMENTATION, PATH_EXPLORE, PATH_IMPACT, LABEL_EXPLORE, PATH_ADAPTATION, TITLE_PROJECT, TITLE_SITE } from '$config';
+  import { LABEL_DOCUMENTATION, LABEL_ADAPTATION, LABEL_CONTACT, LABEL_ABOUT, PATH_ABOUT, PATH_CONTACT, PATH_DOCUMENTATION, PATH_EXPLORE, PATH_IMPACT, LABEL_EXPLORE, PATH_ADAPTATION, TITLE_PROJECT, TITLE_SITE } from '$config';
   import { version } from '$app/environment';
   export let buildDate;
 </script>
@@ -31,7 +31,7 @@
       <nav>
         <ul class="flex flex-wrap gap-x-6 gap-y-2">
           <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_IMPACT}/{PATH_EXPLORE}">{LABEL_EXPLORE}</a></li>
-          <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_ADAPTATION}">Tools</a></li>
+          <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_ADAPTATION}">{LABEL_ADAPTATION}</a></li>
           <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_ADAPTATION}">Case Studies</a></li>
           <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_DOCUMENTATION}">{LABEL_DOCUMENTATION}</a></li>
           <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_ABOUT}">{LABEL_ABOUT}</a></li>

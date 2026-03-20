@@ -14,7 +14,7 @@ export const PATH_IMPACT = 'impacts';
 export const PATH_AVOID = 'avoid';
 export const PATH_EXPLORE = 'explore';
 export const PATH_KEY_CONCEPTS = 'keyconcepts';
-export const PATH_ADAPTATION = 'tools';
+export const PATH_ADAPTATION = 'adaptation';
 
 // These will also be used for page titles
 export const LABEL_DOCUMENTATION = 'Methodology';
@@ -24,7 +24,7 @@ export const LABEL_EXPLORE = 'Explore';
 export const LABEL_KEY_CONCEPTS = 'Key concepts';
 export const LABEL_FUTURE_IMPACTS = 'Future impacts';
 export const LABEL_AVOID_IMPACTS = 'Avoiding future impacts';
-export const LABEL_ADAPTATION = 'Tools';
+export const LABEL_ADAPTATION = 'Adaptation';
 
 export const LABEL_SCENARIOS_INTRO = 'Scenarios';
 export const LABEL_SCENARIOS_TIMEFRAMES = 'Timeframes';

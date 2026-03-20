@@ -4,7 +4,7 @@
   import Warning from './Warning.svelte';
   import Chart from './Chart.svelte';
   import Table from './Table/Table.svelte';
-  import SubsectionHeadline from '$lib/components/layouts/ContentPages/SubsectionHeadline.svelte';
+  import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
   import PillGroup from '$lib/components/ui/PillGroup.svelte';
   import { writable } from 'svelte/store';
   import { extractEndYear } from '$utils/meta.js';
@@ -40,7 +40,7 @@
 
 <div class="flex flex-col gap-y-10 mt-10 pt-10">
   <div>
-    <SubsectionHeadline title={LABEL_SCENARIOS_TIMEFRAMES} subtitle="2100 for the majority of climate impacts, 2300 for longer term impacts (glaciers and oceans)." />
+    <SectionContent title={LABEL_SCENARIOS_TIMEFRAMES} subtitle="2100 for the majority of climate impacts, 2300 for longer term impacts (glaciers and oceans)." />
     <PillGroup bind:currentUid={selectedTimeframe} options={selectableTimeframes} />
   </div>
 
@@ -52,7 +52,7 @@
     <CrossLink selectedScenarios={$selectedScenarios} />
   </footer>
   <div>
-    <SubsectionHeadline title={LABEL_SCENARIOS_TIMELINES} subtitle="Select a scenario to see progress over time." />
+    <SectionContent title={LABEL_SCENARIOS_TIMELINES} subtitle="Select a scenario to see progress over time." />
     <div class="grid gap-x-6 gap-y-6 lg:grid-cols-2">
       <Chart scenarios={scenariosListed} variable={MEAN_TEMPERATURE_UID} title="Global mean temperature in °C" yDomain={[1, null]}>
         <p class="mt-1 mb-2 text-contour-weaker">
