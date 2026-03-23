@@ -10,8 +10,7 @@
     IS_EMPTY_GEOGRAPHY,
   } from '$stores/state.js';
   import { PATH_KEY_CONCEPTS, ANCHOR_EXPLAINER_SCENARIOS } from '$config';
-  import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
-  import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
+  import SelectionModal from '$lib/components/controls/components/SelectionModal.svelte';
   import SelectionPanel from '$lib/components/controls/components/SelectionPanel.svelte';
   import PillGroup from '$lib/components/ui/PillGroup.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
@@ -64,20 +63,16 @@
   });
 </script>
 
-<ModalSelect panelClass="max-w-4xl" class="flex flex-col gap-2">
-  <svelte:fragment slot="trigger" let:open let:toggle>
-    <SelectionButton
-      label="Scenario"
-      {buttonLabel}
-      labelClass="mb-0 p-0 text-text-stronger uppercase text-xs leading-tight"
-      buttonClass="text-sm p-0"
-      warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `Unavailable scenario${multipleScenariosSelected ? 's' : ''} selected` : undefined}
-      placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
-      disabled={$DISABLED}
-      {open}
-      on:click={toggle}
-    />
-  </svelte:fragment>
+<SelectionModal
+  label="Scenario"
+  {buttonLabel}
+  labelClass="mb-0 p-0 text-text-stronger uppercase text-xs leading-tight"
+  buttonClass="text-sm p-0"
+  warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `Unavailable scenario${multipleScenariosSelected ? 's' : ''} selected` : undefined}
+  placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
+  disabled={$DISABLED}
+  panelClass="max-w-4xl"
+>
   <SelectionPanel>
     <svelte:fragment slot="header">
       <div class="flex items-center justify-between">
@@ -108,4 +103,4 @@
       </div>
     </svelte:fragment>
   </SelectionPanel>
-</ModalSelect>
+</SelectionModal>

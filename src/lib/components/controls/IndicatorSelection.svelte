@@ -1,7 +1,6 @@
 <script>
   import { IS_EMPTY_GEOGRAPHY, CURRENT_INDICATOR, IS_EMPTY_INDICATOR, CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS, SELECTABLE_SECTORS, IS_COMBINATION_AVAILABLE_INDICATOR, SELECTION_MODE } from '$stores/state.js';
-  import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
-  import SelectionButton from './components/SelectionButton.svelte';
+  import SelectionModal from './components/SelectionModal.svelte';
   import SelectionPanel from './components/SelectionPanel.svelte';
   import PillGroup from '$lib/components/ui/PillGroup.svelte';
   import InteractiveListItem from '$lib/components/ui/InteractiveListItem.svelte';
@@ -34,20 +33,14 @@
   });
 </script>
 
-<ModalSelect panelClass="max-w-3xl" bind:isOpen={modalOpen}>
-  <svelte:fragment slot="trigger" let:open let:toggle>
-    <SelectionButton
-      {label}
-      buttonLabel={$CURRENT_INDICATOR?.label}
-      buttonClass="border-theme-base/20 border rounded-sm p-3"
-      labelClass="mb-2"
-      warning={!$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
-      disabled={$DISABLED}
-      placeholder={$IS_EMPTY_INDICATOR ? 'Select an indicator' : undefined}
-      {open}
-      on:click={toggle}
-    />
-  </svelte:fragment>
+<SelectionModal
+  {label}
+  buttonLabel={$CURRENT_INDICATOR?.label}
+  warning={!$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
+  disabled={$DISABLED}
+  placeholder={$IS_EMPTY_INDICATOR ? 'Select an indicator' : undefined}
+  bind:isOpen={modalOpen}
+>
   <SelectionPanel>
     <svelte:fragment slot="header">
       <span class="block text-xs uppercase tracking-widest text-theme-weaker mb-2">Pick a sector</span>
@@ -69,11 +62,11 @@
     </svelte:fragment>
     <svelte:fragment slot="content">
       {#if detailsItem}
-        <div class="p-4">
+        <div class="p-8 m-4 h-min border rounded-sm border-theme-base/20">
           <h3 class="font-bold mb-2">{detailsItem.label}</h3>
           <p class="text-contour-weak">{@html detailsItem.description || ''}</p>
         </div>
       {/if}
     </svelte:fragment>
   </SelectionPanel>
-</ModalSelect>
+</SelectionModal>

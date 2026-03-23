@@ -5,8 +5,7 @@
   import { writable } from 'svelte/store';
   import { fetchData } from '$lib/api/api';
   import { GEOGRAPHIES } from '$stores/meta.js';
-  import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
-  import SelectionButton from '../components/SelectionButton.svelte';
+  import SelectionModal from '../components/SelectionModal.svelte';
   import SelectionPanel from '../components/SelectionPanel.svelte';
   import PillGroup from '$lib/components/ui/PillGroup.svelte';
   import SearchInput from '$lib/components/ui/SearchInput.svelte';
@@ -76,19 +75,14 @@
   }
 </script>
 
-<ModalSelect panelClass="max-w-4xl" bind:isOpen={modalOpen}>
-  <svelte:fragment slot="trigger" let:open let:toggle>
-    <SelectionButton
-      {label}
-      category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
-      buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
-      labelClass="mb-2"
-      buttonClass="border-theme-base/20 border rounded-sm p-3"
-      placeholder={$IS_EMPTY_GEOGRAPHY ? 'Select a geography' : undefined}
-      {open}
-      on:click={toggle}
-    />
-  </svelte:fragment>
+<SelectionModal
+  {label}
+  category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
+  buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
+  placeholder={$IS_EMPTY_GEOGRAPHY ? 'Select a geography' : undefined}
+  panelClass="max-w-4xl"
+  bind:isOpen={modalOpen}
+>
   <SelectionPanel>
     <svelte:fragment slot="header">
       <SearchInput bind:value={term} placeholder="Search geography" class="mb-3" />
@@ -105,4 +99,4 @@
       </div>
     </svelte:fragment>
   </SelectionPanel>
-</ModalSelect>
+</SelectionModal>

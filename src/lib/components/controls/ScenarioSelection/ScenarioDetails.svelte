@@ -51,7 +51,7 @@
   </dl>
 {/if}
 
-<div class="border-t border-contour-weaker pt-4">
+<div class="border-t border-contour-weaker py-4">
   <p class="text-sm mb-2 font-bold">Global mean temperature in °C</p>
   <figure>
     <div class="h-48 mb-2">
