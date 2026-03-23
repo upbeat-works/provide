@@ -1,11 +1,14 @@
 <script>
   import { IS_EMPTY_GEOGRAPHY, CURRENT_INDICATOR, IS_EMPTY_INDICATOR, CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS, SELECTABLE_SECTORS, IS_COMBINATION_AVAILABLE_INDICATOR, SELECTION_MODE } from '$stores/state.js';
-  import PopoverSelect from '$lib/components/ui/PopoverSelect/PopoverSelect.svelte';
-  import Content from '$lib/components/ui/PopoverSelect/Content.svelte';
+  import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
+  import SelectionButton from '../SelectionButton.svelte';
+  import ControlPanel from '$src/lib/components/controls/ControlPanel.svelte';
   import { derived } from 'svelte/store';
 
   export let label = 'Indicator';
-  export let popperOptions = {};
+
+  let modalOpen = false;
+  $: if ($CURRENT_INDICATOR_UID) modalOpen = false;
 
   let currentFilterUid;
 
@@ -17,18 +20,21 @@
   });
 </script>
 
-<PopoverSelect
-  {label}
-  buttonLabel={$CURRENT_INDICATOR?.label}
-  buttonClass="border-theme-base/20 border rounded-sm p-3"
-  panelClass="w-screen-p max-w-3xl"
-  labelClass="mb-2"
-  warning={!$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
-  disabled={$DISABLED}
-  placeholder={$IS_EMPTY_INDICATOR ? 'Select an indicator' : undefined}
-  {popperOptions}
->
-  <Content
+<ModalSelect panelClass="max-w-3xl" bind:isOpen={modalOpen}>
+  <svelte:fragment slot="trigger" let:open let:toggle>
+    <SelectionButton
+      {label}
+      buttonLabel={$CURRENT_INDICATOR?.label}
+      buttonClass="border-theme-base/20 border rounded-sm p-3"
+      labelClass="mb-2"
+      warning={!$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
+      disabled={$DISABLED}
+      placeholder={$IS_EMPTY_INDICATOR ? 'Select an indicator' : undefined}
+      {open}
+      on:click={toggle}
+    />
+  </svelte:fragment>
+  <ControlPanel
     filters={$SELECTABLE_SECTORS}
     filterKey="sector"
     filterLabel="Pick a sector"
@@ -39,4 +45,4 @@
     itemsLabel="Indicators"
     allowWrap={true}
   />
-</PopoverSelect>
+</ModalSelect>

@@ -24,7 +24,7 @@
     class:grid-cols-1={true}
   >
     <div class:order-1={mode === 'geography'} class:order-3={mode === 'indicator'} class:md:order-1={mode === 'geography'} class:md:order-3={mode === 'indicator'}>
-      <GeographySelection label={geographyLabel} popperOptions={{ placement: mode === 'geography' ? 'bottom-start' : 'bottom-end' }} />
+      <GeographySelection label={geographyLabel} />
     </div>
 
     <div class="hidden md:flex items-center justify-center order-2 pt-8">
@@ -32,7 +32,7 @@
     </div>
 
     <div class:order-3={mode === 'geography'} class:order-1={mode === 'indicator'} class:md:order-3={mode === 'geography'} class:md:order-1={mode === 'indicator'}>
-      <IndicatorSelection label={indicatorLabel} popperOptions={{ placement: mode === 'geography' ? 'bottom-end' : 'bottom-start' }} />
+      <IndicatorSelection label={indicatorLabel} />
     </div>
   </div>
 </div>

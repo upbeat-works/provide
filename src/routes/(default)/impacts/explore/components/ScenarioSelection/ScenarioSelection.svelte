@@ -10,9 +10,11 @@
     IS_EMPTY_GEOGRAPHY,
   } from '$stores/state.js';
   import { PATH_KEY_CONCEPTS, ANCHOR_EXPLAINER_SCENARIOS } from '$config';
-  import PopoverSelect from '$lib/components/ui/PopoverSelect/PopoverSelect.svelte';
-  import Content from '$lib/components/ui/PopoverSelect/Content.svelte';
+  import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
+  import SelectionButton from '$lib/components/controls/ExploreControls/SelectionButton.svelte';
+  import ControlPanel from '$src/lib/components/controls/ControlPanel.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
   import ScenarioDetails from './ScenarioDetails.svelte';
   import ScenarioList from './ScenarioList.svelte';
   import { derived } from 'svelte/store';
@@ -20,7 +22,6 @@
   let hoveredScenarioUid;
   let currentTimeframe;
   let windowWidth;
-
   $: hasScenarioSelected = $CURRENT_SCENARIOS.length !== 0;
 
   $: multipleScenariosSelected = $CURRENT_SCENARIOS.length > 1;
@@ -58,19 +59,21 @@
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-<PopoverSelect
-  label="Scenario"
-  {buttonLabel}
-  panelClass="w-screen-p max-w-4xl"
-  labelClass="mb-0 p-0 text-text-stronger uppercase text-xs leading-tight"
-  buttonClass="text-sm p-0"
-  class="flex flex-col gap-2"
-  warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `Unavailable scenario${multipleScenariosSelected ? 's' : ''} selected` : undefined}
-  placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
-  size="md"
-  disabled={$DISABLED}
->
-  <Content
+<ModalSelect panelClass="max-w-4xl" class="flex flex-col gap-2">
+  <svelte:fragment slot="trigger" let:open let:toggle>
+    <SelectionButton
+      label="Scenario"
+      {buttonLabel}
+      labelClass="mb-0 p-0 text-text-stronger uppercase text-xs leading-tight"
+      buttonClass="text-sm p-0"
+      warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `Unavailable scenario${multipleScenariosSelected ? 's' : ''} selected` : undefined}
+      placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
+      disabled={$DISABLED}
+      {open}
+      on:click={toggle}
+    />
+  </svelte:fragment>
+  <ControlPanel
     filters={$AVAILABLE_TIMEFRAMES}
     filterKey="endYear"
     filterLabel="Pick a timeframe"
@@ -79,14 +82,10 @@
     bind:currentFilterUid={currentTimeframe}
     items={scenarios}
   >
-    <a
-      slot="header-link"
-      class="text-sm leading-tight font-bold flex items-center rounded-sm bg-petrol-800 text-white px-3 sm:px-4 md:px-6 py-1 sm:py-2 md:py-3 gap-2 hover:bg-petrol-900 transition-colors"
-      href={`/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}
-    >
-      <span>Which scenario should I select?</span>
+    <Button slot="header-link" class="mr-6" href={`/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}>
+      Which scenario should I select?
       <LinkArrow />
-    </a>
+    </Button>
     <div slot="items" class="grid grid-cols-1 md:grid-cols-[auto_1fr]" let:items let:currentFilterUid>
       {#key currentFilterUid}
         <fieldset class="flex flex-col min-w-min md:border-r border-contour-weakest py-2">
@@ -102,5 +101,5 @@
         {/if}
       </div>
     </div>
-  </Content>
-</PopoverSelect>
+  </ControlPanel>
+</ModalSelect>

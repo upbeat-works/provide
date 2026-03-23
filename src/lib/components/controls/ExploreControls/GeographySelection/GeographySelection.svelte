@@ -5,13 +5,16 @@
   import { writable } from 'svelte/store';
   import { fetchData } from '$lib/api/api';
   import { GEOGRAPHIES } from '$stores/meta.js';
-  import PopoverSelect from '$lib/components/ui/PopoverSelect/PopoverSelect.svelte';
-  import Content from '$lib/components/ui/PopoverSelect/Content.svelte';
+  import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
+  import SelectionButton from '../SelectionButton.svelte';
+  import ControlPanel from '$src/lib/components/controls/ControlPanel.svelte';
   import Map from './Map.svelte';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
 
   export let label = 'Geography';
-  export let popperOptions = {};
+
+  let modalOpen = false;
+  $: if ($CURRENT_GEOGRAPHY_UID) modalOpen = false;
 
   let GEO_SHAPE_DATA = writable({});
 
@@ -70,17 +73,20 @@
   }
 </script>
 
-<PopoverSelect
-  {label}
-  category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
-  buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
-  panelClass="w-screen-p max-w-4xl"
-  labelClass="mb-2"
-  buttonClass="border-theme-base/20 border aria-expanded:border-theme-base/60 rounded-sm p-3"
-  placeholder={$IS_EMPTY_GEOGRAPHY ? 'Select a geography' : undefined}
-  {popperOptions}
->
-  <Content filters={geographyTypes} filterKey="geographyType" filterLabel="Pick a location" currentUid={$CURRENT_GEOGRAPHY_UID} items={selectableGeographies} bind:currentFilterUid allowWrap={true}>
+<ModalSelect panelClass="max-w-4xl" bind:isOpen={modalOpen}>
+  <svelte:fragment slot="trigger" let:open let:toggle>
+    <SelectionButton
+      {label}
+      category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
+      buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
+      labelClass="mb-2"
+      buttonClass="border-theme-base/20 border rounded-sm p-3"
+      placeholder={$IS_EMPTY_GEOGRAPHY ? 'Select a geography' : undefined}
+      {open}
+      on:click={toggle}
+    />
+  </svelte:fragment>
+  <ControlPanel filters={geographyTypes} filterKey="geographyType" filterLabel="Pick a location" currentUid={$CURRENT_GEOGRAPHY_UID} items={selectableGeographies} bind:currentFilterUid allowWrap={true}>
     <div slot="items" let:items let:currentFilterUid class="max-w-full grid grid-cols-1 md:grid-cols-[1.5fr_3fr] lg:grid-cols-[1.5fr_3fr]">
       <Geographies {items} bind:hoveredItem geographyType={geographyTypes.find(({ uid }) => uid === currentFilterUid)} bind:currentUid={$CURRENT_GEOGRAPHY_UID} />
       <div class="px-3 hidden md:block">
@@ -89,5 +95,5 @@
         </LoadingWrapper>
       </div>
     </div>
-  </Content>
-</PopoverSelect>
+  </ControlPanel>
+</ModalSelect>
