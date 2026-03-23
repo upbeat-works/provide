@@ -13,11 +13,13 @@
   import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
   import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
   import SelectionPanel from '$lib/components/controls/components/SelectionPanel.svelte';
+  import PillGroup from '$lib/components/ui/PillGroup.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import ScenarioDetails from './ScenarioDetails.svelte';
   import ScenarioList from './ScenarioList.svelte';
   import { derived } from 'svelte/store';
+  import { onMount } from 'svelte';
 
   let hoveredScenarioUid;
   let currentTimeframe;
@@ -38,6 +40,12 @@
     };
   });
 
+  onMount(() => {
+    const current = scenarios.find((s) => ($CURRENT_SCENARIOS_UID ?? []).includes(s.uid));
+    currentTimeframe = current?.endYear ?? $AVAILABLE_TIMEFRAMES.find((t) => !t.disabled)?.uid;
+  });
+
+  $: availableScenarios = currentTimeframe ? scenarios.filter((s) => s.endYear === currentTimeframe) : scenarios;
   $: chartScenarios = scenarios.filter((s) => s.endYear === currentTimeframe);
 
   $: renderedScenario = scenarios.find((s) => s.isHighlighted && s.endYear === currentTimeframe);
@@ -70,33 +78,34 @@
       on:click={toggle}
     />
   </svelte:fragment>
-  <SelectionPanel
-    filters={$AVAILABLE_TIMEFRAMES}
-    filterKey="endYear"
-    filterLabel="Pick a timeframe"
-    disabledMessage="No scenarios available for this indicator in this timeframe"
-    currentUid={$CURRENT_SCENARIOS_UID}
-    bind:currentFilterUid={currentTimeframe}
-    items={scenarios}
-  >
-    <Button slot="header-link" class="mr-6" href={`/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}>
-      Which scenario should I select?
-      <LinkArrow />
-    </Button>
-    <div slot="items" class="grid grid-cols-1 md:grid-cols-[auto_1fr]" let:items let:currentFilterUid>
-      {#key currentFilterUid}
-        <fieldset class="flex flex-col min-w-min md:border-r border-contour-weakest py-2">
-          <ScenarioList highlightedScenarioUid={renderedScenario?.uid} bind:hoveredScenarioUid scenarios={items} {currentFilterUid} />
+  <SelectionPanel>
+    <svelte:fragment slot="header">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="block text-xs uppercase tracking-widest text-theme-weaker mb-2">Pick a timeframe</span>
+          <PillGroup bind:currentUid={currentTimeframe} options={$AVAILABLE_TIMEFRAMES} disabledMessage="No scenarios available for this indicator in this timeframe" />
+        </div>
+        <Button href={`/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}>
+          Which scenario should I select?
+          <LinkArrow />
+        </Button>
+      </div>
+    </svelte:fragment>
+    <svelte:fragment slot="sidebar">
+      {#key currentTimeframe}
+        <fieldset class="flex flex-col min-w-min py-2">
+          <ScenarioList highlightedScenarioUid={renderedScenario?.uid} bind:hoveredScenarioUid scenarios={availableScenarios} currentFilterUid={currentTimeframe} />
         </fieldset>
       {/key}
-
-      <div class="p-6 hidden md:block">
+    </svelte:fragment>
+    <svelte:fragment slot="content">
+      <div class="p-6 w-full">
         {#if renderedScenario}
-          <ScenarioDetails scenario={renderedScenario} scenarios={chartScenarios} {currentFilterUid} />
+          <ScenarioDetails scenario={renderedScenario} scenarios={chartScenarios} currentFilterUid={currentTimeframe} />
         {:else}
           <div class="p-4 flex items-center rounded text-contour-weak justify-center min-h-[60vh]">Hover over a scenario to view details</div>
         {/if}
       </div>
-    </div>
+    </svelte:fragment>
   </SelectionPanel>
 </ModalSelect>

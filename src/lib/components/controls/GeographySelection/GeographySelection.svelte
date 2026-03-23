@@ -8,6 +8,8 @@
   import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
   import SelectionButton from '../components/SelectionButton.svelte';
   import SelectionPanel from '../components/SelectionPanel.svelte';
+  import PillGroup from '$lib/components/ui/PillGroup.svelte';
+  import SearchInput from '$lib/components/ui/SearchInput.svelte';
   import Map from './Map.svelte';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
 
@@ -21,6 +23,7 @@
   $: geographyTypes = $AVAILABLE_GEOGRAPHY_TYPES;
 
   let hoveredItem;
+  let term = '';
   let currentFilterUid = $CURRENT_GEOGRAPHY_TYPE?.uid; // This stores the currently displayed geography type
 
   // In indicator-first mode, use geographies filtered by the selected indicator; otherwise show all
@@ -86,14 +89,20 @@
       on:click={toggle}
     />
   </svelte:fragment>
-  <SelectionPanel filters={geographyTypes} filterKey="geographyType" filterLabel="Pick a location" currentUid={$CURRENT_GEOGRAPHY_UID} items={selectableGeographies} bind:currentFilterUid allowWrap={true}>
-    <div slot="items" let:items let:currentFilterUid class="max-w-full grid grid-cols-1 md:grid-cols-[1.5fr_3fr] lg:grid-cols-[1.5fr_3fr]">
-      <Geographies {items} bind:hoveredItem geographyType={geographyTypes.find(({ uid }) => uid === currentFilterUid)} bind:currentUid={$CURRENT_GEOGRAPHY_UID} />
-      <div class="px-3 hidden md:block">
+  <SelectionPanel>
+    <svelte:fragment slot="header">
+      <SearchInput bind:value={term} placeholder="Search geography" class="mb-3" />
+      <PillGroup bind:currentUid={currentFilterUid} options={geographyTypes} allowWrap={true} />
+    </svelte:fragment>
+    <svelte:fragment slot="sidebar">
+      <Geographies items={selectableGeographies} {term} bind:hoveredItem geographyType={geographyTypes.find(({ uid }) => uid === currentFilterUid)} bind:currentUid={$CURRENT_GEOGRAPHY_UID} />
+    </svelte:fragment>
+    <svelte:fragment slot="content">
+      <div class="px-3 w-full">
         <LoadingWrapper let:asyncProps={{ geoShape }} asyncProps={{ geoShape: $GEO_SHAPE_DATA }} let:isLoading>
           <Map hovered={hoveredItem} baseLayer={geoShape[0].data.data} dataLayer={geoShape[1].data.data} selected={$CURRENT_GEOGRAPHY_UID} />
         </LoadingWrapper>
       </div>
-    </div>
+    </svelte:fragment>
   </SelectionPanel>
 </ModalSelect>
