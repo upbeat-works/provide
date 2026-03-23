@@ -16,6 +16,7 @@
   } from '$config';
   import NavLink from '$lib/components/navigation/NavLink.svelte';
   import Logo from './Logo.svelte';
+  import { HEADER_CLASS } from '$stores/state';
 
   const items = [
     { href: `/${PATH_IMPACT}/${PATH_EXPLORE}`, label: LABEL_EXPLORE },
@@ -27,7 +28,7 @@
   ];
 </script>
 
-<nav class="bg-sky-700 py-4 border-b border-dashed border-sky-600">
+<nav class={`py-4 border-b border-dashed ${$HEADER_CLASS || 'bg-sky-700 border-sky-600'}`}>
   <div class="mx-auto max-w-7xl px-6 flex justify-between items-center gap-y-4 flex-col lg:flex-row">
     <NavLink href="/" class="hover:text-sky-100 transition-colors"><Logo /></NavLink>
     <ul class="flex flex-wrap gap-x-6 lg:gap-x-8">
