@@ -12,7 +12,7 @@
   import { PATH_KEY_CONCEPTS, ANCHOR_EXPLAINER_SCENARIOS } from '$config';
   import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
   import SelectionButton from '$lib/components/controls/ExploreControls/SelectionButton.svelte';
-  import ControlPanel from '$src/lib/components/controls/ControlPanel.svelte';
+  import ControlPanel from '$lib/components/controls/ControlPanel.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import ScenarioDetails from './ScenarioDetails.svelte';
@@ -21,7 +21,6 @@
 
   let hoveredScenarioUid;
   let currentTimeframe;
-  let windowWidth;
   $: hasScenarioSelected = $CURRENT_SCENARIOS.length !== 0;
 
   $: multipleScenariosSelected = $CURRENT_SCENARIOS.length > 1;
@@ -56,8 +55,6 @@
     return undefined;
   });
 </script>
-
-<svelte:window bind:innerWidth={windowWidth} />
 
 <ModalSelect panelClass="max-w-4xl" class="flex flex-col gap-2">
   <svelte:fragment slot="trigger" let:open let:toggle>

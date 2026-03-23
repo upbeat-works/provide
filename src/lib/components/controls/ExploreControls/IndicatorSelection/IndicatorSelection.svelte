@@ -2,7 +2,7 @@
   import { IS_EMPTY_GEOGRAPHY, CURRENT_INDICATOR, IS_EMPTY_INDICATOR, CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS, SELECTABLE_SECTORS, IS_COMBINATION_AVAILABLE_INDICATOR, SELECTION_MODE } from '$stores/state.js';
   import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
   import SelectionButton from '../SelectionButton.svelte';
-  import ControlPanel from '$src/lib/components/controls/ControlPanel.svelte';
+  import ControlPanel from '$lib/components/controls/ControlPanel.svelte';
   import { derived } from 'svelte/store';
 
   export let label = 'Indicator';

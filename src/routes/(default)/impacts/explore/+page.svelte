@@ -2,7 +2,7 @@
   import ImpactTime from './components/ImpactTime/ImpactTime.svelte';
   import ImpactGeo from './components/ImpactGeo/ImpactGeo.svelte';
   import UnAvoidableRisk from '../components/UnavoidableRisk/UnavoidableRisk.svelte';
-  import ScenarioSelection from './components/ScenarioSelection/ScenarioSelection.svelte';
+  import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import { IndicatorParameters, SelectionControls, ControlTabs } from '$lib/components/controls/ExploreControls';

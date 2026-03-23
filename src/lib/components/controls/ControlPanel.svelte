@@ -14,6 +14,7 @@
   export let currentFilterUid;
   export let disabledMessage = undefined;
   export let allowWrap = false;
+  export let emptyMessage = 'No items available.';
 
   let hoveredItem = null;
 
@@ -55,9 +56,10 @@
   </div>
 {/if}
 <slot name="items" items={availableItems} {currentFilterUid}>
-  <div class="grid grid-cols-1 md:grid-cols-[1fr_3fr] min-h-[20rem] max-h-[60vh] overflow-y-auto">
-    <div class="md:border-r border-contour-weakest pb-4">
+  <div class="grid grid-cols-1 md:grid-cols-[1fr_3fr]">
+    <div class="md:border-r border-contour-weakest flex flex-col">
       {#if itemsLabel}<Tagline class="mt-4 mb-2 px-5">{itemsLabel}</Tagline>{/if}
+      <div class="md:h-96 md:overflow-y-auto">
       <RadioGroup bind:value={currentUid} on:change={(e) => (currentUid = e.detail)}>
         {#if availableItems.length}
           {#each availableItems as { icon, uid, label }}
@@ -66,9 +68,10 @@
             </RadioGroupOption>
           {/each}
         {:else}
-          <span class="text-xs py-1 px-5 block text-text-weaker" role="status">No indicators are available for this sector and geography.</span>
+          <span class="text-xs py-1 px-5 block text-text-weaker" role="status">{emptyMessage}</span>
         {/if}
       </RadioGroup>
+      </div>
     </div>
     {#if detailsItem}
       <div class="p-4 hidden md:block">

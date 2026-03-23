@@ -7,7 +7,7 @@
   import { GEOGRAPHIES } from '$stores/meta.js';
   import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
   import SelectionButton from '../SelectionButton.svelte';
-  import ControlPanel from '$src/lib/components/controls/ControlPanel.svelte';
+  import ControlPanel from '$lib/components/controls/ControlPanel.svelte';
   import Map from './Map.svelte';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
 
@@ -26,7 +26,7 @@
   // In indicator-first mode, use geographies filtered by the selected indicator; otherwise show all
   $: geographiesSource = $SELECTION_MODE === 'indicator' ? $AVAILABLE_GEOGRAPHIES_FOR_INDICATOR : $GEOGRAPHIES;
 
-  // currentFilterUid gets updated by the Content component
+  // currentFilterUid gets updated by the ControlPanel component
   $: selectableGeographies = geographiesSource[currentFilterUid] ?? [];
 
   $: currentFilterUid &&
