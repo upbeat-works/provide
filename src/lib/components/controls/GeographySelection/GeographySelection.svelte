@@ -6,8 +6,8 @@
   import { fetchData } from '$lib/api/api';
   import { GEOGRAPHIES } from '$stores/meta.js';
   import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
-  import SelectionButton from '../SelectionButton.svelte';
-  import ControlPanel from '$lib/components/controls/ControlPanel.svelte';
+  import SelectionButton from '../components/SelectionButton.svelte';
+  import SelectionPanel from '../components/SelectionPanel.svelte';
   import Map from './Map.svelte';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
 
@@ -86,7 +86,7 @@
       on:click={toggle}
     />
   </svelte:fragment>
-  <ControlPanel filters={geographyTypes} filterKey="geographyType" filterLabel="Pick a location" currentUid={$CURRENT_GEOGRAPHY_UID} items={selectableGeographies} bind:currentFilterUid allowWrap={true}>
+  <SelectionPanel filters={geographyTypes} filterKey="geographyType" filterLabel="Pick a location" currentUid={$CURRENT_GEOGRAPHY_UID} items={selectableGeographies} bind:currentFilterUid allowWrap={true}>
     <div slot="items" let:items let:currentFilterUid class="max-w-full grid grid-cols-1 md:grid-cols-[1.5fr_3fr] lg:grid-cols-[1.5fr_3fr]">
       <Geographies {items} bind:hoveredItem geographyType={geographyTypes.find(({ uid }) => uid === currentFilterUid)} bind:currentUid={$CURRENT_GEOGRAPHY_UID} />
       <div class="px-3 hidden md:block">
@@ -95,5 +95,5 @@
         </LoadingWrapper>
       </div>
     </div>
-  </ControlPanel>
+  </SelectionPanel>
 </ModalSelect>

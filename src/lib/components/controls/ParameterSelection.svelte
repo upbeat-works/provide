@@ -1,7 +1,7 @@
 <script>
   import GeographySelection from './GeographySelection/GeographySelection.svelte';
-  import IndicatorSelection from './IndicatorSelection/IndicatorSelection.svelte';
-  import SwapButton from './SwapButton.svelte';
+  import IndicatorSelection from './IndicatorSelection.svelte';
+  import SwapButton from './components/SwapButton.svelte';
   import { SELECTION_MODE } from '$stores/state.js';
 
   $: mode = $SELECTION_MODE;

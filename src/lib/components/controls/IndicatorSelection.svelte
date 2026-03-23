@@ -1,8 +1,8 @@
 <script>
   import { IS_EMPTY_GEOGRAPHY, CURRENT_INDICATOR, IS_EMPTY_INDICATOR, CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS, SELECTABLE_SECTORS, IS_COMBINATION_AVAILABLE_INDICATOR, SELECTION_MODE } from '$stores/state.js';
   import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
-  import SelectionButton from '../SelectionButton.svelte';
-  import ControlPanel from '$lib/components/controls/ControlPanel.svelte';
+  import SelectionButton from './components/SelectionButton.svelte';
+  import SelectionPanel from './components/SelectionPanel.svelte';
   import { derived } from 'svelte/store';
 
   export let label = 'Indicator';
@@ -34,7 +34,7 @@
       on:click={toggle}
     />
   </svelte:fragment>
-  <ControlPanel
+  <SelectionPanel
     filters={$SELECTABLE_SECTORS}
     filterKey="sector"
     filterLabel="Pick a sector"

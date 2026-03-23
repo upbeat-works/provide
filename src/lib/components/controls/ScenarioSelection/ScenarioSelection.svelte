@@ -11,8 +11,8 @@
   } from '$stores/state.js';
   import { PATH_KEY_CONCEPTS, ANCHOR_EXPLAINER_SCENARIOS } from '$config';
   import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
-  import SelectionButton from '$lib/components/controls/ExploreControls/SelectionButton.svelte';
-  import ControlPanel from '$lib/components/controls/ControlPanel.svelte';
+  import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
+  import SelectionPanel from '$lib/components/controls/components/SelectionPanel.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import ScenarioDetails from './ScenarioDetails.svelte';
@@ -70,7 +70,7 @@
       on:click={toggle}
     />
   </svelte:fragment>
-  <ControlPanel
+  <SelectionPanel
     filters={$AVAILABLE_TIMEFRAMES}
     filterKey="endYear"
     filterLabel="Pick a timeframe"
@@ -98,5 +98,5 @@
         {/if}
       </div>
     </div>
-  </ControlPanel>
+  </SelectionPanel>
 </ModalSelect>
