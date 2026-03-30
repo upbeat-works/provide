@@ -10,6 +10,7 @@
   export let disabled = undefined;
   export let category = undefined;
   export let open = false;
+  export let colors = undefined;
 
   $: isDisabled = Boolean(disabled);
 </script>
@@ -28,6 +29,16 @@
     ].join(' ')}
   >
     <span class="flex items-center truncate" class:font-bold={!placeholder && !disabled}>
+      {#if colors?.length && !disabled && !warning && !placeholder}
+        <span class="flex items-center mr-2 shrink-0 mt-0.5">
+          {#each colors as color, i}
+            <span
+              class="inline-block w-3 h-3 rounded-full border-2 border-surface-base"
+              style="background:{color}; margin-left:{i > 0 ? '-5px' : '0'}"
+            />
+          {/each}
+        </span>
+      {/if}
       {#if disabled || warning || placeholder}
         <span class="leading-tight truncate">{disabled ?? warning ?? placeholder}</span>
       {:else if category}

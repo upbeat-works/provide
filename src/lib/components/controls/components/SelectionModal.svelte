@@ -12,6 +12,7 @@
   export let placeholder = undefined;
   export let panelClass = 'max-w-3xl';
   export let isOpen = false;
+  export let colors = undefined;
 </script>
 
 <ModalSelect {panelClass} bind:isOpen>
@@ -25,6 +26,7 @@
       {warning}
       {disabled}
       {placeholder}
+      {colors}
       {open}
       on:click={toggle}
     />
