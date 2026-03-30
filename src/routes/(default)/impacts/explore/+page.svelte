@@ -11,6 +11,9 @@
   import PageHero from '$lib/components/layouts/PageHero.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
+  import ShareLink from '../components/ShareLink/ShareLink.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE;
 
@@ -73,6 +76,16 @@
   <svelte:fragment slot="sidebar">
     <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">Report Index</h2>
     <SimpleNav {sections} {activeIndex} />
+    <hr class="my-4 border-contour-weakest mr-6" />
+    <ShareLink />
+    <Button class="mt-4 mr-6" href="/methodology" variant="secondary">
+      Learn more about the methodology
+      <LinkArrow />
+    </Button>
+    <Button class="mt-4 mr-6" href="/impacts/avoid" variant="secondary">
+      Learn more about how to avoid future impacts
+      <LinkArrow />
+    </Button>
   </svelte:fragment>
 
   <svelte:fragment slot="filters">

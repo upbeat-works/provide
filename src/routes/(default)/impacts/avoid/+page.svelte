@@ -14,6 +14,9 @@
   import ImpactLevel from './components/Reference/ImpactLevel.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import { onMount, onDestroy } from 'svelte';
+  import ShareLink from '../components/ShareLink/ShareLink.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
 
   onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-800/50'));
   onDestroy(() => HEADER_CLASS.set(''));
@@ -75,6 +78,12 @@
 
   <svelte:fragment slot="sidebar">
     <SimpleNav {sections} {activeIndex} />
+    <hr class="my-4 border-contour-weakest mr-6" />
+    <ShareLink />
+    <Button class="mt-4 mr-6" href="/methodology" variant="secondary">
+      Learn more about the methodology
+      <LinkArrow />
+    </Button>
   </svelte:fragment>
 
   <svelte:fragment slot="filters">
