@@ -23,6 +23,9 @@ import { extractEndYear, extractStartYear } from '$utils/meta.js';
 import { DEFAULT_GEOGRAPHY_UID, DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
 import { GEOGRAPHY_TYPES, INDICATORS, SECTORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
 
+// Optional CSS class(es) to override the header background, set per-page
+export const HEADER_CLASS = writable('');
+
 // Set to true if is in embed mode e.g. if the url is /embed/something
 export const IS_EMBEDED = writable(false);
 

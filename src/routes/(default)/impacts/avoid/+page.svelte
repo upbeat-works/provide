@@ -2,7 +2,7 @@
   import ThresholdLevels from './components/ThresholdLevels/ThresholdLevels.svelte';
   import StudyLocations from './components/StudyLocations/StudyLocations.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
+  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, HEADER_CLASS } from '$stores/state';
   import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import SelectionCertaintyLevels from './components/Selection/CertaintyLevels/CertaintyLevels.svelte';
@@ -12,6 +12,10 @@
   import { SelectionControls, ControlTabs } from '$lib/components/controls/ExploreControls';
   import ImpactLevel from './components/Reference/ImpactLevel.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
+  import { onMount, onDestroy } from 'svelte';
+
+  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-800/50'));
+  onDestroy(() => HEADER_CLASS.set(''));
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
 
@@ -51,7 +55,10 @@
 
 <PageLayout>
   <svelte:fragment slot="hero">
-    <PageHero className="bg-petrol-900" label="PROVIDE" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid." />
+    <PageHero className="bg-[#1F2B59]" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid.">
+      <img slot="label" src="/img/provide-logo-white.png" alt="provide" class="h-6" />
+    </PageHero>
+
     <div class="bg-slate-50 pt-8">
       <div class="mx-auto max-w-7xl px-6">
         <ControlTabs />
@@ -66,6 +73,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
+    <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">Report Index</h2>
     <SimpleNav {sections} {activeIndex} />
   </svelte:fragment>
 
