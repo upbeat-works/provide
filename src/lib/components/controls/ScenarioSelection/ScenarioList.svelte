@@ -36,7 +36,7 @@
 
 {#each scenariosByCategory as category}
   {#if category.scenarios.length}
-    <Tagline class="px-4 mt-3 whitespace-nowrap">{category.label}</Tagline>
+    <Tagline class="px-4 mt-3 text-wrap">{category.label}</Tagline>
   {/if}
   {#each category.scenarios as scenario}
     {@const isSelected = scenario.isSelected}
@@ -48,7 +48,7 @@
       use:tooltip={{ content: text, delay: [200, 0] }}
       on:focus={() => hoverItem(scenario)}
       on:mouseover={() => hoverItem(scenario)}
-      class="transition-colors pl-4 pr-2 py-1.5 border-r-3 whitespace-nowrap grid grid-cols-[auto_1fr_auto] gap-x-2 items-center aria-disabled:text-contour-weakest aria-disabled:cursor-not-allowed"
+      class="transition-colors text-sm pl-4 pr-2 py-1.5 border-r-3 grid grid-cols-[auto_1fr_auto] gap-x-2 items-center aria-disabled:text-contour-weakest aria-disabled:cursor-not-allowed"
       class:bg-surface-weaker={highlightedScenarioUid === uid}
       class:border-theme-base={isSelected}
       class:border-transparent={!isSelected}

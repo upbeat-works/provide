@@ -8,7 +8,7 @@
   export let items = [];
   export let currentUid;
   export let hoveredItem;
-  export let geographyType;
+  export let term = '';
 
   const options = {
     includeScore: true,
@@ -16,11 +16,7 @@
     includeMatches: true,
   };
 
-  $: geographyTypeLabel = geographyType?.labelSingular.toLowerCase() ?? currentUid;
-
   $: fuse = new Fuse(items, options);
-
-  let term = '';
 
   $: defaultResults = sortBy(
     items.map((d) => ({ item: d })),
@@ -76,19 +72,12 @@
     return sortBy(Object.entries(groups), '0');
   }
 
-  function onSearchInput() {
-    box.scrollTo({ top: 0 });
-  }
-
   let box;
+  $: term, box?.scrollTo({ top: 0 });
 </script>
 
-<div class="md:border-r border-contour-weakest pb-0 flex flex-col items-stretch" style="min-width: 0;">
-  <div class="px-5 grow flex items-stretch my-4">
-    <input type="search" class="px-2 py-2 leading-8 border w-full" on:input={onSearchInput} bind:value={term} placeholder={`Search for ${geographyTypeLabel}…`} />
-  </div>
-  <div bind:this={box} class="h-96 w-full overflow-y-scroll overflow-x-hidden">
-    <RadioGroup bind:value={currentUid} on:change={(e) => (currentUid = e.detail)}>
+<div bind:this={box} class="w-full overflow-x-hidden">
+  <RadioGroup bind:value={currentUid} on:change={(e) => (currentUid = e.detail)}>
       {#key results.length}
         {#if results.length}
           {#if hasSearchTerm}
@@ -100,9 +89,8 @@
             {/each}
           {/if}
         {:else}
-          <span class="text-xs py-1 px-5 block text-text-weaker" role="status">Could not find any geographies for this type.</span>
+          <span class="text-xs py-4 px-5 block text-text-weaker" role="status">Could not find any geographies for this type.</span>
         {/if}
       {/key}
-    </RadioGroup>
-  </div>
+  </RadioGroup>
 </div>
