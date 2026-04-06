@@ -1,7 +1,12 @@
 <script>
   import GeographySelection from './GeographySelection/GeographySelection.svelte';
+<<<<<<<< HEAD:src/lib/components/controls/ParameterSelection.svelte
+  import IndicatorSelection from './IndicatorSelection.svelte';
+  import SwapButton from './components/SwapButton.svelte';
+========
   import IndicatorSelection from './IndicatorSelection/IndicatorSelection.svelte';
   import SwapButton from './SwapButton.svelte';
+>>>>>>>> 9b7f4ffaeb3c1f88818dadd7e699dfa11c579e5c:src/lib/components/controls/ExploreControls/SelectionControls.svelte
   import { SELECTION_MODE } from '$stores/state.js';
 
   $: mode = $SELECTION_MODE;
@@ -24,7 +29,7 @@
     class:grid-cols-1={true}
   >
     <div class:order-1={mode === 'geography'} class:order-3={mode === 'indicator'} class:md:order-1={mode === 'geography'} class:md:order-3={mode === 'indicator'}>
-      <GeographySelection label={geographyLabel} popperOptions={{ placement: mode === 'geography' ? 'bottom-start' : 'bottom-end' }} />
+      <GeographySelection label={geographyLabel} />
     </div>
 
     <div class="hidden md:flex items-center justify-center order-2 pt-8">
@@ -32,7 +37,7 @@
     </div>
 
     <div class:order-3={mode === 'geography'} class:order-1={mode === 'indicator'} class:md:order-3={mode === 'geography'} class:md:order-1={mode === 'indicator'}>
-      <IndicatorSelection label={indicatorLabel} popperOptions={{ placement: mode === 'geography' ? 'bottom-end' : 'bottom-start' }} />
+      <IndicatorSelection label={indicatorLabel} />
     </div>
   </div>
 </div>

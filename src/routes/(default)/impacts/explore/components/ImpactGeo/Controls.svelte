@@ -1,6 +1,6 @@
 <script>
   import Select from '$lib/components/ui/Select.svelte';
-  import SegmentedControl from '$lib/components/controls/SegmentedControl/SegmentedControl.svelte';
+  import SegmentedControl from './SegmentedControl.svelte';
   import Switch from '$lib/components/ui/Switch.svelte';
 
   export let displayOption;

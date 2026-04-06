@@ -2,10 +2,12 @@
   import ImpactTime from './components/ImpactTime/ImpactTime.svelte';
   import ImpactGeo from './components/ImpactGeo/ImpactGeo.svelte';
   import UnAvoidableRisk from '../components/UnavoidableRisk/UnavoidableRisk.svelte';
-  import ScenarioSelection from './components/ScenarioSelection/ScenarioSelection.svelte';
+  import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
-  import { IndicatorParameters, SelectionControls, ControlTabs } from '$lib/components/controls/ExploreControls';
+  import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
+  import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
+  import IndicatorFilters from './components/IndicatorFilters.svelte';
   import PageHero from '$lib/components/layouts/PageHero.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
@@ -57,14 +59,14 @@
     <PageHero label="EXPLORER" title="Future impacts" description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided." />
     <div class="bg-slate-50 pt-8">
       <div class="mx-auto max-w-7xl px-6">
-        <ControlTabs />
+        <ModeSelectionTabs />
       </div>
     </div>
     <hr class="border-t border-contour-weakest" />
   </svelte:fragment>
 
   <svelte:fragment slot="nav">
-    <SelectionControls />
+    <ParameterSelection />
     <div class="border-b border-contour-weakest" />
   </svelte:fragment>
 
@@ -75,7 +77,7 @@
 
   <svelte:fragment slot="filters">
     <ScenarioSelection />
-    <IndicatorParameters />
+    <IndicatorFilters />
   </svelte:fragment>
 
   <svelte:fragment slot="content">

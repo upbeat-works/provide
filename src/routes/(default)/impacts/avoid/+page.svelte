@@ -9,7 +9,8 @@
   import SelectionStudyLocations from './components/Selection/StudyLocations/StudyLocations.svelte';
   import { writable } from 'svelte/store';
   import PageHero from '$lib/components/layouts/PageHero.svelte';
-  import { SelectionControls, ControlTabs } from '$lib/components/controls/ExploreControls';
+  import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
+  import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
   import ImpactLevel from './components/Reference/ImpactLevel.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import { onMount, onDestroy } from 'svelte';
@@ -61,19 +62,18 @@
 
     <div class="bg-slate-50 pt-8">
       <div class="mx-auto max-w-7xl px-6">
-        <ControlTabs />
+        <ModeSelectionTabs />
       </div>
     </div>
     <hr class="border-t border-contour-weakest" />
   </svelte:fragment>
 
   <svelte:fragment slot="nav">
-    <SelectionControls />
+    <ParameterSelection />
     <div class="border-b border-contour-weakest" />
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
-    <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">Report Index</h2>
     <SimpleNav {sections} {activeIndex} />
   </svelte:fragment>
 
