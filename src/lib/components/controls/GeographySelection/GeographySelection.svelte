@@ -5,9 +5,14 @@
   import { writable } from 'svelte/store';
   import { fetchData } from '$lib/api/api';
   import { GEOGRAPHIES } from '$stores/meta.js';
+<<<<<<<< HEAD:src/lib/components/controls/GeographySelection/GeographySelection.svelte
   import ModalSelect from '$lib/components/ui/ModalSelect.svelte';
   import SelectionButton from '../components/SelectionButton.svelte';
   import SelectionPanel from '../components/SelectionPanel.svelte';
+========
+  import PopoverSelect from '$lib/components/ui/PopoverSelect/PopoverSelect.svelte';
+  import Content from '$lib/components/ui/PopoverSelect/Content.svelte';
+>>>>>>>> 9b7f4ffaeb3c1f88818dadd7e699dfa11c579e5c:src/lib/components/controls/ExploreControls/GeographySelection/GeographySelection.svelte
   import Map from './Map.svelte';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
 
