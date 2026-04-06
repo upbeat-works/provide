@@ -7,7 +7,11 @@
     "preview": "vite preview",
     "package": "svelte-kit package",
     "prepare": "svelte-kit sync",
-    "export": "BUILD_ENV=static svelte-kit build && cp -R ./static/* ./build"
+    "export": "BUILD_ENV=static svelte-kit build && cp -R ./static/* ./build",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply provide-catalog",
+    "db:seed": "bun run api/db/seed.ts && wrangler d1 execute provide-catalog --file=api/db/seed.sql",
+    "db:studio": "drizzle-kit studio"
   },
   "devDependencies": {
     "@melt-ui/pp": "^0.1.4",
@@ -23,6 +27,7 @@
     "@types/lodash-es": "^4.17.12",
     "autoprefixer": "^10.4.17",
     "copy-to-clipboard": "^3.3.3",
+    "drizzle-kit": "^0.31.10",
     "file-saver": "^2.0.5",
     "marked": "^11.1.1",
     "postcss": "^8.4.31",
@@ -65,7 +70,9 @@
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.1.0",
     "d3-time-format": "^4.1.0",
+    "drizzle-orm": "^0.45.2",
     "fuse.js": "^7.0.0",
+    "hono": "^4.12.11",
     "layercake": "^8.0.2",
     "lodash-es": "^4.17.21",
     "mapbox-gl": "^3.1.2",
