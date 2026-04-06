@@ -1,5 +1,5 @@
 <script>
-  export let wrapperClass = ‘’;
+  export let wrapperClass = '';
 </script>
 
 <div>
