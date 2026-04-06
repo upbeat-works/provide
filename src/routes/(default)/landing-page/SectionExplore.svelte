@@ -3,7 +3,7 @@
   import { PATH_EXPLORE, PATH_IMPACT, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR } from '$config';
   import { IS_EMPTY_GEOGRAPHY, IS_EMPTY_INDICATOR, IS_COMBINATION_AVAILABLE_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_UID } from '$stores/state.js';
   import { buildURL } from '$lib/utils/url.js';
-  import { SelectionControls } from '$lib/controls/ExploreControls';
+  import { SelectionControls, ControlTabs } from '$lib/controls/ExploreControls';
   import LinkArrow from '$lib/helper/icons/LinkArrow.svelte';
   import Button from '$lib/controls/Button/Button.svelte';
 
@@ -29,6 +29,12 @@
   </header>
 
   <div class="md:pt-16 pb-6 md:pb-12 bg-slate-50 border-t border-contour-weakest">
+    <div class="pt-8">
+      <div class="mx-auto max-w-7xl px-6">
+        <ControlTabs />
+      </div>
+    </div>
+    <hr class="border-t border-contour-weakest" />
     <SelectionControls />
     <div class="flex justify-end mt-8 px-6">
     <Button disabled={!isValidSelection} on:click={viewResults}>

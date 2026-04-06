@@ -14,7 +14,7 @@
   $: yearOptionsList = yearOptions.map((year) => ({ uid: year, label: String(year) }));
 </script>
 
-<div class="flex gap-6">
+<div class="flex items-center gap-6">
   {#if scenarios.length === 2}
     <SegmentedControl options={displayOptions} bind:value={displayOption} />
   {/if}

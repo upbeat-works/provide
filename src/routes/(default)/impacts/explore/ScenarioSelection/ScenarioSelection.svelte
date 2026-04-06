@@ -58,51 +58,49 @@
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-<div class="border-r border-contour-weakest px-6 py-4">
-  <PopoverSelect
-    label="Scenario"
-    {buttonLabel}
-    panelClass="w-screen-p max-w-4xl"
-    labelClass="mb-0 p-0 text-text-stronger uppercase text-xs leading-tight"
-    buttonClass="text-sm p-0"
-    class="flex flex-col gap-2 h-full justify-center"
-    warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `Unavailable scenario${multipleScenariosSelected ? 's' : ''} selected` : undefined}
-    placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
-    size="md"
-    disabled={$DISABLED}
+<PopoverSelect
+  label="Scenario"
+  {buttonLabel}
+  panelClass="w-screen-p max-w-4xl"
+  labelClass="mb-0 p-0 text-text-stronger uppercase text-xs leading-tight"
+  buttonClass="text-sm p-0"
+  class="flex flex-col gap-2"
+  warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `Unavailable scenario${multipleScenariosSelected ? 's' : ''} selected` : undefined}
+  placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
+  size="md"
+  disabled={$DISABLED}
+>
+  <Content
+    filters={$AVAILABLE_TIMEFRAMES}
+    filterKey="endYear"
+    filterLabel="Pick a timeframe"
+    disabledMessage="No scenarios available for this indicator in this timeframe"
+    currentUid={$CURRENT_SCENARIOS_UID}
+    bind:currentFilterUid={currentTimeframe}
+    items={scenarios}
   >
-    <Content
-      filters={$AVAILABLE_TIMEFRAMES}
-      filterKey="endYear"
-      filterLabel="Pick a timeframe"
-      disabledMessage="No scenarios available for this indicator in this timeframe"
-      currentUid={$CURRENT_SCENARIOS_UID}
-      bind:currentFilterUid={currentTimeframe}
-      items={scenarios}
+    <a
+      slot="header-link"
+      class="text-sm leading-tight font-bold flex items-center rounded-sm bg-petrol-800 text-white px-3 sm:px-4 md:px-6 py-1 sm:py-2 md:py-3 gap-2 hover:bg-petrol-900 transition-colors"
+      href={`/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}
     >
-      <a
-        slot="header-link"
-        class="text-sm leading-tight font-bold flex items-center rounded-sm bg-petrol-800 text-white px-3 sm:px-4 md:px-6 py-1 sm:py-2 md:py-3 gap-2 hover:bg-petrol-900 transition-colors"
-        href={`/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}
-      >
-        <span>Which scenario should I select?</span>
-        <LinkArrow />
-      </a>
-      <div slot="items" class="grid grid-cols-1 md:grid-cols-[auto_1fr]" let:items let:currentFilterUid>
-        {#key currentFilterUid}
-          <fieldset class="flex flex-col min-w-min md:border-r border-contour-weakest py-2">
-            <ScenarioList highlightedScenarioUid={renderedScenario?.uid} bind:hoveredScenarioUid scenarios={items} {currentFilterUid} />
-          </fieldset>
-        {/key}
+      <span>Which scenario should I select?</span>
+      <LinkArrow />
+    </a>
+    <div slot="items" class="grid grid-cols-1 md:grid-cols-[auto_1fr]" let:items let:currentFilterUid>
+      {#key currentFilterUid}
+        <fieldset class="flex flex-col min-w-min md:border-r border-contour-weakest py-2">
+          <ScenarioList highlightedScenarioUid={renderedScenario?.uid} bind:hoveredScenarioUid scenarios={items} {currentFilterUid} />
+        </fieldset>
+      {/key}
 
-        <div class="p-6 hidden md:block">
-          {#if renderedScenario}
-            <ScenarioDetails scenario={renderedScenario} scenarios={chartScenarios} {currentFilterUid} />
-          {:else}
-            <div class="p-4 flex items-center rounded text-contour-weak justify-center min-h-[60vh]">Hover over a scenario to view details</div>
-          {/if}
-        </div>
+      <div class="p-6 hidden md:block">
+        {#if renderedScenario}
+          <ScenarioDetails scenario={renderedScenario} scenarios={chartScenarios} {currentFilterUid} />
+        {:else}
+          <div class="p-4 flex items-center rounded text-contour-weak justify-center min-h-[60vh]">Hover over a scenario to view details</div>
+        {/if}
       </div>
-    </Content>
-  </PopoverSelect>
-</div>
+    </div>
+  </Content>
+</PopoverSelect>

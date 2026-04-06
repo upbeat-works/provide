@@ -37,7 +37,7 @@
   };
 </script>
 
-<Popover class={`relative w-full ${$$restProps.class}`}>
+<Popover class={$$restProps.class}>
   <span class={`uppercase text-xs tracking-widest font-bold text-contour-weak inline-block ${labelClass}`}>{label}</span>
   <PopoverButton
     use={[popperRef]}

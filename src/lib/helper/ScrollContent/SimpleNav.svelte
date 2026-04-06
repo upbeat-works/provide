@@ -4,7 +4,9 @@
   // role="link" -> https://www.scottohara.me/blog/2021/05/28/disabled-links.html
 </script>
 
-{#each sections.filter(({ slug }) => slug) as { slug, title, description, disabled }, i}
+{#each sections as section, i}
+  {#if section.slug}
+  {@const { slug, title, description, disabled } = section}
   {@const isActive = activeIndex === i}
   <a
     class:cursor-not-allowed={disabled}
@@ -12,7 +14,7 @@
     class:pointer-events-none={disabled}
     role={disabled ? 'link' : undefined}
     href={disabled ? undefined : `#${slug}`}
-    class="hidden md:inline-block py-3 pl-2 -ml-2 pr-6 lg:pr-12 border-r-3 hover:bg-surface-weaker"
+    class="md:inline-block py-3 pl-2 -ml-2 pr-6 lg:pr-12 border-r-3 hover:bg-surface-weaker"
     class:border-theme-base={isActive}
     class:border-transparent={!isActive}
     aria-current={isActive ? 'step' : 'false'}
@@ -24,4 +26,5 @@
       {description}
     </div>
   </a>
+  {/if}
 {/each}

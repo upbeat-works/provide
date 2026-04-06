@@ -2,8 +2,7 @@
   import { RadioGroup, RadioGroupOption } from '@rgossiaux/svelte-headlessui';
   import Globe from '$lib/helper/icons/Globe.svelte';
   import Chart from '$lib/helper/icons/Chart.svelte';
-
-  export let mode = 'geography';
+  import { SELECTION_MODE } from '$stores/state.js';
 
   const tabs = [
     {
@@ -19,7 +18,7 @@
   ];
 </script>
 
-<RadioGroup bind:value={mode} class="flex gap-x-6">
+<RadioGroup bind:value={$SELECTION_MODE} class="flex gap-x-6">
   {#each tabs as { value, label, icon }}
     <RadioGroupOption {value} let:checked class="cursor-pointer">
       <div
