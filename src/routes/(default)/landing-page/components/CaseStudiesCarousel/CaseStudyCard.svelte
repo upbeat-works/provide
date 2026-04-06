@@ -1,9 +1,9 @@
 <script>
 	import { PATH_ADAPTATION } from '$config';
-	import { getStrapiImageAtSize } from '$lib/utils';
-	import LinkArrow from '$lib/helper/icons/LinkArrow.svelte';
+	import { getStrapiImageAtSize } from '$lib/utils/utils';
+	import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
 	import CategoryBadge from './CategoryBadge.svelte';
-	import Button from '$lib/controls/Button/Button.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 
 	export let study;
 

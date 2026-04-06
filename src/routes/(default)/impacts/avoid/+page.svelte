@@ -1,17 +1,17 @@
 <script>
-  import ThresholdLevels from './ThresholdLevels/ThresholdLevels.svelte';
-  import StudyLocations from './StudyLocations/StudyLocations.svelte';
-  import SimpleNav from '$lib/helper/ScrollContent/SimpleNav.svelte';
+  import ThresholdLevels from './components/ThresholdLevels/ThresholdLevels.svelte';
+  import StudyLocations from './components/StudyLocations/StudyLocations.svelte';
+  import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
   import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
-  import FallbackMessage from '$lib/helper/FallbackMessage.svelte';
-  import SelectionCertaintyLevels from './Selection/CertaintyLevels/CertaintyLevels.svelte';
-  import SelectionStudyLocations from './Selection/StudyLocations/StudyLocations.svelte';
+  import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
+  import SelectionCertaintyLevels from './components/Selection/CertaintyLevels/CertaintyLevels.svelte';
+  import SelectionStudyLocations from './components/Selection/StudyLocations/StudyLocations.svelte';
   import { writable } from 'svelte/store';
-  import PageHero from '$lib/site/PageHero.svelte';
-  import { SelectionControls, ControlTabs } from '$lib/controls/ExploreControls';
-  import ImpactLevel from './Reference/ImpactLevel.svelte';
-  import PageLayout from '$lib/site/PageLayout.svelte';
+  import PageHero from '$lib/components/layouts/PageHero.svelte';
+  import { SelectionControls, ControlTabs } from '$lib/components/controls/ExploreControls';
+  import ImpactLevel from './components/Reference/ImpactLevel.svelte';
+  import PageLayout from '$lib/components/layouts/PageLayout.svelte';
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
 

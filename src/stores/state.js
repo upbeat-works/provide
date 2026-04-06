@@ -1,4 +1,4 @@
-import { formatReadableList } from '$lib/utils.js';
+import { formatReadableList } from '$lib/utils/utils.js';
 import {
   DEFAULT_FORMAT_UID,
   GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS,
@@ -17,7 +17,7 @@ import _, { every, get, keyBy, map, reduce, without, isEqual, isString } from 'l
 import { derived, get as getStore, writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getLocalStorage, setLocalStorage, getAllLocalStorage } from './utils.js';
-import { extractEndYearFromScenarios } from '$lib/utils.js';
+import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
 import { extractEndYear, extractStartYear } from '$utils/meta.js';
 
 import { DEFAULT_GEOGRAPHY_UID, DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
@@ -271,10 +271,8 @@ export const AVAILABLE_GEOGRAPHIES_FOR_INDICATOR = derived(
       const geosOfType = $geographies[typeUid] ?? [];
       result[typeUid] = geosOfType.filter(({ uid: geoUid }) => {
         const lower = geoUid.toLowerCase();
-        const okForIndicator = !indicator.availableGeographies?.length ||
-          indicator.availableGeographies.includes(lower);
-        const okForSector = !sector?.availableGeographies?.length ||
-          sector.availableGeographies.map(d => d.toLowerCase()).includes(lower);
+        const okForIndicator = !indicator.availableGeographies?.length || indicator.availableGeographies.includes(lower);
+        const okForSector = !sector?.availableGeographies?.length || sector.availableGeographies.map((d) => d.toLowerCase()).includes(lower);
         return okForIndicator && okForSector;
       });
     });

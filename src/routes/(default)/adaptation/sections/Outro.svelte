@@ -1,6 +1,6 @@
 <script>
-  import Replicate from '$lib/helper/icons/Replicate.svelte';
-  import HtmlContent from '$src/lib/helper/HtmlContent.svelte';
+  import Replicate from '$lib/components/icons/Replicate.svelte';
+  import HtmlContent from '$lib/components/ui/HtmlContent.svelte';
 
   export let title;
   export let text;

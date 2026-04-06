@@ -1,16 +1,12 @@
 <script>
-  import { LABEL_ADAPTATION_RESOURCES } from '$config';
   import { timeFormat } from 'd3-time-format';
 
-  import SectionHeadline from '$src/lib/helper/ContentPages/SectionHeadline.svelte';
-  export let title;
   export let publications;
 
   const formatTime = timeFormat('%B %Y');
 </script>
 
 <div class="flex flex-col gap-y-10 pt-5 pb-10 mb-5">
-  <SectionHeadline {title} />
   <div class="grid lg:grid-cols-4 sm:grid-cols-2 gap-6">
     {#each publications as publication}
       <a

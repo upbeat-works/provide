@@ -27,6 +27,9 @@ const config = {
     },
     prerender: {
       handleMissingId: 'warn',
+      handleHttpError: ({ path, message }) => {
+        throw new Error(message);
+      },
       entries: [
         '/',
         '/about',

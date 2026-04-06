@@ -1,7 +1,7 @@
 <script>
   import { PATH_ADAPTATION } from '$src/config.js';
-  import ContentPageLayout from '$src/lib/helper/ContentPages/ContentPageLayout.svelte';
-  import SectionDefault from '$src/lib/helper/ContentPages/SectionDefault.svelte';
+  import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
+  import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
   import Outro from '../sections/Outro.svelte';
   import AvoidingImpacts from './sections/AvoidingImpacts.svelte';
   import FutureImpacts from './sections/FutureImpacts.svelte';
@@ -14,25 +14,19 @@
     'image-slider': { component: ImageSlider },
     'avoiding-impacts': { component: AvoidingImpacts, omitBorder: true },
     'future-impacts': { component: FutureImpacts },
-    section: { component: SectionDefault },
+    section: { component: SectionContent },
   };
 
   $: sections = caseStudy.mainContent.map((section) => {
     return { ...components[section.type], title: section.title, props: { ...section, content: section.text } };
   });
 
-  $: subNavigation = [...data.caseStudies.map((d) => ({ label: d.city.label, abstract: d.abstract, href: `/${PATH_ADAPTATION}/${d.city.uid}`, isActive: caseStudy.city.uid === d.city.uid }))];
 </script>
 
 <ContentPageLayout
   {sections}
-  isCaseStudy={false}
-  tag="Case study"
-  subNavigationLabel="Case studies"
-  dynamicNavigation={true}
+  label="Case study"
   title={caseStudy.title}
-  {subNavigation}
-  backLink={{ href: `/${PATH_ADAPTATION}`, label: 'Adaptation overview' }}
   intro={caseStudy.abstract}
 >
   {#if caseStudy.authors}

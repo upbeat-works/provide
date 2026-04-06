@@ -1,11 +1,11 @@
 <script>
   import { page } from '$app/stores';
   import { parseUrlQuery, urlToState } from '$lib/utils/url';
-  import ImpactTime from '$routes/(default)/impacts/explore/ImpactTime/ImpactTime.svelte';
-  import ImpactGeo from '$routes/(default)/impacts/explore/ImpactGeo/ImpactGeo.svelte';
-  import UnavoidableRisk from '$routes/(default)/impacts/UnavoidableRisk/UnavoidableRisk.svelte';
+  import ImpactTime from '$routes/(default)/impacts/explore/components/ImpactTime/ImpactTime.svelte';
+  import ImpactGeo from '$routes/(default)/impacts/explore/components/ImpactGeo/ImpactGeo.svelte';
+  import UnavoidableRisk from '$routes/(default)/impacts/components/UnavoidableRisk/UnavoidableRisk.svelte';
   import { IS_STATIC } from '$stores/state';
-  import Logo from '$lib/site/Logo.svelte';
+  import Logo from '$lib/components/site/Logo.svelte';
 
   const embeds = {
     'impact-time': ImpactTime,
