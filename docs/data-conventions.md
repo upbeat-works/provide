@@ -94,11 +94,19 @@ Open: Complete set? Free-form or controlled vocabulary? Casing convention?
 
 ## 6. Threshold Storage
 
-Where do exceedance thresholds for `unavoidable-risk` live?
+Exceedance thresholds for `unavoidable-risk` are indicator-specific. Examples from the current API:
 
-- **A)** Meta-indicators on variables: **`thresholds`**`=[0,1,2,3,4]`, **`defaultThreshold`**`=2`
-- **B)** Derived from data range at query time
-- **C)** Client sends desired levels in the request (**recommended**)
+| Indicator | Thresholds | Default |
+|-----------|-----------|---------|
+| `terclim-mean-temperature` | `[0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]` | `2` |
+| `biodiversity-*` | `[0.95, 0.9, 0.85, ..., 0.1]` | `0.5` |
+| `marclim-sst` | `[0.25, 0.5, ..., 2]` | `1` |
+| `glacier-*` | `[0.1, 0.2, ..., 0.99]` | `0.5` |
+
+These can't live in the frontend or the adapter since they depend on the indicator. They need to be stored alongside the indicator definition.
+
+- **A)** Meta-indicators on variables in ixmp4: **`thresholds`**, **`defaultThreshold`**
+- **B)** Strapi, as part of the indicator display config
 
 **Decision:** _TBD_
 
