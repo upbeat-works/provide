@@ -1,16 +1,18 @@
 <script>
   import { CURRENT_INDICATOR_OPTION_VALUES, IS_EMPTY_GEOGRAPHY, CURRENT_GEOGRAPHY, CURRENT_INDICATOR, TEMPLATE_PROPS, IS_COMBINATION_AVAILABLE_INDICATOR, IS_EMPTY_INDICATOR } from '$stores/state.js';
-  import { SELECTED_STUDY_LOCATION } from '$stores/avoid.js';
+  import { SELECTED_STUDY_LOCATION, REFERENCE_PROCESSED } from '$stores/avoid.js';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { END_AVOIDING_REFERENCE, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_STUDY_LOCATION } from '$config';
   import { fetchData } from '$lib/api/api';
   import Text from './Text.svelte';
+  import ImpactLevel from './ImpactLevel.svelte';
   import Message from '$lib/components/ui/Message.svelte';
   import { mean } from 'd3-array';
   import { round, floor, ceil } from 'lodash-es';
+  import { writable } from 'svelte/store';
 
-  export let store;
+  const store = writable({});
 
   $: !$IS_EMPTY_GEOGRAPHY &&
     !$IS_EMPTY_INDICATOR &&
@@ -37,7 +39,7 @@
     return ceil(Math.floor((v + offset) / step) * step, decimals);
   }
 
-  $: process = ({ data }, { scenarios, urlParams }) => {
+  $: process = ({ data }) => {
     const countable = data.data.countable;
     const step = data.data.impact_levels.step;
     const average_value = data.data.average_value;
@@ -46,29 +48,28 @@
     const [totalMin, totalMax] = data.data.impact_levels.total;
     const offset = Math.min(0, totalMin) * -1;
     const defaultValue = round(Math.round(mean([min + offset, max + offset]) / step) * step, decimals);
-    return {
-      data: {
-        step,
-        min: floorNumber(min, offset, step, decimals),
-        max: ceilNumber(max, offset, step, decimals),
-        totalMin: floorNumber(totalMin, offset, step, decimals),
-        totalMax: ceilNumber(totalMax, offset, step, decimals),
-        defaultValue,
-        offset,
-        average_value,
-        decimals,
-        countable,
-      },
+    const processed = {
+      step,
+      min: floorNumber(min, offset, step, decimals),
+      max: ceilNumber(max, offset, step, decimals),
+      totalMin: floorNumber(totalMin, offset, step, decimals),
+      totalMax: ceilNumber(totalMax, offset, step, decimals),
+      defaultValue,
+      offset,
+      average_value,
+      decimals,
+      countable,
     };
+    REFERENCE_PROCESSED.set(processed);
+    return { data: processed };
   };
 </script>
 
-<div class="flex flex-col gap-y-6 md:min-h-[240px]">
+<div class="flex flex-col gap-y-6">
   {#if !$IS_EMPTY_GEOGRAPHY && !$IS_EMPTY_INDICATOR && $IS_COMBINATION_AVAILABLE_INDICATOR}
     <LoadingWrapper
       {process}
       let:asyncProps={{ data }}
-      let:props
       asyncProps={{
         data: $store,
       }}
@@ -78,7 +79,7 @@
       warningSizeSmall={true}
       warningBackground={false}
     >
-      <Text {data} />
+      <ImpactLevel {data} />
 
       <LoadingPlaceholder slot="placeholder" />
     </LoadingWrapper>

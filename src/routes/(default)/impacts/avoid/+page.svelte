@@ -11,7 +11,7 @@
   import PageHero from '$lib/components/layouts/PageHero.svelte';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
-  import ImpactLevel from './components/Reference/ImpactLevel.svelte';
+  import Reference from './components/Reference/Reference.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import { onMount, onDestroy } from 'svelte';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
@@ -88,7 +88,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="filters">
-    <ImpactLevel />
+    <Reference />
     <SelectionCertaintyLevels />
     <SelectionStudyLocations />
     <IndicatorFilters />
