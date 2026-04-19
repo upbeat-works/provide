@@ -17,6 +17,7 @@
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
+  import IndicatorFilters from '../explore/components/IndicatorFilters.svelte';
 
   onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-800/50'));
   onDestroy(() => HEADER_CLASS.set(''));
@@ -90,6 +91,7 @@
     <ImpactLevel />
     <SelectionCertaintyLevels />
     <SelectionStudyLocations />
+    <IndicatorFilters />
   </svelte:fragment>
 
   <svelte:fragment slot="content">
