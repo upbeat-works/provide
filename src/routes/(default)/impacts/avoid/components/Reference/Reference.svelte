@@ -1,18 +1,27 @@
 <script>
   import { CURRENT_INDICATOR_OPTION_VALUES, IS_EMPTY_GEOGRAPHY, CURRENT_GEOGRAPHY, CURRENT_INDICATOR, TEMPLATE_PROPS, IS_COMBINATION_AVAILABLE_INDICATOR, IS_EMPTY_INDICATOR } from '$stores/state.js';
-  import { SELECTED_STUDY_LOCATION, REFERENCE_PROCESSED } from '$stores/avoid.js';
+  import { SELECTED_STUDY_LOCATION, REFERENCE_PROCESSED, LEVEL_OF_IMPACT } from '$stores/avoid.js';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { END_AVOIDING_REFERENCE, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_STUDY_LOCATION } from '$config';
   import { fetchData } from '$lib/api/api';
-  import Text from './Text.svelte';
   import ImpactLevel from './ImpactLevel.svelte';
-  import Message from '$lib/components/ui/Message.svelte';
   import { mean } from 'd3-array';
   import { round, floor, ceil } from 'lodash-es';
   import { writable } from 'svelte/store';
+  import { Popover, PopoverButton, PopoverPanel } from '@rgossiaux/svelte-headlessui';
+  import { createPopperActions } from 'svelte-popperjs';
+  import ExpandIcon from '$lib/components/icons/Expand.svelte';
+  import { formatValue, formatUnit } from '$lib/utils/formatting';
 
   const store = writable({});
+
+  const [popperRef, popperContent] = createPopperActions();
+  const popperOptions = {
+    placement: 'bottom-start',
+    strategy: 'fixed',
+    modifiers: [{ name: 'offset', options: { offset: [0, 10] } }],
+  };
 
   $: !$IS_EMPTY_GEOGRAPHY &&
     !$IS_EMPTY_INDICATOR &&
@@ -61,39 +70,41 @@
       countable,
     };
     REFERENCE_PROCESSED.set(processed);
+    LEVEL_OF_IMPACT.set(round(defaultValue - offset, decimals));
     return { data: processed };
   };
+
+  $: $store?.data && process({ data: $store });
+
+  $: ({ unit } = $CURRENT_INDICATOR ?? {});
+  $: ({ decimals } = $REFERENCE_PROCESSED ?? {});
+  $: triggerValue = $REFERENCE_PROCESSED
+    ? `${formatValue($LEVEL_OF_IMPACT, unit?.uid, { decimals })}${formatUnit(unit)}`
+    : '—';
 </script>
 
-<div class="flex flex-col gap-y-6">
-  {#if !$IS_EMPTY_GEOGRAPHY && !$IS_EMPTY_INDICATOR && $IS_COMBINATION_AVAILABLE_INDICATOR}
-    <LoadingWrapper
-      {process}
-      let:asyncProps={{ data }}
-      asyncProps={{
-        data: $store,
-      }}
-      props={{
-        ...$TEMPLATE_PROPS,
-      }}
-      warningSizeSmall={true}
-      warningBackground={false}
-    >
-      <ImpactLevel {data} />
+<Popover class="relative">
+  <PopoverButton use={[popperRef]} let:open class="flex flex-col gap-2 w-full text-left focus:outline-none">
+    <span class="uppercase text-xs tracking-widest font-bold text-contour-weak inline-block">Level of Impact</span>
+    <span class="flex w-full rounded-sm text-sm bg-surface-base justify-between items-center truncate text-theme-base font-bold">
+      <span class="leading-tight truncate">{@html triggerValue}</span>
+      <ExpandIcon class="min-w-[20px] stroke-current stroke-[1.5]" />
+    </span>
+  </PopoverButton>
 
-      <LoadingPlaceholder slot="placeholder" />
-    </LoadingWrapper>
-  {:else if $IS_EMPTY_GEOGRAPHY}
-    <Message warningBackground={false} warningSizeSmall={true} headline="No geography selected">
-      <span>Select a geography from the dropdown at the top of this page.</span>
-    </Message>
-  {:else if $IS_EMPTY_INDICATOR}
-    <Message warningBackground={false} warningSizeSmall={true} headline="No indicator selected">
-      <span>Select an indicator from the dropdown at the top of this page.</span>
-    </Message>
-  {:else}
-    <Message warningBackground={false} warningSizeSmall={true} headline="Combination not available">
-      <span>Select an indicator from the dropdown at the top of this page.</span>
-    </Message>
-  {/if}
-</div>
+  <PopoverPanel use={[[popperContent, popperOptions]]} class="bg-surface-base shadow-md z-50 rounded border-contour-weakest border p-4 w-72">
+    {#if !$IS_EMPTY_GEOGRAPHY && !$IS_EMPTY_INDICATOR && $IS_COMBINATION_AVAILABLE_INDICATOR}
+      <LoadingWrapper
+        {process}
+        let:asyncProps={{ data }}
+        asyncProps={{ data: $store }}
+        props={{ ...$TEMPLATE_PROPS }}
+        warningSizeSmall={true}
+        warningBackground={false}
+      >
+        <ImpactLevel {data} />
+        <LoadingPlaceholder slot="placeholder" />
+      </LoadingWrapper>
+    {/if}
+  </PopoverPanel>
+</Popover>
