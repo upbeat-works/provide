@@ -1,8 +1,10 @@
 <script>
+  import { page } from '$app/stores';
   export let label = undefined;
   export let title;
   export let description = undefined;
   export let className = '';
+  export let tabItems = undefined;
 </script>
 
 <div class={`overflow-hidden relative ${className || 'bg-theme-700'}`}>
@@ -13,7 +15,7 @@
     </filter>
     <rect width="100%" height="100%" filter="url(#page-hero-grain)" />
   </svg>
-  <div class="relative mx-auto max-w-6xl px-2 sm:px-6 pb-14 sm:pb-20 pt-6 sm:pt-16">
+  <div class="relative mx-auto max-w-6xl px-2 sm:px-6 {tabItems ? 'pb-10 sm:pb-14' : 'pb-14 sm:pb-20'} pt-6 sm:pt-16">
     {#if $$slots.label}
       <div class="mb-3"><slot name="label" /></div>
     {:else if label}
@@ -24,4 +26,17 @@
       <p class="text-lg text-sky-100 mt-4 max-w-xl">{description}</p>
     {/if}
   </div>
+  {#if tabItems}
+    <div class="relative border-t border-dashed border-white/30">
+      <nav class="relative mx-auto max-w-6xl px-2 sm:px-6 flex">
+        {#each tabItems as item}
+          {@const isActive = $page.url.pathname === item.href}
+          <a
+            href={item.href}
+            class="px-8 py-3 text-base font-normal leading-[150%] text-center border-t-2 -mt-px transition-colors {isActive ? 'border-white text-white' : 'border-transparent text-white/60'}"
+          >{item.label}</a>
+        {/each}
+      </nav>
+    </div>
+  {/if}
 </div>

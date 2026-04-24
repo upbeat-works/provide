@@ -7,12 +7,13 @@
   export let title;
   export let intro = undefined;
   export let label = undefined;
+  export let tabItems = undefined;
   let contentRef;
 </script>
 
 <PageLayout>
   <svelte:fragment slot="hero">
-    <PageHero {label} {title} description={intro} />
+    <PageHero {label} {title} description={intro} {tabItems} />
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">

@@ -38,7 +38,7 @@ const config = {
         '/impacts/avoid',
         '/impacts/explore',
         '/issues',
-        '/keyconcepts',
+        '/methodology/key-terms',
         '/methodology',
         '/embed/impact-time',
         '/embed/impact-geo',
