@@ -36,7 +36,7 @@ const config = {
         '/adaptation',
         '/contact',
         '/impacts/avoid',
-        '/impacts/explore',
+        '/impacts/explorer',
         '/issues',
         '/keyconcepts',
         '/methodology',

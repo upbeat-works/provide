@@ -12,7 +12,7 @@ export const PATH_CONTACT = 'contact';
 export const PATH_ABOUT = 'about';
 export const PATH_IMPACT = 'impacts';
 export const PATH_AVOID = 'avoid';
-export const PATH_EXPLORE = 'explore';
+export const PATH_EXPLORE = 'explorer';
 export const PATH_KEY_CONCEPTS = 'keyconcepts';
 export const PATH_ADAPTATION = 'adaptation';
 
@@ -20,7 +20,7 @@ export const PATH_ADAPTATION = 'adaptation';
 export const LABEL_DOCUMENTATION = 'Methodology';
 export const LABEL_CONTACT = 'Contact';
 export const LABEL_ABOUT = 'About';
-export const LABEL_EXPLORE = 'Explore';
+export const LABEL_EXPLORE = 'Explorer';
 export const LABEL_KEY_CONCEPTS = 'Key concepts';
 export const LABEL_FUTURE_IMPACTS = 'Future impacts';
 export const LABEL_AVOID_IMPACTS = 'Avoiding future impacts';
