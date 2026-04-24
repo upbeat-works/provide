@@ -1,4 +1,4 @@
-export const TITLE_SITE = 'Climate Risk Dashboard';
+export const TITLE_SITE = 'CLIMATE RISK DASHBOARD';
 export const TITLE_PROJECT = 'PROVIDE';
 
 export const ANCHOR_DOCS_SCENARIOS = 'scenarios';

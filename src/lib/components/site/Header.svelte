@@ -35,7 +35,7 @@
       {#each items as { label, href }}
         <NavLink
           activeClass="text-white font-medium"
-          class="text-white hover:text-sky-100 text-sm md:text-base transition-colors"
+          class="text-white hover:text-sky-100 text-[14px] font-semibold leading-[150%] transition-colors"
           {href}>{label}</NavLink
         >
       {/each}
