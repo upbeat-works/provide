@@ -31,7 +31,7 @@
         Compare scenarios, explore EU risks, and export evidence for your reports.
       </p>
       <Button on:click={() => goto(`/${PATH_IMPACT}/${PATH_EXPLORE}`)}>
-        Explore data
+        Explorer data
         <LinkArrow />
       </Button>
     </div>
