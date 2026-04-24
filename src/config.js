@@ -14,7 +14,7 @@ export const PATH_IMPACT = 'impacts';
 export const PATH_AVOID = 'avoid';
 export const PATH_EXPLORE = 'explore';
 export const PATH_KEY_CONCEPTS = 'keyconcepts';
-export const PATH_ADAPTATION = 'adaptation';
+export const PATH_CASE_STUDIES = 'case-studies';
 
 // These will also be used for page titles
 export const LABEL_DOCUMENTATION = 'Methodology';
@@ -24,7 +24,7 @@ export const LABEL_EXPLORE = 'Explore';
 export const LABEL_KEY_CONCEPTS = 'Key concepts';
 export const LABEL_FUTURE_IMPACTS = 'Future impacts';
 export const LABEL_AVOID_IMPACTS = 'Avoiding future impacts';
-export const LABEL_ADAPTATION = 'Adaptation';
+export const LABEL_CASE_STUDIES = 'Case Studies';
 
 export const LABEL_SCENARIOS_INTRO = 'Scenarios';
 export const LABEL_SCENARIOS_TIMEFRAMES = 'Timeframes';
@@ -32,12 +32,12 @@ export const LABEL_SCENARIOS_PRESETS = 'Scenario presets';
 export const LABEL_SCENARIOS_LIST = 'Scenario list';
 export const LABEL_SCENARIOS_TIMELINES = 'Scenario timelines';
 
-export const LABEL_ADAPTATION_PLANNING = 'Using the climate risk dashboard for adaptation planning';
-export const LABEL_ADAPTATION_ASSESSMENT = 'Overshoot Proofing self-assessment tool';
-export const LABEL_ADAPTATION_LONG_TERM = 'Integrating limits on long-term adaptation planning';
-export const LABEL_ADAPTATION_PATHWAYS = 'Adaptation Pathways ';
-export const LABEL_ADAPTATION_RESOURCES = 'Complimentary resources';
-export const LABEL_ADAPTATION_STUDIES = 'Further studies';
+export const LABEL_CASE_STUDIES_PLANNING = 'Using the climate risk dashboard for adaptation planning';
+export const LABEL_CASE_STUDIES_ASSESSMENT = 'Overshoot Proofing self-assessment tool';
+export const LABEL_CASE_STUDIES_LONG_TERM = 'Integrating limits on long-term adaptation planning';
+export const LABEL_CASE_STUDIES_PATHWAYS = 'Adaptation Pathways ';
+export const LABEL_CASE_STUDIES_RESOURCES = 'Complimentary resources';
+export const LABEL_CASE_STUDIES_STUDIES = 'Further studies';
 
 export const END_IMPACT_TIME = 'impact-time';
 export const END_IMPACT_TIME_ALL = 'impact-time-all';

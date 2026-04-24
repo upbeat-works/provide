@@ -11,8 +11,8 @@
     PATH_ABOUT,
     PATH_CONTACT,
     PATH_DOCUMENTATION,
-    PATH_ADAPTATION,
-    LABEL_ADAPTATION,
+    PATH_CASE_STUDIES,
+    LABEL_CASE_STUDIES,
   } from '$config';
   import NavLink from '$lib/components/navigation/NavLink.svelte';
   import Logo from './Logo.svelte';
@@ -20,7 +20,7 @@
 
   const items = [
     { href: `/${PATH_IMPACT}/${PATH_EXPLORE}`, label: LABEL_EXPLORE },
-    { href: `/${PATH_ADAPTATION}`, label: LABEL_ADAPTATION },
+    { href: `/${PATH_CASE_STUDIES}`, label: LABEL_CASE_STUDIES },
     { href: `/${PATH_DOCUMENTATION}`, label: LABEL_DOCUMENTATION },
     { href: `/${PATH_KEY_CONCEPTS}`, label: LABEL_KEY_CONCEPTS },
     { href: `/${PATH_ABOUT}`, label: LABEL_ABOUT },

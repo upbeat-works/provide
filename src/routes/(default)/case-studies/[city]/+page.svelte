@@ -1,5 +1,4 @@
 <script>
-  import { PATH_ADAPTATION } from '$src/config.js';
   import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
   import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
   import Outro from '../sections/Outro.svelte';

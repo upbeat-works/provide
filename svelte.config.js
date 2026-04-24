@@ -33,7 +33,7 @@ const config = {
       entries: [
         '/',
         '/about',
-        '/adaptation',
+        '/case-studies',
         '/contact',
         '/impacts/avoid',
         '/impacts/explore',

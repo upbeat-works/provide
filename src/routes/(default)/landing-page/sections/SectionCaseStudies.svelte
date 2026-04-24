@@ -1,5 +1,5 @@
 <script>
-	import { PATH_ADAPTATION } from '$config';
+	import { PATH_CASE_STUDIES } from '$config';
 	import CaseStudiesCarousel from '../components/CaseStudiesCarousel/CaseStudiesCarousel.svelte';
 
 	export let caseStudies = [];
@@ -11,7 +11,7 @@
 		<div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 md:text-left">
 			<p class="text-theme-800 text-base font-normal leading-normal max-w-md">
 				Grab report-ready visuals and data, and learn from case studies that show how insights are used in practice.
-				<a href="/{PATH_ADAPTATION}" class="text-theme-base font-bold hover:underline whitespace-nowrap">
+				<a href="/{PATH_CASE_STUDIES}" class="text-theme-base font-bold hover:underline whitespace-nowrap">
 					View all
 				</a>
 			</p>

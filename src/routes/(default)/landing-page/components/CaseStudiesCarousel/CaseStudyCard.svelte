@@ -1,5 +1,5 @@
 <script>
-	import { PATH_ADAPTATION } from '$config';
+	import { PATH_CASE_STUDIES } from '$config';
 	import { getStrapiImageAtSize } from '$lib/utils/utils';
 	import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
 	import CategoryBadge from './CategoryBadge.svelte';
@@ -11,7 +11,7 @@
 </script>
 
 <a
-	href="/{PATH_ADAPTATION}/{study.city.uid}"
+	href="/{PATH_CASE_STUDIES}/{study.city.uid}"
 	class="flex flex-col bg-white rounded-sm overflow-hidden border border-contour-weakest group h-full"
 >
 	<div class="relative aspect-[4/3] overflow-hidden">

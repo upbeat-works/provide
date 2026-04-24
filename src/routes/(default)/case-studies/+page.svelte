@@ -1,6 +1,6 @@
 <script>
   import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
-  import { LABEL_ADAPTATION } from '$config';
+  import { LABEL_CASE_STUDIES, PATH_CASE_STUDIES } from '$config';
   import Publications from './sections/Publications.svelte';
   import Outro from './sections/Outro.svelte';
   import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
@@ -50,12 +50,16 @@
         },]
     },
   ].map((section) => ({ ...section, slug: kebabCase(section.title), content: true }));
+
+$: subNavigation = [...data.caseStudies.map((d) => ({ label: d.city.label, abstract: d.abstract, href: `/${PATH_CASE_STUDIES}/${d.city.uid}` }))];
 </script>
 
 <ContentPageLayout
   {sections}
-  label={LABEL_ADAPTATION}
+  label={LABEL_CASE_STUDIES}
   title="Tools"
+  {subNavigation}
+  subNavigationLabel="Case studies"
   intro="Tools and resources for using climate data in risk assessment and planning."
 >
   <Outro title={data.outroTitle} text={data.outroText} />
