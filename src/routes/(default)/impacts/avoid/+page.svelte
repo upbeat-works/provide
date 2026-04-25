@@ -18,7 +18,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
 
-  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-800/50'));
+  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-400'));
   onDestroy(() => HEADER_CLASS.set(''));
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
