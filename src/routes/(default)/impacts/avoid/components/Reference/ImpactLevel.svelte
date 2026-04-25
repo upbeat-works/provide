@@ -1,10 +1,18 @@
+<script context="module">
+  // These persist across component remounts (e.g. popover close/reopen) so we can
+  // distinguish a genuine data change from a remount with the same data.
+  let _lastMin = null;
+  let _lastMax = null;
+  let _lastDefault = null;
+</script>
+
 <script>
   import { LEVEL_OF_IMPACT } from '$stores/avoid.js';
   import { CURRENT_INDICATOR } from '$stores/state.js';
   import { formatUnit, formatValue } from '$lib/utils/formatting';
   import { scaleLinear } from 'd3-scale';
   import { createSlider, melt } from '@melt-ui/svelte';
-  import { writable } from 'svelte/store';
+  import { writable, get } from 'svelte/store';
   import { round } from 'lodash-es';
   import { format } from 'd3-format';
   import Knob from './Slider/Knob.svelte';
@@ -28,13 +36,20 @@
   let thumb;
 
   function updateSlider(min, max, defaultValue) {
-    value = writable([defaultValue]);
-    LEVEL_OF_IMPACT.set(rv(defaultValue));
+    const paramsChanged = min !== _lastMin || max !== _lastMax || defaultValue !== _lastDefault;
+    _lastMin = min;
+    _lastMax = max;
+    _lastDefault = defaultValue;
+
+    // On remount with unchanged data (popover reopen), restore the user's selection.
+    // On first load or data change (new indicator/geography), use defaultValue.
+    const initialValue = !paramsChanged ? get(LEVEL_OF_IMPACT) + offset : defaultValue;
+
+    value = writable([initialValue]);
     const {
       elements: { root: r, thumb: t },
     } = createSlider({
-      // defaultValue: [min], // This has to be an array because of MeltUI's workings
-      defaultValue: [defaultValue],
+      defaultValue: [initialValue],
       min: min,
       max: max,
       step: step,

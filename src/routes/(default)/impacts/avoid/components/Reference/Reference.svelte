@@ -16,6 +16,8 @@
 
   const store = writable({});
 
+  let _lastProcessedDefault = null;
+
   const [popperRef, popperContent] = createPopperActions();
   const popperOptions = {
     placement: 'bottom-start',
@@ -70,7 +72,11 @@
       countable,
     };
     REFERENCE_PROCESSED.set(processed);
-    LEVEL_OF_IMPACT.set(round(defaultValue - offset, decimals));
+    const newLevelDefault = round(defaultValue - offset, decimals);
+    if (newLevelDefault !== _lastProcessedDefault) {
+      LEVEL_OF_IMPACT.set(newLevelDefault);
+      _lastProcessedDefault = newLevelDefault;
+    }
     return { data: processed };
   };
 
