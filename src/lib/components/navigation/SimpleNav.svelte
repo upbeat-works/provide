@@ -14,9 +14,9 @@
     class:pointer-events-none={disabled}
     role={disabled ? 'link' : undefined}
     href={disabled ? undefined : `#${slug}`}
-    class="md:inline-block py-3 pl-2 -ml-2 pr-6 lg:pr-12 border-r-3 hover:bg-surface-weaker"
-    class:border-theme-base={isActive}
-    class:border-transparent={!isActive}
+    class="md:inline-block py-3 pl-2 -ml-2 pr-12 border-r-3 hover:bg-surface-weaker"
+    class:border-r-theme-base={isActive}
+    class:border-r-transparent={!isActive}
     aria-current={isActive ? 'step' : 'false'}
   >
     <div class="font-bold mb-1 -mt-1 leading-tight" class:text-theme-base={isActive && !disabled}>
