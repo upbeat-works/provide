@@ -35,11 +35,24 @@ html {
       @apply no-underline;
       @apply border-b-0;
       @apply py-2;
-      @apply px-3;
-      @apply bg-surface-weakest;
-      @apply my-1;
-      @apply inline-block;
-      @apply hover:bg-theme-weakest;
+      @apply px-4;
+      @apply bg-petrol-100;
+      @apply text-theme-base;
+      @apply font-bold;
+      @apply text-sm;
+      @apply rounded-sm;
+      @apply my-3;
+      @apply flex;
+      @apply max-w-[350px];
+      @apply items-center;
+      @apply justify-between;
+      @apply hover:bg-theme-base;
+      @apply hover:text-white;
+
+      &::after {
+        content: '→';
+        @apply font-normal;
+      }
     }
   }
 
