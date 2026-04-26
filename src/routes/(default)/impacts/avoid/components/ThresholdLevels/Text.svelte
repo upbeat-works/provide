@@ -47,7 +47,7 @@
   $: isBoth = isAvoidable && isPossible;
 </script>
 
-<div class="flex gap-y-12 flex-col mb-4">
+<div class="flex gap-y-12 flex-col">
   <section class="flex gap-y-4 flex-col">
     <p class="text-lg leading-relaxed max-w-4xl">
       {#if isAvoidable}
