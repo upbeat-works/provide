@@ -15,7 +15,7 @@
   $: ({ caseStudies } = data);
 
   const avoidCard = {
-    path: `${PATH_IMPACT}/${PATH_AVOID}`,
+    path: `/${PATH_IMPACT}/${PATH_AVOID}`,
     image: '/img/emission-scenarios.png',
     imageAlt: 'Chart showing compatible scenarios and impact levels',
     description:
