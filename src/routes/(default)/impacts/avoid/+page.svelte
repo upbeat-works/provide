@@ -11,7 +11,7 @@
   import PageHero from '$lib/components/layouts/PageHero.svelte';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
-  import ImpactLevel from './components/Reference/ImpactLevel.svelte';
+  import Reference from './components/Reference/Reference.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import { onMount, onDestroy } from 'svelte';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
@@ -78,6 +78,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
+    <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">Report Index</h2>
     <SimpleNav {sections} {activeIndex} />
     <hr class="my-4 border-contour-weakest mr-6" />
     <ShareLink />
@@ -88,7 +89,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="filters">
-    <ImpactLevel />
+    <Reference />
     <SelectionCertaintyLevels />
     <SelectionStudyLocations />
     <IndicatorFilters />
