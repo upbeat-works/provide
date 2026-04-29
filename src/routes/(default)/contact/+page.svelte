@@ -18,12 +18,12 @@
         <HtmlContent content={text} />
       </div>
     </div>
-    <div class="hidden md:block relative">
+    <div class="hidden md:block">
       <img
         src="/img/contact-bg.png"
         alt=""
         aria-hidden="true"
-        class="sticky top-0 h-screen w-full object-cover"
+        class="w-full object-cover"
       />
     </div>
   </div>

@@ -97,6 +97,7 @@ LEVEL_OF_IMPACT_ARRAY.subscribe((value) => {
 });
 
 export const LEVEL_OF_IMPACT = writable(0);
+export const REFERENCE_PROCESSED = writable(null);
 
 export const IS_EMPTY_LEVEL_OF_IMPACT = derived(LEVEL_OF_IMPACT, ($value) => typeof $value === 'undefined');
 export const IS_EMPTY_LIKELIHOOD_LEVEL = derived(SELECTED_LIKELIHOOD_LEVEL, ($value) => !Boolean($value));

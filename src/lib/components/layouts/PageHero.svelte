@@ -8,13 +8,7 @@
 </script>
 
 <div class={`overflow-hidden relative ${className || 'bg-theme-700'}`}>
-  <svg class="absolute inset-0 w-full h-full opacity-[0.18] pointer-events-none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-    <filter id="page-hero-grain">
-      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch" />
-      <feColorMatrix type="saturate" values="0" />
-    </filter>
-    <rect width="100%" height="100%" filter="url(#page-hero-grain)" />
-  </svg>
+  <img src="/img/grain-bg.png" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-[0.18] pointer-events-none mix-blend-soft-light" />
   <div class="relative mx-auto max-w-6xl px-2 sm:px-6 {tabItems ? 'pb-10 sm:pb-14' : 'pb-14 sm:pb-20'} pt-6 sm:pt-16">
     {#if $$slots.label}
       <div class="mb-3"><slot name="label" /></div>
