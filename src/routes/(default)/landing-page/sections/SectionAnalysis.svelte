@@ -23,7 +23,7 @@
 			image: '/img/impacts.png',
 			imageAlt: 'Map showing future climate impacts across geographies',
 			description:
-				'Explore future impacts shows how different climate futures will affect the environment and people across different emission scenarios.',
+				'Explorer future impacts shows how different climate futures will affect the environment and people across different emission scenarios.',
 			project: 'Provide',
 			geography: 'Global',
 			dataSource: 'CMIP6'
