@@ -2,11 +2,11 @@
   export let wrapperClass = '';
 </script>
 
-<div>
+<div class="flex flex-col min-h-0 flex-1">
   <div class="px-4 pt-4 pb-3 pr-12 bg-theme-50">
     <slot name="header" />
   </div>
-  <div class="grid grid-cols-1 md:grid-cols-[1fr_2fr] h-[32rem] {wrapperClass}">
+  <div class="grid grid-cols-1 md:grid-cols-[1fr_2fr] flex-1 min-h-0 {wrapperClass}">
     <div class="overflow-y-auto md:border-r border-contour-weakest">
       <slot name="sidebar" />
     </div>
