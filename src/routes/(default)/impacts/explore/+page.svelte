@@ -5,10 +5,8 @@
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, CURRENT_GEOGRAPHY, IS_STATIC } from '$stores/state';
   import { GEOGRAPHIES } from '$stores/meta.js';
-  import { GEOGRAPHY_TYPE_CITY } from '$config';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
   import VisData from '$lib/components/icons/VisData.svelte';
-  import { PATH_AVOID } from '$config';
+  import { PATH_AVOID, GEOGRAPHY_TYPE_CITY } from '$config';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
