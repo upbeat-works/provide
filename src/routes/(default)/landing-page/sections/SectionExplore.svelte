@@ -8,6 +8,8 @@
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import Button from '$lib/components/ui/Button.svelte';
 
+  export let heading = 'From cities to continents: assess climate risk with the Explorer';
+
   $: isValidSelection = !$IS_EMPTY_GEOGRAPHY && !$IS_EMPTY_INDICATOR && $IS_COMBINATION_AVAILABLE_INDICATOR;
 
   function viewResults() {
@@ -22,7 +24,7 @@
 <section class="border-t border-contour-weakest">
   <header class="grid lg:grid-cols-2 gap-x-16 gap-y-4 mb-12 mt-16 px-6">
     <h2 class="text-3xl text-theme-800 leading-tight max-w-sm">
-      From cities to continents: assess climate risk with the Explorer
+      {heading}
     </h2>
     <p class="text-sm text-text-weaker leading-relaxed self-end">
       See how different levels of climate action will lead to different climate impacts for countries, cities, and more.

@@ -43,6 +43,7 @@ const config = {
         '/embed/impact-time',
         '/embed/impact-geo',
         '/embed/unavoidable-risk',
+        '/projects/provide',
       ],
     },
   },
