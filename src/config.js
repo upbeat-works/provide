@@ -20,11 +20,11 @@ export const PATH_ADAPTATION = 'adaptation';
 export const LABEL_DOCUMENTATION = 'Methodology';
 export const LABEL_CONTACT = 'Contact';
 export const LABEL_ABOUT = 'About';
-export const LABEL_EXPLORE = 'Explore';
+export const LABEL_EXPLORE = 'Explorer';
 export const LABEL_KEY_CONCEPTS = 'Key concepts';
 export const LABEL_FUTURE_IMPACTS = 'Future impacts';
 export const LABEL_AVOID_IMPACTS = 'Avoiding future impacts';
-export const LABEL_ADAPTATION = 'Adaptation';
+export const LABEL_ADAPTATION = 'Case Studies';
 
 export const LABEL_SCENARIOS_INTRO = 'Scenarios';
 export const LABEL_SCENARIOS_TIMEFRAMES = 'Timeframes';

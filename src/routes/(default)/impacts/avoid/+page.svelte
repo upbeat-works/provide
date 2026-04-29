@@ -11,7 +11,7 @@
   import PageHero from '$lib/components/layouts/PageHero.svelte';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
-  import ImpactLevel from './components/Reference/ImpactLevel.svelte';
+  import Reference from './components/Reference/Reference.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import { onMount, onDestroy } from 'svelte';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
@@ -20,10 +20,11 @@
   import LinkSection from '../explore/components/ImpactGeo/LinkSection.svelte';
   import { GEOGRAPHIES } from '$stores/meta.js';
   import { GEOGRAPHY_TYPE_CITY } from '$config';
+  import IndicatorFilters from '../explore/components/IndicatorFilters.svelte';
 
   export let data;
 
-  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-800/50'));
+  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-400'));
   onDestroy(() => HEADER_CLASS.set(''));
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
@@ -89,6 +90,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
+    <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">Report Index</h2>
     <SimpleNav {sections} {activeIndex} />
     <hr class="my-4 border-contour-weakest mr-6" />
     <ShareLink />
@@ -99,9 +101,10 @@
   </svelte:fragment>
 
   <svelte:fragment slot="filters">
-    <ImpactLevel />
+    <Reference />
     <SelectionCertaintyLevels />
     <SelectionStudyLocations />
+    <IndicatorFilters />
   </svelte:fragment>
 
   <svelte:fragment slot="content">

@@ -7,6 +7,7 @@
   import Interactive from './Interactive.svelte';
   import Important from './Important.svelte';
   import { formatValue, formatUnit } from '$lib/utils/formatting';
+  import ReferenceText from '../Reference/Text.svelte';
   export let data;
 
   const VALUE_NEVER = 'never';
@@ -47,7 +48,8 @@
   $: isBoth = isAvoidable && isPossible;
 </script>
 
-<div class="flex gap-y-12 flex-col">
+<div class="flex gap-y-12 flex-col mb-4">
+  <ReferenceText />
   <section class="flex gap-y-4 flex-col">
     <p class="text-lg leading-relaxed max-w-4xl">
       {#if isAvoidable}

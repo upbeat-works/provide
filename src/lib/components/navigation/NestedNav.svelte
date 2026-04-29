@@ -157,31 +157,40 @@
   };
 </script>
 
-<nav class="flex flex-col gap-6 mr-12">
+<nav class="flex flex-col gap-6">
   {#if title}
     <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">{title}</h2>
   {/if}
   <ul data-index={effectiveActiveIndex}>
     {#each processedSections as { title, slug, isActive, index, isOpen, sections, hasContent }}
       {#if hasContent}
-        <li class="py-2 border-b border-contour-weakest pr-1">
-          <div aria-expanded={String(isActive)} class:text-theme-base={isActive} class="flex justify-between items-center">
-            <a class="font-semibold text-sm" href={`#${slug}`}>{title}</a>
-            {#if sections.length}
-              <button as="button" class="p-1" class:rotate-180={isOpen} on:click={() => toggleSection(index)}>▾</button>
+        <li class="border-r-3 pr-12"
+          class:border-r-theme-base={isActive && (!isOpen || !sections.length)}
+          class:border-r-transparent={!isActive || (isOpen && sections.length)}
+        >
+          <div class="py-2 border-b border-contour-weakest">
+            <div aria-expanded={String(isActive)} class:text-theme-base={isActive} class="flex justify-between items-center">
+              <a class="font-semibold text-sm" href={`#${slug}`}>{title}</a>
+              {#if sections.length}
+                <button as="button" class="p-1" class:rotate-180={isOpen} on:click={() => toggleSection(index)}>▾</button>
+              {/if}
+            </div>
+            {#if sections.length && isOpen}
+              <ul>
+                {#each sections as { slug, title, isActive }}
+                  <li class="mt-1 relative">
+                    <a aria-current={isActive ? 'step' : 'false'} class="inline-block text-sm font-normal py-1 leading-tight" class:text-theme-base={isActive} href={`#${slug}`}>
+                      {title}
+                    </a>
+                    <span class="absolute inset-y-0 -right-[3.2rem] border-r-3"
+                      class:border-r-theme-base={isActive}
+                      class:border-r-transparent={!isActive}
+                    ></span>
+                  </li>
+                {/each}
+              </ul>
             {/if}
           </div>
-          {#if sections.length}
-            <ul class:h-0={!isOpen} class="overflow-hidden">
-              {#each sections as { slug, title, isActive }}
-                <li class="mt-1">
-                  <a aria-current={isActive ? 'step' : 'false'} class="inline-block text-sm font-normal py-1 leading-tight" class:text-theme-base={isActive} href={`#${slug}`}>
-                    {title}
-                  </a>
-                </li>
-              {/each}
-            </ul>
-          {/if}
         </li>
       {/if}
     {/each}
