@@ -8,7 +8,7 @@
   export { className as class };
 
   const base =
-    'inline-flex items-center gap-2 px-4 py-2 rounded-sm font-bold text-sm transition-colors';
+    'inline-flex items-center gap-2 px-4 py-2 rounded-sm font-semibold text-base transition-colors';
 
   const variants = {
     primary:

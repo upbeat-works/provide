@@ -16,7 +16,7 @@
 </script>
 
 <div>
-  <span class={`uppercase text-xs tracking-widest font-bold text-contour-weak inline-block ${labelClass}`}>{label}</span>
+  <span class={`uppercase text-xs tracking-widest font-semibold text-contour-weak inline-block ${labelClass}`}>{label}</span>
   <button
     aria-disabled={isDisabled}
     aria-label={disabled ?? warning ?? placeholder ?? `${category ? `${category}:` : ''}${buttonLabel}`}
@@ -28,7 +28,7 @@
       placeholder || isDisabled ? 'text-theme-weaker' : '',
     ].join(' ')}
   >
-    <span class="flex items-center truncate" class:font-bold={!placeholder && !disabled}>
+    <span class="flex items-center truncate" class:font-semibold={!placeholder && !disabled}>
       {#if colors?.length && !disabled && !warning && !placeholder}
         <span class="flex items-center mr-2 shrink-0 mt-0.5">
           {#each colors as color, i}

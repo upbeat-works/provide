@@ -19,7 +19,7 @@
     class:border-r-transparent={!isActive}
     aria-current={isActive ? 'step' : 'false'}
   >
-    <div class="font-bold mb-1 -mt-1 leading-tight" class:text-theme-base={isActive && !disabled}>
+    <div class="font-semibold mb-1 -mt-1 leading-tight" class:text-theme-base={isActive && !disabled}>
       {title}
     </div>
     <div class="text-contour-weak leading-tight text-sm -mb-1" class:text-theme-weaker={isActive && !disabled}>
