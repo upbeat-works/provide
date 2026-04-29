@@ -4,6 +4,8 @@
   import UnAvoidableRisk from '../components/UnavoidableRisk/UnavoidableRisk.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
   import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
+  import VisData from '$lib/components/icons/VisData.svelte';
+  import { PATH_AVOID } from '$config';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
@@ -101,5 +103,14 @@
         </section>
       {/if}
     {/each}
+    {#if isValidSelection}
+      <div class="flex justify-center">
+        <Button href="/impacts/{PATH_AVOID}" variant="secondary" class="!px-8 !py-4 !text-base !gap-3">
+          <VisData class="h-8 w-8 shrink-0" color="fill-current" />
+          Visualize this data on avoiding future impacts
+          <LinkArrow />
+        </Button>
+      </div>
+    {/if}
   </svelte:fragment>
 </PageLayout>
