@@ -61,7 +61,7 @@
 </script>
 
 <section class="max-w-7xl mx-auto">
-	<div class="pl-6 py-12 grid md:grid-cols-[1fr_2fr] gap-x-24 items-start">
+	<div class="pl-6 py-12 grid md:grid-cols-[1fr_1px_2fr] gap-x-24 md:gap-x-12 items-start">
 
 		<!-- Left: heading + nav -->
 		<div class="flex flex-col gap-8">
@@ -98,6 +98,9 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- Vertical separator -->
+		<div class="hidden md:block border-l border-dashed border-contour-weakest self-stretch"></div>
 
 		<!-- Right: carousel -->
 		<div class="py-2 md:py-4 min-w-0 -ml-4 md:pl-0">
