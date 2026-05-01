@@ -8,7 +8,7 @@
   export { className as class };
 
   const base =
-    'inline-flex items-center gap-2 px-4 py-2 rounded-sm font-bold text-sm transition-colors';
+    'inline-flex items-center gap-2 px-4 py-2 rounded-sm font-semibold text-base transition-colors';
 
   const variants = {
     primary:
@@ -18,10 +18,16 @@
     ghost:
       'text-theme-base hover:enabled:bg-surface-weaker disabled:opacity-40 disabled:cursor-not-allowed',
   };
+
+  const linkVariants = {
+    primary: 'bg-theme-800 text-white hover:bg-theme-900/80',
+    secondary: 'bg-surface-weaker text-theme-base hover:bg-theme-base hover:text-white',
+    ghost: 'text-theme-base hover:bg-surface-weaker',
+  };
 </script>
 
 {#if href && !disabled}
-  <a {href} class="{base} {variants[variant]} {className}" {...$$restProps}>
+  <a {href} class="{base} {linkVariants[variant]} {className}" {...$$restProps}>
     <slot />
   </a>
 {:else}

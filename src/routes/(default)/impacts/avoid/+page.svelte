@@ -2,7 +2,7 @@
   import ThresholdLevels from './components/ThresholdLevels/ThresholdLevels.svelte';
   import StudyLocations from './components/StudyLocations/StudyLocations.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, HEADER_CLASS } from '$stores/state';
+  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, HEADER_CLASS, IS_STATIC, CURRENT_GEOGRAPHY } from '$stores/state';
   import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import SelectionCertaintyLevels from './components/Selection/CertaintyLevels/CertaintyLevels.svelte';
@@ -11,17 +11,30 @@
   import PageHero from '$lib/components/layouts/PageHero.svelte';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
-  import ImpactLevel from './components/Reference/ImpactLevel.svelte';
+  import Reference from './components/Reference/Reference.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import { onMount, onDestroy } from 'svelte';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
+  import LinkSection from '../explore/components/ImpactGeo/LinkSection.svelte';
+  import { GEOGRAPHIES } from '$stores/meta.js';
+  import { GEOGRAPHY_TYPE_CITY } from '$config';
+  import IndicatorFilters from '../explore/components/IndicatorFilters.svelte';
 
-  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-800/50'));
+  export let data;
+
+  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-400'));
   onDestroy(() => HEADER_CLASS.set(''));
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
+
+  $: caseStudyGeography = $CURRENT_GEOGRAPHY?.adaptationCaseStudy
+    ? $GEOGRAPHIES[GEOGRAPHY_TYPE_CITY]?.find((d) => d.uid === $CURRENT_GEOGRAPHY.adaptationCaseStudy) ?? null
+    : null;
+  $: caseStudy = caseStudyGeography
+    ? (data.caseStudies?.find((d) => d.cityUid === caseStudyGeography.uid) ?? null)
+    : null;
 
   let THRESHOLD_LEVELS_DATA = writable({});
 
@@ -77,6 +90,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
+    <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">Report Index</h2>
     <SimpleNav {sections} {activeIndex} />
     <hr class="my-4 border-contour-weakest mr-6" />
     <ShareLink />
@@ -87,18 +101,22 @@
   </svelte:fragment>
 
   <svelte:fragment slot="filters">
-    <ImpactLevel />
+    <Reference />
     <SelectionCertaintyLevels />
     <SelectionStudyLocations />
+    <IndicatorFilters />
   </svelte:fragment>
 
   <svelte:fragment slot="content">
     {#each sections as section, i}
       {#if !section.disabled}
-        <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 border-b pb-14 border-contour-weaker last:border-none">
+        <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest last:border-none">
           <svelte:component this={section.component} {...section.props} />
         </section>
       {/if}
     {/each}
+    {#if !$IS_STATIC && $CURRENT_GEOGRAPHY}
+      <LinkSection geography={$CURRENT_GEOGRAPHY} {caseStudy} />
+    {/if}
   </svelte:fragment>
 </PageLayout>

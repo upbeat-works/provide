@@ -3,7 +3,10 @@
   import ImpactGeo from './components/ImpactGeo/ImpactGeo.svelte';
   import UnAvoidableRisk from '../components/UnavoidableRisk/UnavoidableRisk.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION } from '$stores/state';
+  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, CURRENT_GEOGRAPHY, IS_STATIC } from '$stores/state';
+  import { GEOGRAPHIES } from '$stores/meta.js';
+  import VisData from '$lib/components/icons/VisData.svelte';
+  import { PATH_AVOID, GEOGRAPHY_TYPE_CITY } from '$config';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
@@ -14,8 +17,18 @@
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
+  import LinkSection from './components/ImpactGeo/LinkSection.svelte';
+
+  export let data;
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE;
+
+  $: caseStudyGeography = $CURRENT_GEOGRAPHY?.adaptationCaseStudy
+    ? $GEOGRAPHIES[GEOGRAPHY_TYPE_CITY]?.find((d) => d.uid === $CURRENT_GEOGRAPHY.adaptationCaseStudy) ?? null
+    : null;
+  $: caseStudy = caseStudyGeography
+    ? (data.caseStudies?.find((d) => d.cityUid === caseStudyGeography.uid) ?? null)
+    : null;
 
   $: sections = [
     {
@@ -96,10 +109,24 @@
   <svelte:fragment slot="content">
     {#each sections as section, i}
       {#if !section.disabled}
-        <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-16 pb-14 border-contour-weakest border-b last:border-none">
+        <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-contour-weakest border-b last:border-none">
           <svelte:component this={section.component} {...section.props} />
         </section>
+        {#if section.slug === 'impact-geo' && !$IS_STATIC && $CURRENT_GEOGRAPHY}
+          <div class="mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest">
+            <LinkSection geography={$CURRENT_GEOGRAPHY} {caseStudy} />
+          </div>
+        {/if}
       {/if}
     {/each}
+    {#if isValidSelection}
+      <div class="flex justify-center">
+        <Button href="/impacts/{PATH_AVOID}" variant="secondary" class="!px-8 !py-4 !text-base !gap-3">
+          <VisData class="h-8 w-8 shrink-0" color="fill-current" />
+          Visualize this data on avoiding future impacts
+          <LinkArrow />
+        </Button>
+      </div>
+    {/if}
   </svelte:fragment>
 </PageLayout>

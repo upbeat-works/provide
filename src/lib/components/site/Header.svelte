@@ -1,7 +1,5 @@
 <script>
   import {
-    PATH_KEY_CONCEPTS,
-    LABEL_KEY_CONCEPTS,
     LABEL_EXPLORE,
     PATH_EXPLORE,
     PATH_IMPACT,
@@ -22,7 +20,6 @@
     { href: `/${PATH_IMPACT}/${PATH_EXPLORE}`, label: LABEL_EXPLORE },
     { href: `/${PATH_ADAPTATION}`, label: LABEL_ADAPTATION },
     { href: `/${PATH_DOCUMENTATION}`, label: LABEL_DOCUMENTATION },
-    { href: `/${PATH_KEY_CONCEPTS}`, label: LABEL_KEY_CONCEPTS },
     { href: `/${PATH_ABOUT}`, label: LABEL_ABOUT },
     { href: `/${PATH_CONTACT}`, label: LABEL_CONTACT },
   ];
@@ -35,7 +32,7 @@
       {#each items as { label, href }}
         <NavLink
           activeClass="text-white font-medium"
-          class="text-white hover:text-sky-100 text-sm md:text-base transition-colors"
+          class="text-white hover:text-sky-100 text-[14px] font-semibold leading-[150%] transition-colors"
           {href}>{label}</NavLink
         >
       {/each}
