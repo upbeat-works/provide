@@ -1,7 +1,12 @@
 <script>
   import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
   import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
-  import { LABEL_DOCUMENTATION } from '$config';
+  import { LABEL_DOCUMENTATION, LABEL_KEY_CONCEPTS, PATH_DOCUMENTATION, PATH_KEY_CONCEPTS } from '$config';
+
+  const tabItems = [
+    { href: `/${PATH_DOCUMENTATION}`, label: 'Impact' },
+    { href: `/${PATH_DOCUMENTATION}/${PATH_KEY_CONCEPTS}`, label: LABEL_KEY_CONCEPTS },
+  ];
 
   export let data;
 
@@ -72,4 +77,4 @@
   ];
 </script>
 
-<ContentPageLayout {sections} label={LABEL_DOCUMENTATION} title="How our data is built" intro="From models to impact definitions and processing, this section shows how the dashboard is built and how to read it." />
+<ContentPageLayout {sections} {tabItems} label={LABEL_DOCUMENTATION} title="How our data is built" intro="From models to impact definitions and processing, this section shows how the dashboard is built and how to read it." />

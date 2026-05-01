@@ -1,6 +1,7 @@
 <script>
   import { slugify } from '$lib/utils/utils';
   import { onDestroy } from 'svelte';
+  import Chevron from '$lib/components/icons/Chevron.svelte';
 
   export let sections = [];
   export let contentRef;
@@ -172,7 +173,7 @@
             <div aria-expanded={String(isActive)} class:text-theme-base={isActive} class="flex justify-between items-center">
               <a class="font-semibold text-sm" href={`#${slug}`}>{title}</a>
               {#if sections.length}
-                <button as="button" class="p-1" class:rotate-180={isOpen} on:click={() => toggleSection(index)}>▾</button>
+                <button as="button" class="p-1 transition-transform duration-150" class:rotate-180={isOpen} on:click={() => toggleSection(index)}><Chevron /></button>
               {/if}
             </div>
             {#if sections.length && isOpen}
