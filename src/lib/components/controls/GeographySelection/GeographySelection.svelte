@@ -80,7 +80,7 @@
   category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
   buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
   placeholder={$IS_EMPTY_GEOGRAPHY ? 'Select a geography' : undefined}
-  panelClass="max-w-4xl"
+  panelClass="max-w-6xl"
   bind:isOpen={modalOpen}
 >
   <SelectionPanel>

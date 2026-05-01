@@ -11,6 +11,6 @@
     type="search"
     bind:value
     {placeholder}
-    class="w-full pl-9 pr-3 py-3 font-sans font-sm text-base text-text-weakest border border-contour-weakest bg-white placeholder:text-text-weakest focus:outline-none focus:ring-1 focus:ring-theme-base"
+    class="w-full pl-9 pr-3 py-3 font-sans text-sm text-text-weakest border border-contour-weakest bg-white placeholder:text-text-weakest focus:outline-none focus:ring-1 focus:ring-theme-base"
   />
 </div>

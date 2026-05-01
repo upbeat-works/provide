@@ -94,8 +94,8 @@
     <svelte:fragment slot="content">
       {#if detailsItem}
         <div class="p-8 m-4 h-min border rounded-sm border-theme-base/20">
-          <h3 class="font-bold mb-2">{detailsItem.label}</h3>
-          <p class="text-contour-weak">{@html detailsItem.description || ''}</p>
+          <h3 class="font-bold mb-2 text-lg">{detailsItem.label}</h3>
+          <p class="text-contour-weak text-sm">{@html detailsItem.description || ''}</p>
         </div>
       {/if}
     </svelte:fragment>
