@@ -10,7 +10,7 @@
   export let warning = undefined;
   export let disabled = undefined;
   export let placeholder = undefined;
-  export let panelClass = 'max-w-3xl';
+  export let panelClass = 'max-w-5xl';
   export let isOpen = false;
   export let colors = undefined;
 </script>
