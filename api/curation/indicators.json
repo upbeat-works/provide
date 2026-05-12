@@ -1,0 +1,571 @@
+[
+  {
+    "uid": "terclim-mean-temperature",
+    "label": "Mean Temperature",
+    "unit": "degrees-celsius",
+    "sector": "terrestrial-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "time": [
+        "annual",
+        "djf",
+        "mam",
+        "jja",
+        "son"
+      ],
+      "reference": [
+        "present-day",
+        "pre-industrial"
+      ],
+      "spatial": [
+        "area"
+      ]
+    },
+    "direction": -1
+  },
+  {
+    "uid": "terclim-hot-extreme",
+    "label": "Hot Extreme",
+    "unit": "degrees-celsius",
+    "sector": "terrestrial-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "time": [
+        "annual",
+        "djf",
+        "mam",
+        "jja",
+        "son"
+      ],
+      "reference": [
+        "present-day",
+        "pre-industrial"
+      ],
+      "spatial": [
+        "area"
+      ],
+      "frequency": [
+        "0.1",
+        "0.05",
+        "0.02"
+      ]
+    },
+    "direction": -1
+  },
+  {
+    "uid": "terclim-cold-extreme",
+    "label": "Cold Extreme",
+    "unit": "degrees-celsius",
+    "sector": "terrestrial-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "time": [
+        "annual",
+        "djf",
+        "mam",
+        "jja",
+        "son"
+      ],
+      "reference": [
+        "present-day",
+        "pre-industrial"
+      ],
+      "spatial": [
+        "area"
+      ],
+      "frequency": [
+        "0.1",
+        "0.05",
+        "0.02"
+      ]
+    },
+    "direction": -1
+  },
+  {
+    "uid": "terclim-txx",
+    "label": " Maximum value of daily maximum temperature",
+    "unit": "degrees-celsius",
+    "sector": "terrestrial-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "time": [
+        "annual"
+      ],
+      "reference": [
+        "present-day",
+        "pre-industrial"
+      ],
+      "spatial": [
+        "area"
+      ],
+      "frequency": [
+        "0.5"
+      ]
+    },
+    "direction": -1
+  },
+  {
+    "uid": "terclim-mrso-minmon",
+    "label": "Monthly minimum of soil moisture content",
+    "unit": "kg/m2",
+    "sector": "terrestrial-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "time": [
+        "annual"
+      ],
+      "reference": [
+        "present-day",
+        "pre-industrial"
+      ],
+      "spatial": [
+        "area"
+      ],
+      "frequency": [
+        "0.5"
+      ]
+    },
+    "direction": 1
+  },
+  {
+    "uid": "terclim-fwisa",
+    "label": "Seasonal average of the Fire Weather Index",
+    "unit": "",
+    "sector": "terrestrial-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "time": [
+        "annual"
+      ],
+      "reference": [
+        "present-day",
+        "pre-industrial"
+      ],
+      "spatial": [
+        "area"
+      ],
+      "frequency": [
+        "0.5"
+      ]
+    },
+    "direction": -1
+  },
+  {
+    "uid": "terclim-fwils",
+    "label": "Length of the fire season",
+    "unit": "days",
+    "sector": "terrestrial-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "time": [
+        "annual"
+      ],
+      "reference": [
+        "present-day",
+        "pre-industrial"
+      ],
+      "spatial": [
+        "area"
+      ],
+      "frequency": [
+        "0.5"
+      ]
+    },
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-dayoverX",
+    "label": "Hours a year where maximum wet-bulb globe temperatures go above X°C",
+    "unit": "hours-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ],
+      "indicator_value": [
+        "25",
+        "28",
+        "29.5",
+        "31"
+      ]
+    },
+    "labelWithinSentence": "hours a year where maximum wet-bulb globe temperatures go above X°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-nightover28",
+    "label": "Number of nights attaining a minimum temperature not dropping below 28°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "nights a year where minimum temperatures stay above 28°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-hourover28",
+    "label": "Hours a year where maximum wet-bulb globe temperatures go above 28°C",
+    "unit": "hours-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "hours a year where maximum wet-bulb globe temperatures go above 28°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-T2M-dayover25",
+    "label": "Days a year where maximum temperatures go above 25°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "days a year where maximum temperatures go above 25°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-T2M-dayover30",
+    "label": "Days a year where maximum temperatures go above 30°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "days a year where maximum temperatures go above 30°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-T2M-nightover25",
+    "label": "Nights a year where minimum temperatures stay above 25°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "nights a year where minimum temperatures stay above 25°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-hourover31",
+    "label": "Hours a year where maximum wet-bulb globe temperatures go above 31°C",
+    "unit": "hours-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "hours a year where maximum wet-bulb globe temperatures go above 31°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-T2M-daily-mean-max",
+    "label": "Average daily maximum temperature",
+    "unit": "degrees-celsius",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "average daily maximum temperature",
+    "isCountable": false,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-nightover28",
+    "label": "Number of nights attaining a minimum temperature not dropping below 28°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "nights a year where minimum temperatures stay above 28°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-T2M-nightover28",
+    "label": "Nights a year where minimum temperatures stay above 28°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "nights a year where minimum temperatures stay above 28°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-T2M-daily-mean-min",
+    "label": "Average daily minimum temperature",
+    "unit": "degrees-celsius",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "average daily minimum temperature",
+    "isCountable": false,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-hourover25",
+    "label": "Hours a year where maximum wet-bulb globe temperatures go above 25°C",
+    "unit": "hours-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "hours a year where maximum wet-bulb globe temperatures go above 25°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-dayover28",
+    "label": "Days a year where maximum wet-bulb globe temperatures go above 28°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "days a year where maximum wet-bulb globe temperatures go above 28°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-dayover295",
+    "label": "Days a year where maximum wet-bulb globe temperatures go above 29.5°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "days a year where maximum wet-bulb globe temperatures go above 29.5°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-dayover25",
+    "label": "Days a year where maximum wet-bulb globe temperatures go above 25°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "days a year where maximum wet-bulb globe temperatures go above 25°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-dayover31",
+    "label": "Days a year where maximum wet-bulb globe temperatures go above 31°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "days a year where maximum wet-bulb globe temperatures go above 31°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-daily-mean-max",
+    "label": "Average daily maximum Wet Bulb Globe Temperature",
+    "unit": "degrees-celsius",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "average daily maximum Wet Buld Globe Temperature",
+    "isCountable": false,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-T2M-mean",
+    "label": "Average daily temperature",
+    "unit": "degrees-celsius",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "average daily mean temperature",
+    "isCountable": false,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-WBGT-hourover295",
+    "label": "Hours a year where maximum wet-bulb globe temperatures go above 29.5°C",
+    "unit": "hours-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "hours a year where maximum wet-bulb globe temperatures go above 29.5°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-heatwave-days",
+    "label": "Days a year in a heatwave",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "days per year in a heatwave",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-T2M-nightover20",
+    "label": "Nights a year where minimum temperatures stay above 20°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "nights a year where minimum temperatures stay above 20°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "urbclim-T2M-dayover35",
+    "label": "Days a year where maximum temperatures go above 35°C",
+    "unit": "days-year",
+    "sector": "urban-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day"
+      ]
+    },
+    "labelWithinSentence": "days a year where maximum temperatures go above 35°C",
+    "isCountable": true,
+    "direction": -1
+  },
+  {
+    "uid": "marclim-sst",
+    "label": "Sea Surface Temperature",
+    "unit": "degrees-celsius",
+    "sector": "maritime-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day",
+        "pre-industrial"
+      ]
+    },
+    "direction": -1
+  },
+  {
+    "uid": "marclim-ph",
+    "label": "pH",
+    "unit": [],
+    "sector": "maritime-climate",
+    "availableGeographies": [],
+    "availableScenarios": [],
+    "parameters": {
+      "reference": [
+        "present-day",
+        "pre-industrial"
+      ]
+    },
+    "direction": -1
+  }
+]

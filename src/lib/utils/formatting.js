@@ -47,6 +47,17 @@ const indicatorFormats = {
   default: f(FORMAT_INTEGER),
 };
 
+// Display labels per unit id. Consumers (charts, axes, sentence formatting)
+// look up unit.label / unit.labelLong from here. ixmp4 instances must use
+// one of these unit ids on their timeseries to get correct formatting.
+export const unitLabels = {
+  [KEY_DEGREES_CELSIUS]: { label: '°C', labelLong: 'degrees Celsius' },
+  [KEY_DEGREES_WARMING]: { label: '°C', labelLong: 'degrees Celsius' },
+  'gigaton-co2eq-year': { label: 'GtCO₂eq/yr', labelLong: 'Gigaton of CO2 equivalent per year' },
+  'days-year': { label: 'd/yr', labelLong: 'Days per Year' },
+  'hours-year': { label: 'h/yr', labelLong: 'Hours per Year' },
+};
+
 const suffixes = {
   [KEY_DEGREES_CELSIUS]: ' °C',
   [KEY_DEGREES_WARMING]: ' °C',

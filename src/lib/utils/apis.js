@@ -7,7 +7,12 @@ import { KEY_CHARACTERISTICS, KEY_SCENARIO_YEAR_DESCRIPTION, SCENARIO_DATA_KEYS 
 const ENV_CONTENT_LOCALE = import.meta.env.VITE_STRAPI_LOCALE;
 const localCode = ENV_CONTENT_LOCALE ?? 'en';
 const ENV_URL_CONTENT = import.meta.env.VITE_HEROKU_URL;
+// Legacy Climate Analytics API — used for impact-time, unavoidable-risk,
+// impact-geo, geo-shape, avoiding-impacts, avoiding-reference.
 const ENV_URL_DATA = import.meta.env.VITE_DATA_API_URL;
+// New Hono adapter — used for the indicator catalogue surface (/meta and
+// related). Falls back to the legacy URL until the cutover is complete.
+const ENV_URL_API = import.meta.env.VITE_API_URL ?? ENV_URL_DATA;
 
 export const loadFromStrapi = function (path, fetch, populate = 'populate=*', qs) {
   return new Promise(async (resolve, reject) => {
@@ -33,10 +38,15 @@ export const loadFromStrapi = function (path, fetch, populate = 'populate=*', qs
 // We use the fetch function provided by Svelte if provided.
 export const loadFromAPI = async function (url, svelteFetch = fetch, props = {}) {
   try {
-    const res = await svelteFetch(url); // ${import.meta.env.VITE_DATA_API_URL}
+    const res = await svelteFetch(url);
+    if (!res.ok) {
+      console.warn(`loadFromAPI ${url} → HTTP ${res.status}`);
+      return undefined;
+    }
     const data = await res.json();
     return { ...props, ...data };
   } catch (e) {
+    console.warn(`loadFromAPI ${url} threw:`, e);
     return undefined;
   }
 };
@@ -56,8 +66,16 @@ export const loadMetaData = function (svelteFetch = fetch) {
     const descriptionScenarios = await loadFromStrapi('scenarios', svelteFetch);
     const availableIndicators = descriptionIndicators.map(({ attributes }) => attributes.UID);
 
-    const url = `${ENV_URL_DATA.split('').join('')}/meta/`;
+    const url = `${ENV_URL_API}/meta/`;
     const meta = await loadFromAPI(url, svelteFetch);
+    if (!meta || !meta.geographyTypes) {
+      return reject(
+        new Error(
+          `Failed to load metadata from ${url}. Verify that the API server is running, ` +
+          `reachable from this process, and returning the expected /meta payload.`,
+        ),
+      );
+    }
 
     resolve({
       ...meta,

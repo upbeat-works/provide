@@ -2,55 +2,78 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { schema } from '../db';
 import { instances } from '../instances';
-import { fetchVariables } from '../ixmp4';
+import { fetchRuns, fetchVariables } from '../ixmp4';
+import { geographyTypes as geographyTypesCuration } from '../curation/geography-types';
+import { scenarios as scenariosCuration, scenarioByUid } from '../curation/scenarios';
+import { sectors as sectorsCuration } from '../curation/sectors';
+import { indicatorByUid } from '../curation/indicators';
+import { indicatorParameters } from '../curation/indicator-parameters';
+import { studyLocations } from '../curation/study-locations';
+import { likelihoods } from '../curation/likelihoods';
 
-/**
- * GET /api/meta
- *
- * Assembles the full metadata response for the frontend by merging data from
- * three sources:
- *
- * 1. **ixmp4 instances** (fan out in parallel):
- *    - Indicators (variables) with available scenarios and geographies
- *    - Scenarios (runs) with characteristics and time series (GMT, emissions)
- *    - Sectors and tags (meta-indicators on runs)
- *    - Units
- *    - Parameter options (derived from variable naming conventions)
- *    Each indicator is tagged with its source instance id.
- *
- * 2. **Local SQL DB** (D1):
- *    - Geography types and geographies (hierarchy, coordinates)
- *
- * 3. **Strapi CMS** (fetched by the SvelteKit frontend, not here):
- *    - Indicator display config (description, colorScale, direction, icon)
- *    - Scenario descriptions and characteristics text
- *
- * Response shape matches the current Climate Analytics API so the frontend
- * can consume it without changes.
- */
 const meta = new Hono<Env>();
 
 meta.get('/', async (c) => {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
 
-  const [geographyTypes, geographies, instanceVariables] = await Promise.all([
-    c.env.DB.select().from(schema.geographyTypes).orderBy(schema.geographyTypes.order),
-    c.env.DB.select().from(schema.geographies),
-    Promise.all(
-      instances.map(async (instance) => {
-        const variables = await fetchVariables(instance.url, instance.managerUrl, username, password);
-        return variables.map((v) => ({ id: v.name, instance: instance.slug }));
-      }),
-    ),
-  ]);
+  const [geographyTypeRows, geographyRows, instanceVariables, instanceRuns] =
+    await Promise.all([
+      c.env.DB.select().from(schema.geographyTypes),
+      c.env.DB.select().from(schema.geographies),
+      Promise.all(
+        instances.map((i) =>
+          fetchVariables(i.url, i.managerUrl, username, password).then((variables) =>
+            variables.map((v) => ({ name: v.name, instance: i.slug })),
+          ),
+        ),
+      ),
+      Promise.all(
+        instances.map((i) => fetchRuns(i.url, i.managerUrl, username, password)),
+      ),
+    ]);
+
+  const geographyTypesByUid = new Map(geographyTypeRows.map((r) => [r.id, r]));
+  const geographyTypes = geographyTypesCuration.map((meta) => {
+    const db = geographyTypesByUid.get(meta.uid);
+    return {
+      ...meta,
+      label: db?.label ?? meta.label,
+      labelSingular: db?.labelSingular ?? meta.labelSingular,
+      isAvailable: db?.isAvailable ?? meta.isAvailable,
+    };
+  });
+
+  const geographiesByType: Record<string, Array<{ uid: string; label: string }>> = {};
+  for (const geo of geographyRows) {
+    (geographiesByType[geo.geographyType] ??= []).push({ uid: geo.id, label: geo.label });
+  }
+
+  const variablesFlat = instanceVariables.flat();
+  const seenIndicators = new Set<string>();
+  const indicators: Array<Record<string, unknown>> = [];
+  for (const { name, instance } of variablesFlat) {
+    if (seenIndicators.has(name)) continue;
+    const curation = indicatorByUid[name];
+    if (!curation) continue;
+    seenIndicators.add(name);
+    indicators.push({ ...curation, instance });
+  }
+
+  const scenariosAvailable = new Set<string>();
+  for (const runs of instanceRuns) {
+    for (const run of runs) scenariosAvailable.add(run.scenario.name);
+  }
+  const scenarios = scenariosCuration.filter((s) => scenariosAvailable.has(s.uid));
 
   return c.json({
     geographyTypes,
-    geographies,
-    indicators: instanceVariables.flat(),
-    scenarios: [],
-    sectors: [],
-    units: [],
+    ...geographiesByType,
+    scenarios,
+    sectors: sectorsCuration,
+    indicators,
+    indicatorParameters,
+    studyLocations,
+    likelihoods,
   });
 });
 

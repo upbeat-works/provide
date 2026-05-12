@@ -19,7 +19,7 @@ for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).
 
 const db = drizzle(sqlite, { schema });
 
-const app = new Hono();
+const app = new Hono({ strict: false });
 
 app.use('*', async (c, next) => {
   c.env = {

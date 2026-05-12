@@ -11,4 +11,5 @@ node_modules
 .wrangler
 bun.lockb
 .dev.vars
-
+data.db
+*.db

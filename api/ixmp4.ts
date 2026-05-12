@@ -45,6 +45,80 @@ export async function fetchVariables(
   return data.results;
 }
 
+export interface Ixmp4Run {
+  id: number;
+  model: { name: string };
+  scenario: { name: string };
+  version: number;
+  is_default: boolean;
+}
+
+export async function fetchRuns(
+  baseUrl: string,
+  managerUrl: string,
+  username: string,
+  password: string,
+): Promise<Ixmp4Run[]> {
+  const token = await getToken(managerUrl, username, password);
+  const data = await patch<Ixmp4Page<Ixmp4Run>>(baseUrl, token, '/runs/', {});
+  return data.results;
+}
+
+export interface Ixmp4RunMeta {
+  id: number;
+  run__id: number;
+  key: string;
+  type: string;
+  value: unknown;
+}
+
+export async function fetchRunMeta(
+  baseUrl: string,
+  managerUrl: string,
+  username: string,
+  password: string,
+  runId: number,
+): Promise<Ixmp4RunMeta[]> {
+  const token = await getToken(managerUrl, username, password);
+  const data = await patch<Ixmp4Page<Ixmp4RunMeta>>(baseUrl, token, '/meta/', { run_id: runId });
+  return data.results;
+}
+
+export interface Ixmp4Datapoint {
+  id: number;
+  time_series__id: number;
+  value: number;
+  type: string;
+  step_year: number;
+}
+
+export interface TimeSeriesProjection {
+  yearStart: number;
+  yearStep: number;
+  data: number[];
+}
+
+export async function fetchTimeSeries(
+  baseUrl: string,
+  managerUrl: string,
+  username: string,
+  password: string,
+  query: { variable: string; runId: number; region?: string },
+): Promise<TimeSeriesProjection> {
+  const token = await getToken(managerUrl, username, password);
+  const body: Record<string, unknown> = {
+    variable: { name: query.variable },
+    run_id: query.runId,
+  };
+  if (query.region) body.region = { name: query.region };
+  const data = await patch<Ixmp4Page<Ixmp4Datapoint>>(baseUrl, token, '/iamc/datapoints/', body);
+  const points = [...data.results].sort((a, b) => a.step_year - b.step_year);
+  if (points.length === 0) return { yearStart: 0, yearStep: 0, data: [] };
+  const yearStart = points[0].step_year;
+  const yearStep = points.length > 1 ? points[1].step_year - points[0].step_year : 0;
+  return { yearStart, yearStep, data: points.map((p) => p.value) };
+}
+
 export interface ImpactTimeParams {
   indicator: string;
   geography: string;
