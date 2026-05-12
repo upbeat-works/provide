@@ -25,7 +25,7 @@
 <figure aria-live="polite" aria-busy={isLoading || isProcessing}>
   <header class="mb-4" class:max-w-prose={!$IS_STATIC}>
     {#if tagline}<Tagline color="text-contour-weak">{tagline}</Tagline>{/if}
-    <h3 class="font-bold text-2xl mb-3">
+    <h3 class="font-normal text-2xl mb-3">
       <Template template={title} data={templateProps} />
     </h3>
     {#if description}

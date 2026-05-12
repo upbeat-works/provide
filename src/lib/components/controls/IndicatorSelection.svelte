@@ -2,6 +2,7 @@
   import { IS_EMPTY_GEOGRAPHY, CURRENT_INDICATOR, IS_EMPTY_INDICATOR, CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS, SELECTABLE_SECTORS, IS_COMBINATION_AVAILABLE_INDICATOR, SELECTION_MODE } from '$stores/state.js';
   import SelectionModal from './components/SelectionModal.svelte';
   import SelectionPanel from './components/SelectionPanel.svelte';
+  import AdvancedFilters from './components/AdvancedFilters.svelte';
   import PillGroup from '$lib/components/ui/PillGroup.svelte';
   import SearchInput from '$lib/components/ui/SearchInput.svelte';
   import InteractiveListItem from '$lib/components/ui/InteractiveListItem.svelte';
@@ -72,6 +73,7 @@
     <svelte:fragment slot="header">
       <SearchInput bind:value={term} placeholder="Search indicators" class="mb-3" />
       <PillGroup bind:currentUid={currentFilterUid} options={$SELECTABLE_SECTORS} disabledMessage="No indicators available in this sector for this geography" allowWrap={true} />
+      <AdvancedFilters />
     </svelte:fragment>
     <svelte:fragment slot="sidebar">
       <span class="block px-5 pt-4 pb-2 text-xs uppercase tracking-widest text-text-weaker">Indicators</span>
@@ -92,8 +94,8 @@
     <svelte:fragment slot="content">
       {#if detailsItem}
         <div class="p-8 m-4 h-min border rounded-sm border-theme-base/20">
-          <h3 class="font-bold mb-2">{detailsItem.label}</h3>
-          <p class="text-contour-weak">{@html detailsItem.description || ''}</p>
+          <h3 class="font-bold mb-2 text-lg">{detailsItem.label}</h3>
+          <p class="text-contour-weak text-sm">{@html detailsItem.description || ''}</p>
         </div>
       {/if}
     </svelte:fragment>

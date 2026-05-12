@@ -4,7 +4,12 @@
   import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
   import Scenarios from './components/Scenarios/Scenarios.svelte';
   import ScenariosIntro from './components/Scenarios/ScenariosIntro.svelte';
-  import { LABEL_KEY_CONCEPTS, ANCHOR_EXPLAINER_SCENARIOS, LABEL_SCENARIOS_INTRO, LABEL_SCENARIOS_TIMEFRAMES, LABEL_SCENARIOS_PRESETS, LABEL_SCENARIOS_LIST, LABEL_SCENARIOS_TIMELINES } from '$config';
+  import { LABEL_KEY_CONCEPTS, LABEL_DOCUMENTATION, ANCHOR_EXPLAINER_SCENARIOS, LABEL_SCENARIOS_INTRO, LABEL_SCENARIOS_TIMEFRAMES, LABEL_SCENARIOS_PRESETS, LABEL_SCENARIOS_LIST, LABEL_SCENARIOS_TIMELINES, PATH_DOCUMENTATION, PATH_KEY_CONCEPTS } from '$config';
+
+  const tabItems = [
+    { href: `/${PATH_DOCUMENTATION}`, label: 'Impact' },
+    { href: `/${PATH_DOCUMENTATION}/${PATH_KEY_CONCEPTS}`, label: LABEL_KEY_CONCEPTS },
+  ];
   import { kebabCase } from 'lodash-es';
 
   export let data;
@@ -41,4 +46,4 @@
   ];
 </script>
 
-<ContentPageLayout {sections} label={LABEL_KEY_CONCEPTS} title="Learn about the data" intro="Learn more about the methodology used to create the data visualised on this dashboard." />
+<ContentPageLayout {sections} {tabItems} label={LABEL_DOCUMENTATION} title="How our data is built" intro="From models to impact definitions and processing, this section shows how the dashboard is built and how to read it." />

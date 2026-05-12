@@ -8,13 +8,7 @@
 <header class="bg-theme-700 overflow-hidden relative">
 
   <!-- Grain texture overlay -->
-  <svg class="absolute inset-0 w-full h-full opacity-[0.18] pointer-events-none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-    <filter id="hero-grain">
-      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch" />
-      <feColorMatrix type="saturate" values="0" />
-    </filter>
-    <rect width="100%" height="100%" filter="url(#hero-grain)" />
-  </svg>
+  <img src="/img/grain-bg.png" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-[0.18] pointer-events-none mix-blend-soft-light" />
 
   <!-- Tile background -->
   <img src="/img/hero-bg-tiles.svg" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover pointer-events-none" />
@@ -31,7 +25,7 @@
         Compare scenarios, explore EU risks, and export evidence for your reports.
       </p>
       <Button on:click={() => goto(`/${PATH_IMPACT}/${PATH_EXPLORE}`)}>
-        Explore data
+        Explorer data
         <LinkArrow />
       </Button>
     </div>

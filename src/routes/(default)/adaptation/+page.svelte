@@ -55,7 +55,7 @@
 <ContentPageLayout
   {sections}
   label={LABEL_ADAPTATION}
-  title="Tools"
+  title="Adaptation"
   intro="Tools and resources for using climate data in risk assessment and planning."
 >
   <Outro title={data.outroTitle} text={data.outroText} />
