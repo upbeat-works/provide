@@ -4,7 +4,10 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
 
-	const cards = [
+	export let customCards = null;
+	export let customHeading = null;
+
+	const defaultCards = [
 		{
 			path: `${PATH_IMPACT}/${PATH_AVOID}`,
 			image: '/img/emission-scenarios.png',
@@ -27,11 +30,14 @@
 		}
 	];
 
+	$: cards = customCards ?? defaultCards;
+
 	let scrollContainer;
 	let currentIndex = 0;
 
 	$: canGoPrev = currentIndex > 0;
 	$: canGoNext = currentIndex < cards.length - 1;
+	$: showNav = cards.length > 1;
 
 	function scrollToCard(index) {
 		if (!scrollContainer) return;
@@ -55,7 +61,7 @@
 </script>
 
 <section class="max-w-7xl mx-auto">
-	<div class="pl-6 py-12 grid md:grid-cols-[1fr_2fr] gap-x-24 items-start">
+	<div class="pl-6 py-12 grid md:grid-cols-[1fr_1px_2fr] gap-x-24 md:gap-x-12 items-start">
 
 		<!-- Left: heading + nav -->
 		<div class="flex flex-col gap-8">
@@ -63,29 +69,38 @@
 				<AnalysisTools class="w-full h-full" />
 			</div>
 			<h2 class="text-2xl md:text-3xl text-theme-800 leading-snug">
-				<span class="text-theme-base">Go deeper</span> with our tools for advanced analysis
+				{#if customHeading}
+					{customHeading}
+				{:else}
+					<span class="text-theme-base">Go deeper</span> with our tools for advanced analysis
+				{/if}
 			</h2>
-			<div class="flex gap-2">
-				<Button
-					variant="secondary"
-					on:click={handlePrev}
-					disabled={!canGoPrev}
-					class="w-8 h-8 p-0 justify-center"
-					aria-label="Previous card"
-				>
-					<span class="rotate-180"><LinkArrow /></span>
-				</Button>
-				<Button
-					variant="secondary"
-					on:click={handleNext}
-					disabled={!canGoNext}
-					class="w-8 h-8 p-0 justify-center"
-					aria-label="Next card"
-				>
-					<span><LinkArrow /></span>
-				</Button>
-			</div>
+			{#if showNav}
+				<div class="flex gap-2">
+					<Button
+						variant="secondary"
+						on:click={handlePrev}
+						disabled={!canGoPrev}
+						class="w-8 h-8 p-0 justify-center"
+						aria-label="Previous card"
+					>
+						<span class="rotate-180"><LinkArrow /></span>
+					</Button>
+					<Button
+						variant="secondary"
+						on:click={handleNext}
+						disabled={!canGoNext}
+						class="w-8 h-8 p-0 justify-center"
+						aria-label="Next card"
+					>
+						<span><LinkArrow /></span>
+					</Button>
+				</div>
+			{/if}
 		</div>
+
+		<!-- Vertical separator -->
+		<div class="hidden md:block border-l border-dashed border-contour-weakest self-stretch"></div>
 
 		<!-- Right: carousel -->
 		<div class="py-2 md:py-4 min-w-0 -ml-4 md:pl-0">
