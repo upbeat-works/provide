@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import type { Env } from './types';
 import { meta } from './routes/meta';
 import { geographies } from './routes/geographies';
+import { indicators } from './routes/indicators';
 import { impactTime } from './routes/impact-time';
 import { unavoidableRisk } from './routes/unavoidable-risk';
 
@@ -12,6 +13,7 @@ api.use('*', cors());
 
 api.route('/meta', meta);
 api.route('/geographies', geographies);
+api.route('/indicators', indicators);
 api.route('/impact-time', impactTime);
 api.route('/unavoidable-risk', unavoidableRisk);
 

@@ -1,16 +1,19 @@
-/** Cloudflare Worker environment bindings */
+import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
+import type * as schema from './db/schema';
+
+export type Db = BaseSQLiteDatabase<'async' | 'sync', unknown, typeof schema>;
+
 export type Env = {
   Bindings: {
-    DB: D1Database;
+    DB: Db;
+    IXMP4_USERNAME: string;
+    IXMP4_PASSWORD: string;
   };
 };
 
-/** A registered ixmp4 instance in the federation */
 export interface Ixmp4Instance {
-  /** Unique identifier for this instance */
-  id: string;
-  /** Human-readable name */
+  slug: string;
   name: string;
-  /** Base URL of the ixmp4 REST API */
   url: string;
+  managerUrl: string;
 }

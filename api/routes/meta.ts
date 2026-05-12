@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
-import { createDb, schema } from '../db';
+import { schema } from '../db';
 import { instances } from '../instances';
+import { fetchVariables } from '../ixmp4';
 
 /**
  * GET /api/meta
@@ -30,22 +31,23 @@ import { instances } from '../instances';
 const meta = new Hono<Env>();
 
 meta.get('/', async (c) => {
-  const db = createDb(c.env.DB);
+  const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
 
-  // SQL: geography data
-  const [geographyTypes, geographies] = await Promise.all([
-    db.select().from(schema.geographyTypes).orderBy(schema.geographyTypes.order),
-    db.select().from(schema.geographies),
+  const [geographyTypes, geographies, instanceVariables] = await Promise.all([
+    c.env.DB.select().from(schema.geographyTypes).orderBy(schema.geographyTypes.order),
+    c.env.DB.select().from(schema.geographies),
+    Promise.all(
+      instances.map(async (instance) => {
+        const variables = await fetchVariables(instance.url, instance.managerUrl, username, password);
+        return variables.map((v) => ({ id: v.name, instance: instance.slug }));
+      }),
+    ),
   ]);
-
-  // TODO: Fan out to all ixmp4 instances for indicators, scenarios, sectors, units
-  // const ixmp4Results = await Promise.all(instances.map(instance => queryInstance(instance)));
-  // const { indicators, scenarios, sectors, units } = mergeIxmp4Results(ixmp4Results);
 
   return c.json({
     geographyTypes,
     geographies,
-    indicators: [],
+    indicators: instanceVariables.flat(),
     scenarios: [],
     sectors: [],
     units: [],

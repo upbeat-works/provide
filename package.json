@@ -3,6 +3,12 @@
   "version": "0.2.32",
   "scripts": {
     "dev": "vite dev --mode staging",
+    "dev:api": "mkdir -p build && wrangler dev --local",
+    "dev:api:node": "bun run --watch server.ts",
+    "start": "bun run server.ts",
+    "test": "bun test api/",
+    "test:watch": "bun test --watch api/",
+    "docker:api": "docker build -t provide-api . && docker run --rm -p 8080:8080 -v provide-data:/data --env-file .dev.vars provide-api",
     "build": "vite build",
     "preview": "vite preview",
     "package": "svelte-kit package",
@@ -85,8 +91,6 @@
     "topojson-client": "^3.1.0"
   },
   "overrides": {
-    "@rgossiaux/svelte-headlessui": {
-      "svelte": "$svelte"
-    }
+    "svelte": "$svelte"
   }
 }

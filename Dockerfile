@@ -1,0 +1,22 @@
+FROM oven/bun:1 AS base
+WORKDIR /app
+
+FROM base AS deps
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+FROM base AS runtime
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json bun.lock ./
+COPY server.ts ./
+COPY api ./api
+
+ENV NODE_ENV=production
+ENV DB_PATH=/data/provide.db
+ENV PORT=8080
+
+RUN mkdir -p /data
+VOLUME ["/data"]
+EXPOSE 8080
+
+CMD ["bun", "run", "server.ts"]

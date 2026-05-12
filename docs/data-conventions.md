@@ -15,7 +15,7 @@ Each indicator and scenario in the `meta/` response is decorated with an instanc
 ##### Feedback
 > ✏️ DH: In the scse manager, we use a **`slug`** as short name - this should be used here as well.
 
-**Decision:** Use **`slug`** for instance identification, aligned with scse manager. Pending approval
+**Decision:** Use **`slug`** for instance identification, aligned with scse manager; approved
 
 #### 1.2 Catalogue Filtering
 
@@ -24,45 +24,47 @@ Catalogue queries (`meta/`, dropdowns) query all instances in parallel and merge
 ##### Feedback
 > ✏️ DH: In the **ixmp4** package, we use `meta` for qualitative and quantitative indicators related to a "scenario" (**ixmp4.Run**) like a dictionary. I would argue against re-using that term unless you mean exactly that ixmp4 object (but I don't think that this applies here because meta-indicators do not match the notion of "catalogue filtering").
 
-**Note:** The `meta/` here refers to the API endpoint (`/api/meta/`), not the ixmp4 `meta` concept. No terminology conflict.
+**Note:** The `meta/` here refers to the API endpoint (`/api/meta/`), not the ixmp4 `meta` concept. Kept as-is for backwards compatibility with the existing frontend.
 
-**Decision:** Pending approval
+**Decision:** Keep `meta/` endpoint name for backwards compatibility; approved
 
 #### 1.3 Data Ownership
 
 Same variable name on different instances = different indicators, disambiguated by **`slug`**. No cross-instance deduplication.
 
-**Decision:** Pending approval
+**Decision:** Approved
 
 #### 1.4 Adapter Layer
 
 An adapter transforms ixmp4 responses into the JSON shapes the frontend expects, minimizing frontend changes.
 
+> **Note:** The adapter layer is an implementation detail, not an architectural decision. The choice of framework, deployment target (Cloudflare Workers vs. Node.js), or routing strategy is flexible. What matters is that *some* normalization layer exists. Discarded as a decision.
+
 ##### Feedback
 > ✏️ DH: There is a typescript package, which could be useful here.
 
-**Decision:** Pending approval
+**Decision:** Discarded as decision point
 
 #### 1.5 Geography Storage
 
-Geography hierarchy (types, coordinates, parent relationships) lives in a SQL database, not in ixmp4. ixmp4 regions lack type hierarchy, coordinates, and parent references.
+Geography hierarchy (types, coordinates, parent relationships) lives in a SQL database, not in ixmp4. ixmp4 regions lack type hierarchy, coordinates, and parent references. IIASA will provide the geography IDs and hierarchy mappings to use in the platform database.
 
 ##### Feedback
 > ✏️ DH: We have a repository for https://github.com/iiasa/scse-geojson shapefiles, which could be useful here.
 
-**Decision:** Pending approval
+**Decision:** IIASA provides geography IDs and hierarchy; approved
 
 #### 1.6 Indicator Display Config
 
 Display metadata (**`colorScale`**, **`direction`**, **`icon`**, **`labelWithinSentence`**) lives in Strapi, extending the existing indicator model.
 
-**Decision:** Pending approval
+**Decision:** Approved
 
 #### 1.7 Instance Registry
 
-Instances are registered via a self-service API endpoint.
+Instances are registered via a hardcoded JSON config file versioned with the codebase. No self-service API.
 
-**Decision:** Pending approval
+**Decision:** Approved
 
 ## 2. Variable Naming
 
@@ -74,7 +76,7 @@ How are indicator option parameters (**`time`**, **`reference`**, **`frequency`*
 ##### Feedback
 > ✏️ DH: There is a risk of confusion here because "variable" (for me) refers to one specific column of the IAMC format. We have naming conventions for variable names detailed at https://docs.ece.iiasa.ac.at/standards/variables.html. But I think that this question relates to something else...
 
-**Decision:** _TBD_
+**Decision:** Option A — pipe-delimited in variable name; approved
 
 ## 3. Uncertainty Representation
 
@@ -87,36 +89,35 @@ The frontend expects `[min, value, max]` tuples per timestep. How are min/max st
 ##### Feedback
 > ✏️ DH: We use option A for example in the Scenario Compass ensemble, see https://explorer.scenariocompass.org.
 
-**Decision:** Option A — separate variables (e.g., `temperature|p10`, `temperature|p90`). Pending approval
+**Decision:** Option A — separate variables (e.g., `temperature|p10`, `temperature|p90`); approved
 
 ## 4. Scenario Identification
 
-A scenario is a **Model + Scenario name pair** on a Run (e.g., `MESMER` + `curpol`). The scenario ID is the Run's **`scenario`** field.
+A scenario corresponds to the `scenario` field on an ixmp4 Run. Multiple runs may share the same scenario (e.g., different models). Filtering and display use `run.scenario`, not `run.id`.
 
 ##### Feedback
 > ✏️ DH: Quote "The scenario ID is the Run's **`scenario`**" - I think that this is a misunderstanding.
 
-**Decision:** Pending approval
+**Decision:** Filter and identify scenarios by `run.scenario`; approved
 
 ## 5. Meta-Indicator Keys
 
-All instances must use the same key names for tag-based filtering.
+Runs are tagged with a standardized set of meta-indicators for filtering and discovery. ixmp4 meta-indicators are used intentionally here for their native search/filtering capabilities. All instances must use the same key names and controlled vocabulary.
 
-| Key | Example values |
+This is a living table — new keys and values can be added as needed.
+
+| Key | Allowed values |
 |-----|---------------|
-| `Category` | `Terrestrial Climate`, `Biodiversity`, `Marine Climate` |
-| `Sector` | `Energy`, `Agriculture`, `Health` |
-| `Project` | `PROVIDE`, `ISIMIP` |
-| `Data source` | `Climate Analytics`, `IIASA` |
-| `Temporal resolution` | `annual`, `monthly`, `daily` |
-| `Spatial resolution` | `country`, `grid-0.5deg`, `city` |
-
-Open: Complete set? Free-form or controlled vocabulary? Casing convention?
+| `Sector` | `Agriculture`, `Energy`, `Health`, `Infrastructure`, `Forestry`, `Coastal Zones` |
+| `Project` | `PROVIDE`, `SPARCCLE`, `Other` |
+| `Data source` | _TBD_ |
+| `Temporal resolution` | `Annual`, `Monthly`, `Daily`, `Seasonal` |
+| `Spatial resolution` | `Global`, `Regional`, `National`, `Sub-national` |
 
 ##### Feedback
 > ✏️ DH: As stated above, this would be confusing compared to the **ixmp4** meta-indicator terminology, so better use a different name for this feature.
 
-**Decision:** _TBD_
+**Decision:** Meta-indicators chosen intentionally for filtering capabilities. Controlled vocabulary; approved
 
 ## 6. Threshold Storage
 
@@ -132,12 +133,13 @@ Exceedance thresholds for `unavoidable-risk` are indicator-specific. Examples fr
 These can't live in the frontend or the adapter since they depend on the indicator. They need to be stored alongside the indicator definition.
 
 - ~~**A)** Meta-indicators on variables in ixmp4: **`thresholds`**, **`defaultThreshold`**~~
-- **B)** Strapi, as part of the indicator display config
+- ~~**B)** Strapi, as part of the indicator display config~~
+- **C)** Hardcoded JSON in the codebase, versioned with the app
 
 ##### Feedback
 > ✏️ DH: I don't think that A works because meta-indicators are always related to one **ixmp4.Run** object.
 
-**Decision:** Option B — Strapi. Meta-indicators are Run-scoped so they can't attach to variables. Pending approval
+**Decision:** Option C — hardcoded JSON in codebase; approved
 
 ## 7. Region Naming
 
