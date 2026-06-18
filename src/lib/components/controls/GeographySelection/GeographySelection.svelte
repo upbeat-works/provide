@@ -47,30 +47,20 @@
       },
     ]);
 
-  $: findSharedId(selectableGeographies);
+  $: preserveSelectionAcrossTypes(selectableGeographies);
 
-  function checkIds(geography, id) {
-    if (typeof id === 'undefined') {
-      return false;
-    }
-    return geography.uid === id || geography.sharedId === id;
-  }
-
-  function findSharedId(selectableGeographies) {
+  // When the user toggles the geography type pill, try to keep their selection
+  // pointing at the same place under the new type. Ids are globally unique and
+  // human-readable (e.g. `Liberia (EEZ)`), so an exact match is the right test;
+  // if nothing matches, clear the selection.
+  function preserveSelectionAcrossTypes(selectableGeographies) {
     const currentGeography = $CURRENT_GEOGRAPHY;
-    if (currentGeography && selectableGeographies.length) {
-      const { uid, sharedId } = currentGeography;
-      const possibleMatches = selectableGeographies.filter((geography) => checkIds(geography, uid) || checkIds(geography, sharedId));
-      if (possibleMatches.length) {
-        // Sort matches by the shortest uid. This should be the country and not some region.
-        const bestMatch = possibleMatches.sort((a, b) => a.uid.length - b.uid.length)[0];
-
-        if (bestMatch?.uid) {
-          CURRENT_GEOGRAPHY_UID.set(bestMatch.uid);
-        }
-      } else {
-        CURRENT_GEOGRAPHY_UID.set(undefined);
-      }
+    if (!currentGeography || !selectableGeographies.length) return;
+    const match = selectableGeographies.find((g) => g.uid === currentGeography.uid);
+    if (match?.uid) {
+      CURRENT_GEOGRAPHY_UID.set(match.uid);
+    } else {
+      CURRENT_GEOGRAPHY_UID.set(undefined);
     }
   }
 </script>

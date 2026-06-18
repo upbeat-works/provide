@@ -3,8 +3,7 @@ CREATE TABLE `geographies` (
 	`label` text NOT NULL,
 	`geography_type` text NOT NULL,
 	`parent_id` text,
-	`shared_id` text,
-	FOREIGN KEY (`geography_type`) REFERENCES `geography_types`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`geography_type`) REFERENCES `geography_types`(`id`) ON UPDATE cascade ON DELETE restrict,
 	FOREIGN KEY (`parent_id`) REFERENCES `geographies`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint

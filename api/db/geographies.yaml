@@ -1,0 +1,663 @@
+- Countries:
+  - Afghanistan
+  - Albania
+  - Algeria
+  - American Samoa
+  - Andorra
+  - Angola
+  - Anguilla
+  - Antarctica
+  - Antigua and Barbuda
+  - Argentina
+  - Armenia
+  - Aruba
+  - Australia
+  - Austria
+  - Azerbaijan
+  - Bahamas
+  - Bahrain
+  - Bangladesh
+  - Barbados
+  - Belarus
+  - Belgium
+  - Belize
+  - Benin
+  - Bermuda
+  - Bhutan
+  - Bolivia
+  - "Bonaire
+  - Bosnia and Herzegovina
+  - Botswana
+  - Bouvet Island
+  - Brazil
+  - British Indian Ocean Territory
+  - British Virgin Islands
+  - Brunei Darussalam
+  - Bulgaria
+  - Burkina Faso
+  - Burundi
+  - Cabo Verde
+  - Cambodia
+  - Cameroon
+  - Canada
+  - Cayman Islands
+  - Central African Republic
+  - Chad
+  - Chile
+  - China
+  - Christmas Island
+  - Cocos (Keeling) Islands
+  - Colombia
+  - Comoros
+  - Congo
+  - Cook Islands
+  - Costa Rica
+  - Croatia
+  - Cuba
+  - Curaçao
+  - Cyprus
+  - Czechia
+  - Côte d'Ivoire
+  - Democratic Republic of the Congo
+  - Denmark
+  - Djibouti
+  - Dominica
+  - Dominican Republic
+  - Ecuador
+  - Egypt
+  - El Salvador
+  - Equatorial Guinea
+  - Eritrea
+  - Estonia
+  - Eswatini
+  - Ethiopia
+  - Falkland Islands (Malvinas)
+  - Faroe Islands
+  - Fiji
+  - Finland
+  - France
+  - French Guiana
+  - French Polynesia
+  - French Southern Territories
+  - Haiti
+  - Heard Island and McDonald Islands
+  - Honduras
+  - Hong Kong
+  - Hungary
+  - Iceland
+  - India
+  - Indonesia
+  - Iran
+  - Iraq
+  - Ireland
+  - Isle of Man
+  - Israel
+  - Italy
+  - Jamaica
+  - Japan
+  - Jersey
+  - Jordan
+  - Kazakhstan
+  - Kenya
+  - Kiribati
+  - Kosovo
+  - Kuwait
+  - Kyrgyzstan
+  - Laos
+  - Latvia
+  - Lebanon
+  - Lesotho
+  - Liberia
+  - Libya
+  - Liechtenstein
+  - Lithuania
+  - Luxembourg
+  - Macao
+  - Madagascar
+  - Malawi
+  - Malaysia
+  - Maldives
+  - Mali
+  - Malta
+  - Marshall Islands
+  - Martinique
+  - Mauritania
+  - Mauritius
+  - Mayotte
+  - Mexico
+  - Micronesia
+  - Moldova
+  - Monaco
+  - Mongolia
+  - Montenegro
+  - Montserrat
+  - Morocco
+  - Mozambique
+  - Myanmar
+  - Namibia
+  - Nauru
+  - Nepal
+  - Netherlands
+  - New Caledonia
+  - New Zealand
+  - Nicaragua
+  - Niger
+  - Nigeria
+  - Niue
+  - Norfolk Island
+  - North Korea
+  - North Macedonia
+  - Northern Mariana Islands
+  - Norway
+  - Oman
+  - Pakistan
+  - Palau
+  - Palestine
+  - Panama
+  - Papua New Guinea
+  - Paraguay
+  - Peru
+  - Philippines
+  - Pitcairn
+  - Poland
+  - Portugal
+  - Puerto Rico
+  - Qatar
+  - Romania
+  - Russian Federation
+  - Rwanda
+  - Réunion
+  - Saint Barthélemy
+  - "Saint Helena
+  - Saint Kitts and Nevis
+  - Saint Lucia
+  - Saint Martin (French part)
+  - Saint Pierre and Miquelon
+  - Saint Vincent and the Grenadines
+  - Samoa
+  - San Marino
+  - Sao Tome and Principe
+  - Saudi Arabia
+  - Senegal
+  - Serbia
+  - Seychelles
+  - Sierra Leone
+  - Singapore
+  - Sint Maarten (Dutch part)
+  - Slovakia
+  - Slovenia
+  - Solomon Islands
+  - Somalia
+  - South Africa
+  - South Georgia and the South Sandwich Islands
+  - South Korea
+  - South Sudan
+  - Spain
+  - Sri Lanka
+  - Sudan
+  - Suriname
+  - Svalbard and Jan Mayen
+  - Sweden
+  - Switzerland
+  - Syria
+  - Taiwan
+  - Tajikistan
+  - Tanzania
+  - Thailand
+  - Timor-Leste
+  - Togo
+  - Tokelau
+  - Tonga
+  - Trinidad and Tobago
+  - Tunisia
+  - Turkey
+  - Turkmenistan
+  - Turks and Caicos Islands
+  - Tuvalu
+  - Uganda
+  - Ukraine
+  - United Arab Emirates
+  - United Kingdom
+  - United States
+  - United States Minor Outlying Islands
+  - United States Virgin Islands
+  - Uruguay
+  - Uzbekistan
+  - Vanuatu
+  - Vatican
+  - Venezuela
+  - Viet Nam
+  - Wallis and Futuna
+  - Western Sahara
+  - Yemen
+  - Zambia
+  - Zimbabwe
+  - Åland Islands
+- Exclusive Economic Zones (EEZ):
+  - Liberia (EEZ)
+  - Myanmar (EEZ)
+  - Lebanon (EEZ)
+  - Republic of Mauritius (EEZ)
+  - Brunei (EEZ)
+  - Cambodia (EEZ)
+  - Saint Vincent and the Grenadines (EEZ)
+  - Nigeria (EEZ)
+  - Romania (EEZ)
+  - Indonesia (EEZ)
+  - Venezuela (EEZ)
+  - Brazil (EEZ)
+  - Barbados (EEZ)
+  - Greece (EEZ)
+  - Grenada (EEZ)
+  - Philippines (EEZ)
+  - Tanzania (EEZ)
+  - Sweden (EEZ)
+  - Ukraine (EEZ)
+  - Angola (EEZ)
+  - Guinea (EEZ)
+  - Bangladesh (EEZ)
+  - Mauritania (EEZ)
+  - Vanuatu (EEZ)
+  - India (EEZ)
+  - Gabon (EEZ)
+  - Phoenix Group (EEZ)
+  - Navassa Island (EEZ)
+  - Thailand (EEZ)
+  - Panama (EEZ)
+  - Estonia (EEZ)
+  - China (EEZ)
+  - Cape Verde (EEZ)
+  - Pakistan (EEZ)
+  - Spain (EEZ)
+  - Saint Lucia (EEZ)
+  - Western Sahara (EEZ)
+  - Iceland (EEZ)
+  - Equatorial Guinea (EEZ)
+  - Costa Rica (EEZ)
+  - Canada (EEZ)
+  - Ghana (EEZ)
+  - Ivory Coast (EEZ)
+  - Russia (EEZ)
+  - Federal Republic of Somalia (EEZ)
+  - Bulgaria (EEZ)
+  - Ecuador (EEZ)
+  - Colombia (EEZ)
+  - Comores (EEZ)
+  - Republic of the Congo (EEZ)
+  - Nauru (EEZ)
+  - Sudan (EEZ)
+  - Democratic Republic of the Congo (EEZ)
+  - Algeria (EEZ)
+  - El Salvador (EEZ)
+  - Papua New Guinea (EEZ)
+  - Marshall Islands (EEZ)
+  - Gambia (EEZ)
+  - South Korea (EEZ)
+  - Sao Tome and Principe (EEZ)
+  - Belize (EEZ)
+  - Micronesia (EEZ)
+  - Italy (EEZ)
+  - Sierra Leone (EEZ)
+  - Solomon Islands (EEZ)
+  - Dominican Republic (EEZ)
+  - Israel (EEZ)
+  - Morocco (EEZ)
+  - Togo (EEZ)
+  - Oman (EEZ)
+  - Senegal (EEZ)
+  - Tonga (EEZ)
+  - Antigua and Barbuda (EEZ)
+  - Malaysia (EEZ)
+  - Guinea-Bissau (EEZ)
+  - Taiwan (EEZ)
+  - Palau (EEZ)
+  - Suriname (EEZ)
+  - Benin (EEZ)
+  - Eritrea (EEZ)
+  - Georgia (EEZ)
+  - Ireland (EEZ)
+  - Guyana (EEZ)
+  - Timor Leste (EEZ)
+  - Saint Kitts and Nevis (EEZ)
+  - Samoa (EEZ)
+  - South Africa (EEZ)
+  - Lithuania (EEZ)
+  - Trinidad and Tobago (EEZ)
+  - Cuba (EEZ)
+  - Kenya (EEZ)
+  - Peru (EEZ)
+  - Saudi Arabia (EEZ)
+  - Mozambique (EEZ)
+  - Namibia (EEZ)
+  - Latvia (EEZ)
+  - Dominica (EEZ)
+  - Vietnam (EEZ)
+  - Tuvalu (EEZ)
+  - Guatemala (EEZ)
+  - Fiji (EEZ)
+  - Nicaragua (EEZ)
+  - Turkey (EEZ)
+  - Tunisia (EEZ)
+  - Argentina (EEZ)
+  - Cameroon (EEZ)
+  - Japan (EEZ)
+  - Sri Lanka (EEZ)
+  - Maldives (EEZ)
+  - Egypt (EEZ)
+  - Malta (EEZ)
+  - Seychelles (EEZ)
+  - Germany (EEZ)
+  - Yemen (EEZ)
+  - Madagascar (EEZ)
+  - Honduras (EEZ)
+  - Jamaica (EEZ)
+  - Bahamas (EEZ)
+  - Libya (EEZ)
+  - Portugal (EEZ)
+  - Mexico (EEZ)
+  - Uruguay (EEZ)
+  - North Korea (EEZ)
+  - Norway (EEZ)
+  - Cyprus (EEZ)
+  - French Polynesia (EEZ)
+  - Mayotte (EEZ)
+  - Ile Tromelin (EEZ)
+  - New Caledonia (EEZ)
+  - La Reunion (EEZ)
+  - Matthew and Hunter Islands (EEZ)
+  - Clipperton Island (EEZ)
+  - Guadeloupe (EEZ)
+  - Saint Barthelemy (EEZ)
+  - Collectivity of Saint Martin (EEZ)
+  - Saint-Pierre and Miquelon (EEZ)
+  - Martinique (EEZ)
+  - French Guiana (EEZ)
+  - France (EEZ)
+  - Amsterdam and Saint Paul Islands (EEZ)
+  - Falkland / Malvinas Islands (EEZ)
+  - Pitcairn (EEZ)
+  - Anguilla (EEZ)
+  - British Virgin Islands (EEZ)
+  - Cayman Islands (EEZ)
+  - Montserrat (EEZ)
+  - Turks and Caicos Islands (EEZ)
+  - South Georgia and the South Sandwich Islands (EEZ)
+  - Bermuda (EEZ)
+  - United Kingdom (EEZ)
+  - St Helene, Ascension and Tristan da Cunha (EEZ)
+  - American Samoa (EEZ)
+  - United States Virgin Islands (EEZ)
+  - Guam (EEZ)
+  - Northern Mariana Islands (EEZ)
+  - Hawaii (EEZ)
+  - Alaska (EEZ)
+  - United States (EEZ)
+  - Palmyra Atoll (EEZ)
+  - Puerto Rico (EEZ)
+  - Netherland (EEZ)
+  - Caribbean Netherlands (EEZ)
+  - Cook Islands (EEZ)
+  - New Zealand (EEZ)
+  - Chile (EEZ)
+  - Easter Islands (EEZ)
+  - San Felix and San Ambrosia islands (EEZ)
+  - Australia (EEZ)
+  - Macquire Island (EEZ)
+  - Norfolk Island (EEZ)
+  - Heard and McDonald Islands (EEZ)
+  - Cocos Islands (EEZ)
+  - Christmas Islands (EEZ)
+  - Denmark (EEZ)
+  - Greenland (EEZ)
+- Cities:
+  - Accra
+  - Addis Abeba
+  - Alicante
+  - Amman
+  - Amsterdam
+  - Antwerp
+  - Athens
+  - Auckland
+  - Barcelona
+  - Bari
+  - Basel
+  - Belgrade
+  - Berlin
+  - Bilbao
+  - Birmingham
+  - Bodø
+  - Bogota
+  - Bologna
+  - Bordeaux
+  - Brasov
+  - Bratislava
+  - Brussels
+  - Bucharest
+  - Budapest
+  - Buenos Aires
+  - Cairo
+  - Cape Town
+  - Charleroi
+  - Chennai
+  - Cluj Napoca
+  - Cologne
+  - Copenhagen
+  - Curitiba
+  - Dakar
+  - Debrecen
+  - Dhaka
+  - Dubai
+  - Dublin
+  - Dusseldorf
+  - Edinburgh
+  - Frankfurt am Main
+  - Gdansk
+  - Geneva
+  - Genoa
+  - Ghent
+  - Glasgow
+  - Goteborg
+  - Graz
+  - Gyor
+  - Hamburg
+  - Helsinki
+  - Ho Chi Minh
+  - Hong Kong
+  - Houston
+  - Istanbul
+  - Islamabad
+  - Jakarta
+  - Karachi
+  - Klaipeda
+  - Kosice
+  - Krakow
+  - Lagos
+  - Leeds
+  - Leipzig
+  - Liege
+  - Lille
+  - Lima
+  - Lisbon
+  - Ljubljana
+  - Lodz
+  - London
+  - Los Angeles
+  - Luxembourg
+  - Lyon
+  - Madrid
+  - Malaga
+  - Marrakesh
+  - Marseille
+  - Medina
+  - Melbourne
+  - Mexico City
+  - Milan
+  - Miskolc
+  - Mogadishu
+  - Montpellier
+  - Moscow
+  - Munich
+  - Murcia
+  - Nairobi
+  - Nanjing
+  - Nantes
+  - Naples
+  - Nassau
+  - New York
+  - Newcastle
+  - Nice
+  - Novi Sad
+  - Oslo
+  - Padua
+  - Palermo
+  - Palma de Mallorca
+  - Paris
+  - Pecs
+  - Phoenix
+  - Podgorica
+  - Porto
+  - Prague
+  - Rabat
+  - Reykjavik
+  - Riga
+  - Rome
+  - Rotterdam
+  - Salvador
+  - Santiago
+  - Sarajevo
+  - Sevilla
+  - Singapore
+  - Skopje
+  - Sofia
+  - Split
+  - Stockholm
+  - Strasbourg
+  - Sydney
+  - Szeged
+  - Tallinn
+  - Tartu
+  - Teheran
+  - Thessaloniki
+  - Tirana
+  - Tokyo
+  - Toronto
+  - Toulouse
+  - Trieste
+  - Tschwane
+  - Turin
+  - Utrecht
+  - Valencia
+  - Varna
+  - Vienna
+  - Vilnius
+  - Warsaw
+  - Wroclaw
+  - Zagreb
+  - Zurich
+- River Basins (RB):
+  - Indigirka (RB)
+  - Ob (RB)
+  - Brahmaputra (RB)
+  - Ganges (RB)
+  - Indus (RB)
+  - Irrawaddy (RB)
+  - Salween (RB)
+  - Kamchatka (RB)
+  - Mekong (RB)
+  - Yangtze (RB)
+  - Yellow River (RB)
+  - Aral Sea (RB)
+  - Chuy (RB)
+  - Har Us Nuur (RB)
+  - Lake Balkhash (RB)
+  - Talas (RB)
+  - Tarim He (RB)
+  - Uvs Nuur (RB)
+  - Ysyk Kol (RB)
+  - Amazon (RB)
+  - Chico (RB)
+  - Colorado (RB)
+  - Magdalena (RB)
+  - Negro (RB)
+  - Santa Cruz (RB)
+  - Aisen (RB)
+  - Azopardo (RB)
+  - Baker (RB)
+  - Biobio (RB)
+  - Cisnes (RB)
+  - Copiapo (RB)
+  - Huasco (RB)
+  - Majes (RB)
+  - Ocona (RB)
+  - Palena (RB)
+  - Pascua (RB)
+  - Puelo (RB)
+  - Rapel (RB)
+  - Santa (RB)
+  - Serrano (RB)
+  - Valdivia (RB)
+  - Yelcho (RB)
+  - Titicaca (RB)
+  - Colville (RB)
+  - Mackenzie (RB)
+  - Nelson (RB)
+  - Alsek (RB)
+  - Columbia (RB)
+  - Copper (RB)
+  - Fraser (RB)
+  - Kuskokwim (RB)
+  - Nass (RB)
+  - Nushagak (RB)
+  - Skagit (RB)
+  - Skeena (RB)
+  - Stikine (RB)
+  - Susitna (RB)
+  - Taku (RB)
+  - Yukon (RB)
+  - Clutha (RB)
+  - Jokulsa a Fjollum (RB)
+  - Lagarfljot (RB)
+  - Svarta (RB)
+  - Danube (RB)
+  - Dramselva (RB)
+  - Glomaa (RB)
+  - Kalixalven (RB)
+  - Kuban (RB)
+  - Lulealven (RB)
+  - Olfusa (RB)
+  - Po (RB)
+  - Rhine (RB)
+  - Rhone (RB)
+  - Thjorsa (RB)
+  - Tornealven (RB)
+- Glacier Regions (GR):
+  - Arctic Canada (GR)
+  - Caucasus and Middle East (GR)
+  - Central Asia (GR)
+  - Central Europe (GR)
+  - East Asia (GR)
+  - Greenland Periphery (GR)
+  - New Zealand (GR)
+  - Northern Andes (GR)
+  - Scandinavia and Iceland (GR)
+  - Southern Andes (GR)
+  - Subantarctic and Antarctic Islands (GR)
+  - Svalbard, Jan Mayen and Russian Arctic (GR)
+  - Western Canada and USA (GR)
+- Macroeconomies (ME):
+  - Central Africa (ME)
+  - East Africa (ME)
+  - East Asia (ME)
+  - Europe (ME)
+  - North Africa (ME)
+  - North America (ME)
+  - Oceania (ME)
+  - Former Soviet Union (ME)
+  - South Africa (ME)
+  - South America (ME)
+  - South Asia (ME)
+  - South East Asia (ME)
+  - West Africa (ME)
+  - West Asia (ME)
+- Northern Latitudes 
+

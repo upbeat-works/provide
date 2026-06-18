@@ -1,15 +1,9 @@
-import { describe, test, expect, afterEach, spyOn } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
+import { http, HttpResponse } from 'msw';
 import { api } from '../index';
 import { schema } from '../db';
-import { createTestEnv, mockIxmp4Fetch } from '../test-helpers';
+import { createTestEnv, listEnvelope, server, testInstance } from '../test-helpers';
 import type { Env } from '../types';
-
-let spy: ReturnType<typeof spyOn<typeof globalThis, 'fetch'>> | undefined;
-
-afterEach(() => {
-  spy?.mockRestore();
-  spy = undefined;
-});
 
 async function seed(env: Env['Bindings']) {
   await env.DB.insert(schema.geographyTypes).values([
@@ -23,20 +17,26 @@ async function seed(env: Env['Bindings']) {
   ]);
 }
 
-function fixture() {
-  return mockIxmp4Fetch({
-    variables: [{ id: 1, name: 'terclim-mean-temperature' }],
-    runs: [
-      { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
-    ],
-  });
+function useFixtureHandlers() {
+  server.use(
+    http.patch(`${testInstance.url}/iamc/variables/`, () =>
+      HttpResponse.json(listEnvelope([{ id: 1, name: 'terclim-mean-temperature' }])),
+    ),
+    http.patch(`${testInstance.url}/runs/`, () =>
+      HttpResponse.json(
+        listEnvelope([
+          { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
+        ]),
+      ),
+    ),
+  );
 }
 
 describe('GET /api/meta', () => {
   test('returns the legacy top-level keys', async () => {
     const env = createTestEnv();
     await seed(env);
-    spy = fixture();
+    useFixtureHandlers();
     const res = await api.request('/api/meta', {}, env);
     expect(res.status).toBe(200);
     const json = (await res.json()) as Record<string, unknown>;
@@ -58,7 +58,7 @@ describe('GET /api/meta', () => {
   test('exposes geographies as one top-level array per geography type', async () => {
     const env = createTestEnv();
     await seed(env);
-    spy = fixture();
+    useFixtureHandlers();
     const res = await api.request('/api/meta', {}, env);
     const json = (await res.json()) as {
       admin0: Array<{ uid: string; label: string }>;
@@ -71,14 +71,15 @@ describe('GET /api/meta', () => {
   test('enriches indicators with curation metadata', async () => {
     const env = createTestEnv();
     await seed(env);
-    spy = fixture();
+    useFixtureHandlers();
     const res = await api.request('/api/meta', {}, env);
     const json = (await res.json()) as {
       indicators: Array<{ uid: string; label: string; sector: string; unit: string }>;
     };
     const ind = json.indicators.find((i) => i.uid === 'terclim-mean-temperature');
+    // Variable name doubles as display label for now (curated label is overridden).
     expect(ind).toMatchObject({
-      label: 'Mean Temperature',
+      label: 'terclim-mean-temperature',
       sector: 'terrestrial-climate',
       unit: 'degrees-celsius',
     });
@@ -87,7 +88,7 @@ describe('GET /api/meta', () => {
   test('embeds curated gmt and emissions trajectories in scenarios', async () => {
     const env = createTestEnv();
     await seed(env);
-    spy = fixture();
+    useFixtureHandlers();
     const res = await api.request('/api/meta', {}, env);
     const json = (await res.json()) as {
       scenarios: Array<{
@@ -106,7 +107,7 @@ describe('GET /api/meta', () => {
   test('returns sectors, studyLocations, likelihoods, indicatorParameters as arrays', async () => {
     const env = createTestEnv();
     await seed(env);
-    spy = fixture();
+    useFixtureHandlers();
     const res = await api.request('/api/meta', {}, env);
     const json = (await res.json()) as Record<string, unknown[]>;
     for (const key of ['sectors', 'studyLocations', 'likelihoods', 'indicatorParameters']) {
@@ -115,16 +116,36 @@ describe('GET /api/meta', () => {
     }
   });
 
-  test('returns geographyTypes in the curated uid-keyed shape', async () => {
+  test('sources geographyTypes from D1', async () => {
     const env = createTestEnv();
     await seed(env);
-    spy = fixture();
+    useFixtureHandlers();
     const res = await api.request('/api/meta', {}, env);
     const json = (await res.json()) as {
-      geographyTypes: Array<{ uid: string; icon: string; availableIndicators: string[] }>;
+      geographyTypes: Array<{
+        uid: string;
+        label: string;
+        labelSingular?: string;
+        order?: number;
+        isAvailable: boolean;
+      }>;
     };
+    expect(json.geographyTypes.map((t) => t.uid)).toEqual(['admin0', 'cities']);
     const admin0 = json.geographyTypes.find((t) => t.uid === 'admin0');
-    expect(admin0?.icon).toBe('🗺️');
-    expect(Array.isArray(admin0?.availableIndicators)).toBe(true);
+    expect(admin0).toMatchObject({
+      uid: 'admin0',
+      label: 'Countries',
+      labelSingular: 'Country',
+      order: 1,
+      isAvailable: true,
+    });
+  });
+
+  test('omits geographyTypes that have no rows in D1', async () => {
+    const env = createTestEnv();
+    useFixtureHandlers();
+    const res = await api.request('/api/meta', {}, env);
+    const json = (await res.json()) as { geographyTypes: unknown[] };
+    expect(json.geographyTypes).toEqual([]);
   });
 });

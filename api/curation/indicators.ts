@@ -7,7 +7,6 @@ export interface IndicatorCuration {
   sector: string;
   direction: number;
   parameters: Record<string, string[]>;
-  availableGeographies: string[];
   availableScenarios: string[];
   excludedScenarios?: string[];
 }

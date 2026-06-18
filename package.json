@@ -15,8 +15,8 @@
     "prepare": "svelte-kit sync",
     "export": "BUILD_ENV=static svelte-kit build && cp -R ./static/* ./build",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply provide-catalog",
-    "db:seed": "bun run api/db/seed.ts && wrangler d1 execute provide-catalog --file=api/db/seed.sql",
+    "db:migrate": "wrangler d1 migrations apply provide-catalog --local",
+    "db:seed": "bun run api/db/import-geographies.ts && wrangler d1 execute provide-catalog --local --file=api/db/seed.sql",
     "db:studio": "drizzle-kit studio"
   },
   "devDependencies": {
@@ -36,6 +36,7 @@
     "drizzle-kit": "^0.31.10",
     "file-saver": "^2.0.5",
     "marked": "^11.1.1",
+    "msw": "^2.14.6",
     "postcss": "^8.4.31",
     "postcss-import": "^16.0.0",
     "postcss-load-config": "^5.0.2",
@@ -48,11 +49,13 @@
     "svelte-preprocess-import-assets": "^1.0.1",
     "svelte-sequential-preprocessor": "^2.0.1",
     "tailwindcss": "^3.3.3",
+    "typescript": "^5.3.3",
     "vite": "^5.0.12",
     "wrangler": "^4.65.0"
   },
   "type": "module",
   "dependencies": {
+    "@iiasa/ixmp4-ts": "^0.10.0",
     "@mapbox/geojson-rewind": "^0.5.2",
     "@mapbox/mapbox-gl-sync-move": "^0.3.1",
     "@popperjs/core": "^2.11.6",

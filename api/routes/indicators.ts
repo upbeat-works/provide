@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
+import type { VariableFilter } from '@iiasa/ixmp4-ts';
 import type { Env } from '../types';
-import { instances } from '../instances';
-import { fetchRuns, fetchTimeSeries, fetchVariables } from '../ixmp4';
+import { createPlatforms } from '../platform';
+import { fetchTimeSeries } from '../ixmp4';
 import { indicatorByUid } from '../curation/indicators';
 
 const route = new Hono<Env>();
@@ -10,16 +11,16 @@ route.get('/', async (c) => {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
   const search = c.req.query('q');
   const sector = c.req.query('sector');
+  const region = c.req.query('region');
+
+  const platforms = await createPlatforms(username, password);
+  const filter: VariableFilter = {};
+  if (search) filter.name_ilike = `*${search}*`;
+  if (region) filter.region = { name: region };
 
   const perInstance = await Promise.all(
-    instances.map(async (instance) => {
-      const variables = await fetchVariables(
-        instance.url,
-        instance.managerUrl,
-        username,
-        password,
-        search,
-      );
+    platforms.map(async ({ instance, platform }) => {
+      const variables = await platform.iamc.variables.list(filter);
       return variables.map((v) => ({ name: v.name, instance: instance.slug }));
     }),
   );
@@ -30,10 +31,11 @@ route.get('/', async (c) => {
     for (const { name, instance } of list) {
       if (seen.has(name)) continue;
       const meta = indicatorByUid[name];
-      // if (!meta) continue;
-      if (sector && meta.sector !== sector) continue;
+      if (sector && meta?.sector !== sector) continue;
       seen.add(name);
-      indicators.push({ ...meta, name, instance });
+      // Variable name doubles as uid and display label for now; curated fields
+      // (sector, parameters, etc.) spread on top when present.
+      indicators.push({ ...meta, uid: name, label: name, instance });
     }
   }
 
@@ -52,9 +54,10 @@ route.get('/:uid/timeseries', async (c) => {
   }
 
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
+  const platforms = await createPlatforms(username, password);
 
-  for (const instance of instances) {
-    const runs = await fetchRuns(instance.url, instance.managerUrl, username, password);
+  for (const { instance, platform } of platforms) {
+    const runs = await platform.runs.list();
     const run = runs.find((r) => r.scenario.name === scenario);
     if (!run) continue;
     const series = await fetchTimeSeries(instance.url, instance.managerUrl, username, password, {

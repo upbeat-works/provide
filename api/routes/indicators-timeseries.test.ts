@@ -1,26 +1,29 @@
-import { describe, test, expect, afterEach, spyOn } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
+import { http, HttpResponse } from 'msw';
 import { api } from '../index';
-import { createTestEnv, mockIxmp4Fetch, type Ixmp4Datapoint } from '../test-helpers';
-
-let spy: ReturnType<typeof spyOn<typeof globalThis, 'fetch'>> | undefined;
-
-afterEach(() => {
-  spy?.mockRestore();
-  spy = undefined;
-});
+import { createTestEnv, listEnvelope, server, testInstance } from '../test-helpers';
+import type { Ixmp4Datapoint } from '../ixmp4';
 
 describe('GET /api/indicators/:uid/timeseries', () => {
   test('returns the time series projection from ixmp4 for indicator + scenario + region', async () => {
-    spy = mockIxmp4Fetch({
-      runs: [
-        { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
-      ],
-      datapoints: [
-        { id: 1, time_series__id: 1, value: 1.5, type: 'A', step_year: 2020 },
-        { id: 2, time_series__id: 1, value: 2.0, type: 'A', step_year: 2025 },
-        { id: 3, time_series__id: 1, value: 2.5, type: 'A', step_year: 2030 },
-      ],
-    });
+    server.use(
+      http.patch(`${testInstance.url}/runs/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
+          ]),
+        ),
+      ),
+      http.patch(`${testInstance.url}/iamc/datapoints/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 1, time_series__id: 1, value: 1.5, type: 'A', step_year: 2020 },
+            { id: 2, time_series__id: 1, value: 2.0, type: 'A', step_year: 2025 },
+            { id: 3, time_series__id: 1, value: 2.5, type: 'A', step_year: 2030 },
+          ]),
+        ),
+      ),
+    );
     const res = await api.request(
       '/api/indicators/terclim-mean-temperature/timeseries?scenario=curpol&region=DEU',
       {},
@@ -36,7 +39,6 @@ describe('GET /api/indicators/:uid/timeseries', () => {
   });
 
   test('returns 404 when the indicator uid is not in the curated catalogue', async () => {
-    spy = mockIxmp4Fetch({});
     const res = await api.request(
       '/api/indicators/unknown-indicator/timeseries?scenario=curpol&region=DEU',
       {},
@@ -47,7 +49,6 @@ describe('GET /api/indicators/:uid/timeseries', () => {
   });
 
   test('returns 404 when no ixmp4 run matches the requested scenario', async () => {
-    spy = mockIxmp4Fetch({ runs: [] });
     const res = await api.request(
       '/api/indicators/terclim-mean-temperature/timeseries?scenario=curpol&region=DEU',
       {},
@@ -57,7 +58,6 @@ describe('GET /api/indicators/:uid/timeseries', () => {
   });
 
   test('returns 400 when ?scenario or ?region are missing', async () => {
-    spy = mockIxmp4Fetch({});
     const noScenario = await api.request(
       '/api/indicators/terclim-mean-temperature/timeseries?region=DEU',
       {},
@@ -78,15 +78,19 @@ describe('GET /api/indicators/:uid/timeseries', () => {
     const datapoints: Ixmp4Datapoint[] = [
       { id: 1, time_series__id: 1, value: 0.1, type: 'A', step_year: 2020 },
     ];
-    spy = mockIxmp4Fetch({
-      runs: [
-        { id: 7, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
-      ],
-      datapoints: (body) => {
-        captured = body;
-        return datapoints;
-      },
-    });
+    server.use(
+      http.patch(`${testInstance.url}/runs/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 7, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
+          ]),
+        ),
+      ),
+      http.patch(`${testInstance.url}/iamc/datapoints/`, async ({ request }) => {
+        captured = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(listEnvelope(datapoints));
+      }),
+    );
     await api.request(
       '/api/indicators/terclim-mean-temperature/timeseries?scenario=curpol&region=FRA',
       {},

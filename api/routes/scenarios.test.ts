@@ -1,22 +1,20 @@
-import { describe, test, expect, afterEach, spyOn } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
+import { http, HttpResponse } from 'msw';
 import { api } from '../index';
-import { createTestEnv, mockIxmp4Fetch } from '../test-helpers';
-
-let spy: ReturnType<typeof spyOn<typeof globalThis, 'fetch'>> | undefined;
-
-afterEach(() => {
-  spy?.mockRestore();
-  spy = undefined;
-});
+import { createTestEnv, listEnvelope, server, testInstance } from '../test-helpers';
 
 describe('GET /api/scenarios', () => {
   test('returns curated scenarios for runs that exist in ixmp4', async () => {
-    spy = mockIxmp4Fetch({
-      runs: [
-        { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
-        { id: 2, model: { name: 'M' }, scenario: { name: 'gs' }, version: 1, is_default: true },
-      ],
-    });
+    server.use(
+      http.patch(`${testInstance.url}/runs/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
+            { id: 2, model: { name: 'M' }, scenario: { name: 'gs' }, version: 1, is_default: true },
+          ]),
+        ),
+      ),
+    );
     const res = await api.request('/api/scenarios', {}, createTestEnv());
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
@@ -44,23 +42,31 @@ describe('GET /api/scenarios', () => {
   });
 
   test('drops ixmp4 scenarios that have no curation entry (curated allow-list)', async () => {
-    spy = mockIxmp4Fetch({
-      runs: [
-        { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
-        { id: 9, model: { name: 'M' }, scenario: { name: 'mystery' }, version: 1, is_default: true },
-      ],
-    });
+    server.use(
+      http.patch(`${testInstance.url}/runs/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
+            { id: 9, model: { name: 'M' }, scenario: { name: 'mystery' }, version: 1, is_default: true },
+          ]),
+        ),
+      ),
+    );
     const res = await api.request('/api/scenarios', {}, createTestEnv());
     const json = (await res.json()) as { scenarios: Array<{ uid: string }> };
     expect(json.scenarios.map((s) => s.uid)).toEqual(['curpol']);
   });
 
   test('embeds curated gmt and emissions trajectories inline', async () => {
-    spy = mockIxmp4Fetch({
-      runs: [
-        { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
-      ],
-    });
+    server.use(
+      http.patch(`${testInstance.url}/runs/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
+          ]),
+        ),
+      ),
+    );
     const res = await api.request('/api/scenarios', {}, createTestEnv());
     const json = (await res.json()) as {
       scenarios: Array<{
@@ -78,7 +84,6 @@ describe('GET /api/scenarios', () => {
   });
 
   test('returns an empty list when ixmp4 has no runs', async () => {
-    spy = mockIxmp4Fetch({});
     const res = await api.request('/api/scenarios', {}, createTestEnv());
     const json = (await res.json()) as { scenarios: unknown[] };
     expect(json.scenarios).toEqual([]);

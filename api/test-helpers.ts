@@ -2,8 +2,10 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { spyOn } from 'bun:test';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 import { schema } from './db';
+import { instances } from './instances';
 import type { Env } from './types';
 
 const MIGRATIONS_DIR = path.join(import.meta.dir, 'db/migrations');
@@ -29,59 +31,84 @@ export function createTestEnv(): Env['Bindings'] {
   };
 }
 
-import type { Ixmp4Datapoint } from './ixmp4';
-export type { Ixmp4Datapoint };
-
-export interface Ixmp4Fixture {
-  variables?: Array<{ id: number; name: string }>;
-  scenarios?: Array<{ id: number; name: string }>;
-  regions?: Array<{ id: number; name: string; hierarchy?: string }>;
-  runs?: Array<{
-    id: number;
-    model: { name: string };
-    scenario: { name: string };
-    version: number;
-    is_default: boolean;
-  }>;
-  runMeta?: Array<{ id: number; run__id: number; key: string; type: string; value: unknown }>;
-  timeseries?: Array<{ id: number; run__id: number; parameters: Record<string, string> }>;
-  datapoints?: Ixmp4Datapoint[] | ((body: Record<string, unknown>) => Ixmp4Datapoint[]);
+/**
+ * Wraps rows in the ixmp4 enumeration response envelope (row-oriented). Use
+ * inside MSW handlers when returning fixture data for `*.list()` calls.
+ */
+export function listEnvelope(rows: unknown[]): {
+  results: unknown[];
+  total: number;
+  pagination: { limit: number; offset: number };
+} {
+  return { results: rows, total: rows.length, pagination: { limit: 100, offset: 0 } };
 }
 
-const PATH_MAP: Record<string, Exclude<keyof Ixmp4Fixture, 'datapoints'>> = {
-  '/iamc/variables/': 'variables',
-  '/iamc/timeseries/': 'timeseries',
-  '/scenarios/': 'scenarios',
-  '/regions/': 'regions',
-  '/runs/': 'runs',
-  '/meta/': 'runMeta',
+/**
+ * Wraps a tabular response for `*.tabulate()` calls. The SDK reads it as a
+ * pandas-style DataFrame: columns + rows-of-values + dtypes.
+ */
+export function tabulateEnvelope(columns: string[], rows: unknown[][]): {
+  results: { data: unknown[][]; index: number[]; columns: string[]; dtypes: string[] };
+  total: number;
+  pagination: { limit: number; offset: number };
+} {
+  return {
+    results: {
+      data: rows,
+      index: rows.map((_, i) => i),
+      columns,
+      dtypes: columns.map(() => 'object'),
+    },
+    total: rows.length,
+    pagination: { limit: 100, offset: 0 },
+  };
+}
+
+/**
+ * The instance that tests target. Handlers use its exact URLs so that any
+ * outbound request to a different host fails the test loudly.
+ */
+export const testInstance = instances[0];
+
+const enumerationPaths = [
+  '/iamc/variables/',
+  '/iamc/timeseries/',
+  '/iamc/datapoints/',
+  '/scenarios/',
+  '/regions/',
+  '/units/',
+  '/runs/',
+  '/meta/',
+];
+
+/**
+ * Default MSW handlers: token endpoint returns a fake token, every ixmp4
+ * enumeration endpoint returns an empty paginated envelope. Override per-test
+ * with `server.use(...)`.
+ */
+// Empty-tabulate columns per endpoint so `df.columnValues(...)` doesn't throw
+// on an unknown column when the SDK reads from a default empty response.
+const tabulateColumns: Record<string, string[]> = {
+  '/meta/': ['run__id', 'key', 'value'],
+  '/iamc/timeseries/': ['run__id', 'variable', 'region', 'unit'],
+  '/iamc/datapoints/': ['time_series__id', 'step_year', 'value'],
 };
 
-export function mockIxmp4Fetch(fixture: Ixmp4Fixture) {
-  return spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const req = new Request(input as RequestInfo, init);
-    const url = new URL(req.url);
-
-    if (req.method === 'POST' && url.pathname.endsWith('/token/obtain/')) {
-      return new Response(JSON.stringify({ access: 'fake-token' }), { status: 200 });
-    }
-
-    if (req.method === 'PATCH') {
-      if (url.pathname.endsWith('/iamc/datapoints/')) {
-        const body = (await req.json()) as Record<string, unknown>;
-        const rows = typeof fixture.datapoints === 'function'
-          ? fixture.datapoints(body)
-          : fixture.datapoints ?? [];
-        return new Response(JSON.stringify({ results: rows, total: rows.length }), { status: 200 });
-      }
-      for (const [suffix, key] of Object.entries(PATH_MAP)) {
-        if (url.pathname.endsWith(suffix)) {
-          const rows = fixture[key] ?? [];
-          return new Response(JSON.stringify({ results: rows, total: rows.length }), { status: 200 });
-        }
-      }
-    }
-
-    throw new Error(`Unexpected fetch: ${req.method} ${req.url}`);
-  });
+function emptyEnumerationResponse(request: Request, suffix: string): Response {
+  const isTabulate = new URL(request.url).searchParams.get('table') === 'true';
+  if (isTabulate) {
+    return HttpResponse.json(tabulateEnvelope(tabulateColumns[suffix] ?? [], []));
+  }
+  return HttpResponse.json(listEnvelope([]));
 }
+
+const defaultHandlers = [
+  http.post(`${testInstance.managerUrl}/token/obtain/`, () =>
+    HttpResponse.json({ access: 'fake-token' }),
+  ),
+  ...enumerationPaths.map((p) =>
+    http.patch(`${testInstance.url}${p}`, ({ request }) => emptyEnumerationResponse(request, p)),
+  ),
+];
+
+export const server = setupServer(...defaultHandlers);

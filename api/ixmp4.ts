@@ -1,8 +1,3 @@
-export interface Ixmp4Variable {
-  id: number;
-  name: string;
-}
-
 interface Ixmp4Page<T> {
   results: T[];
   total: number;
@@ -15,11 +10,16 @@ async function getToken(managerUrl: string, username: string, password: string):
     body: JSON.stringify({ username, password }),
   });
   if (!res.ok) throw new Error(`ixmp4 auth → ${res.status}`);
-  const data = await res.json() as { access: string };
+  const data = (await res.json()) as { access: string };
   return data.access;
 }
 
-async function patch<T>(baseUrl: string, token: string, path: string, body: unknown = {}): Promise<T> {
+async function patch<T>(
+  baseUrl: string,
+  token: string,
+  path: string,
+  body: unknown = {},
+): Promise<T> {
   const res = await fetch(`${baseUrl}${path}`, {
     method: 'PATCH',
     headers: {
@@ -30,58 +30,6 @@ async function patch<T>(baseUrl: string, token: string, path: string, body: unkn
   });
   if (!res.ok) throw new Error(`ixmp4 ${path} → ${res.status}`);
   return res.json() as Promise<T>;
-}
-
-export async function fetchVariables(
-  baseUrl: string,
-  managerUrl: string,
-  username: string,
-  password: string,
-  search?: string
-): Promise<Ixmp4Variable[]> {
-  const token = await getToken(managerUrl, username, password);
-  const filter = search ? { name__ilike: `*${search}*` } : {};
-  const data = await patch<Ixmp4Page<Ixmp4Variable>>(baseUrl, token, '/iamc/variables/', filter);
-  return data.results;
-}
-
-export interface Ixmp4Run {
-  id: number;
-  model: { name: string };
-  scenario: { name: string };
-  version: number;
-  is_default: boolean;
-}
-
-export async function fetchRuns(
-  baseUrl: string,
-  managerUrl: string,
-  username: string,
-  password: string,
-): Promise<Ixmp4Run[]> {
-  const token = await getToken(managerUrl, username, password);
-  const data = await patch<Ixmp4Page<Ixmp4Run>>(baseUrl, token, '/runs/', {});
-  return data.results;
-}
-
-export interface Ixmp4RunMeta {
-  id: number;
-  run__id: number;
-  key: string;
-  type: string;
-  value: unknown;
-}
-
-export async function fetchRunMeta(
-  baseUrl: string,
-  managerUrl: string,
-  username: string,
-  password: string,
-  runId: number,
-): Promise<Ixmp4RunMeta[]> {
-  const token = await getToken(managerUrl, username, password);
-  const data = await patch<Ixmp4Page<Ixmp4RunMeta>>(baseUrl, token, '/meta/', { run_id: runId });
-  return data.results;
 }
 
 export interface Ixmp4Datapoint {
@@ -142,7 +90,9 @@ export async function fetchImpactTime(
   creds: { username: string; password: string },
   params: ImpactTimeParams,
 ): Promise<ImpactTimeResponse> {
-  void instance; void creds; void params;
+  void instance;
+  void creds;
+  void params;
   throw new Error('fetchImpactTime not yet implemented');
 }
 
@@ -164,6 +114,8 @@ export async function fetchEnsemble(
   creds: { username: string; password: string },
   params: ImpactTimeParams,
 ): Promise<EnsembleResponse> {
-  void instance; void creds; void params;
+  void instance;
+  void creds;
+  void params;
   throw new Error('fetchEnsemble not yet implemented');
 }

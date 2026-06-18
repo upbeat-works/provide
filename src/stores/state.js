@@ -184,56 +184,54 @@ export const AVAILABLE_GEOGOGRAPHIES = derived([GEOGRAPHIES, CURRENT_GEOGRAPHY_T
  * INDICATOR STATE
  */
 
+// New Hono adapter base URL. If unset, the per-region / per-indicator filters
+// degrade to a no-op (full list shown) — the legacy data URL doesn't expose
+// `/indicators?region=` or `/geographies?indicator=` so falling back to it is
+// not an option.
+const API_URL = import.meta.env.VITE_API_URL;
+
+const byLabel = (a, b) => (a.label ?? '').localeCompare(b.label ?? '');
+
 /**
- * Derived store that holds a list of available indicators based on the geography type
+ * Derived store that holds the list of indicators ixmp4 has data for given the
+ * currently selected geography. In indicator-first mode (or when no geography
+ * is selected) returns every known indicator. Fetches from
+ * `${API_URL}/indicators?region=${uid}` and intersects with `INDICATORS` so
+ * downstream consumers keep the rich curated fields (description, unit, …).
  * @type {Readable<Object[]>}
  */
-export const AVAILABLE_INDICATORS = derived([INDICATORS, CURRENT_GEOGRAPHY_TYPE, CURRENT_GEOGRAPHY_UID, SECTORS, SELECTION_MODE], ([$indicators, $type, $geography, $sectors, $mode]) => {
-  // In indicator-first mode, show all indicators without geography filtering
-  if ($mode === 'indicator') {
-    return [...$indicators].sort((a, b) => a.label.localeCompare(b.label));
-  }
-
-  // Geography types have specific indicators available
-  const listOfAvailableIndicatorsForThisGeographyType = get($type, 'availableIndicators', []);
-  // Filter the list of indicators if they are included for the current geography type
-  let indicators = $indicators.filter(({ uid }) => listOfAvailableIndicatorsForThisGeographyType.includes(uid));
-  // Filter the list of indicators if they are available for the current geography
-  let geography = ($geography ?? '').toLowerCase(); // TODO: Temporally convert to lowercase to mimic uids
-  indicators = indicators.filter(
-    ({ availableGeographies }) => !Boolean(availableGeographies) || (Array.isArray(availableGeographies) && availableGeographies.length && availableGeographies.includes(geography))
-  );
-  // Filter the list of indicators if they are available for the current sector
-  indicators = indicators.filter(({ sector: sectorID }) => {
-    const { availableGeographies } = $sectors.find(({ uid }) => uid === sectorID) ?? {};
-    return !Boolean(availableGeographies) || (Array.isArray(availableGeographies) && availableGeographies.length && availableGeographies.map((d) => d.toLowerCase()).includes(geography)); // TODO: Temporally convert to lowercase to mimic uids
-  });
-
-  return indicators.sort((a, b) => a.label.localeCompare(b.label));
-});
-
-export const SELECTABLE_SECTORS = derived([SECTORS, AVAILABLE_INDICATORS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE], ([$sectors, $indicators, $geography, $mode]) => {
-  return $sectors.map(({ uid, label, availableGeographies }) => {
-    // Initialize indicators array to hold filtered indicator objects later
-    let indicators = [];
-
-    if ($mode === 'indicator') {
-      // In indicator-first mode, show all sectors with their indicators (no geography filter)
-      indicators = $indicators.filter(({ sector: sectorUID }) => sectorUID === uid);
-    } else {
-      // Check if 'availableGeographies' is not an array, is empty, or does not include the current geography ('$geography')
-      if (!Array.isArray(availableGeographies) || !availableGeographies.length || !availableGeographies.includes($geography)) {
-        // If any of the conditions above are true, keep the 'indicators' array empty
-        indicators = [];
-      } else {
-        // If 'availableGeographies' is a valid array, is not empty, and includes the current geography
-        // Filter the '$indicators' array to find indicators that have a sector matching the given 'uid'
-        indicators = $indicators.filter(({ sector: sectorUID }) => sectorUID === uid);
-      }
+let availableIndicatorsRequestId = 0;
+export const AVAILABLE_INDICATORS = derived(
+  [INDICATORS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE],
+  ([$indicators, $uid, $mode], set) => {
+    if ($mode === 'indicator' || !$uid || !API_URL) {
+      set([...$indicators].sort(byLabel));
+      return;
     }
+    if (!browser) {
+      set([]);
+      return;
+    }
+    const requestId = ++availableIndicatorsRequestId;
+    fetch(`${API_URL}/indicators/?region=${encodeURIComponent($uid)}`)
+      .then((r) => r.json())
+      .then(({ indicators }) => {
+        if (requestId !== availableIndicatorsRequestId) return;
+        const allowed = new Set(indicators.map((i) => i.uid));
+        set([...$indicators].filter((i) => allowed.has(i.uid)).sort(byLabel));
+      })
+      .catch((e) => {
+        if (requestId !== availableIndicatorsRequestId) return;
+        console.warn(`indicators?region=${$uid} failed:`, e);
+        set([]);
+      });
+  },
+  [],
+);
 
-    // NOTE: This only filters the list of selectable sectors. The indicator is still selectable.
-
+export const SELECTABLE_SECTORS = derived([SECTORS, AVAILABLE_INDICATORS], ([$sectors, $indicators]) => {
+  return $sectors.map(({ uid, label }) => {
+    const indicators = $indicators.filter(({ sector }) => sector === uid);
     return {
       label,
       uid,
@@ -248,40 +246,44 @@ export const SELECTABLE_SECTORS = derived([SECTORS, AVAILABLE_INDICATORS, CURREN
 export const CURRENT_INDICATOR_UID = writable(getLocalStorage(LOCALSTORE_INDICATOR, undefined));
 
 /**
- * Derived store that filters GEOGRAPHIES to only those compatible with the currently selected indicator.
- * Used in indicator-first mode to restrict the geography selector.
- * Returns the same GEOGRAPHIES structure (object keyed by geography type uid) but filtered.
+ * Derived store that filters GEOGRAPHIES to only those ixmp4 has data for under
+ * the currently selected indicator. Returns the same shape as `GEOGRAPHIES`
+ * (object keyed by geography type uid). Fetches from
+ * `${API_URL}/geographies?indicator=${uid}` and intersects ids with the local
+ * `GEOGRAPHIES` so the per-type structure is preserved.
  * @type {Readable<Object>}
  */
+let availableGeographiesRequestId = 0;
 export const AVAILABLE_GEOGRAPHIES_FOR_INDICATOR = derived(
-  [INDICATORS, CURRENT_INDICATOR_UID, SECTORS, GEOGRAPHY_TYPES, GEOGRAPHIES],
-  ([$indicators, $indicatorUid, $sectors, $geographyTypes, $geographies]) => {
-    if (!$indicatorUid) return $geographies; // No filter when no indicator selected
-
-    const indicator = $indicators.find(({ uid }) => uid === $indicatorUid);
-    if (!indicator) return $geographies;
-
-    const sector = $sectors.find(({ uid }) => uid === indicator.sector);
-    const result = {};
-
-    $geographyTypes.forEach(({ uid: typeUid, availableIndicators }) => {
-      // Geography type must support this indicator
-      if (!availableIndicators.includes($indicatorUid)) {
-        result[typeUid] = [];
-        return;
-      }
-
-      const geosOfType = $geographies[typeUid] ?? [];
-      result[typeUid] = geosOfType.filter(({ uid: geoUid }) => {
-        const lower = geoUid.toLowerCase();
-        const okForIndicator = !indicator.availableGeographies?.length || indicator.availableGeographies.includes(lower);
-        const okForSector = !sector?.availableGeographies?.length || sector.availableGeographies.map((d) => d.toLowerCase()).includes(lower);
-        return okForIndicator && okForSector;
+  [CURRENT_INDICATOR_UID, GEOGRAPHIES],
+  ([$indicatorUid, $geographies], set) => {
+    if (!$indicatorUid || !API_URL) {
+      set($geographies);
+      return;
+    }
+    if (!browser) {
+      set({});
+      return;
+    }
+    const requestId = ++availableGeographiesRequestId;
+    fetch(`${API_URL}/geographies/?indicator=${encodeURIComponent($indicatorUid)}`)
+      .then((r) => r.json())
+      .then((rows) => {
+        if (requestId !== availableGeographiesRequestId) return;
+        const allowed = new Set(rows.map((r) => r.id));
+        const out = {};
+        for (const [typeUid, list] of Object.entries($geographies)) {
+          out[typeUid] = list.filter((g) => allowed.has(g.uid));
+        }
+        set(out);
+      })
+      .catch((e) => {
+        if (requestId !== availableGeographiesRequestId) return;
+        console.warn(`geographies?indicator=${$indicatorUid} failed:`, e);
+        set({});
       });
-    });
-
-    return result;
-  }
+  },
+  {},
 );
 
 export const IS_EMPTY_INDICATOR = derived(CURRENT_INDICATOR_UID, ($uid) => {

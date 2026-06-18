@@ -11,7 +11,6 @@ describe('GET /api/sectors', () => {
         uid: string;
         label: string;
         icon: string;
-        availableGeographies: string[];
         availableScenarios: string[];
       }>;
     };
@@ -23,24 +22,22 @@ describe('GET /api/sectors', () => {
     expect(terclim).toMatchObject({ label: 'Terrestrial Climate', icon: '⛰️' });
   });
 
-  test('each sector exposes availability arrays of geography and scenario uids', async () => {
+  test('each sector exposes an availableScenarios array', async () => {
     const res = await api.request('/api/sectors', {}, createTestEnv());
     const json = (await res.json()) as {
-      sectors: Array<{ availableGeographies: string[]; availableScenarios: string[] }>;
+      sectors: Array<{ availableScenarios: string[] }>;
     };
     for (const sector of json.sectors) {
-      expect(Array.isArray(sector.availableGeographies)).toBe(true);
       expect(Array.isArray(sector.availableScenarios)).toBe(true);
     }
   });
 
-  test('terrestrial-climate availability includes curpol scenario and DEU geography', async () => {
+  test('terrestrial-climate availability includes curpol scenario', async () => {
     const res = await api.request('/api/sectors', {}, createTestEnv());
     const json = (await res.json()) as {
-      sectors: Array<{ uid: string; availableGeographies: string[]; availableScenarios: string[] }>;
+      sectors: Array<{ uid: string; availableScenarios: string[] }>;
     };
     const terclim = json.sectors.find((s) => s.uid === 'terrestrial-climate')!;
     expect(terclim.availableScenarios).toContain('curpol');
-    expect(terclim.availableGeographies).toContain('DEU');
   });
 });

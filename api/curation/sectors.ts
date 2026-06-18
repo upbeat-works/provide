@@ -4,7 +4,6 @@ export interface SectorCuration {
   uid: string;
   label: string;
   icon: string;
-  availableGeographies: string[];
   availableScenarios: string[];
 }
 

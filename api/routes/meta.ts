@@ -1,10 +1,8 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { schema } from '../db';
-import { instances } from '../instances';
-import { fetchRuns, fetchVariables } from '../ixmp4';
-import { geographyTypes as geographyTypesCuration } from '../curation/geography-types';
-import { scenarios as scenariosCuration, scenarioByUid } from '../curation/scenarios';
+import { createPlatforms } from '../platform';
+import { scenarios as scenariosCuration } from '../curation/scenarios';
 import { sectors as sectorsCuration } from '../curation/sectors';
 import { indicatorByUid } from '../curation/indicators';
 import { indicatorParameters } from '../curation/indicator-parameters';
@@ -15,33 +13,28 @@ const meta = new Hono<Env>();
 
 meta.get('/', async (c) => {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
+  const platforms = await createPlatforms(username, password);
 
   const [geographyTypeRows, geographyRows, instanceVariables, instanceRuns] =
     await Promise.all([
-      c.env.DB.select().from(schema.geographyTypes),
+      c.env.DB.select().from(schema.geographyTypes).orderBy(schema.geographyTypes.order),
       c.env.DB.select().from(schema.geographies),
       Promise.all(
-        instances.map((i) =>
-          fetchVariables(i.url, i.managerUrl, username, password).then((variables) =>
-            variables.map((v) => ({ name: v.name, instance: i.slug })),
-          ),
-        ),
+        platforms.map(async ({ instance, platform }) => {
+          const variables = await platform.iamc.variables.list();
+          return variables.map((v) => ({ name: v.name, instance: instance.slug }));
+        }),
       ),
-      Promise.all(
-        instances.map((i) => fetchRuns(i.url, i.managerUrl, username, password)),
-      ),
+      Promise.all(platforms.map(({ platform }) => platform.runs.list())),
     ]);
 
-  const geographyTypesByUid = new Map(geographyTypeRows.map((r) => [r.id, r]));
-  const geographyTypes = geographyTypesCuration.map((meta) => {
-    const db = geographyTypesByUid.get(meta.uid);
-    return {
-      ...meta,
-      label: db?.label ?? meta.label,
-      labelSingular: db?.labelSingular ?? meta.labelSingular,
-      isAvailable: db?.isAvailable ?? meta.isAvailable,
-    };
-  });
+  const geographyTypes = geographyTypeRows.map((r) => ({
+    uid: r.id,
+    label: r.label,
+    labelSingular: r.labelSingular ?? undefined,
+    order: r.order ?? undefined,
+    isAvailable: r.isAvailable ?? true,
+  }));
 
   const geographiesByType: Record<string, Array<{ uid: string; label: string }>> = {};
   for (const geo of geographyRows) {
@@ -54,9 +47,10 @@ meta.get('/', async (c) => {
   for (const { name, instance } of variablesFlat) {
     if (seenIndicators.has(name)) continue;
     const curation = indicatorByUid[name];
-    if (!curation) continue;
     seenIndicators.add(name);
-    indicators.push({ ...curation, instance });
+    // Permissive: include all ixmp4 variables, even those without curation.
+    // Variable name doubles as uid and display label; curated fields spread on top.
+    indicators.push({ ...curation, uid: name, label: name, instance });
   }
 
   const scenariosAvailable = new Set<string>();

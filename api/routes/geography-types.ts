@@ -1,23 +1,22 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { schema } from '../db';
-import { geographyTypes as curated } from '../curation/geography-types';
 
 const route = new Hono<Env>();
 
 route.get('/', async (c) => {
-  const rows = await c.env.DB.select().from(schema.geographyTypes);
-  const dbByUid = new Map(rows.map((r) => [r.id, r]));
+  const rows = await c.env.DB
+    .select()
+    .from(schema.geographyTypes)
+    .orderBy(schema.geographyTypes.order);
 
-  const geographyTypes = curated.map((meta) => {
-    const db = dbByUid.get(meta.uid);
-    return {
-      ...meta,
-      label: db?.label ?? meta.label,
-      labelSingular: db?.labelSingular ?? meta.labelSingular,
-      isAvailable: db?.isAvailable ?? meta.isAvailable,
-    };
-  });
+  const geographyTypes = rows.map((r) => ({
+    uid: r.id,
+    label: r.label,
+    labelSingular: r.labelSingular ?? undefined,
+    order: r.order ?? undefined,
+    isAvailable: r.isAvailable ?? true,
+  }));
 
   return c.json({ geographyTypes });
 });

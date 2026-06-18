@@ -7,11 +7,10 @@ import { derived } from 'svelte/store';
 // META DATA (This will only be set once on load and won't change again)
 export const GEOGRAPHY_TYPES = derived(page, ($page) =>
   sortBy(
-    ($page.data?.meta?.geographyTypes ?? []).map((t) => ({ ...t, disabled: !(t.isAvailable && t.availableIndicators.length) })),
+    ($page.data?.meta?.geographyTypes ?? []).map((t) => ({ ...t, disabled: !t.isAvailable })),
     [
       (t) => t.disabled, // This sorts the available types first
       (t) => t.order,
-      (t) => 9999 - t.availableIndicators.length, // Highest number first
       (t) => t.label,
     ]
   )
@@ -44,24 +43,34 @@ export const DICTIONARY_SCENARIOS = derived(SCENARIOS, ($scenarios) => keyBy($sc
 export const SECTORS = derived(page, ($page) => $page.data?.meta?.sectors ?? []);
 
 export const INDICATORS = derived(page, ($page) => {
-  const { indicators, sectors } = $page.data?.meta ?? {
-    indicators: [],
-  };
+  const meta = $page.data?.meta ?? {};
+  const indicators = meta.indicators ?? [];
+  const sectors = meta.sectors ?? [];
   return indicators.map((indicator) => {
-    const sector = sectors.find((s) => s.uid === indicator.sector);
+    // Un-curated indicators (no curation entry / unknown sector) get safe
+    // empty availability defaults so downstream stores don't crash.
+    const sector = sectors.find((s) => s.uid === indicator.sector) ?? {
+      availableScenarios: [],
+    };
     const labels = unitLabels[indicator.unit];
     const unit = {
       uid: indicator.unit,
       label: labels?.label ?? indicator.unit,
       labelLong: labels?.labelLong ?? indicator.unit,
     };
-    const availableGeographies = uniq([...sector.availableGeographies, ...indicator.availableGeographies]).map((d) => d.toLowerCase()); // TODO: Temporally convert to lowercase to mimic uids
-    const availableScenarios = without(uniq([...sector.availableScenarios, ...indicator.availableScenarios]), ...(indicator.excludedScenarios ?? []));
+    // availableGeographies is no longer derived from curation — geography
+    // filtering is driven by `/api/geographies?indicator=` lookups in state.js.
+    const availableScenarios = without(
+      uniq([
+        ...(sector.availableScenarios ?? []),
+        ...(indicator.availableScenarios ?? []),
+      ]),
+      ...(indicator.excludedScenarios ?? []),
+    );
 
     return {
       ...indicator,
       availableScenarios,
-      availableGeographies,
       unit,
     };
   });

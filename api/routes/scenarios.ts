@@ -1,16 +1,16 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
-import { instances } from '../instances';
-import { fetchRuns } from '../ixmp4';
+import { createPlatforms } from '../platform';
 import { scenarios as curated, scenarioByUid } from '../curation/scenarios';
 
 const route = new Hono<Env>();
 
 route.get('/', async (c) => {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
+  const platforms = await createPlatforms(username, password);
 
   const runsPerInstance = await Promise.all(
-    instances.map((instance) => fetchRuns(instance.url, instance.managerUrl, username, password)),
+    platforms.map(({ platform }) => platform.runs.list()),
   );
 
   const seen = new Set<string>();
