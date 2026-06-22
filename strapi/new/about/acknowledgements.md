@@ -1,6 +1,5 @@
 ---
 page: about
-tab: Projects
 title: Acknowledgements
 locale: "en-EU"
 ---

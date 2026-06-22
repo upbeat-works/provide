@@ -1,6 +1,5 @@
 ---
 page: about
-tab: Projects
 title: About Climate Analytics
 locale: "en-EU"
 ---

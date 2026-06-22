@@ -1,6 +1,5 @@
 ---
 page: about
-tab: "License & how to cite"
 title: How to cite
 locale: "en-EU"
 ---

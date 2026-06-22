@@ -1,6 +1,5 @@
 ---
 page: about
-tab: About the dashboard
 title: About the PROVIDE climate risk dashboard
 locale: "en-EU"
 ---

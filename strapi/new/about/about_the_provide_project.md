@@ -1,6 +1,5 @@
 ---
 page: about
-tab: Projects
 title: About the PROVIDE project
 locale: "en-EU"
 ---

@@ -1,6 +1,5 @@
 ---
 page: about
-tab: "License & how to cite"
 title: Sharing licence
 locale: "en-EU"
 ---

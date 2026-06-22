@@ -14,15 +14,8 @@
 import { readFile, rm, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-// --- about: which Strapi Section titles live under each index group --------
-// Order matters (drives nav order). Best-guess placement of Contributors /
-// Acknowledgements under "Projects".
-const ABOUT_GROUPS = [
-  ['About the dashboard', ['About the PROVIDE climate risk dashboard']],
-  ['Projects', ['About the PROVIDE project', 'About Climate Analytics', 'Contributors', 'Acknowledgements']],
-  ['Funding sources', ['Funding sources']],
-  ['License & how to cite', ['Sharing licence', 'How to cite']],
-];
+// The about page has a flat index (no tabs) — every Strapi Section becomes a
+// top-level about/*.md in Strapi order.
 
 // methodology Impact tab: each impact splits into these categories, sourced
 // from the matching DataType array.
@@ -60,18 +53,16 @@ function serialize(frontmatter, body) {
 
 function aboutFiles(aboutJson, locale) {
   const sections = aboutJson?.data?.attributes?.Section ?? [];
-  const byTitle = new Map(sections.map((s) => [(s.Title ?? '').trim(), s.Text ?? '']));
-  const files = [];
-  for (const [group, titles] of ABOUT_GROUPS) {
-    for (const title of titles) {
-      files.push({
-        path: P('about', group, `${title}.md`),
-        frontmatter: { page: 'about', tab: group, title, locale },
-        body: byTitle.get(title) ?? '', // missing -> empty placeholder
-      });
-    }
-  }
-  return files;
+  return sections
+    .filter((s) => (s.Title ?? '').trim())
+    .map((s) => {
+      const title = s.Title.trim();
+      return {
+        path: P('about', `${title}.md`),
+        frontmatter: { page: 'about', title, locale },
+        body: s.Text ?? '',
+      };
+    });
 }
 
 function methodologyFiles(methJson, glossJson, locale) {

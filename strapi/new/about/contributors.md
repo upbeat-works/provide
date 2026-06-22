@@ -1,6 +1,5 @@
 ---
 page: about
-tab: Projects
 title: Contributors
 locale: "en-EU"
 ---

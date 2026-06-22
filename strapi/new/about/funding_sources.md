@@ -1,6 +1,5 @@
 ---
 page: about
-tab: Funding sources
 title: Funding sources
 locale: "en-EU"
 ---
