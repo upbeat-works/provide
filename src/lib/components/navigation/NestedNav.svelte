@@ -70,7 +70,7 @@
     headingObservers.forEach((o) => o.disconnect());
     headingObservers = [];
 
-    const flatToc = [...headings].map((el, i) => {
+    const flatToc = [...headings].filter((el) => el.innerText.trim()).map((el, i) => {
       const slug = el.getAttribute('id') || slugify(el.innerText);
       el.setAttribute('id', slug);
 
