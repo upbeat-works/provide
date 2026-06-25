@@ -1,6 +1,7 @@
 <script>
   export let sections = [];
   export let activeIndex = 0;
+  export let onNavClick = undefined;
   // role="link" -> https://www.scottohara.me/blog/2021/05/28/disabled-links.html
 </script>
 
@@ -14,6 +15,7 @@
     class:pointer-events-none={disabled}
     role={disabled ? 'link' : undefined}
     href={disabled ? undefined : `#${slug}`}
+    on:click={onNavClick && !disabled ? () => onNavClick(i) : undefined}
     class="md:inline-block py-3 pl-2 -ml-2 pr-12 border-r-3 hover:bg-surface-weaker"
     class:border-r-theme-base={isActive}
     class:border-r-transparent={!isActive}
