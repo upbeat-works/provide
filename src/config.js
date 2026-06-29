@@ -105,8 +105,10 @@ export const UID_NO_UNIT = 'no unit';
 export const SCENARIO_DATA_KEYS = [EMISSIONS_UID, MEAN_TEMPERATURE_UID];
 
 export const DEFAULT_INDICATOR_UID = MEAN_TEMPERATURE_UID; // TODO: Not used.
-export const DEFAULT_GEOGRAPHY_UID = 'DEU';
-export const DEFAULT_SCENARIOS_UID = ['curpol'];
+// Preferred default scenario — the ixmp4 "Current Policies" equivalent (the old
+// curated `curpol`). Used when available; otherwise the first available scenario
+// for the selection is chosen. Scenario ids are ixmp4 names now.
+export const DEFAULT_SCENARIOS_UID = ['2020 Climate Policies'];
 export const DEFAULT_FORMAT_UID = 'float';
 
 export const GEOGRAPHY_TYPE_CITY = 'cities';

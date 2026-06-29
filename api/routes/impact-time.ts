@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { instances } from '../instances';
-import { fetchImpactTime } from '../ixmp4';
+import { fetchImpactTime } from '../views/impact-time';
 
 const impactTime = new Hono<Env>();
 
@@ -20,8 +20,21 @@ impactTime.get('/', async (c) => {
     return c.json({ error: `Unknown instance: ${instanceSlug}` }, 404);
   }
 
+  // Selector dropdowns send raw convention values under the UI's param keys;
+  // map them onto the variable-name segments (undefined → adapter defaults).
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
-  const data = await fetchImpactTime(instance, { username, password }, { indicator, geography, scenarios });
+  const data = await fetchImpactTime(
+    instance,
+    { username, password },
+    {
+      indicator,
+      geography,
+      scenarios,
+      period: c.req.query('reference'),
+      temporal: c.req.query('time'),
+      spatial: c.req.query('spatial'),
+    },
+  );
   return c.json(data);
 });
 

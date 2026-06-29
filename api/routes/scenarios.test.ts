@@ -1,91 +1,50 @@
-import { describe, test, expect } from 'bun:test';
-import { http, HttpResponse } from 'msw';
+import { describe, test, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import { api } from '../index';
-import { createTestEnv, listEnvelope, server, testInstance } from '../test-helpers';
+import { instances } from '../instances';
+import * as scenarios from '../views/scenarios';
+import { createTestEnv } from '../test-helpers';
+
+const instance = instances[0];
+
+let spy: ReturnType<typeof spyOn<typeof scenarios, 'fetchScenarioAvailability'>>;
+
+beforeEach(() => {
+  spy = spyOn(scenarios, 'fetchScenarioAvailability').mockResolvedValue([
+    { uid: '2020 Climate Policies', yearStart: 2020, yearStep: 5, yearEnd: 2100 },
+  ]);
+});
+afterEach(() => spy.mockRestore());
 
 describe('GET /api/scenarios', () => {
-  test('returns curated scenarios for runs that exist in ixmp4', async () => {
-    server.use(
-      http.patch(`${testInstance.url}/runs/`, () =>
-        HttpResponse.json(
-          listEnvelope([
-            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
-            { id: 2, model: { name: 'M' }, scenario: { name: 'gs' }, version: 1, is_default: true },
-          ]),
-        ),
-      ),
-    );
+  test('returns 400 when indicator or region is missing', async () => {
     const res = await api.request('/api/scenarios', {}, createTestEnv());
+    expect(res.status).toBe(400);
+  });
+
+  test('returns data-driven scenario availability with per-scenario timeframes', async () => {
+    const res = await api.request(
+      `/api/scenarios?indicator=Mean%20Temperature&region=France&instance=${instance.slug}`,
+      {},
+      createTestEnv(),
+    );
     expect(res.status).toBe(200);
-    const json = (await res.json()) as {
-      scenarios: Array<{
-        uid: string;
-        label: string;
-        source: { label: string };
-        baseScenario: string;
-        characteristics: Record<string, unknown>;
-        warmingCategory: string;
-        isPrimary: boolean;
-      }>;
-    };
-    expect(json.scenarios).toHaveLength(2);
-    const curpol = json.scenarios.find((s) => s.uid === 'curpol');
-    expect(curpol).toMatchObject({
-      uid: 'curpol',
-      label: 'Current Policies',
-      baseScenario: 'curpol',
-      warmingCategory: 'high',
-      isPrimary: true,
+    const json = (await res.json()) as { scenarios: Array<{ uid: string; yearEnd: number }> };
+    expect(json.scenarios).toEqual([{ uid: '2020 Climate Policies', yearStart: 2020, yearStep: 5, yearEnd: 2100 }]);
+  });
+
+  test('forwards the selected facets to the resolver', async () => {
+    await api.request(
+      '/api/scenarios?indicator=Mean%20Temperature&region=France&time=December%20-%20February&reference=1850-1900%20(Pre-industrial)&spatial=Area',
+      {},
+      createTestEnv(),
+    );
+    const [, , params] = spy.mock.calls[0];
+    expect(params).toMatchObject({
+      indicator: 'Mean Temperature',
+      region: 'France',
+      temporal: 'December - February',
+      period: '1850-1900 (Pre-industrial)',
+      spatial: 'Area',
     });
-    expect(curpol?.source).toEqual({ label: 'IPCC AR6' });
-    expect(curpol?.characteristics).toMatchObject({ gmt2100: 2.7 });
-  });
-
-  test('drops ixmp4 scenarios that have no curation entry (curated allow-list)', async () => {
-    server.use(
-      http.patch(`${testInstance.url}/runs/`, () =>
-        HttpResponse.json(
-          listEnvelope([
-            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
-            { id: 9, model: { name: 'M' }, scenario: { name: 'mystery' }, version: 1, is_default: true },
-          ]),
-        ),
-      ),
-    );
-    const res = await api.request('/api/scenarios', {}, createTestEnv());
-    const json = (await res.json()) as { scenarios: Array<{ uid: string }> };
-    expect(json.scenarios.map((s) => s.uid)).toEqual(['curpol']);
-  });
-
-  test('embeds curated gmt and emissions trajectories inline', async () => {
-    server.use(
-      http.patch(`${testInstance.url}/runs/`, () =>
-        HttpResponse.json(
-          listEnvelope([
-            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
-          ]),
-        ),
-      ),
-    );
-    const res = await api.request('/api/scenarios', {}, createTestEnv());
-    const json = (await res.json()) as {
-      scenarios: Array<{
-        uid: string;
-        gmt: { yearStart: number; yearStep: number; data: number[][]; unit?: string };
-        emissions: { yearStart: number; yearStep: number; data: number[] | null; unit?: string };
-      }>;
-    };
-    const curpol = json.scenarios.find((s) => s.uid === 'curpol')!;
-    expect(curpol.gmt.yearStart).toBe(2020);
-    expect(curpol.gmt.yearStep).toBe(5);
-    expect(curpol.gmt.data[0]).toEqual([1.51278, 1.3146, 1.121]);
-    expect(curpol.emissions.yearStart).toBe(2020);
-    expect(Array.isArray(curpol.emissions.data)).toBe(true);
-  });
-
-  test('returns an empty list when ixmp4 has no runs', async () => {
-    const res = await api.request('/api/scenarios', {}, createTestEnv());
-    const json = (await res.json()) as { scenarios: unknown[] };
-    expect(json.scenarios).toEqual([]);
   });
 });

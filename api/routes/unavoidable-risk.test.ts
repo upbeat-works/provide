@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import { api } from '../index';
 import { instances } from '../instances';
-import * as ixmp4 from '../ixmp4';
+import * as ixmp4 from '../views/unavoidable-risk';
 import { createTestEnv } from '../test-helpers';
 
 const instance = instances[0];

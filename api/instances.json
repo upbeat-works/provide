@@ -1,8 +1,8 @@
 [
   {
-    "slug": "sparccle-internal",
-    "name": "SPARCCLE Internal",
-    "url": "https://ixmp4.ece.iiasa.ac.at/v1/sparccle-internal",
+    "slug": "provide-internal",
+    "name": "PROVIDE Internal",
+    "url": "https://ixmp4.ece.iiasa.ac.at/v1/provide-internal",
     "managerUrl": "https://api.manager.ece.iiasa.ac.at/v1"
   }
 ]

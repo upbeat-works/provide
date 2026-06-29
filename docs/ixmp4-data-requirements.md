@@ -1,5 +1,21 @@
 # ixmp4 Data Requirements
 
+> **⚠️ Partially superseded — read this first.** This doc predates the final variable
+> conventions; several specifics below are out of date. What's actually true now:
+>
+> - **Variable names are human-readable**, not slugs: `Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile`. The catalogue parses this convention (`api/conventions.ts`) and collapses variables into indicators — no curated `label`/`sector`/`parameters`/`availableScenarios`.
+> - **Percentile bands** are the value segment `5th/50th/95th Percentile` (not `|p05/|p50/|p95`).
+> - **Units are natural-language** taken from the datapoints `unit` column (`°C`, `%`), not the registry ids listed below. The frontend displays them as-is.
+> - **Scenario names ARE the ids** and are descriptive (`2020 Climate Policies`), the opposite of the "scenario name == catalogue uid (`curpol`)" rule below. The catalogue adopts the ixmp4 names.
+> - **Scenario availability + per-scenario timeframe are data-driven** (`/api/scenarios?indicator=&region=`, from the datapoints), not curated. `sectors` and the curated `scenarios.json`/`indicators.json` have been **retired**.
+> - **Region names** = catalogue geography ids (still true).
+> - **Still curated (transitional):** `study-locations`, `likelihoods` (avoid pages); thresholds + citations (not built yet).
+> - **GMT** (line colouring, warming categories, scenario characteristics) is the big open gap — see [`gmt-open-questions.md`](./gmt-open-questions.md).
+>
+> The grammar/role sections below are still broadly correct; treat the slug/`p05`/`curpol`/unit-id
+> specifics as historical.
+
+
 ## Catalogue metadata
 
 ### `label`

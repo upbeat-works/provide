@@ -74,9 +74,27 @@ export const formatValue = (value, indicatorId = DEFAULT_FORMAT_UID, { addSuffix
   }
   const formatter = customFormatter || indicatorFormats[indicatorId] || indicatorFormats['default'];
   const str = formatter(value);
-  const suffix = addSuffix && suffixes[indicatorId];
+  let suffix = addSuffix ? suffixes[indicatorId] : '';
+  // Natural-language units (e.g. "°C", "days/year") aren't in the registry; the
+  // unit string is its own suffix.
+  if (addSuffix && !suffix && isNaturalLanguageUnit(indicatorId)) {
+    suffix = ` ${indicatorId}`;
+  }
   return suffix ? str + suffix : str;
 };
+
+// A unit id that the format registry knows nothing about is treated as a
+// natural-language unit — its string is used verbatim as the display suffix.
+function isNaturalLanguageUnit(id) {
+  return (
+    typeof id === 'string' &&
+    Boolean(id) &&
+    id !== UID_NO_UNIT &&
+    !(id in indicatorFormats) &&
+    !(id in unitLabels) &&
+    !(id in suffixes)
+  );
+}
 
 function getFormatter(unit, decimals) {
   switch (unit) {

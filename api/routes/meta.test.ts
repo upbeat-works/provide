@@ -11,16 +11,21 @@ async function seed(env: Env['Bindings']) {
     { id: 'cities', label: 'Cities', labelSingular: 'City', order: 2, isAvailable: true },
   ]);
   await env.DB.insert(schema.geographies).values([
-    { id: 'DEU', label: 'Germany', geographyType: 'admin0' },
-    { id: 'FRA', label: 'France', geographyType: 'admin0' },
-    { id: 'berlin', label: 'Berlin', geographyType: 'cities' },
+    { id: 'Germany', label: 'Germany', geographyType: 'admin0', geoId: 'DEU' },
+    { id: 'France', label: 'France', geographyType: 'admin0', geoId: 'FRA' },
+    { id: 'berlin', label: 'Berlin', geographyType: 'cities', geoId: 'berlin' },
   ]);
 }
 
 function useFixtureHandlers() {
   server.use(
     http.patch(`${testInstance.url}/iamc/variables/`, () =>
-      HttpResponse.json(listEnvelope([{ id: 1, name: 'terclim-mean-temperature' }])),
+      HttpResponse.json(
+        listEnvelope([
+          { id: 1, name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile' },
+          { id: 2, name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|1.5 °C' },
+        ]),
+      ),
     ),
     http.patch(`${testInstance.url}/runs/`, () =>
       HttpResponse.json(
@@ -45,7 +50,6 @@ describe('GET /api/meta', () => {
       'admin0',
       'cities',
       'scenarios',
-      'sectors',
       'indicators',
       'indicatorParameters',
       'studyLocations',
@@ -64,44 +68,70 @@ describe('GET /api/meta', () => {
       admin0: Array<{ uid: string; label: string }>;
       cities: Array<{ uid: string; label: string }>;
     };
-    expect(json.admin0.map((g) => g.uid).sort()).toEqual(['DEU', 'FRA']);
+    expect(json.admin0.map((g) => g.uid).sort()).toEqual(['France', 'Germany']);
     expect(json.cities.map((g) => g.uid)).toEqual(['berlin']);
   });
 
-  test('enriches indicators with curation metadata', async () => {
+  test('exposes each geography geoId for linking to map shapes', async () => {
     const env = createTestEnv();
     await seed(env);
     useFixtureHandlers();
     const res = await api.request('/api/meta', {}, env);
     const json = (await res.json()) as {
-      indicators: Array<{ uid: string; label: string; sector: string; unit: string }>;
+      admin0: Array<{ uid: string; geoId?: string }>;
     };
-    const ind = json.indicators.find((i) => i.uid === 'terclim-mean-temperature');
-    // Variable name doubles as display label for now (curated label is overridden).
-    expect(ind).toMatchObject({
-      label: 'terclim-mean-temperature',
-      sector: 'terrestrial-climate',
-      unit: 'degrees-celsius',
-    });
+    expect(json.admin0.find((g) => g.uid === 'Germany')?.geoId).toBe('DEU');
   });
 
-  test('embeds curated gmt and emissions trajectories in scenarios', async () => {
+  test('collapses convention variables into one indicator with its facet values', async () => {
     const env = createTestEnv();
     await seed(env);
     useFixtureHandlers();
     const res = await api.request('/api/meta', {}, env);
     const json = (await res.json()) as {
-      scenarios: Array<{
+      indicators: Array<{
         uid: string;
-        gmt: { yearStart: number; yearStep: number; data: number[][] };
-        emissions: { yearStart: number; yearStep: number; data: number[] | null };
+        label: string;
+        temporals: string[];
+        warmingLevels: string[];
+        percentiles: string[];
       }>;
     };
-    const curpol = json.scenarios.find((s) => s.uid === 'curpol')!;
-    expect(curpol.gmt.yearStart).toBe(2020);
-    expect(curpol.gmt.yearStep).toBe(5);
-    expect(curpol.gmt.data[0]).toEqual([1.51278, 1.3146, 1.121]);
-    expect(curpol.emissions.yearStart).toBe(2020);
+    // The two raw variable strings collapse into a single searchable indicator.
+    expect(json.indicators.map((i) => i.uid)).toEqual(['Mean Temperature']);
+    const mt = json.indicators[0];
+    expect(mt.label).toBe('Mean Temperature');
+    expect(mt.temporals).toEqual(['Annual']);
+    expect(mt.percentiles).toEqual(['50th Percentile']);
+    expect(mt.warmingLevels).toEqual(['1.5 °C']);
+  });
+
+  test('exposes convention facets as selector parameters (time/reference/spatial)', async () => {
+    const env = createTestEnv();
+    await seed(env);
+    useFixtureHandlers();
+    const res = await api.request('/api/meta', {}, env);
+    const json = (await res.json()) as {
+      indicators: Array<{ uid: string; parameters: Record<string, string[]> }>;
+      indicatorParameters: Array<{ uid: string; label: string; options: Array<{ uid: string; label: string }> }>;
+    };
+    const mt = json.indicators.find((i) => i.uid === 'Mean Temperature')!;
+    expect(mt.parameters.time).toEqual(['Annual']);
+    expect(mt.parameters.reference).toEqual(['2011-2020 (Present Day)']);
+    expect(mt.parameters.spatial).toEqual(['Area']);
+    // The global dictionary mirrors the facets with raw uid === label.
+    const time = json.indicatorParameters.find((p) => p.uid === 'time')!;
+    expect(time.options).toEqual([{ uid: 'Annual', label: 'Annual' }]);
+  });
+
+  test('derives scenarios from ixmp4 runs (name is the id, no curation)', async () => {
+    const env = createTestEnv();
+    await seed(env);
+    useFixtureHandlers();
+    const res = await api.request('/api/meta', {}, env);
+    const json = (await res.json()) as { scenarios: Array<{ uid: string; label: string }> };
+    // The runs fixture exposes one scenario, "curpol"; it surfaces verbatim.
+    expect(json.scenarios).toEqual([{ uid: 'curpol', label: 'curpol' }]);
   });
 
   test('returns sectors, studyLocations, likelihoods, indicatorParameters as arrays', async () => {
@@ -110,7 +140,7 @@ describe('GET /api/meta', () => {
     useFixtureHandlers();
     const res = await api.request('/api/meta', {}, env);
     const json = (await res.json()) as Record<string, unknown[]>;
-    for (const key of ['sectors', 'studyLocations', 'likelihoods', 'indicatorParameters']) {
+    for (const key of ['studyLocations', 'likelihoods', 'indicatorParameters']) {
       expect(Array.isArray(json[key])).toBe(true);
       expect((json[key] as unknown[]).length).toBeGreaterThan(0);
     }
@@ -148,4 +178,49 @@ describe('GET /api/meta', () => {
     const json = (await res.json()) as { geographyTypes: unknown[] };
     expect(json.geographyTypes).toEqual([]);
   });
+
+  test('includes a continent list', async () => {
+    const env = createTestEnv();
+    await seedHierarchy(env);
+    useFixtureHandlers();
+    const res = await api.request('/api/meta', {}, env);
+    const json = (await res.json()) as Record<string, Array<{ uid: string }>>;
+    expect(json.continent.map((c) => c.uid)).toEqual(['Africa']);
+  });
+
+  test('attaches parents to each geography', async () => {
+    const env = createTestEnv();
+    await seedHierarchy(env);
+    useFixtureHandlers();
+    const res = await api.request('/api/meta', {}, env);
+    const json = (await res.json()) as Record<string, Array<{ uid: string; parents: string[] }>>;
+    expect(json.admin0.find((g) => g.uid === 'Egypt')?.parents).toEqual(['Africa']);
+    expect(json.cities.find((g) => g.uid === 'Cairo')?.parents).toEqual(['Egypt']);
+  });
+
+  test('marks the continent type as not selectable', async () => {
+    const env = createTestEnv();
+    await seedHierarchy(env);
+    useFixtureHandlers();
+    const res = await api.request('/api/meta', {}, env);
+    const json = (await res.json()) as { geographyTypes: Array<{ uid: string; isSelectable: boolean }> };
+    expect(json.geographyTypes.find((t) => t.uid === 'continent')?.isSelectable).toBe(false);
+  });
 });
+
+async function seedHierarchy(env: Env['Bindings']) {
+  await env.DB.insert(schema.geographyTypes).values([
+    { id: 'continent', label: 'Continents', order: -1, isSelectable: false },
+    { id: 'admin0', label: 'Countries', order: 0, isSelectable: true },
+    { id: 'cities', label: 'Cities', order: 1, isSelectable: true },
+  ]);
+  await env.DB.insert(schema.geographies).values([
+    { id: 'Africa', label: 'Africa', geographyType: 'continent' },
+    { id: 'Egypt', label: 'Egypt', geographyType: 'admin0' },
+    { id: 'Cairo', label: 'Cairo', geographyType: 'cities' },
+  ]);
+  await env.DB.insert(schema.geographyParents).values([
+    { geographyId: 'Egypt', parentId: 'Africa' },
+    { geographyId: 'Cairo', parentId: 'Egypt' },
+  ]);
+}

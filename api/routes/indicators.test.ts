@@ -7,13 +7,14 @@ import { createTestEnv, listEnvelope, server } from '../test-helpers';
 const instance = instances[0];
 
 describe('GET /api/indicators', () => {
-  test('returns curated indicators joined with ixmp4 variables', async () => {
+  test('collapses raw variable strings into one entry per convention indicator', async () => {
     server.use(
       http.patch(`${instance.url}/iamc/variables/`, () =>
         HttpResponse.json(
           listEnvelope([
-            { id: 1, name: 'terclim-mean-temperature' },
-            { id: 2, name: 'terclim-hot-extreme' },
+            { id: 1, name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile' },
+            { id: 2, name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|1.5 °C' },
+            { id: 3, name: 'Fire Season Length|2011-2020 (Present Day)|Annual|Area|95th Percentile' },
           ]),
         ),
       ),
@@ -21,51 +22,11 @@ describe('GET /api/indicators', () => {
     const res = await api.request('/api/indicators', {}, createTestEnv());
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
-      indicators: Array<{
-        uid: string;
-        label: string;
-        unit: string;
-        sector: string;
-        direction: number;
-        parameters: Record<string, string[]>;
-        availableScenarios: string[];
-        instance: string;
-      }>;
+      indicators: Array<{ uid: string; label: string; instance: string }>;
     };
-    expect(json.indicators).toHaveLength(2);
-    const meanTemp = json.indicators.find((i) => i.uid === 'terclim-mean-temperature');
-    expect(meanTemp).toMatchObject({
-      uid: 'terclim-mean-temperature',
-      // For now, the variable name doubles as display label; curated `label`
-      // is intentionally overridden.
-      label: 'terclim-mean-temperature',
-      unit: 'degrees-celsius',
-      sector: 'terrestrial-climate',
-      direction: -1,
-      instance: instance.slug,
-    });
-    expect(meanTemp?.parameters.time).toEqual(['annual', 'djf', 'mam', 'jja', 'son']);
-    expect(Array.isArray(meanTemp?.availableScenarios)).toBe(true);
-  });
-
-  test('filters by ?sector=', async () => {
-    server.use(
-      http.patch(`${instance.url}/iamc/variables/`, () =>
-        HttpResponse.json(
-          listEnvelope([
-            { id: 1, name: 'terclim-mean-temperature' },
-            { id: 2, name: 'urbclim-T2M-dayover25' },
-          ]),
-        ),
-      ),
-    );
-    const res = await api.request('/api/indicators?sector=urban-climate', {}, createTestEnv());
-    const json = (await res.json()) as { indicators: Array<{ uid: string; sector: string }> };
-    for (const ind of json.indicators) {
-      expect(ind.sector).toBe('urban-climate');
-    }
-    expect(json.indicators.map((i) => i.uid)).toContain('urbclim-T2M-dayover25');
-    expect(json.indicators.map((i) => i.uid)).not.toContain('terclim-mean-temperature');
+    // The three variable strings collapse into two searchable indicators.
+    expect(json.indicators.map((i) => i.uid).sort()).toEqual(['Fire Season Length', 'Mean Temperature']);
+    expect(json.indicators[0]).toMatchObject({ label: json.indicators[0].uid, instance: instance.slug });
   });
 
   test('forwards ?q= as an ilike filter to ixmp4', async () => {

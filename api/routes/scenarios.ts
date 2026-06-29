@@ -1,31 +1,38 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
-import { createPlatforms } from '../platform';
-import { scenarios as curated, scenarioByUid } from '../curation/scenarios';
+import { instances } from '../instances';
+import { fetchScenarioAvailability } from '../views/scenarios';
 
 const route = new Hono<Env>();
 
+// The scenarios (and each one's timeframe) that have data for an indicator in a
+// region, for the current parameter selection — derived from ixmp4, no curation.
 route.get('/', async (c) => {
-  const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
-  const platforms = await createPlatforms(username, password);
-
-  const runsPerInstance = await Promise.all(
-    platforms.map(({ platform }) => platform.runs.list()),
-  );
-
-  const seen = new Set<string>();
-  const scenarios: typeof curated = [];
-  for (const runs of runsPerInstance) {
-    for (const run of runs) {
-      const uid = run.scenario.name;
-      if (seen.has(uid)) continue;
-      const meta = scenarioByUid[uid];
-      if (!meta) continue;
-      seen.add(uid);
-      scenarios.push(meta);
-    }
+  const indicator = c.req.query('indicator');
+  const region = c.req.query('region');
+  if (!indicator || !region) {
+    return c.json({ error: 'indicator and region query parameters are required' }, 400);
   }
 
+  const instanceSlug = c.req.query('instance');
+  const instance = instanceSlug ? instances.find((i) => i.slug === instanceSlug) : instances[0];
+  if (!instance) {
+    return c.json({ error: `Unknown instance: ${instanceSlug}` }, 404);
+  }
+
+  const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
+  // Selector dropdowns send raw convention values under the UI's param keys.
+  const scenarios = await fetchScenarioAvailability(
+    instance,
+    { username, password },
+    {
+      indicator,
+      region,
+      period: c.req.query('reference'),
+      temporal: c.req.query('time'),
+      spatial: c.req.query('spatial'),
+    },
+  );
   return c.json({ scenarios });
 });
 

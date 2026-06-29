@@ -20,8 +20,8 @@ import { getLocalStorage, setLocalStorage, getAllLocalStorage } from './utils.js
 import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
 import { extractEndYear, extractStartYear } from '$utils/meta.js';
 
-import { DEFAULT_GEOGRAPHY_UID, DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
-import { GEOGRAPHY_TYPES, INDICATORS, SECTORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
+import { DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
+import { GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, GEOGRAPHY_INDEX, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
 
 // Optional CSS class(es) to override the header background, set per-page
 export const HEADER_CLASS = writable('');
@@ -83,14 +83,40 @@ export const SELECTABLE_GEOGRAPHY_TYPES = derived(AVAILABLE_GEOGRAPHY_TYPES, ($t
 
 /**
  * Writable store that holds the uid of the currently selected geography.
- * Upon loading it checks the localstore. If fallbacks to a default value.
- * @type {Writable<number>}
+ * Initialised from localStorage only — there is no hardcoded default geography;
+ * the first geography in the list is auto-selected once the catalog loads (see
+ * the effect below).
+ * @type {Writable<string|undefined>}
  */
-export const CURRENT_GEOGRAPHY_UID = writable(getLocalStorage(LOCALSTORE_GEOGRAPHY, DEFAULT_GEOGRAPHY_UID));
+export const CURRENT_GEOGRAPHY_UID = writable(getLocalStorage(LOCALSTORE_GEOGRAPHY, undefined));
 // Listen to the store to update the localstorage on change.
 CURRENT_GEOGRAPHY_UID.subscribe((value) => {
   setLocalStorage(LOCALSTORE_GEOGRAPHY, value);
 });
+
+// Auto-select a default geography — the first one in the list — whenever none is
+// valid (no localStorage value, or a stored id that no longer exists). For the
+// Countries tab this is the first country of the first continent group, matching
+// what the selector renders at the top; otherwise the first geography of the
+// first selectable type, by label.
+if (browser) {
+  derived([SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES, GEOGRAPHY_INDEX], (v) => v).subscribe(
+    ([$types, $geographies, $index]) => {
+      if (!$types.length) return;
+      const uid = getStore(CURRENT_GEOGRAPHY_UID);
+      const isValid = uid && $types.some(({ uid: type }) => ($geographies[type] ?? []).some((g) => g.uid === uid));
+      if (isValid) return;
+      const firstType = $types[0].uid;
+      let first;
+      if (firstType === 'admin0') {
+        const groups = _.sortBy(Object.entries($index.countriesByContinent ?? {}), '0');
+        first = groups[0]?.[1]?.[0];
+      }
+      first ??= _.sortBy($geographies[firstType] ?? [], 'label')[0];
+      if (first) CURRENT_GEOGRAPHY_UID.set(first.uid);
+    },
+  );
+}
 
 /**
  * Derived store that filters the disabled geography types
@@ -228,20 +254,6 @@ export const AVAILABLE_INDICATORS = derived(
   },
   [],
 );
-
-export const SELECTABLE_SECTORS = derived([SECTORS, AVAILABLE_INDICATORS], ([$sectors, $indicators]) => {
-  return $sectors.map(({ uid, label }) => {
-    const indicators = $indicators.filter(({ sector }) => sector === uid);
-    return {
-      label,
-      uid,
-      indicators,
-      amount: indicators.length,
-      disabled: !indicators.length,
-      count: indicators.length,
-    };
-  });
-});
 
 export const CURRENT_INDICATOR_UID = writable(getLocalStorage(LOCALSTORE_INDICATOR, undefined));
 
@@ -403,8 +415,6 @@ export const CURRENT_INDICATOR_PARAMETERS = derived([CURRENT_INDICATOR, INDICATO
   return indicatorParameters;
 });
 
-// export const CURRENT_GEOGRAPHY_UID = writable(getLocalStorage(LOCALSTORE_GEOGRAPHY, DEFAULT_GEOGRAPHY_UID));
-
 // Key value store of full parameter objects
 export const CURRENT_INDICATOR_OPTIONS = derived([CURRENT_INDICATOR_OPTION_VALUES, DICTIONARY_INDICATOR_PARAMETERS], ([$currentOptions, $parameters]) => {
   return reduce(
@@ -422,7 +432,7 @@ export const CURRENT_INDICATOR_LABEL = derived([CURRENT_INDICATOR, CURRENT_INDIC
   let labelWithinSentence = get($indicator, ['labelWithinSentence']); // This is the regular label we use
   let label = get($indicator, ['label']); // This is the regular label we use
   // Check if the current options hold an indicator value and if the indicator has the indicator value option
-  if ($options.hasOwnProperty('indicator_value') && $indicator?.parameters.indicator_value?.length) {
+  if ($options.hasOwnProperty('indicator_value') && $indicator?.parameters?.indicator_value?.length) {
     // Check if there is a X°C in the label
     if (labelWithinSentence.match(/X°C/)) {
       // Replace the part with the label from the options
@@ -479,17 +489,16 @@ export const CURRENT_SCENARIOS_UID = (() => {
         if (selectedUids.length === 0) return [id]; // If there was no scenarios previously selected
 
         const availableScenarios = getStore(SELECTABLE_SCENARIOS);
-        const availableScenariosUids = availableScenarios.map((d) => d.uid);
-        // Make sure we only keep the scenarios that are actually available. Otherwise we might
-        // prevent the selection of a new scenario if the three selected are not available
-        const availableSelected = selectedUids.filter((uid) => availableScenariosUids.includes(uid));
-        if (availableSelected.length === 0) return [id]; // If there was no available scenarios previously selected
-        // Find current timeframe to see if the timeframe changed
-        const scenarios = getStore(DICTIONARY_SCENARIOS);
-        const currentTimeframe = extractEndYear(scenarios[availableSelected[0]]);
-        const timeframeChanged = currentTimeframe !== timeframe;
-        // If timeframe changed we want to remove all the old scenarios
-        if (timeframeChanged) return [id];
+        const byUid = keyBy(availableScenarios, 'uid');
+        // Keep only scenarios still available, so an unavailable existing
+        // selection doesn't block adding a new one.
+        const availableSelected = selectedUids.filter((uid) => byUid[uid]);
+        if (availableSelected.length === 0) return [id];
+        // Timeframes can't be mixed: if a timeframe is active and the current
+        // selection belongs to a different one, reset. endYear is data-driven
+        // (it lives on the available scenarios, not on the bare meta list).
+        const currentTimeframe = byUid[availableSelected[0]]?.endYear;
+        if (timeframe != null && currentTimeframe !== timeframe) return [id];
 
         // The default list
         let updatedList = availableSelected;
@@ -516,23 +525,6 @@ CURRENT_SCENARIOS_UID.subscribe((value) => {
   setLocalStorage(LOCALSTORE_SCENARIOS, JSON.stringify(scenarios));
 });
 
-if (browser) {
-  // This is necessary since CURRENT_INDICATOR depends on the page store (some levels down)
-  // Because of this, we can not subscribe to it.
-  // More information here: https://kit.svelte.dev/docs/state-management#avoid-shared-state-on-the-server
-  CURRENT_INDICATOR.subscribe((indicator) => {
-    const selectableScenarios = indicator?.availableScenarios ?? [];
-    if (selectableScenarios.length) {
-      // The list of available scenarios is empty at the first loading of the page. This should not result in filtering the list.
-      const currentScenarios = getStore(CURRENT_SCENARIOS_UID) || [];
-      const validScenarios = currentScenarios.filter((scenario) => selectableScenarios.includes(scenario));
-      if (!isEqual(validScenarios, currentScenarios)) {
-        console.warn(`Unavailable scenario(s) selected. Will reset to list of available scenarios.`);
-        CURRENT_SCENARIOS_UID.set(validScenarios);
-      }
-    }
-  });
-}
 
 export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCENARIOS, THEME], ([$uids, $scenarios, $theme]) =>
   ($uids ?? []).map((uid, i) => ({
@@ -544,13 +536,53 @@ export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCEN
 
 export const DICTIONARY_CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS], ([$currentScenarios]) => keyBy($currentScenarios, 'uid'));
 
-export const AVAILABLE_SCENARIOS = derived([SCENARIOS, CURRENT_INDICATOR], ([$SCENARIOS, $CURRENT_INDICATOR]) => {
-  return $SCENARIOS.map((scenario) => {
-    return {
-      ...scenario,
-      disabled: !get($CURRENT_INDICATOR, 'availableScenarios', []).includes(scenario.uid),
-    };
-  });
+/**
+ * Which scenarios have data for the current indicator + geography + parameter
+ * selection, and each one's timeframe — read from ixmp4 (not curation). Returns
+ * [{ uid, yearStart, yearStep, yearEnd }]. Re-fetches when the selection or any
+ * facet (time/reference/spatial) changes.
+ * @type {Readable<Array<{uid:string,yearStart:number,yearStep:number,yearEnd:number}>>}
+ */
+let scenarioAvailabilityRequestId = 0;
+export const SCENARIO_AVAILABILITY = derived(
+  [CURRENT_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_OPTION_VALUES],
+  ([$indicator, $geoUid, $options], set) => {
+    const indicatorUid = $indicator?.uid;
+    if (!indicatorUid || !$geoUid || !API_URL || !browser) {
+      set([]);
+      return;
+    }
+    const params = new URLSearchParams({ indicator: indicatorUid, region: $geoUid });
+    if ($indicator?.instance) params.set('instance', $indicator.instance);
+    // Facet dropdowns store raw convention values under these keys.
+    for (const key of ['time', 'reference', 'spatial']) {
+      if ($options?.[key]) params.set(key, $options[key]);
+    }
+    const requestId = ++scenarioAvailabilityRequestId;
+    fetch(`${API_URL}/scenarios/?${params}`)
+      .then((r) => r.json())
+      .then(({ scenarios }) => {
+        if (requestId !== scenarioAvailabilityRequestId) return;
+        set(scenarios ?? []);
+      })
+      .catch((e) => {
+        if (requestId !== scenarioAvailabilityRequestId) return;
+        console.warn(`scenarios?indicator=${indicatorUid}&region=${$geoUid} failed:`, e);
+        set([]);
+      });
+  },
+  [],
+);
+
+export const AVAILABLE_SCENARIOS = derived([SCENARIOS, SCENARIO_AVAILABILITY], ([$SCENARIOS, $availability]) => {
+  // A scenario is selectable iff ixmp4 has data for it under this selection; its
+  // timeframe (endYear) comes from that data and drives the timeframe pills.
+  const byUid = keyBy($availability, 'uid');
+  return $SCENARIOS.map((scenario) => ({
+    ...scenario,
+    endYear: byUid[scenario.uid]?.yearEnd,
+    disabled: !byUid[scenario.uid],
+  }));
 });
 
 export const SELECTABLE_SCENARIOS = derived([AVAILABLE_SCENARIOS], ([$scenarios]) => {
@@ -558,6 +590,26 @@ export const SELECTABLE_SCENARIOS = derived([AVAILABLE_SCENARIOS], ([$scenarios]
 });
 
 export const SELECTABLE_SCENARIOS_UID = derived(SELECTABLE_SCENARIOS, ($scenarios) => $scenarios.map(({ uid }) => uid));
+
+// Keep the scenario selection in sync with what ixmp4 actually has for the
+// current indicator/geography/parameters (availability is data-driven, not
+// curated). When the current selection becomes invalid or empty, fall back to
+// the preferred default (DEFAULT_SCENARIOS_UID, e.g. the "Current Policies"
+// equivalent) if it's available, otherwise the first available scenario. An
+// empty selectable set means availability is still loading — leave it untouched.
+if (browser) {
+  SELECTABLE_SCENARIOS_UID.subscribe((selectable) => {
+    if (!selectable.length) return;
+    const current = getStore(CURRENT_SCENARIOS_UID) || [];
+    const valid = current.filter((uid) => selectable.includes(uid));
+    if (valid.length) {
+      if (!isEqual(valid, current)) CURRENT_SCENARIOS_UID.set(valid);
+      return;
+    }
+    const preferred = DEFAULT_SCENARIOS_UID.filter((uid) => selectable.includes(uid));
+    CURRENT_SCENARIOS_UID.set(preferred.length ? preferred : [selectable[0]]);
+  });
+}
 
 export const AVAILABLE_TIMEFRAMES = derived([AVAILABLE_SCENARIOS, SELECTABLE_SCENARIOS], ([$available, $selectable]) => {
   return extractEndYearFromScenarios($available ?? [], $selectable ?? []);

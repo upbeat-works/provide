@@ -2,10 +2,8 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { schema } from '../db';
 import { createPlatforms } from '../platform';
-import { scenarios as scenariosCuration } from '../curation/scenarios';
-import { sectors as sectorsCuration } from '../curation/sectors';
-import { indicatorByUid } from '../curation/indicators';
-import { indicatorParameters } from '../curation/indicator-parameters';
+import { parseVariable, indicatorsFromVariables } from '../conventions';
+import { distinct } from '../util';
 import { studyLocations } from '../curation/study-locations';
 import { likelihoods } from '../curation/likelihoods';
 
@@ -15,10 +13,11 @@ meta.get('/', async (c) => {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
   const platforms = await createPlatforms(username, password);
 
-  const [geographyTypeRows, geographyRows, instanceVariables, instanceRuns] =
+  const [geographyTypeRows, geographyRows, parentRows, instanceVariables, instanceRuns] =
     await Promise.all([
       c.env.DB.select().from(schema.geographyTypes).orderBy(schema.geographyTypes.order),
       c.env.DB.select().from(schema.geographies),
+      c.env.DB.select().from(schema.geographyParents),
       Promise.all(
         platforms.map(async ({ instance, platform }) => {
           const variables = await platform.iamc.variables.list();
@@ -34,36 +33,68 @@ meta.get('/', async (c) => {
     labelSingular: r.labelSingular ?? undefined,
     order: r.order ?? undefined,
     isAvailable: r.isAvailable ?? true,
+    isSelectable: r.isSelectable ?? true,
   }));
 
-  const geographiesByType: Record<string, Array<{ uid: string; label: string }>> = {};
+  const parentsByChild: Record<string, string[]> = {};
+  for (const r of parentRows) (parentsByChild[r.geographyId] ??= []).push(r.parentId);
+
+  const geographiesByType: Record<
+    string,
+    Array<{ uid: string; label: string; geoId?: string; parents: string[] }>
+  > = {};
   for (const geo of geographyRows) {
-    (geographiesByType[geo.geographyType] ??= []).push({ uid: geo.id, label: geo.label });
+    (geographiesByType[geo.geographyType] ??= []).push({
+      uid: geo.id,
+      label: geo.label,
+      geoId: geo.geoId ?? undefined,
+      parents: parentsByChild[geo.id] ?? [],
+    });
   }
 
   const variablesFlat = instanceVariables.flat();
-  const seenIndicators = new Set<string>();
-  const indicators: Array<Record<string, unknown>> = [];
+  // Collapse the raw ixmp4 variable strings into one searchable indicator each,
+  // carrying its available facet values — derived purely from the naming
+  // convention (no curation). Track the source instance per indicator.
+  const instanceByIndicator = new Map<string, string>();
   for (const { name, instance } of variablesFlat) {
-    if (seenIndicators.has(name)) continue;
-    const curation = indicatorByUid[name];
-    seenIndicators.add(name);
-    // Permissive: include all ixmp4 variables, even those without curation.
-    // Variable name doubles as uid and display label; curated fields spread on top.
-    indicators.push({ ...curation, uid: name, label: name, instance });
+    const { indicator } = parseVariable(name);
+    if (!instanceByIndicator.has(indicator)) instanceByIndicator.set(indicator, instance);
   }
+  const indicatorFacets = indicatorsFromVariables(variablesFlat.map((v) => v.name));
+  // Map the convention facets onto the parameter keys the selector UI expects.
+  // Values are raw convention strings (their own label); the warming-level and
+  // percentile axes are the chart's value dimension, not user dropdowns.
+  const indicators = indicatorFacets.map((ind) => ({
+    ...ind,
+    instance: instanceByIndicator.get(ind.uid),
+    parameters: {
+      time: ind.temporals,
+      reference: ind.periods,
+      spatial: ind.spatials,
+    },
+  }));
 
-  const scenariosAvailable = new Set<string>();
-  for (const runs of instanceRuns) {
-    for (const run of runs) scenariosAvailable.add(run.scenario.name);
-  }
-  const scenarios = scenariosCuration.filter((s) => scenariosAvailable.has(s.uid));
+  // The global parameter dictionary: one entry per dimension, options = the
+  // union of raw facet values across indicators (uid === label).
+  const optionUnion = (key: 'temporals' | 'periods' | 'spatials') =>
+    distinct(indicatorFacets.flatMap((ind) => ind[key])).map((value) => ({ uid: value, label: value }));
+  const indicatorParameters = [
+    { uid: 'time', label: 'Time', options: optionUnion('temporals') },
+    { uid: 'reference', label: 'Reference', options: optionUnion('periods') },
+    { uid: 'spatial', label: 'Spatial', options: optionUnion('spatials') },
+  ].filter((p) => p.options.length);
+
+  // Scenarios are derived straight from the ixmp4 runs — the scenario name is
+  // the id (convention-driven, no curation). GMT/characteristics that used to be
+  // curated here now ride along with the impact-time data instead.
+  const scenarioNames = distinct(instanceRuns.flat().map((run) => run.scenario.name));
+  const scenarios = scenarioNames.map((name) => ({ uid: name, label: name }));
 
   return c.json({
     geographyTypes,
     ...geographiesByType,
     scenarios,
-    sectors: sectorsCuration,
     indicators,
     indicatorParameters,
     studyLocations,

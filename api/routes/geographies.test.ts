@@ -25,6 +25,43 @@ describe('GET /api/geographies', () => {
     expect(json.map((g) => g.id).sort()).toEqual(['DEU', 'FRA']);
   });
 
+  test('geography_parents join table accepts parent edges', async () => {
+    await env.DB.insert(schema.geographyTypes).values([
+      { id: 'continent', label: 'Continents', isSelectable: false },
+      { id: 'admin0', label: 'Countries' },
+    ]);
+    await env.DB.insert(schema.geographies).values([
+      { id: 'Africa', label: 'Africa', geographyType: 'continent' },
+      { id: 'Egypt', label: 'Egypt', geographyType: 'admin0' },
+    ]);
+    await env.DB.insert(schema.geographyParents).values({
+      geographyId: 'Egypt',
+      parentId: 'Africa',
+    });
+    const rows = await env.DB.select().from(schema.geographyParents);
+    expect(rows).toEqual([{ geographyId: 'Egypt', parentId: 'Africa' }]);
+  });
+
+  test('attaches parents to each returned geography', async () => {
+    await env.DB.insert(schema.geographyTypes).values([
+      { id: 'continent', label: 'Continents', isSelectable: false },
+      { id: 'admin0', label: 'Countries' },
+    ]);
+    await env.DB.insert(schema.geographies).values([
+      { id: 'Africa', label: 'Africa', geographyType: 'continent' },
+      { id: 'Egypt', label: 'Egypt', geographyType: 'admin0' },
+    ]);
+    await env.DB.insert(schema.geographyParents).values({ geographyId: 'Egypt', parentId: 'Africa' });
+
+    const res = await api.request('/api/geographies?type=admin0', {}, env);
+    const json = (await res.json()) as Array<{ id: string; parents: string[] }>;
+    expect(json.find((g) => g.id === 'Egypt')?.parents).toEqual(['Africa']);
+
+    const single = await api.request('/api/geographies/Egypt', {}, env);
+    const one = (await single.json()) as { id: string; parents: string[] };
+    expect(one.parents).toEqual(['Africa']);
+  });
+
   test('filters by ?type=', async () => {
     await env.DB.insert(schema.geographyTypes).values([
       { id: 'admin0', label: 'Countries' },
@@ -88,15 +125,17 @@ describe('GET /api/geographies', () => {
       }),
     );
     const res = await api.request(
-      '/api/geographies?indicator=terclim-mean-temperature',
+      '/api/geographies?indicator=Mean%20Temperature',
       {},
       env,
     );
     expect(res.status).toBe(200);
     const json = (await res.json()) as Array<{ id: string }>;
     expect(json.map((g) => g.id).sort()).toEqual(['DEU', 'FRA']);
+    // The collapsed indicator is resolved to a full faceted variable name so it
+    // actually matches ixmp4 variables (which are never the bare indicator).
     expect(capturedFilter).toMatchObject({
-      iamc: { variable: { name: 'terclim-mean-temperature' } },
+      iamc: { variable: { name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile' } },
     });
   });
 

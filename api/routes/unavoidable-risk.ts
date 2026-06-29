@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { instances } from '../instances';
-import { fetchEnsemble } from '../ixmp4';
+import { fetchEnsemble } from '../views/unavoidable-risk';
 
 const unavoidableRisk = new Hono<Env>();
 

@@ -1,13 +1,18 @@
 import { page } from '$app/stores';
 import { UID_STUDY_LOCATION_AVERAGE } from '$config';
 import { unitLabels } from '$lib/utils/formatting';
-import { get, keyBy, uniq, without, sortBy } from 'lodash-es';
+import { buildIndex } from '$lib/components/controls/GeographySelection/geography-tree.js';
+import { get, keyBy, sortBy } from 'lodash-es';
 import { derived } from 'svelte/store';
 
 // META DATA (This will only be set once on load and won't change again)
+// Non-selectable types (continents) are grouping headers only — they must never
+// appear as a selectable pill, so they are filtered out here.
 export const GEOGRAPHY_TYPES = derived(page, ($page) =>
   sortBy(
-    ($page.data?.meta?.geographyTypes ?? []).map((t) => ({ ...t, disabled: !t.isAvailable })),
+    ($page.data?.meta?.geographyTypes ?? [])
+      .filter((t) => t.isSelectable !== false)
+      .map((t) => ({ ...t, disabled: !t.isAvailable })),
     [
       (t) => t.disabled, // This sorts the available types first
       (t) => t.order,
@@ -19,7 +24,7 @@ export const GEOGRAPHY_TYPES = derived(page, ($page) =>
 export const GEOGRAPHIES = derived(page, ($page) => {
   // Extract the geography types and its data from the data provided by the load function
   const { geographyTypes, ...meta } = $page.data?.meta ?? {};
-  if (geographyTypes.length) {
+  if (geographyTypes?.length) {
     const geographies = geographyTypes.map(({ uid }) => {
       // Find the array of geographies for this geography type in the meta endpoint
       const geographiesOfType = get(meta, uid, []).map((d) => ({
@@ -34,43 +39,33 @@ export const GEOGRAPHIES = derived(page, ($page) => {
   }
 });
 
+// Tree lookups (byId, childrenByParent, countriesByContinent) derived once from
+// the flat per-type geography map. Continents flow through GEOGRAPHIES under the
+// `continent` key, so country -> continent grouping resolves here even though
+// continents are not a selectable type.
+export const GEOGRAPHY_INDEX = derived(GEOGRAPHIES, ($geographies) => buildIndex($geographies));
+
 export const SCENARIOS = derived(page, ($page) => {
   return $page.data?.meta?.scenarios ?? [];
 });
 
 export const DICTIONARY_SCENARIOS = derived(SCENARIOS, ($scenarios) => keyBy($scenarios, 'uid'));
 
-export const SECTORS = derived(page, ($page) => $page.data?.meta?.sectors ?? []);
 
 export const INDICATORS = derived(page, ($page) => {
   const meta = $page.data?.meta ?? {};
   const indicators = meta.indicators ?? [];
-  const sectors = meta.sectors ?? [];
   return indicators.map((indicator) => {
-    // Un-curated indicators (no curation entry / unknown sector) get safe
-    // empty availability defaults so downstream stores don't crash.
-    const sector = sectors.find((s) => s.uid === indicator.sector) ?? {
-      availableScenarios: [],
-    };
+    // Scenario availability + geography filtering are no longer curated — they
+    // come from ixmp4 (`/api/scenarios?indicator=&region=`, `/api/geographies?indicator=`).
     const labels = unitLabels[indicator.unit];
     const unit = {
       uid: indicator.unit,
       label: labels?.label ?? indicator.unit,
       labelLong: labels?.labelLong ?? indicator.unit,
     };
-    // availableGeographies is no longer derived from curation — geography
-    // filtering is driven by `/api/geographies?indicator=` lookups in state.js.
-    const availableScenarios = without(
-      uniq([
-        ...(sector.availableScenarios ?? []),
-        ...(indicator.availableScenarios ?? []),
-      ]),
-      ...(indicator.excludedScenarios ?? []),
-    );
-
     return {
       ...indicator,
-      availableScenarios,
       unit,
     };
   });

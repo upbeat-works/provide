@@ -2,15 +2,14 @@ import { Hono } from 'hono';
 import type { VariableFilter } from '@iiasa/ixmp4-ts';
 import type { Env } from '../types';
 import { createPlatforms } from '../platform';
-import { fetchTimeSeries } from '../ixmp4';
-import { indicatorByUid } from '../curation/indicators';
+import { parseVariable } from '../conventions';
+import { distinct } from '../util';
 
 const route = new Hono<Env>();
 
 route.get('/', async (c) => {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
   const search = c.req.query('q');
-  const sector = c.req.query('sector');
   const region = c.req.query('region');
 
   const platforms = await createPlatforms(username, password);
@@ -25,50 +24,19 @@ route.get('/', async (c) => {
     }),
   );
 
-  const seen = new Set<string>();
-  const indicators: Array<Record<string, unknown>> = [];
-  for (const list of perInstance) {
-    for (const { name, instance } of list) {
-      if (seen.has(name)) continue;
-      const meta = indicatorByUid[name];
-      if (sector && meta?.sector !== sector) continue;
-      seen.add(name);
-      // Variable name doubles as uid and display label for now; curated fields
-      // (sector, parameters, etc.) spread on top when present.
-      indicators.push({ ...meta, uid: name, label: name, instance });
-    }
-  }
+  // Collapse the raw ixmp4 variable strings into one entry per convention
+  // indicator (matching /meta), so the catalogue can intersect by uid. With a
+  // ?region= filter these are the indicators that have data for that geography.
+  const perIndicator = perInstance
+    .flat()
+    .map(({ name, instance }) => ({ uid: parseVariable(name).indicator, instance }));
+  const indicators = distinct(perIndicator, (i) => i.uid).map(({ uid, instance }) => ({
+    uid,
+    label: uid,
+    instance,
+  }));
 
   return c.json({ indicators });
-});
-
-route.get('/:uid/timeseries', async (c) => {
-  const uid = c.req.param('uid');
-  if (!indicatorByUid[uid]) {
-    return c.json({ error: 'Not found' }, 404);
-  }
-  const scenario = c.req.query('scenario');
-  const region = c.req.query('region');
-  if (!scenario || !region) {
-    return c.json({ error: 'scenario and region query parameters are required' }, 400);
-  }
-
-  const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
-  const platforms = await createPlatforms(username, password);
-
-  for (const { instance, platform } of platforms) {
-    const runs = await platform.runs.list();
-    const run = runs.find((r) => r.scenario.name === scenario);
-    if (!run) continue;
-    const series = await fetchTimeSeries(instance.url, instance.managerUrl, username, password, {
-      variable: uid,
-      runId: run.id,
-      region,
-    });
-    return c.json(series);
-  }
-
-  return c.json({ error: 'Not found' }, 404);
 });
 
 export { route as indicators };

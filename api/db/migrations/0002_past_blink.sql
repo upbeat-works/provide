@@ -1,0 +1,1 @@
+ALTER TABLE `geographies` ADD `geo_id` text;

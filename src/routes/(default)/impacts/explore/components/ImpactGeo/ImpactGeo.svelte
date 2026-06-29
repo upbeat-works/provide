@@ -62,7 +62,7 @@
       $CURRENT_SCENARIOS_UID.map((scenario) => ({
         endpoint: END_IMPACT_GEO,
         params: {
-          [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY.uid,
+          [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY.geoId,
           [URL_PATH_GEOGRAPHY_TYPE]: $CURRENT_GEOGRAPHY.geographyType,
           [URL_PATH_INDICATOR]: $CURRENT_INDICATOR.uid,
           [URL_PATH_SCENARIO]: scenario,

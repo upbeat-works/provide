@@ -45,6 +45,9 @@ export function extractEndYearFromScenarios(available, selectable) {
 
   return _(available)
     .map((s) => extractEndYear(s))
+    // Drop scenarios with no end year (no data for this selection) so they don't
+    // produce a junk timeframe pill.
+    .filter(Boolean)
     .uniq()
     .sort()
     .map((uid) => ({ uid: parseInt(uid), label: uid, disabled: !valid.includes(uid) }))
