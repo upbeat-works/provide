@@ -16,7 +16,7 @@
   </div>
   <div class="md:border-l border-contour-weakest border-t md:border-t-0 min-w-0">
     {#if $$slots.filters}
-    <div class="md:sticky z-20" style="top: {navHeight}px">
+    <div class="z-20">
       <div class="flex h-fit bg-white border-b border-contour-weakest [&>*]:border-r [&>*]:border-contour-weakest [&>*]:px-6 [&>*]:py-4">
         <slot name="filters" />
       </div>
