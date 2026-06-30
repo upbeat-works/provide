@@ -7,7 +7,14 @@ import { scaleLinear } from 'd3-scale';
 import { each } from 'lodash-es';
 
 export const load = async ({ fetch, parent, params }) => {
-  const { meta } = await parent();
+  const { geographies, catalog, curation } = await parent();
+  const meta = {
+    cities: geographies.cities ?? [],
+    indicators: catalog.indicators ?? [],
+    scenarios: catalog.scenarios ?? [],
+    likelihoods: curation.likelihoods ?? [],
+    studyLocations: curation.studyLocations ?? [],
+  };
 
   const caseStudiesRaw = await loadFromStrapi(
     'case-study-dynamics',

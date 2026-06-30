@@ -51,128 +51,130 @@ export const loadFromAPI = async function (url, svelteFetch = fetch, props = {})
   }
 };
 
-// This is only used as a backup.
+// Singular labels used as a backup when the API doesn't supply one.
 const labelsSingular = {
   admin0: 'Country',
   cities: 'City',
 };
 
-export const loadMetaData = function (svelteFetch = fetch) {
-  return new Promise(async (resolve, reject) => {
-    if (typeof ENV_URL_DATA === 'undefined') {
-      return reject(new Error('Data URL is not defined. Check environment variables.'));
-    }
-    const descriptionIndicators = await loadFromStrapi('indicators', svelteFetch);
-    const descriptionScenarios = await loadFromStrapi('scenarios', svelteFetch);
-    const availableIndicators = descriptionIndicators.map(({ attributes }) => attributes.UID);
+// The catalog API (Hono adapter) speaks JSON with strict:false trailing slashes.
+const apiUrl = (path) => `${ENV_URL_API}/${path}/`;
 
-    const url = `${ENV_URL_API}/meta/`;
-    const meta = await loadFromAPI(url, svelteFetch);
-    if (!meta || !meta.geographyTypes) {
-      return reject(
-        new Error(
-          `Failed to load metadata from ${url}. Verify that the API server is running, ` +
-          `reachable from this process, and returning the expected /meta payload.`,
-        ),
-      );
-    }
+async function getJSON(url, svelteFetch = fetch) {
+  const res = await svelteFetch(url);
+  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+  return res.json();
+}
 
-    resolve({
-      ...meta,
-      geographyTypes: meta.geographyTypes.map((g) => {
-        // Trying to find a singluar label of the geography
-        let labelSingular = g['labelSingular'];
-        if (typeof labelSingular === 'undefined') {
-          console.warn(`labelSingular for ${g.uid} was not defined. Will use predefined.`);
-          labelSingular = labelsSingular[g.uid];
-        }
-        if (typeof labelSingular === 'undefined') {
-          console.warn(`labelSingular for ${g.uid} was not defined. Will use regular label.`);
-          labelSingular = g.label;
-        }
-        return {
-          ...g,
-          labelSingular,
-        };
-      }),
-      indicators: meta.indicators.map((indicator) => {
-        const description = get(
-          descriptionIndicators.find((d) => d.attributes.UID === indicator.uid),
-          ['attributes', 'Description']
-        );
-        // if (typeof description === 'undefined') {
-        //   console.warn(`Indicator description for ${indicator.uid} could not be found.`);
-        //   console.warn(`These descriptions are available: ${availableIndicators.join(', ')}`);
-        // }
+// Geography slice — the selectable place tree. Sourced from the `/geographies`
+// module (flat rows + types), grouped here into the per-type shape the stores
+// consume: `{ geographyTypes, <typeUid>: [...] }`. Pure D1 on the server, so
+// this is the cheap slice. Loaded only on the data sections, never globally.
+export const loadGeographies = async function (svelteFetch = fetch) {
+  const [types, geographies] = await Promise.all([
+    getJSON(apiUrl('geographies/types'), svelteFetch),
+    getJSON(apiUrl('geographies'), svelteFetch),
+  ]);
 
-        return {
-          ...indicator,
-          description,
-        };
-      }),
-      scenarios: meta.scenarios.map((scenario) => {
-        // Find the correct scenario in the list coming from Strapi
-        const currentScenario = descriptionScenarios.find((d) => d.attributes.UID === scenario.uid);
-        if (typeof currentScenario === 'undefined') {
-          console.warn(`Scenario could not be found. This may be caused by a mismatch of the content versions.`);
-        }
-        // Get the description from the Strapi scenario
-        const description = get(currentScenario, ['attributes', 'Description']);
-        // Get the characteristics from the Strapi scenario
-        const descriptionYears = get(currentScenario, ['attributes', 'ScenarioCharacteristics'], [])
-          .map(({ Year: year, Description: description }) => {
-            // Check if year is valid and the description has any length
-            if (year && description) {
-              return { year, description };
-            } else {
-              return false;
-            }
-          })
-          .filter((d) => Boolean(d)) // Filter invalid entries
-          .sort((a, b) => a.year - b.year);
+  const geographyTypes = types.map((t) => ({
+    uid: t.id,
+    label: t.label,
+    labelSingular: t.labelSingular ?? labelsSingular[t.id] ?? t.label,
+    order: t.order ?? undefined,
+    isAvailable: t.isAvailable ?? true,
+    isSelectable: t.isSelectable ?? true,
+  }));
 
-        const timelineData = Object.fromEntries(
-          SCENARIO_DATA_KEYS.map((key) => {
-            if (!scenario.hasOwnProperty(key)) {
-              // console.warn(`${key} is missing in scenario meta data.`);
-              return [key, null];
-            }
-            const { data, yearStart, yearStep } = scenario[key];
-            // Some scenarios have no emissions data (data[0] = null)
-            if (data) {
-              const seriesData = data.map((datum, i) => {
-                const hasRange = datum.length > 1;
-                const obj = {
-                  year: yearStart + yearStep * i,
-                  value: datum,
-                };
-                if (hasRange) {
-                  // Some scenario data (gmt) has a range
-                  obj['value'] = datum[1];
-                  obj['min'] = datum[0];
-                  obj['max'] = datum[2];
-                }
-
-                return obj;
-              });
-              return [key, seriesData];
-            } else {
-              // console.warn(`${scenario.uid} has no data for ${key} in scenario meta data.`);
-              return [key, null];
-            }
-          })
-        );
-
-        return {
-          ...scenario,
-          description,
-          ...timelineData,
-          [KEY_SCENARIO_YEAR_DESCRIPTION]: descriptionYears,
-          [KEY_CHARACTERISTICS]: scenario.characteristics,
-        };
-      }),
+  const byType = {};
+  for (const g of geographies) {
+    (byType[g.geographyType] ??= []).push({
+      uid: g.id,
+      label: g.label,
+      geoId: g.geoId ?? undefined,
+      parents: g.parents ?? [],
     });
-  });
+  }
+
+  return { geographyTypes, ...byType };
+};
+
+// Catalog slice — the searchable indicators (+ their parameter dimensions) and
+// the scenario universe, from the `/catalog` module (the expensive ixmp4 scan),
+// merged with the Strapi descriptions the UI shows. This is the slice that used
+// to make `/meta` slow, so it loads only where charts/selectors live.
+export const loadCatalog = async function (svelteFetch = fetch) {
+  const [descriptionIndicators, descriptionScenarios, catalog] = await Promise.all([
+    loadFromStrapi('indicators', svelteFetch),
+    loadFromStrapi('scenarios', svelteFetch),
+    getJSON(apiUrl('catalog'), svelteFetch),
+  ]);
+
+  return {
+    indicatorParameters: catalog.indicatorParameters,
+    indicators: catalog.indicators.map((indicator) => ({
+      ...indicator,
+      description: get(
+        descriptionIndicators.find((d) => d.attributes.UID === indicator.uid),
+        ['attributes', 'Description'],
+      ),
+    })),
+    scenarios: catalog.scenarios.map((scenario) => {
+      // Find the correct scenario in the list coming from Strapi
+      const currentScenario = descriptionScenarios.find((d) => d.attributes.UID === scenario.uid);
+      if (typeof currentScenario === 'undefined') {
+        console.warn(`Scenario could not be found. This may be caused by a mismatch of the content versions.`);
+      }
+      const description = get(currentScenario, ['attributes', 'Description']);
+      const descriptionYears = get(currentScenario, ['attributes', 'ScenarioCharacteristics'], [])
+        .map(({ Year: year, Description: description }) => (year && description ? { year, description } : false))
+        .filter((d) => Boolean(d))
+        .sort((a, b) => a.year - b.year);
+
+      // Convention scenarios carry no timeline data ({uid,label} only), so these
+      // keys resolve to null as before — preserved so timeline components that
+      // read them keep their existing (empty) behaviour.
+      const timelineData = Object.fromEntries(
+        SCENARIO_DATA_KEYS.map((key) => {
+          if (!scenario.hasOwnProperty(key)) return [key, null];
+          const { data, yearStart, yearStep } = scenario[key];
+          if (!data) return [key, null];
+          const seriesData = data.map((datum, i) => {
+            const hasRange = datum.length > 1;
+            const obj = { year: yearStart + yearStep * i, value: datum };
+            if (hasRange) {
+              obj['value'] = datum[1];
+              obj['min'] = datum[0];
+              obj['max'] = datum[2];
+            }
+            return obj;
+          });
+          return [key, seriesData];
+        }),
+      );
+
+      return {
+        ...scenario,
+        description,
+        ...timelineData,
+        [KEY_SCENARIO_YEAR_DESCRIPTION]: descriptionYears,
+        [KEY_CHARACTERISTICS]: scenario.characteristics,
+      };
+    }),
+  };
+};
+
+// Curation slice — the transitional study-locations + likelihoods remnants not
+// yet derivable from conventions. Tiny static data; loaded only by the sections
+// that use it (avoid, adaptation).
+export const loadCuration = async function (svelteFetch = fetch) {
+  const [studyLocations, likelihoods] = await Promise.all([
+    getJSON(apiUrl('study-locations'), svelteFetch),
+    getJSON(apiUrl('likelihoods'), svelteFetch),
+  ]);
+  return {
+    studyLocations: studyLocations.studyLocations ?? [],
+    likelihoods: likelihoods.likelihoods ?? [],
+  };
 };
 
 export function trimLinebreakAtEnd(str) {

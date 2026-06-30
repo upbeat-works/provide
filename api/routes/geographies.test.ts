@@ -25,6 +25,17 @@ describe('GET /api/geographies', () => {
     expect(json.map((g) => g.id).sort()).toEqual(['DEU', 'FRA']);
   });
 
+  test('exposes each geography geoId for linking to map shapes', async () => {
+    await env.DB.insert(schema.geographyTypes).values({ id: 'admin0', label: 'Countries' });
+    await env.DB.insert(schema.geographies).values([
+      { id: 'Germany', label: 'Germany', geographyType: 'admin0', geoId: 'DEU' },
+    ]);
+
+    const res = await api.request('/api/geographies', {}, env);
+    const json = (await res.json()) as Array<{ id: string; geoId?: string }>;
+    expect(json.find((g) => g.id === 'Germany')?.geoId).toBe('DEU');
+  });
+
   test('geography_parents join table accepts parent edges', async () => {
     await env.DB.insert(schema.geographyTypes).values([
       { id: 'continent', label: 'Continents', isSelectable: false },

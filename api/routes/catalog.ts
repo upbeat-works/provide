@@ -1,56 +1,30 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
-import { schema } from '../db';
 import { createPlatforms } from '../platform';
 import { parseVariable, indicatorsFromVariables } from '../conventions';
 import { distinct } from '../util';
-import { studyLocations } from '../curation/study-locations';
-import { likelihoods } from '../curation/likelihoods';
 
-const meta = new Hono<Env>();
+const catalog = new Hono<Env>();
 
-meta.get('/', async (c) => {
+// The convention-derived catalog: the searchable indicators (with their facet
+// values + parameter dimensions) and the scenario universe. Both come straight
+// from ixmp4 — variables.list collapsed by the naming convention, runs.list for
+// scenarios — with no curation. This is the expensive slice (it scans every
+// variable name), so it loads only on the data-exploring sections, never on the
+// global layout.
+catalog.get('/', async (c) => {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
   const platforms = await createPlatforms(username, password);
 
-  const [geographyTypeRows, geographyRows, parentRows, instanceVariables, instanceRuns] =
-    await Promise.all([
-      c.env.DB.select().from(schema.geographyTypes).orderBy(schema.geographyTypes.order),
-      c.env.DB.select().from(schema.geographies),
-      c.env.DB.select().from(schema.geographyParents),
-      Promise.all(
-        platforms.map(async ({ instance, platform }) => {
-          const variables = await platform.iamc.variables.list();
-          return variables.map((v) => ({ name: v.name, instance: instance.slug }));
-        }),
-      ),
-      Promise.all(platforms.map(({ platform }) => platform.runs.list())),
-    ]);
-
-  const geographyTypes = geographyTypeRows.map((r) => ({
-    uid: r.id,
-    label: r.label,
-    labelSingular: r.labelSingular ?? undefined,
-    order: r.order ?? undefined,
-    isAvailable: r.isAvailable ?? true,
-    isSelectable: r.isSelectable ?? true,
-  }));
-
-  const parentsByChild: Record<string, string[]> = {};
-  for (const r of parentRows) (parentsByChild[r.geographyId] ??= []).push(r.parentId);
-
-  const geographiesByType: Record<
-    string,
-    Array<{ uid: string; label: string; geoId?: string; parents: string[] }>
-  > = {};
-  for (const geo of geographyRows) {
-    (geographiesByType[geo.geographyType] ??= []).push({
-      uid: geo.id,
-      label: geo.label,
-      geoId: geo.geoId ?? undefined,
-      parents: parentsByChild[geo.id] ?? [],
-    });
-  }
+  const [instanceVariables, instanceRuns] = await Promise.all([
+    Promise.all(
+      platforms.map(async ({ instance, platform }) => {
+        const variables = await platform.iamc.variables.list();
+        return variables.map((v) => ({ name: v.name, instance: instance.slug }));
+      }),
+    ),
+    Promise.all(platforms.map(({ platform }) => platform.runs.list())),
+  ]);
 
   const variablesFlat = instanceVariables.flat();
   // Collapse the raw ixmp4 variable strings into one searchable indicator each,
@@ -86,20 +60,11 @@ meta.get('/', async (c) => {
   ].filter((p) => p.options.length);
 
   // Scenarios are derived straight from the ixmp4 runs — the scenario name is
-  // the id (convention-driven, no curation). GMT/characteristics that used to be
-  // curated here now ride along with the impact-time data instead.
+  // the id (convention-driven, no curation).
   const scenarioNames = distinct(instanceRuns.flat().map((run) => run.scenario.name));
   const scenarios = scenarioNames.map((name) => ({ uid: name, label: name }));
 
-  return c.json({
-    geographyTypes,
-    ...geographiesByType,
-    scenarios,
-    indicators,
-    indicatorParameters,
-    studyLocations,
-    likelihoods,
-  });
+  return c.json({ indicators, indicatorParameters, scenarios });
 });
 
-export { meta };
+export { catalog };

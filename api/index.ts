@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from './types';
-import { meta } from './routes/meta';
+import { catalog } from './routes/catalog';
 import { geographies } from './routes/geographies';
 import { indicators } from './routes/indicators';
 import { impactTime } from './routes/impact-time';
@@ -18,7 +18,7 @@ const api = new Hono<Env>({ strict: false }).basePath('/api');
 
 api.use('*', cors());
 
-api.route('/meta', meta);
+api.route('/catalog', catalog);
 api.route('/geographies', geographies);
 api.route('/indicators', indicators);
 api.route('/impact-time', impactTime);

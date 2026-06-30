@@ -30,14 +30,14 @@ function processScenarioPresets(list) {
 }
 
 const loadExplainer = async ({ fetch, parent }) => {
-  const { meta } = await parent();
+  const { catalog } = await parent();
 
   // Scenario Presets
   const scenarioPresetsRaw = await loadFromStrapi('scenario-presets', fetch);
   const scenarioPresets = processScenarioPresets(scenarioPresetsRaw);
 
   // Selectable timeframes
-  const selectableTimeframes = _(meta.scenarios)
+  const selectableTimeframes = _(catalog.scenarios)
     .map(extractEndYear)
     .uniq()
     .sort()

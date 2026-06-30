@@ -22,8 +22,16 @@ Four layers, edges-do-I/O, core-is-pure:
 
 **Rule of thumb:** a route stays thin; pull data logic into `api/views/<view>.ts` when it has pure
 functions worth testing in isolation (the impact-time/scenarios split), inline it when it's trivial
-(meta/indicators/geographies do their small derivations in the route). Don't extract a module that
+(catalog/indicators/geographies do their small derivations in the route). Don't extract a module that
 has one caller and nothing pure to test.
+
+**Catalog slices, not a god-endpoint.** The catalog surface is split by domain + cost, and each is
+loaded only by the sections that use it (never the global layout): `/geographies` (+ `/types`) — the
+selectable place tree, pure D1, cheap; `/catalog` — convention-derived indicators + their parameter
+dimensions + the scenario universe, the expensive ixmp4 variable scan; `/study-locations` +
+`/likelihoods` — transitional curation. The frontend loaders (`loadGeographies` / `loadCatalog` /
+`loadCuration` in `src/lib/utils/apis.js`) feed the `geographies` / `catalog` / `curation` page-data
+slices that the stores read.
 
 `api/curation/` holds transitional remnants (`likelihoods`, `study-locations`) not yet derivable
 from conventions — shrink it, don't grow it.

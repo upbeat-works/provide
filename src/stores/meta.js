@@ -10,7 +10,7 @@ import { derived } from 'svelte/store';
 // appear as a selectable pill, so they are filtered out here.
 export const GEOGRAPHY_TYPES = derived(page, ($page) =>
   sortBy(
-    ($page.data?.meta?.geographyTypes ?? [])
+    ($page.data?.geographies?.geographyTypes ?? [])
       .filter((t) => t.isSelectable !== false)
       .map((t) => ({ ...t, disabled: !t.isAvailable })),
     [
@@ -22,12 +22,12 @@ export const GEOGRAPHY_TYPES = derived(page, ($page) =>
 );
 
 export const GEOGRAPHIES = derived(page, ($page) => {
-  // Extract the geography types and its data from the data provided by the load function
-  const { geographyTypes, ...meta } = $page.data?.meta ?? {};
+  // Extract the geography types and its data from the geographies slice
+  const { geographyTypes, ...byType } = $page.data?.geographies ?? {};
   if (geographyTypes?.length) {
     const geographies = geographyTypes.map(({ uid }) => {
-      // Find the array of geographies for this geography type in the meta endpoint
-      const geographiesOfType = get(meta, uid, []).map((d) => ({
+      // Find the array of geographies for this geography type in the geographies slice
+      const geographiesOfType = get(byType, uid, []).map((d) => ({
         ...d,
         geographyType: uid, // Add the geography type to each geography in the array
       }));
@@ -46,15 +46,15 @@ export const GEOGRAPHIES = derived(page, ($page) => {
 export const GEOGRAPHY_INDEX = derived(GEOGRAPHIES, ($geographies) => buildIndex($geographies));
 
 export const SCENARIOS = derived(page, ($page) => {
-  return $page.data?.meta?.scenarios ?? [];
+  return $page.data?.catalog?.scenarios ?? [];
 });
 
 export const DICTIONARY_SCENARIOS = derived(SCENARIOS, ($scenarios) => keyBy($scenarios, 'uid'));
 
 
 export const INDICATORS = derived(page, ($page) => {
-  const meta = $page.data?.meta ?? {};
-  const indicators = meta.indicators ?? [];
+  const catalog = $page.data?.catalog ?? {};
+  const indicators = catalog.indicators ?? [];
   return indicators.map((indicator) => {
     // Scenario availability + geography filtering are no longer curated — they
     // come from ixmp4 (`/api/scenarios?indicator=&region=`, `/api/geographies?indicator=`).
@@ -73,16 +73,16 @@ export const INDICATORS = derived(page, ($page) => {
 
 export const DICTIONARY_INDICATORS = derived(INDICATORS, ($indicators) => keyBy($indicators, 'uid'));
 
-export const INDICATOR_PARAMETERS = derived(page, ($page) => $page.data?.meta?.indicatorParameters ?? []);
+export const INDICATOR_PARAMETERS = derived(page, ($page) => $page.data?.catalog?.indicatorParameters ?? []);
 export const DICTIONARY_INDICATOR_PARAMETERS = derived(INDICATOR_PARAMETERS, ($parameters) => keyBy($parameters, 'uid'));
 
 export const LIKELIHOODS = derived(page, ($page) => {
-  return $page.data?.meta?.likelihoods ?? [];
+  return $page.data?.curation?.likelihoods ?? [];
 });
 
 export const STUDY_LOCATIONS = derived(page, ($page) => {
   const locations = sortBy(
-    ($page.data?.meta?.studyLocations ?? []).map((location, i) => {
+    ($page.data?.curation?.studyLocations ?? []).map((location, i) => {
       const isAverage = location.uid === UID_STUDY_LOCATION_AVERAGE;
       return {
         ...location,

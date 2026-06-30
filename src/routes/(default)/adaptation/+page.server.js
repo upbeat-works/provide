@@ -2,7 +2,8 @@ import { loadFromStrapi } from '$utils/apis.js';
 import { parse } from 'marked';
 
 export const load = async ({ fetch, parent }) => {
-  const { meta } = await parent();
+  const { geographies } = await parent();
+  const cities = geographies.cities ?? [];
   const { attributes } = await loadFromStrapi('adaptation', fetch);
   const caseStudies = await loadFromStrapi('case-study-dynamics', fetch);
 
@@ -10,7 +11,7 @@ export const load = async ({ fetch, parent }) => {
 
   return {
     caseStudies: caseStudies.map((study) => ({
-      city: meta.cities.find((d) => d.uid === study.attributes.CityUid) || { uid: 'nassau', label: 'Nassau' },
+      city: cities.find((d) => d.uid === study.attributes.CityUid) || { uid: 'nassau', label: 'Nassau' },
       abstract: study.attributes.Abstract,
     })),
     description: attributes.Description,
