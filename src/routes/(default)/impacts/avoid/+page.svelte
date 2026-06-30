@@ -14,6 +14,7 @@
   import Reference from './components/Reference/Reference.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import { onMount, onDestroy } from 'svelte';
+  import { createScrollSpy } from '$lib/utils/scrollSpy';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
@@ -59,15 +60,20 @@
   ];
 
   let activeIndex = 0;
+  let contentEl;
+  let spy = null;
 
-  function observeSection(node, index) {
-    const io = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) activeIndex = index; },
-      { threshold: 0.1 }
-    );
-    io.observe(node);
-    return { destroy: () => io.disconnect() };
+  $: if (contentEl) {
+    spy?.destroy();
+    spy = createScrollSpy(contentEl, {
+      getItems: () => sections.map((s) => (s.slug && !s.disabled ? document.getElementById(s.slug) : null)),
+      onActive: (i) => { activeIndex = i; },
+    });
   }
+
+  function handleNavClick(i) { spy?.click(i); }
+
+  onDestroy(() => spy?.destroy());
 </script>
 
 <PageLayout>
@@ -91,7 +97,7 @@
 
   <svelte:fragment slot="sidebar">
     <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">Report Index</h2>
-    <SimpleNav {sections} {activeIndex} />
+    <SimpleNav {sections} {activeIndex} onNavClick={handleNavClick} />
     <hr class="my-4 border-contour-weakest mr-6" />
     <ShareLink />
     <Button class="mt-4 mr-6" href="/methodology" variant="secondary">
@@ -108,9 +114,10 @@
   </svelte:fragment>
 
   <svelte:fragment slot="content">
+    <div bind:this={contentEl}>
     {#each sections as section, i}
       {#if !section.disabled}
-        <section use:observeSection={i} id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest last:border-none">
+        <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest last:border-none">
           <svelte:component this={section.component} {...section.props} />
         </section>
       {/if}
@@ -118,5 +125,6 @@
     {#if !$IS_STATIC && $CURRENT_GEOGRAPHY}
       <LinkSection geography={$CURRENT_GEOGRAPHY} {caseStudy} />
     {/if}
+    </div>
   </svelte:fragment>
 </PageLayout>
