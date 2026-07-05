@@ -1,0 +1,22 @@
+{
+  "kind": "singleType",
+  "collectionName": "methodologies",
+  "info": {
+    "singularName": "methodology",
+    "pluralName": "methodologies",
+    "displayName": "Methodology",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "DataType": {
+      "displayName": "Data Type",
+      "type": "component",
+      "repeatable": true,
+      "component": "methodology-data-type.data-type"
+    }
+  }
+}

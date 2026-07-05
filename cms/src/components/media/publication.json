@@ -1,0 +1,28 @@
+{
+  "collectionName": "components_media_publications",
+  "info": {
+    "displayName": "Publication",
+    "icon": "file-contract"
+  },
+  "options": {},
+  "attributes": {
+    "PublicationDate": {
+      "type": "date"
+    },
+    "Type": {
+      "type": "enumeration",
+      "enum": [
+        "publication",
+        "deliverable"
+      ],
+      "default": "publication"
+    },
+    "File": {
+      "allowedTypes": [
+        "files"
+      ],
+      "type": "media",
+      "multiple": false
+    }
+  }
+}

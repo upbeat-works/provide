@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_impacts_galery_impact_geos",
+  "info": {
+    "displayName": "ImpactGeoSnapshot",
+    "icon": "map",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Indicator": {
+      "type": "string"
+    },
+    "Year": {
+      "type": "string"
+    },
+    "Image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    }
+  }
+}

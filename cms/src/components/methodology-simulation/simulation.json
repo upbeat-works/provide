@@ -1,0 +1,20 @@
+{
+  "collectionName": "components_methodology_simulation_simulations",
+  "info": {
+    "displayName": "Simulation",
+    "icon": "connector",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Label": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "richtext"
+    },
+    "TitleShort": {
+      "type": "string"
+    }
+  }
+}

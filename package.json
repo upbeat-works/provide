@@ -3,6 +3,8 @@
   "version": "0.2.32",
   "scripts": {
     "dev": "vite dev --mode staging",
+    "dev:strapi": "cd cms && yarn develop",
+    "docker:cms": "docker build -t provide-cms ./cms && docker run --rm -p 1337:1337 --env-file cms/.env provide-cms",
     "build": "vite build",
     "preview": "vite preview",
     "package": "svelte-kit package",

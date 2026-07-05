@@ -1,0 +1,33 @@
+{
+  "collectionName": "components_image_slider_image_slider_pairs",
+  "info": {
+    "displayName": "ImageSliderPair",
+    "icon": "object-ungroup",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Image1": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "Image2": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "AttributeValue": {
+      "type": "string"
+    },
+    "GroupName": {
+      "type": "string"
+    }
+  }
+}

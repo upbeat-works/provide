@@ -1,0 +1,28 @@
+{
+  "kind": "singleType",
+  "collectionName": "disclaimers",
+  "info": {
+    "singularName": "disclaimer",
+    "pluralName": "disclaimers",
+    "displayName": "Disclaimer",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "Text": {
+      "type": "richtext",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    }
+  }
+}

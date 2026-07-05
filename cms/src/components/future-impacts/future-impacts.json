@@ -1,0 +1,30 @@
+{
+  "collectionName": "components_future_impacts_future_impacts",
+  "info": {
+    "displayName": "FutureImpacts",
+    "icon": "asterisk",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "ImpactTimeSnapshot": {
+      "type": "component",
+      "repeatable": true,
+      "component": "future-impacts.impact-time-snapshot"
+    },
+    "ImpactGeoSnapshot": {
+      "type": "component",
+      "repeatable": true,
+      "component": "future-impacts.impact-geo"
+    },
+    "ImpactTimeDescription": {
+      "type": "richtext"
+    },
+    "ImpactGeoDescription": {
+      "type": "richtext"
+    },
+    "ExplorerUrl": {
+      "type": "string"
+    }
+  }
+}

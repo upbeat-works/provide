@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_image_slider_image_sliders",
+  "info": {
+    "displayName": "ImageSlider",
+    "icon": "images",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Description": {
+      "type": "richtext"
+    },
+    "AttributeLabel": {
+      "type": "string"
+    },
+    "ImageSliderPair": {
+      "displayName": "ImageSliderPair",
+      "type": "component",
+      "repeatable": true,
+      "component": "image-slider.image-slider-pair"
+    },
+    "GroupingLabel": {
+      "type": "string"
+    },
+    "ExplorerUrl": {
+      "type": "string"
+    }
+  }
+}

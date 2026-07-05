@@ -1,0 +1,36 @@
+{
+  "name": "provide-cms",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A Strapi application",
+  "scripts": {
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "build": "strapi build",
+    "strapi": "strapi"
+  },
+  "dependencies": {
+    "@strapi/plugin-i18n": "4.24.2",
+    "@strapi/plugin-users-permissions": "4.24.2",
+    "@strapi/provider-upload-cloudinary": "^4.24.2",
+    "@strapi/strapi": "4.24.2",
+    "pg": "^8.11.5",
+    "pg-connection-string": "^2.6.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^5.3.4",
+    "styled-components": "^5.3.11"
+  },
+  "author": {
+    "name": "A Strapi developer"
+  },
+  "strapi": {
+    "uuid": "1275b0b5-4ff2-45bb-9710-b89b02a3b24e"
+  },
+  "engines": {
+    "node": ">=18.x.x",
+    "npm": ">=6.0.0"
+  },
+  "packageManager": "yarn@1.22.22",
+  "license": "MIT"
+}

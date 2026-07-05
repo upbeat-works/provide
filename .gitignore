@@ -9,3 +9,15 @@ node_modules
 .netlify
 .claude
 
+# Vendored Strapi (cms/) — generated paths
+cms/node_modules
+cms/.env
+cms/.tmp
+cms/build
+cms/.cache
+cms/dist
+cms/.strapi
+cms/public/uploads
+cms/exports
+cms/.snapshot
+
