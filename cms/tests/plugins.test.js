@@ -14,17 +14,28 @@ const envWith = (vars) => {
   return fn;
 };
 
-test('falls back to the local upload provider when CLOUDINARY_NAME is unset', () => {
+test('falls back to the local upload provider when R2_BUCKET is unset', () => {
   const cfg = plugins({ env: envWith({}) });
   expect(cfg.upload.config.provider).toBe('local');
 });
 
-test('uses the cloudinary provider when CLOUDINARY_NAME is set', () => {
+test('uses the aws-s3 provider pointed at R2 when R2_BUCKET is set', () => {
   const cfg = plugins({
-    env: envWith({ CLOUDINARY_NAME: 'demo', CLOUDINARY_KEY: 'k', CLOUDINARY_SECRET: 's' }),
+    env: envWith({
+      R2_BUCKET: 'media',
+      R2_ENDPOINT: 'https://acc.r2.cloudflarestorage.com',
+      R2_ACCESS_KEY_ID: 'k',
+      R2_SECRET_ACCESS_KEY: 's',
+      R2_PUBLIC_URL: 'https://cdn.example.com',
+    }),
   });
-  expect(cfg.upload.config.provider).toBe('cloudinary');
-  expect(cfg.upload.config.providerOptions.cloud_name).toBe('demo');
+  const opts = cfg.upload.config.providerOptions;
+  expect(cfg.upload.config.provider).toBe('aws-s3');
+  expect(opts.baseUrl).toBe('https://cdn.example.com');
+  expect(opts.s3Options.endpoint).toBe('https://acc.r2.cloudflarestorage.com');
+  expect(opts.s3Options.region).toBe('auto');
+  expect(opts.s3Options.params.Bucket).toBe('media');
+  expect(opts.s3Options.credentials.accessKeyId).toBe('k');
 });
 
 test('preserves the users-permissions jwtSecret wiring', () => {

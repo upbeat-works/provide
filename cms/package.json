@@ -12,10 +12,9 @@
   "dependencies": {
     "@strapi/plugin-i18n": "4.24.2",
     "@strapi/plugin-users-permissions": "4.24.2",
-    "@strapi/provider-upload-cloudinary": "^4.24.2",
+    "@strapi/provider-upload-aws-s3": "4.24.2",
     "@strapi/strapi": "4.24.2",
-    "pg": "^8.11.5",
-    "pg-connection-string": "^2.6.4",
+    "better-sqlite3": "9.4.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^5.3.4",

@@ -6,7 +6,7 @@ import { KEY_CHARACTERISTICS, KEY_SCENARIO_YEAR_DESCRIPTION, SCENARIO_DATA_KEYS 
 // Version 1: `en-EU`
 const ENV_CONTENT_LOCALE = import.meta.env.VITE_STRAPI_LOCALE;
 const localCode = ENV_CONTENT_LOCALE ?? 'en';
-const ENV_URL_CONTENT = import.meta.env.VITE_HEROKU_URL;
+const ENV_URL_CONTENT = import.meta.env.VITE_CMS_URL;
 const ENV_URL_DATA = import.meta.env.VITE_DATA_API_URL;
 
 export const loadFromStrapi = function (path, fetch, populate = 'populate=*', qs) {

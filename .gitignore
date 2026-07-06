@@ -21,3 +21,7 @@ cms/public/uploads
 cms/exports
 cms/.snapshot
 
+# Local SQLite database — keep the dir (via .gitkeep), ignore the db files
+cms/database/*
+!cms/database/.gitkeep
+
