@@ -11,21 +11,23 @@
   $: id = slug ?? kebabCase(title);
 </script>
 
-<svelte:element
-  this={as}
-  {id}
-  name={id}
-  class="text-theme-stronger scroll-mt-4 my-4 first:mt-0"
-  class:text-2xl={as === 'h2'}
-  class:text-xs={as === 'h3'}
-  class:font-bold={as === 'h3'}
-  class:uppercase={as === 'h3'}
-  class:tracking-widest={as === 'h3'}
-  class:text-text-weaker={as === 'h3'}
-  class:text-lg={as === 'h4'}
->
-  {title}
-</svelte:element>
+{#if title}
+  <svelte:element
+    this={as}
+    {id}
+    name={id}
+    class="text-theme-stronger scroll-mt-4 my-4 first:mt-0"
+    class:text-2xl={as === 'h2'}
+    class:text-xs={as === 'h3'}
+    class:font-bold={as === 'h3'}
+    class:uppercase={as === 'h3'}
+    class:tracking-widest={as === 'h3'}
+    class:text-text-weaker={as === 'h3'}
+    class:text-lg={as === 'h4'}
+  >
+    {title}
+  </svelte:element>
+{/if}
 
 {#if subtitle}
   <p class="text-sm text-text-weaker mb-2">{subtitle}</p>

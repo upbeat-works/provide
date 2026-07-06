@@ -1,5 +1,6 @@
 <script>
   import { slugify } from '$lib/utils/utils';
+  import { createScrollSpy } from '$lib/utils/scrollSpy';
   import { onDestroy } from 'svelte';
   import Chevron from '$lib/components/icons/Chevron.svelte';
 
@@ -16,7 +17,12 @@
 
   // Internal active index for dynamic mode (tracks individual headings)
   let dynamicActiveIndex = 0;
-  let headingObservers = [];
+  let headingEls = [];
+  let spy = null;
+
+  function handleNavClick(targetIndex) {
+    spy?.click(targetIndex);
+  }
 
   // Takes a flat array of h2/h3 titles and turns them into a hierarchy
   const createHierarchy = (flatItems) => {
@@ -61,43 +67,30 @@
   };
 
   // If containerRef is given, query all h2/h3 titles from the given container, assign IDs,
-  // set up IntersectionObservers on each heading, and build the nav hierarchy.
+  // set up scroll-spy, and build the nav hierarchy.
   $: dynamicNavSections = (() => {
     if (!contentRef) return;
-    const headings = contentRef?.querySelectorAll('h2, h3');
 
-    // Clean up previous observers
-    headingObservers.forEach((o) => o.disconnect());
-    headingObservers = [];
+    spy?.destroy();
 
-    const flatToc = [...headings].map((el, i) => {
-      const slug = el.getAttribute('id') || slugify(el.innerText);
-      el.setAttribute('id', slug);
-
-      // Observe each heading individually so activeIndex tracks heading index, not section index
-      const io = new IntersectionObserver(
-        ([e]) => { if (e.isIntersecting) dynamicActiveIndex = i; },
-        { threshold: 0.5 }
-      );
-      io.observe(el);
-      headingObservers.push(io);
-
-      return {
-        props: {
-          title: el.innerText,
-          slug,
-        },
-        level: parseFloat(el.tagName[1]),
-        content: true,
-      };
+    headingEls = [...contentRef.querySelectorAll('h2, h3')].filter((el) => el.innerText.trim());
+    headingEls.forEach((el) => {
+      el.setAttribute('id', el.getAttribute('id') || slugify(el.innerText));
     });
 
-    return createHierarchy(flatToc);
+    spy = createScrollSpy(contentRef, {
+      getItems: () => headingEls,
+      onActive: (i) => { dynamicActiveIndex = i; },
+    });
+
+    return createHierarchy(headingEls.map((el) => ({
+      props: { title: el.innerText, slug: el.getAttribute('id') },
+      level: parseFloat(el.tagName[1]),
+      content: true,
+    })));
   })();
 
-  onDestroy(() => {
-    headingObservers.forEach((o) => o.disconnect());
-  });
+  onDestroy(() => spy?.destroy());
 
   // In dynamic mode use the internally tracked heading index;
   // in static mode use the activeIndex prop (tracks top-level sections).
@@ -171,16 +164,16 @@
         >
           <div class="py-2 border-b border-contour-weakest">
             <div aria-expanded={String(isActive)} class:text-theme-base={isActive} class="flex justify-between items-center">
-              <a class="font-semibold text-sm" href={`#${slug}`}>{title}</a>
+              <a class="font-semibold text-sm" href={`#${slug}`} on:click={() => handleNavClick(index)}>{title}</a>
               {#if sections.length}
                 <button as="button" class="p-1 transition-transform duration-150" class:rotate-180={isOpen} on:click={() => toggleSection(index)}><Chevron /></button>
               {/if}
             </div>
             {#if sections.length && isOpen}
               <ul>
-                {#each sections as { slug, title, isActive }}
+                {#each sections as { slug, title, isActive, index: subIndex }}
                   <li class="mt-1 relative">
-                    <a aria-current={isActive ? 'step' : 'false'} class="inline-block text-sm font-normal py-1 leading-tight" class:text-theme-base={isActive} href={`#${slug}`}>
+                    <a aria-current={isActive ? 'step' : 'false'} class="inline-block text-sm font-normal py-1 leading-tight" class:text-theme-base={isActive} href={`#${slug}`} on:click={() => handleNavClick(subIndex)}>
                       {title}
                     </a>
                     <span class="absolute inset-y-0 -right-[3.2rem] border-r-3"

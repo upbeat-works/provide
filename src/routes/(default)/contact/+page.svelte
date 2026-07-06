@@ -11,7 +11,7 @@
     <div class="flex flex-col">
       <div class="bg-surface-weaker px-6 py-20">
         <p class="uppercase text-xs tracking-widest font-semibold text-theme-base mb-4">{LABEL_CONTACT}</p>
-        <h1 class="text-5xl font-normal mb-6">Get in touch</h1>
+        <h1 class="text-5xl text-theme-stronger font-normal mb-6">Get in touch</h1>
         <span class="text-lg">Did you spot a bug or want to collaborate? We are always happy to hear from you.</span>
       </div>
       <div class="px-6 py-20">
