@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_impacts_galery_impact_time_snapshots",
+  "info": {
+    "displayName": "ImpactTimeSnapshot",
+    "icon": "chart-line",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Indicator": {
+      "type": "string"
+    },
+    "Image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    }
+  }
+}

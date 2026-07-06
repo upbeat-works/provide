@@ -1,0 +1,32 @@
+{
+  "collectionName": "components_methodology_data_type_data_types",
+  "info": {
+    "displayName": "Data Type",
+    "icon": "apps",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Label": {
+      "type": "string"
+    },
+    "Model": {
+      "displayName": "Model",
+      "type": "component",
+      "repeatable": true,
+      "component": "methodology-model.model"
+    },
+    "Simulation": {
+      "displayName": "Simulation",
+      "type": "component",
+      "repeatable": true,
+      "component": "methodology-simulation.simulation"
+    },
+    "Processing": {
+      "displayName": "Processing",
+      "type": "component",
+      "repeatable": true,
+      "component": "methodology-processing.processing"
+    }
+  }
+}

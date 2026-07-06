@@ -36,7 +36,7 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=8192'
           BUILD_ENV: ${{ vars.BUILD_ENV }}
           VITE_DATA_API_URL: ${{ secrets.VITE_DATA_API_URL }}
-          VITE_HEROKU_URL: ${{ secrets.VITE_HEROKU_URL }}
+          VITE_CMS_URL: ${{ secrets.VITE_CMS_URL }}
           VITE_STRAPI_LOCALE: ${{ vars.VITE_STRAPI_LOCALE }}
           VITE_MAPBOX_ACCESS_TOKEN: ${{ secrets.VITE_MAPBOX_ACCESS_TOKEN }}
           VITE_MAPBOX_STYLE_LIGHT: ${{ secrets.VITE_MAPBOX_STYLE_LIGHT }}

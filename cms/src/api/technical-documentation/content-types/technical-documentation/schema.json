@@ -1,0 +1,77 @@
+{
+  "kind": "singleType",
+  "collectionName": "technical_documentations",
+  "info": {
+    "singularName": "technical-documentation",
+    "pluralName": "technical-documentations",
+    "displayName": "Technical Documentation",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "Models": {
+      "displayName": "Model",
+      "type": "component",
+      "repeatable": true,
+      "component": "model.model",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "Scenarios": {
+      "displayName": "Scenario",
+      "type": "component",
+      "repeatable": true,
+      "component": "scenario.scenario",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "ModelsIntro": {
+      "type": "richtext",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "ScenariosIntro": {
+      "type": "richtext",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "DataProcessingIntro": {
+      "type": "richtext",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "DataProcessing": {
+      "displayName": "DataProcessing",
+      "type": "component",
+      "repeatable": true,
+      "component": "data-processing.data-processing",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    }
+  }
+}

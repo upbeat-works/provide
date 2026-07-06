@@ -1,0 +1,20 @@
+{
+  "collectionName": "components_methodology_processing_processings",
+  "info": {
+    "displayName": "Processing",
+    "icon": "cog",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Label": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "richtext"
+    },
+    "TitleShort": {
+      "type": "string"
+    }
+  }
+}

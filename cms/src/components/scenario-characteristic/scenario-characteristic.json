@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_scenario_characteristic_scenario_characteristics",
+  "info": {
+    "displayName": "ScenarioCharacteristic",
+    "icon": "barcode",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Description": {
+      "type": "text"
+    },
+    "Year": {
+      "type": "string"
+    }
+  }
+}

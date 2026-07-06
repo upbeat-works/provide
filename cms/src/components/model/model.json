@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_model_models",
+  "info": {
+    "displayName": "Model",
+    "icon": "align-left",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "richtext"
+    },
+    "Link": {
+      "type": "string"
+    },
+    "Label": {
+      "type": "string"
+    },
+    "UID": {
+      "type": "string"
+    }
+  }
+}

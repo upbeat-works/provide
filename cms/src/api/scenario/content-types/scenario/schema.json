@@ -1,0 +1,52 @@
+{
+  "kind": "collectionType",
+  "collectionName": "scenarios",
+  "info": {
+    "singularName": "scenario",
+    "pluralName": "scenarios",
+    "displayName": "Scenario",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "Description": {
+      "type": "text",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "ScenarioCharacteristics": {
+      "type": "component",
+      "repeatable": true,
+      "component": "scenario-characteristic.scenario-characteristic",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "UID": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "ScenarioPresets": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::scenario-preset.scenario-preset",
+      "mappedBy": "scenarios"
+    }
+  }
+}

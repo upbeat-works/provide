@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_data_processing_data_processings",
+  "info": {
+    "displayName": "DataProcessing",
+    "icon": "bars"
+  },
+  "options": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "Label": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "richtext"
+    }
+  }
+}

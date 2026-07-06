@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_scenario_scenarios",
+  "info": {
+    "displayName": "Scenario",
+    "icon": "align-justify",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "richtext"
+    },
+    "Label": {
+      "type": "string"
+    },
+    "UID": {
+      "type": "string"
+    }
+  }
+}

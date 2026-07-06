@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "scenario_presets",
+  "info": {
+    "singularName": "scenario-preset",
+    "pluralName": "scenario-presets",
+    "displayName": "Scenario Preset",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "Title": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "Description": {
+      "type": "text",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "scenarios": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::scenario.scenario",
+      "inversedBy": "ScenarioPresets"
+    },
+    "Timeframe": {
+      "type": "enumeration",
+      "enum": [
+        "T2100",
+        "T2300"
+      ],
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    }
+  }
+}

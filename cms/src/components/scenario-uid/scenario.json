@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_scenario_uid_scenarios",
+  "info": {
+    "displayName": "Scenario",
+    "icon": "align-right"
+  },
+  "options": {},
+  "attributes": {
+    "UID": {
+      "type": "string"
+    }
+  }
+}

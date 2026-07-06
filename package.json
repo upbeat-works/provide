@@ -9,6 +9,8 @@
     "test": "bun test api/",
     "test:watch": "bun test --watch api/",
     "docker:api": "docker build -t provide-api . && docker run --rm -p 8080:8080 -v provide-data:/data --env-file .dev.vars provide-api",
+    "dev:strapi": "cd cms && yarn develop",
+    "docker:cms": "docker build -t provide-cms ./cms && docker run --rm -p 1337:1337 --env-file cms/.env provide-cms",
     "build": "vite build",
     "preview": "vite preview",
     "package": "svelte-kit package",

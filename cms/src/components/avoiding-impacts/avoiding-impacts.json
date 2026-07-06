@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_avoiding_impacts_avoiding_impacts",
+  "info": {
+    "displayName": "AvoidingImpacts",
+    "icon": "allergies",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "IndicatorUid": {
+      "type": "string"
+    },
+    "StudyLocationUid": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "richtext"
+    },
+    "GeographyUid": {
+      "type": "string"
+    },
+    "ExplorerUrl": {
+      "type": "string"
+    }
+  }
+}

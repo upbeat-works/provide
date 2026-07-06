@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_issue_issues",
+  "info": {
+    "displayName": "Issue",
+    "icon": "tasks",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "richtext"
+    }
+  }
+}

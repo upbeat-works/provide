@@ -1,0 +1,10 @@
+.git
+node_modules
+.tmp
+build
+.cache
+dist
+.strapi
+.env
+exports
+public/uploads
