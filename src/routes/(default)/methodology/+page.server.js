@@ -2,56 +2,49 @@ import { loadFromStrapi } from '$utils/apis.js';
 import { generatePageTitle } from '$utils/meta.js';
 import { kebabCase } from 'lodash-es';
 import { parse } from 'marked';
-import { stringify } from 'qs';
 import { LABEL_DOCUMENTATION } from '$config';
 
-export const load = async ({ fetch }) => {
-  const methodology = await loadFromStrapi(
-    'methodology',
-    fetch,
-    stringify({
-      populate: ['DataType', 'DataType.Model', 'DataType.Simulation', 'DataType.Processing'],
-    })
-  );
+// The Impact tab. Its CMS content type (`impact`) stores a flat list of sections
+// each tagged with an Impact and a Category; regroup them into the per-impact,
+// per-category shape the page renders. First-seen order is preserved.
+const CATEGORY_KEY = {
+  Models: 'models',
+  'Model simulations': 'simulation',
+  'Data processing': 'processing',
+};
 
+export const load = async ({ fetch }) => {
+  const impact = await loadFromStrapi('impact', fetch);
   const title = generatePageTitle(LABEL_DOCUMENTATION);
 
-  if (!methodology) {
-    console.warn('No methodology found. This is likely a Strapi issue. Check if you have rights to access the data.');
-    return {
-      title,
-      methodology: [],
-    };
+  const sections = impact?.attributes?.Sections ?? [];
+  if (!sections.length) {
+    console.warn('No impact sections found. This is likely a Strapi issue. Check if you have rights to access the data.');
+    return { title, methodology: [] };
   }
 
-  return {
-    title,
-    methodology: methodology.attributes.DataType.map(({ Label, Model, Simulation, Processing }) => {
-      return {
-        title: Label.trim(),
-        slug: kebabCase(Label),
-        models: Model.map(({ Label, Description }) => {
-          return {
-            title: (Label ?? '').trim(),
-            slug: kebabCase(Label),
-            description: parse(Description ?? ''),
-          };
-        }).filter(({ title, description }) => title && description),
-        simulation: Simulation.map(({ Label, Description }) => {
-          return {
-            title: (Label ?? '').trim(),
-            slug: kebabCase(Label),
-            description: parse(Description ?? ''),
-          };
-        }).filter(({ title, description }) => title && description),
-        processing: Processing.map(({ Label, Description }) => {
-          return {
-            title: (Label ?? '').trim(),
-            slug: kebabCase(Label),
-            description: parse(Description ?? ''),
-          };
-        }).filter(({ title, description }) => title && description),
-      };
-    }),
-  };
+  const order = [];
+  const byImpact = new Map();
+  for (const { Impact, Category, Title, Text } of sections) {
+    const impactTitle = (Impact ?? '').trim();
+    const key = CATEGORY_KEY[Category];
+    if (!impactTitle || !key) continue;
+    if (!byImpact.has(impactTitle)) {
+      byImpact.set(impactTitle, {
+        title: impactTitle,
+        slug: kebabCase(impactTitle),
+        models: [],
+        simulation: [],
+        processing: [],
+      });
+      order.push(impactTitle);
+    }
+    const itemTitle = (Title ?? '').trim();
+    const description = parse(Text ?? '');
+    if (itemTitle && description) {
+      byImpact.get(impactTitle)[key].push({ slug: kebabCase(itemTitle), title: itemTitle, description });
+    }
+  }
+
+  return { title, methodology: order.map((k) => byImpact.get(k)) };
 };

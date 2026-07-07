@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_methodology_impact_impact_sections",
+  "info": {
+    "displayName": "Impact Section",
+    "icon": "layer",
+    "description": "A section within the methodology Impact tab, grouped by Impact and Category."
+  },
+  "options": {},
+  "attributes": {
+    "Impact": {
+      "type": "string"
+    },
+    "Category": {
+      "type": "string"
+    },
+    "Title": {
+      "type": "string"
+    },
+    "Text": {
+      "type": "richtext"
+    }
+  }
+}

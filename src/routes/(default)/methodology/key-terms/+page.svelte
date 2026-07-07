@@ -4,12 +4,8 @@
   import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
   import Scenarios from './components/Scenarios/Scenarios.svelte';
   import ScenariosIntro from './components/Scenarios/ScenariosIntro.svelte';
-  import { LABEL_KEY_CONCEPTS, LABEL_DOCUMENTATION, ANCHOR_EXPLAINER_SCENARIOS, LABEL_SCENARIOS_INTRO, LABEL_SCENARIOS_TIMEFRAMES, LABEL_SCENARIOS_PRESETS, LABEL_SCENARIOS_LIST, LABEL_SCENARIOS_TIMELINES, PATH_DOCUMENTATION, PATH_KEY_CONCEPTS } from '$config';
-
-  const tabItems = [
-    { href: `/${PATH_DOCUMENTATION}`, label: 'Impact' },
-    { href: `/${PATH_DOCUMENTATION}/${PATH_KEY_CONCEPTS}`, label: LABEL_KEY_CONCEPTS },
-  ];
+  import { LABEL_DOCUMENTATION, ANCHOR_EXPLAINER_SCENARIOS, LABEL_SCENARIOS_INTRO, LABEL_SCENARIOS_TIMEFRAMES, LABEL_SCENARIOS_PRESETS, LABEL_SCENARIOS_LIST, LABEL_SCENARIOS_TIMELINES } from '$config';
+  import { tabItems } from '../tabs.js';
   import { kebabCase } from 'lodash-es';
 
   export let data;

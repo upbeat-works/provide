@@ -1,0 +1,21 @@
+{
+  "kind": "singleType",
+  "collectionName": "methodology_impacts",
+  "info": {
+    "singularName": "impact",
+    "pluralName": "impact-index",
+    "displayName": "Methodology - Impact",
+    "description": "Methodology > Impact tab: sections grouped by Impact and Category."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Sections": {
+      "type": "component",
+      "repeatable": true,
+      "component": "methodology-impact.impact-section"
+    }
+  }
+}

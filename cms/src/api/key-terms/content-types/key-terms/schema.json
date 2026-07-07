@@ -1,0 +1,21 @@
+{
+  "kind": "singleType",
+  "collectionName": "methodology_key_terms",
+  "info": {
+    "singularName": "key-terms",
+    "pluralName": "key-terms-index",
+    "displayName": "Methodology - Key terms",
+    "description": "Methodology > Key terms tab: a flat list of glossary/key-term sections."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Sections": {
+      "type": "component",
+      "repeatable": true,
+      "component": "section.section"
+    }
+  }
+}
