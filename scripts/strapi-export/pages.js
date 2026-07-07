@@ -165,10 +165,10 @@ async function get(base, locale, path) {
 
 async function main() {
   const env = await loadEnv();
-  const base = (env.BASE ?? env.VITE_HEROKU_URL ?? '').replace(/\/$/, '');
+  const base = (env.BASE ?? env.VITE_CMS_URL ?? '').replace(/\/$/, '');
   const locale = env.LOCALE ?? env.VITE_STRAPI_LOCALE ?? 'en';
   const out = env.OUT ?? 'strapi/new';
-  if (!base) throw new Error('No base URL (set BASE or VITE_HEROKU_URL).');
+  if (!base) throw new Error('No base URL (set BASE or VITE_CMS_URL).');
 
   console.log(`Organizing pages from ${base} (locale=${locale}) → ${out}/`);
 
@@ -181,14 +181,20 @@ async function main() {
   await rm(out, { recursive: true, force: true });
 
   const files = [...aboutFiles(about, locale), ...methodologyFiles(methodology, glossaries, locale)];
+  const seen = new Set();
   let empty = 0;
+  let collisions = 0;
   for (const f of files) {
     const full = join(out, f.path);
+    // Paths are slug(label)-addressed; two labels can map to the same file and
+    // silently overwrite. Warn so dropped sections don't pass unnoticed.
+    if (seen.has(full)) { console.warn(`  ⚠ collision (overwriting): ${full}`); collisions++; }
+    seen.add(full);
     await mkdir(dirname(full), { recursive: true });
     await writeFile(full, serialize(f.frontmatter, f.body));
     if (!String(f.body ?? '').trim()) empty++;
   }
-  console.log(`Done. ${files.length} files written (${empty} empty placeholder(s)) to ${out}/`);
+  console.log(`Done. ${files.length} files written (${empty} empty placeholder(s)${collisions ? `, ⚠ ${collisions} collision(s)` : ''}) to ${out}/`);
 }
 
 main().catch((e) => {

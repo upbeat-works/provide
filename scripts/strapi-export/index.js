@@ -7,7 +7,7 @@
 //   BASE=https://provide-cms.herokuapp.com LOCALE=en-EU OUT=strapi-export \
 //     node scripts/strapi-export/index.js
 //
-// Defaults come from .env (VITE_HEROKU_URL, VITE_STRAPI_LOCALE).
+// Defaults come from .env (VITE_CMS_URL, VITE_STRAPI_LOCALE).
 
 import { readFile, rm, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -141,15 +141,17 @@ async function fetchType(base, locale, type) {
 
 async function main() {
   const env = await loadEnv();
-  const base = (env.BASE ?? env.VITE_HEROKU_URL ?? '').replace(/\/$/, '');
+  const base = (env.BASE ?? env.VITE_CMS_URL ?? '').replace(/\/$/, '');
   const locale = env.LOCALE ?? env.VITE_STRAPI_LOCALE ?? 'en';
   const out = env.OUT ?? 'strapi/original';
-  if (!base) throw new Error('No base URL (set BASE or VITE_HEROKU_URL).');
+  if (!base) throw new Error('No base URL (set BASE or VITE_CMS_URL).');
 
   console.log(`Exporting from ${base} (locale=${locale}) → ${out}/`);
   await rm(out, { recursive: true, force: true });
 
+  const seen = new Set();
   let total = 0;
+  let collisions = 0;
   for (const type of TYPES) {
     let json;
     try {
@@ -161,13 +163,17 @@ async function main() {
     const files = entriesToFiles(type, json, locale);
     for (const file of files) {
       const full = join(out, file.path);
+      // Files are addressed by slug(label); distinct labels can collide on the
+      // same path and silently overwrite. Warn rather than lose content quietly.
+      if (seen.has(full)) { console.warn(`  ⚠ collision (overwriting): ${full}`); collisions++; }
+      seen.add(full);
       await mkdir(dirname(full), { recursive: true });
       await writeFile(full, serialize(file));
     }
     total += files.length;
     console.log(`  ${type}: ${files.length} section file(s)`);
   }
-  console.log(`Done. ${total} markdown files written to ${out}/`);
+  console.log(`Done. ${total} markdown files written to ${out}/` + (collisions ? ` — ⚠ ${collisions} collision(s)` : ''));
 }
 
 main().catch((e) => {
