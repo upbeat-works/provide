@@ -1,0 +1,21 @@
+{
+  "kind": "singleType",
+  "collectionName": "methodology_data_processings",
+  "info": {
+    "singularName": "data-processing",
+    "pluralName": "data-processing-index",
+    "displayName": "Methodology - Data processing",
+    "description": "Methodology > Data processing tab: a flat list of data-processing sections."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Sections": {
+      "type": "component",
+      "repeatable": true,
+      "component": "section.section"
+    }
+  }
+}

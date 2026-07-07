@@ -29,7 +29,7 @@ export const load = async ({ fetch, parent, params }) => {
     ].join('&')
   );
 
-  const caseStudyOutro = (await loadFromStrapi('case-study-outro', fetch)).attributes;
+  const caseStudyOutro = (await loadFromStrapi('case-study-outro', fetch))?.attributes;
 
   const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.CityUid === params.city)?.attributes;
   if (!caseStudyRaw) error(404, { message: 'No case study available for this city' });
