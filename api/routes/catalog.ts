@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { createPlatforms } from '../platform';
 import { parseVariable, indicatorsFromVariables } from '../conventions';
-import { distinct } from '../util';
+import { distinct, distinctCaseInsensitive } from '../util';
 
 const catalog = new Hono<Env>();
 
@@ -60,8 +60,11 @@ catalog.get('/', async (c) => {
   ].filter((p) => p.options.length);
 
   // Scenarios are derived straight from the ixmp4 runs — the scenario name is
-  // the id (convention-driven, no curation).
-  const scenarioNames = distinct(instanceRuns.flat().map((run) => run.scenario.name));
+  // the id (convention-driven, no curation). Case-only duplicate runs (e.g. the
+  // `SSP5-3.4-OS`/`SSP5-3.4-Os` pair whose data is split across the two) collapse
+  // to one canonical entry so the selector shows it once; the views match the
+  // requested name case-insensitively to reach either casing's data.
+  const scenarioNames = distinctCaseInsensitive(instanceRuns.flat().map((run) => run.scenario.name));
   const scenarios = scenarioNames.map((name) => ({ uid: name, label: name }));
 
   return c.json({ indicators, indicatorParameters, scenarios });

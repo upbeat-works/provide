@@ -79,4 +79,23 @@ describe('GET /api/catalog', () => {
     // The runs fixture exposes one scenario, "curpol"; it surfaces verbatim.
     expect(json.scenarios).toEqual([{ uid: 'curpol', label: 'curpol' }]);
   });
+
+  test('collapses case-only duplicate scenario names to one canonical entry', async () => {
+    // Source data carries the same overshoot scenario twice, differing only in
+    // case (`SSP5-3.4-OS`/`SSP5-3.4-Os`); the selector must show it once.
+    server.use(
+      http.patch(`${testInstance.url}/iamc/variables/`, () => HttpResponse.json(listEnvelope([]))),
+      http.patch(`${testInstance.url}/runs/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 1, model: { name: 'M' }, scenario: { name: 'SSP5-3.4-Os' }, version: 1, is_default: true },
+            { id: 2, model: { name: 'M' }, scenario: { name: 'SSP5-3.4-OS' }, version: 1, is_default: true },
+          ]),
+        ),
+      ),
+    );
+    const res = await api.request('/api/catalog', {}, createTestEnv());
+    const json = (await res.json()) as { scenarios: Array<{ uid: string; label: string }> };
+    expect(json.scenarios).toEqual([{ uid: 'SSP5-3.4-OS', label: 'SSP5-3.4-OS' }]);
+  });
 });

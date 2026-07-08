@@ -34,6 +34,19 @@ describe('zipBands', () => {
   test('drops scenarios missing any of the three bands', () => {
     expect(zipBands([2020], { A: [1] }, { A: [2] }, {}, ['A'])).toEqual({});
   });
+
+  test('matches requested scenarios to data keys case-insensitively, keyed by the requested name', () => {
+    // The overshoot percentile data lives under the lowercase `SSP5-3.4-Os` run,
+    // but the selection sends the canonical `SSP5-3.4-OS`. It must still resolve,
+    // and the output must key by the requested name so the frontend finds it.
+    const series = { 'SSP5-3.4-Os': [0.1, 0.2] };
+    const bands = zipBands([2020, 2050], series, series, series, ['SSP5-3.4-OS']);
+    expect(Object.keys(bands)).toEqual(['SSP5-3.4-OS']);
+    expect(bands['SSP5-3.4-OS']).toEqual([
+      [0.1, 0.1, 0.1],
+      [0.2, 0.2, 0.2],
+    ]);
+  });
 });
 
 describe('assembleImpactTime', () => {

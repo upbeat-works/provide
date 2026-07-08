@@ -2,6 +2,27 @@ import _, { kebabCase, uniq } from 'lodash-es';
 import { extractEndYear } from '$utils/meta.js';
 import { formatValue } from '$utils/formatting';
 
+// Case-insensitive name matching helpers live in the dependency-free leaf module
+// ./case-insensitive.js (avoids an import cycle with meta.js); re-exported here
+// alongside the other scenario/list utilities.
+import { ciKeyBy, ciGet, ciEquals } from './case-insensitive.js';
+export { ciKeyBy, ciGet, ciEquals };
+
+/**
+ * Graft each selected scenario's data-driven endYear (its timeframe) from the
+ * availability-derived `selectable` list, matched case-insensitively by uid.
+ * The bare scenario list (CURRENT_SCENARIOS) carries no endYear — it lives only
+ * on SELECTABLE_SCENARIOS — so charts that filter years by timeframe need it
+ * grafted on. An endYear already present on a selected scenario is preserved.
+ */
+export function withScenarioTimeframe(selected, selectable, key = 'endYear') {
+  const byUid = ciKeyBy(selectable);
+  return selected.map((scenario) => ({
+    ...scenario,
+    [key]: scenario[key] ?? ciGet(byUid, scenario.uid)?.[key],
+  }));
+}
+
 export const formatReadableList = function (arr, key) {
   const segments = formatObjArr(arr, key);
   return segments.map((s) => (s.type === 'element' ? s.value[key] : s.value)).join('');

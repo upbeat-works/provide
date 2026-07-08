@@ -19,6 +19,7 @@
   import { URL_PATH_SCENARIOS, END_UN_AVOIDABLE_RISK, UNAVOIDABLE_UID, KEY_MODEL, KEY_SOURCE, KEY_SCENARIO_ENDYEAR, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR } from '$src/config.js';
   import { sortBy, reverse, find, uniqBy, without, isObject, isString, has } from 'lodash-es';
   import { fetchData } from '$lib/api/api';
+  import { withScenarioTimeframe } from '$lib/utils/utils.js';
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { writable } from 'svelte/store';
@@ -35,18 +36,35 @@
   export let currentScenarios = [];
 
   // This checks if the passed list of scenarios is valid. If yes, it uses it, otherwise it falls back to the list in the state.
-  $: currentSelectedScenarios = (Array.isArray(currentScenarios) && currentScenarios.length ? currentScenarios : $CURRENT_SCENARIOS).map(
-    // We just need a small set of attributes
-    ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe }) => ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe })
+  // endYear (the timeframe that drives the year filtering below) is data-driven
+  // and lives on SELECTABLE_SCENARIOS, not on the bare CURRENT_SCENARIOS — graft
+  // it on, or timeframe is undefined and every year gets filtered out (blank chart).
+  $: currentSelectedScenarios = withScenarioTimeframe(
+    (Array.isArray(currentScenarios) && currentScenarios.length ? currentScenarios : $CURRENT_SCENARIOS).map(
+      // We just need a small set of attributes
+      ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe }) => ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe })
+    ),
+    $SELECTABLE_SCENARIOS,
+    KEY_SCENARIO_ENDYEAR
   );
 
   $: $IS_COMBINATION_AVAILABLE &&
     fetchData(STORE, {
+      // Convention-driven ixmp4 adapter (not the legacy API). It resolves one
+      // exceedance series per warming threshold. The adapter reads repeated
+      // `scenarios=` params, so serialise arrays that way.
+      base: import.meta.env.VITE_API_URL,
+      arrayFormat: 'repeat',
       endpoint: END_UN_AVOIDABLE_RISK,
       params: {
         [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY.uid,
         [URL_PATH_INDICATOR]: $CURRENT_INDICATOR.uid,
-        [URL_PATH_SCENARIOS]: currentSelectedScenarios.map(({ uid }) => uid),
+        // Request ALL selectable scenarios (not just the selected one) so the chart
+        // can plot the exceedance scatter across scenarios; the selected ones are
+        // highlighted, the rest render as "Other scenarios". The adapter omits any
+        // scenario that has no exceedance data.
+        [URL_PATH_SCENARIOS]: $SELECTABLE_SCENARIOS.map(({ uid }) => uid),
+        instance: $CURRENT_INDICATOR.instance,
         ...$CURRENT_INDICATOR_OPTION_VALUES,
       },
     });

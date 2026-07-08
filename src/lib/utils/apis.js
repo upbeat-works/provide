@@ -1,4 +1,5 @@
 import { get } from 'lodash-es';
+import { ciEquals } from '$lib/utils/case-insensitive.js';
 import { KEY_CHARACTERISTICS, KEY_SCENARIO_YEAR_DESCRIPTION, SCENARIO_DATA_KEYS } from '$config';
 
 // We use different locals to simulate different versions of the content.
@@ -120,7 +121,7 @@ export const loadCatalog = async function (svelteFetch = fetch) {
     })),
     scenarios: catalog.scenarios.map((scenario) => {
       // Find the correct scenario in the list coming from Strapi
-      const currentScenario = descriptionScenarios.find((d) => d.attributes.UID === scenario.uid);
+      const currentScenario = descriptionScenarios.find((d) => ciEquals(d.attributes.UID, scenario.uid));
       if (typeof currentScenario === 'undefined') {
         console.warn(`Scenario could not be found. This may be caused by a mismatch of the content versions.`);
       }

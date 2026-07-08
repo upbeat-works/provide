@@ -20,8 +20,21 @@ unavoidableRisk.get('/', async (c) => {
     return c.json({ error: `Unknown instance: ${instanceSlug}` }, 404);
   }
 
+  // Selector dropdowns send raw convention values under the UI's param keys;
+  // map them onto the variable-name segments (undefined → adapter defaults).
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
-  const data = await fetchEnsemble(instance, { username, password }, { indicator, geography, scenarios });
+  const data = await fetchEnsemble(
+    instance,
+    { username, password },
+    {
+      indicator,
+      geography,
+      scenarios,
+      period: c.req.query('reference'),
+      temporal: c.req.query('time'),
+      spatial: c.req.query('spatial'),
+    },
+  );
   return c.json(data);
 });
 

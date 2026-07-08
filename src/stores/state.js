@@ -18,6 +18,7 @@ import { derived, get as getStore, writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getLocalStorage, setLocalStorage, getAllLocalStorage } from './utils.js';
 import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
+import { ciKeyBy, ciGet } from '$lib/utils/case-insensitive.js';
 import { extractEndYear, extractStartYear } from '$utils/meta.js';
 
 import { DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
@@ -489,15 +490,16 @@ export const CURRENT_SCENARIOS_UID = (() => {
         if (selectedUids.length === 0) return [id]; // If there was no scenarios previously selected
 
         const availableScenarios = getStore(SELECTABLE_SCENARIOS);
-        const byUid = keyBy(availableScenarios, 'uid');
+        const byUid = ciKeyBy(availableScenarios);
         // Keep only scenarios still available, so an unavailable existing
-        // selection doesn't block adding a new one.
-        const availableSelected = selectedUids.filter((uid) => byUid[uid]);
+        // selection doesn't block adding a new one. Case-insensitive so a stale
+        // differently-cased uid (URL/localStorage) still matches.
+        const availableSelected = selectedUids.filter((uid) => ciGet(byUid, uid));
         if (availableSelected.length === 0) return [id];
         // Timeframes can't be mixed: if a timeframe is active and the current
         // selection belongs to a different one, reset. endYear is data-driven
         // (it lives on the available scenarios, not on the bare meta list).
-        const currentTimeframe = byUid[availableSelected[0]]?.endYear;
+        const currentTimeframe = ciGet(byUid, availableSelected[0])?.endYear;
         if (timeframe != null && currentTimeframe !== timeframe) return [id];
 
         // The default list
@@ -528,7 +530,7 @@ CURRENT_SCENARIOS_UID.subscribe((value) => {
 
 export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCENARIOS, THEME], ([$uids, $scenarios, $theme]) =>
   ($uids ?? []).map((uid, i) => ({
-    ...$scenarios[uid],
+    ...ciGet($scenarios, uid),
     color: $theme.color.category.base[i],
     colorInterpolator: piecewise(interpolateLab, [$theme.color.category.weakest[i], $theme.color.category.base[i], $theme.color.category.strongest[i]]),
   }))
@@ -577,11 +579,15 @@ export const SCENARIO_AVAILABILITY = derived(
 export const AVAILABLE_SCENARIOS = derived([SCENARIOS, SCENARIO_AVAILABILITY], ([$SCENARIOS, $availability]) => {
   // A scenario is selectable iff ixmp4 has data for it under this selection; its
   // timeframe (endYear) comes from that data and drives the timeframe pills.
-  const byUid = keyBy($availability, 'uid');
+  // Availability is keyed by the raw ixmp4 scenario name, which may differ in
+  // case from the catalog's canonical uid (the SSP5-3.4-OS/Os duplicate, whose
+  // data is split across casings). Match case-insensitively so the scenario
+  // isn't wrongly disabled and dropped from the selector.
+  const byUid = ciKeyBy($availability);
   return $SCENARIOS.map((scenario) => ({
     ...scenario,
-    endYear: byUid[scenario.uid]?.yearEnd,
-    disabled: !byUid[scenario.uid],
+    endYear: ciGet(byUid, scenario.uid)?.yearEnd,
+    disabled: !ciGet(byUid, scenario.uid),
   }));
 });
 

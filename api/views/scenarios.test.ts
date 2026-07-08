@@ -22,4 +22,12 @@ describe('scenarioAvailabilityFromRows', () => {
     ];
     expect(scenarioAvailabilityFromRows(rows).map((s) => s.uid)).toEqual(['A']);
   });
+
+  test('dedupes scenarios case-insensitively (the SSP5-3.4-OS/Os source duplicate)', () => {
+    const rows = [
+      { scenario: 'SSP5-3.4-Os', model: 'M1', '2020': 1, '2025': 2 },
+      { scenario: 'SSP5-3.4-OS', model: 'M2', '2020': 9, '2025': 9 }, // same scenario, other casing
+    ];
+    expect(scenarioAvailabilityFromRows(rows).map((s) => s.uid)).toEqual(['SSP5-3.4-Os']);
+  });
 });

@@ -17,16 +17,18 @@ export interface ScenarioAvailability {
  * wins (default run). Pure.
  */
 export function scenarioAvailabilityFromRows(rows: WideRow[]): ScenarioAvailability[] {
+  // Dedup case-insensitively: a scenario uploaded under two casings (the
+  // `SSP5-3.4-OS`/`SSP5-3.4-Os` source duplicate) is one availability entry.
   const seen = new Set<string>();
   const out: ScenarioAvailability[] = [];
   for (const row of rows) {
-    if (seen.has(row.scenario)) continue;
+    if (seen.has(row.scenario.toLowerCase())) continue;
     const years = yearColumns(row).filter((y) => {
       const v = row[String(y)];
       return v != null && Number.isFinite(Number(v));
     });
     if (!years.length) continue;
-    seen.add(row.scenario);
+    seen.add(row.scenario.toLowerCase());
     out.push({
       uid: row.scenario,
       yearStart: years[0],

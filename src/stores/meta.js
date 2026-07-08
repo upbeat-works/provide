@@ -4,6 +4,7 @@ import { unitLabels } from '$lib/utils/formatting';
 import { buildIndex } from '$lib/components/controls/GeographySelection/geography-tree.js';
 import { get, keyBy, sortBy } from 'lodash-es';
 import { derived } from 'svelte/store';
+import { ciKeyBy } from '$lib/utils/case-insensitive.js';
 
 // META DATA (This will only be set once on load and won't change again)
 // Non-selectable types (continents) are grouping headers only — they must never
@@ -49,7 +50,9 @@ export const SCENARIOS = derived(page, ($page) => {
   return $page.data?.catalog?.scenarios ?? [];
 });
 
-export const DICTIONARY_SCENARIOS = derived(SCENARIOS, ($scenarios) => keyBy($scenarios, 'uid'));
+// Case-insensitive keys so a lookup by a differently-cased scenario uid (the
+// SSP5-3.4-OS/Os source duplicate) still resolves. Read it with ciGet.
+export const DICTIONARY_SCENARIOS = derived(SCENARIOS, ($scenarios) => ciKeyBy($scenarios));
 
 
 export const INDICATORS = derived(page, ($page) => {

@@ -1,5 +1,6 @@
 import { createPlatform } from '../platform';
 import { composeVariable, FACET_DEFAULTS } from '../conventions';
+import { caseInsensitiveLookup } from '../util';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
 import type { Ixmp4Instance } from '../types';
 
@@ -61,9 +62,18 @@ export function zipBands(
   scenarios: string[],
 ): ScenarioBands {
   const bands: ScenarioBands = {};
+  // The data is keyed by the raw ixmp4 scenario name, which may differ in case
+  // from the requested (canonical) name — a source-duplicate like
+  // `SSP5-3.4-Os` vs `SSP5-3.4-OS`. Match case-insensitively, key by requested.
+  const findLo = caseInsensitiveLookup(Object.keys(lo));
+  const findMid = caseInsensitiveLookup(Object.keys(mid));
+  const findHi = caseInsensitiveLookup(Object.keys(hi));
   for (const scenario of scenarios) {
-    if (!lo[scenario] || !mid[scenario] || !hi[scenario]) continue;
-    bands[scenario] = years.map((_, i) => [lo[scenario][i], mid[scenario][i], hi[scenario][i]]);
+    const l = findLo(scenario);
+    const m = findMid(scenario);
+    const h = findHi(scenario);
+    if (!l || !m || !h) continue;
+    bands[scenario] = years.map((_, i) => [lo[l][i], mid[m][i], hi[h][i]]);
   }
   return bands;
 }
