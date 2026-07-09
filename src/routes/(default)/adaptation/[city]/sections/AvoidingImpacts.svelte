@@ -56,6 +56,7 @@
   <PillGroup class="mb-8" label="Study location" size="sm" allowWrap={false} options={studyLocations} bind:currentUid={$studyLocation} />
 {/if}
 
+{#if data.length}
 <table class="w-full mb-10 max-w-[45em]">
   <caption class="caption-bottom text-text-weaker text-sm mt-3 text-left">
     <div class="flex gap-4 justify-between">
@@ -83,3 +84,4 @@
     </tbody>
   {/each}
 </table>
+{/if}

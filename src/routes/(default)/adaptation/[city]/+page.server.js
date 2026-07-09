@@ -30,7 +30,7 @@ export const load = async ({ fetch, parent, params }) => {
   const city = meta.cities.find((c) => c.uid === caseStudyRaw.CityUid);
   if (!city) error(404, { message: 'City not found in data' });
 
-  const loadAvoidingImpactsData = async ({ Indicators, StudyLocations }) => {
+  const loadAvoidingImpactsData = async ({ Indicators = [], StudyLocations = [] }) => {
     // Load all avoiding impacts reference data
     const refRequests = Indicators.map(({ Uid: indicatorUid }) => {
       const indicator = meta.indicators.find((d) => d.uid === indicatorUid);
