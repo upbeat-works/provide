@@ -7,17 +7,11 @@
   },
   "options": {},
   "attributes": {
-    "IndicatorUid": {
-      "type": "string"
-    },
-    "StudyLocationUid": {
+    "Title": {
       "type": "string"
     },
     "Description": {
       "type": "richtext"
-    },
-    "GeographyUid": {
-      "type": "string"
     },
     "ExplorerUrl": {
       "type": "string"

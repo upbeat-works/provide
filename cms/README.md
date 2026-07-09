@@ -18,11 +18,13 @@ to `database/data.db`, gitignored).
 npm run develop   # or, from the monorepo root: yarn dev:strapi
 ```
 
-Seed local content from the live snapshot (writes to `database/data.db`):
+Seed local content from the live snapshot (writes to `database/data.db`).
+`seed.js` seeds every content type and then builds the methodology tab single
+types from the seeded content:
 
 ```
 node scripts/fetch-snapshot.js
-node scripts/seed-from-rest.js
+node scripts/seed.js
 ```
 
 ## Deploy (Fly.io)
@@ -53,7 +55,7 @@ machine:
 
 ```bash
 fly ssh console -a provide-cms -C \
-  "/bin/sh -c 'cd /app && node scripts/fetch-snapshot.js && node scripts/seed-from-rest.js'"
+  "/bin/sh -c 'cd /app && node scripts/fetch-snapshot.js && node scripts/seed.js'"
 ```
 
 ## Scripts
