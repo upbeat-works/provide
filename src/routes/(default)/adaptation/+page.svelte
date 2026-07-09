@@ -1,62 +1,24 @@
 <script>
-  import ContentPageLayout from '$lib/components/layouts/ContentPageLayout.svelte';
-  import { LABEL_ADAPTATION } from '$config';
-  import Publications from './sections/Publications.svelte';
-  import Outro from './sections/Outro.svelte';
-  import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
-  import { kebabCase } from 'lodash-es';
+  import CaseStudyCard from '../landing-page/components/CaseStudiesCarousel/CaseStudyCard.svelte';
 
   export let data;
-
-  $: sections = [
-    {
-      title: data.introTitle,
-      component: SectionContent,
-      content: true,
-      props: {
-        title: data.introTitle,
-        content: data.introText,
-      },
-    },
-    {
-      title: data.selfAssessmentTitle,
-      component: SectionContent,
-      props: {
-        title: data.selfAssessmentTitle,
-        content: data.selfAssessmentText,
-      },
-    },
-    {
-      title: data.integrationTitle,
-      component: SectionContent,
-      content: true,
-      props: {
-        title: data.integrationTitle,
-        content: data.integrationText,
-      },
-    },
-    {
-      component: SectionContent,
-      props: {
-        title: data.publicationsTitle,
-        slug: 'publications',
-      },
-      sections: [
-        {
-          component: Publications,
-          props: {
-            publications: data.publications,
-          },
-        },]
-    },
-  ].map((section) => ({ ...section, slug: kebabCase(section.title), content: true }));
 </script>
 
-<ContentPageLayout
-  {sections}
-  label={LABEL_ADAPTATION}
-  title="Adaptation"
-  intro="Tools and resources for using climate data in risk assessment and planning."
->
-  <Outro title={data.outroTitle} text={data.outroText} />
-</ContentPageLayout>
+<!-- Hero -->
+<div class="bg-grass-25 border-b border-contour-weakest">
+  <div class="max-w-6xl mx-auto px-6 py-20 text-center">
+    <h1 class="text-5xl font-normal text-theme-stronger mb-5">Case studies</h1>
+    <p class="text-lg text-text-weaker max-w-2xl mx-auto">
+      Real-world examples of how climate risk dashboard data has been used to support adaptation planning across cities and regions.
+    </p>
+  </div>
+</div>
+
+<!-- Card grid -->
+<div class="max-w-6xl mx-auto px-6 py-12">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {#each data.caseStudies as study}
+      <CaseStudyCard {study} />
+    {/each}
+  </div>
+</div>
