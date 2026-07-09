@@ -5,9 +5,14 @@
   export let description = undefined;
   export let className = '';
   export let tabItems = undefined;
+  export let backgroundImage = undefined;
 </script>
 
 <div class={`overflow-hidden relative ${className || 'bg-theme-700'}`}>
+  {#if backgroundImage}
+    <img src={backgroundImage} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-60" />
+    <div class="absolute inset-0 bg-gradient-to-t from-theme-900/70 to-theme-900/20" />
+  {/if}
   <img src="/img/grain-bg.png" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-[0.18] pointer-events-none mix-blend-soft-light" />
   <div class="relative mx-auto max-w-6xl px-2 sm:px-6 {tabItems ? 'pb-10 sm:pb-14' : 'pb-14 sm:pb-20'} pt-6 sm:pt-16">
     {#if $$slots.label}

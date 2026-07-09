@@ -8,19 +8,22 @@
   export let intro = undefined;
   export let label = undefined;
   export let tabItems = undefined;
+  export let backgroundImage = undefined;
   let contentRef;
 </script>
 
 <PageLayout>
   <svelte:fragment slot="hero">
-    <PageHero {label} {title} description={intro} {tabItems} />
+    <PageHero {label} {title} description={intro} {tabItems} {backgroundImage} />
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
     <NestedNav {contentRef} {sections} />
+    <slot name="sidebar-extra" />
   </svelte:fragment>
 
   <svelte:fragment slot="content">
+    <slot name="content-header" />
     <div bind:this={contentRef}>
       {#each sections as section}
         <section class="pt-4 pb-8 border-contour-weakest first:border-0 first:mt-0 last:mb-12" class:border-t={section.title && !section.omitBorder} class:pt-12={section.title}>

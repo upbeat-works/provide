@@ -9,6 +9,7 @@ export const load = async ({ fetch, parent, params }) => {
     'case-study-dynamics',
     fetch,
     [
+      `populate[CoverImage]=*`,
       `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactTimeSnapshot][populate]=Image`,
       `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactGeoSnapshot][populate]=Image`,
       `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image1`,
@@ -31,6 +32,8 @@ export const load = async ({ fetch, parent, params }) => {
     title: caseStudyRaw.Title,
     abstract: caseStudyRaw.Abstract,
     authors: caseStudyRaw.Authors,
+    coverImage: caseStudyRaw.CoverImage?.data?.attributes ?? null,
+    publicationDate: caseStudyRaw.PublicationDate ?? null,
     mainContent: await Promise.all(
       caseStudyRaw.MainContent.map(async (c) => {
         const type = c.__component.split('.')[1];

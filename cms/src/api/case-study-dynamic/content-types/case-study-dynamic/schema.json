@@ -74,6 +74,14 @@
       },
       "type": "string"
     },
+    "PublicationDate": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      },
+      "type": "date"
+    },
     "MainContent": {
       "pluginOptions": {
         "i18n": {
@@ -81,12 +89,7 @@
         }
       },
       "type": "dynamiczone",
-      "components": [
-        "avoiding-impacts.avoiding-impacts",
-        "future-impacts.future-impacts",
-        "image-slider.image-slider",
-        "section.section"
-      ]
+      "components": ["avoiding-impacts.avoiding-impacts", "future-impacts.future-impacts", "image-slider.image-slider", "section.section"]
     }
   }
 }
