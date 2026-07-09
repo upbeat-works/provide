@@ -9,12 +9,17 @@ export const load = async ({ fetch, parent, params }) => {
     'case-study-dynamics',
     fetch,
     [
+      `populate[CoverImage]=*`,
       `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactTimeSnapshot][populate]=Image`,
       `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactGeoSnapshot][populate]=Image`,
       `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image1`,
       `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image2`,
       `populate[MainContent][on][avoiding-impacts.avoiding-impacts][populate]=*`,
       `populate[MainContent][on][section.section][populate]=*`,
+      `populate[Topics]=*`,
+      `populate[Project]=*`,
+      `populate[Geography]=*`,
+      `populate[Scenarios]=*`,
     ].join('&')
   );
 
@@ -31,6 +36,12 @@ export const load = async ({ fetch, parent, params }) => {
     title: caseStudyRaw.Title,
     abstract: caseStudyRaw.Abstract,
     authors: caseStudyRaw.Authors,
+    coverImage: caseStudyRaw.CoverImage?.data?.attributes ?? null,
+    publicationDate: caseStudyRaw.PublicationDate ?? null,
+    topics: (caseStudyRaw.Topics?.data ?? []).map((d) => ({ id: d.id, ...d.attributes })),
+    project: caseStudyRaw.Project?.data ? { id: caseStudyRaw.Project.data.id, ...caseStudyRaw.Project.data.attributes } : null,
+    geography: caseStudyRaw.Geography?.data ? { id: caseStudyRaw.Geography.data.id, ...caseStudyRaw.Geography.data.attributes } : null,
+    scenarios: (caseStudyRaw.Scenarios?.data ?? []).map((d) => ({ id: d.id, ...d.attributes })),
     mainContent: await Promise.all(
       caseStudyRaw.MainContent.map(async (c) => {
         const type = c.__component.split('.')[1];

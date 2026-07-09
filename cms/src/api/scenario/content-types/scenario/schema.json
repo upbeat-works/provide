@@ -47,6 +47,12 @@
       "relation": "manyToMany",
       "target": "api::scenario-preset.scenario-preset",
       "mappedBy": "scenarios"
+    },
+    "CaseStudies": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::case-study-dynamic.case-study-dynamic",
+      "mappedBy": "Scenarios"
     }
   }
 }
