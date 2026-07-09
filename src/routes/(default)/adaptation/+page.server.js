@@ -1,33 +1,19 @@
 import { loadFromStrapi } from '$utils/apis.js';
-import { parse } from 'marked';
 
 export const load = async ({ fetch, parent }) => {
   const { meta } = await parent();
-  const { attributes } = await loadFromStrapi('adaptation', fetch);
-  const caseStudies = await loadFromStrapi('case-study-dynamics', fetch);
-
-  const publications = (attributes.Publications || []).map((d) => ({ name: d.Name, date: new Date(d.PublicationDate), type: d.Type, url: d.Url }));
+  const caseStudies = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*');
 
   return {
-    caseStudies: caseStudies.map((study) => ({
-      city: meta.cities.find((d) => d.uid === study.attributes.CityUid) || { uid: 'nassau', label: 'Nassau' },
-      abstract: study.attributes.Abstract,
-    })),
-    description: attributes.Description,
-    introText: parse(attributes.IntroText ?? ''),
-    introTitle: attributes.IntroTitle,
-
-    selfAssessmentText: parse(attributes.SelfAssessmentText ?? ''),
-    selfAssessmentTitle: attributes.SelfAssessmentTitle,
-
-    integrationTitle: attributes.IntegrationTitle,
-    integrationText: parse(attributes.IntegrationText ?? ''),
-
-    publicationsTitle: attributes.PublicationsTitle,
-    publications,
-
-    outroText: parse(attributes.OutroText ?? ''),
-    outroTitle: attributes.OutroTitle,
-    attributes,
+    caseStudies: caseStudies.map((study) => {
+      const attrs = study.attributes;
+      const city = meta.cities.find((d) => d.uid === attrs.CityUid) || { uid: attrs.CityUid, label: attrs.CityUid };
+      return {
+        city,
+        abstract: attrs.Abstract,
+        category: attrs.Topics,
+        image: attrs.CoverImage?.data?.attributes ?? null,
+      };
+    }),
   };
 };
