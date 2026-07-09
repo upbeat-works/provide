@@ -5,6 +5,7 @@
   import AvoidingImpacts from './sections/AvoidingImpacts.svelte';
   import FutureImpacts from './sections/FutureImpacts.svelte';
   import ImageSlider from './sections/ImageSlider.svelte';
+  import SidebarMetadata from './sections/SidebarMetadata.svelte';
   import { PATH_ADAPTATION } from '$src/config.js';
   import { getStrapiImageAtSize } from '$lib/utils/utils';
   import Arrow from '$lib/components/icons/Arrow.svelte';
@@ -41,9 +42,16 @@
 >
   <!-- Sidebar extra content -->
   <svelte:fragment slot="sidebar-extra">
-    <div class="pt-6">
+    <div class="pt-6 mr-12">
       <CopyLink />
     </div>
+    <SidebarMetadata
+      city={caseStudy.city}
+      geography={caseStudy.geography}
+      topics={caseStudy.topics}
+      scenarios={caseStudy.scenarios}
+      project={caseStudy.project}
+    />
   </svelte:fragment>
 
   <!-- Content slot (back link + date + authors + outro) -->

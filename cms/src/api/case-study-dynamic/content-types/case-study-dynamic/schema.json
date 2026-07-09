@@ -59,20 +59,28 @@
       "allowedTypes": ["images"]
     },
     "Topics": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
-      "type": "string"
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::topic.topic",
+      "inversedBy": "CaseStudies"
     },
     "Project": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
-      "type": "string"
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::project.project",
+      "inversedBy": "CaseStudies"
+    },
+    "Geography": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::geography.geography",
+      "inversedBy": "CaseStudies"
+    },
+    "Scenarios": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::scenario.scenario",
+      "inversedBy": "CaseStudies"
     },
     "PublicationDate": {
       "pluginOptions": {
