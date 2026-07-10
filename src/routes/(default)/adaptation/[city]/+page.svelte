@@ -66,12 +66,4 @@
       {/if}
     </div>
   </svelte:fragment>
-
-  {#if caseStudy.authors}
-    <section class="html-content mt-16 pt-10 flex items-baseline gap-4 border-t border-contour-weakest">
-      <h4>Contributors</h4>
-      <p class="text-text-weaker">{caseStudy.authors}</p>
-    </section>
-  {/if}
-  <Outro {...data.caseStudyOutro} />
 </ContentPageLayout>
