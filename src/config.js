@@ -14,7 +14,7 @@ export const PATH_IMPACT = 'impacts';
 export const PATH_AVOID = 'avoid';
 export const PATH_EXPLORE = 'explore';
 export const PATH_KEY_CONCEPTS = 'key-terms';
-export const PATH_ADAPTATION = 'adaptation';
+export const PATH_ADAPTATION = 'case-studies';
 
 // These will also be used for page titles
 export const LABEL_DOCUMENTATION = 'Methodology';
