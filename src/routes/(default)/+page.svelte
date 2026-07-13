@@ -6,10 +6,10 @@
   import SectionProject from './landing-page/sections/SectionProject.svelte';
 
   export let data;
-  $: ({ stories, caseStudies } = data);
+  $: ({ caseStudies } = data);
 </script>
 
-<SectionHero {stories} />
+<SectionHero />
 <div class="mx-auto max-w-7xl lg:px-6">
   <div class="border-x border-dashed border-contour-weakest">
     <SectionExplore />
