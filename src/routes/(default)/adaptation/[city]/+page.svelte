@@ -42,7 +42,7 @@
 >
   <!-- Sidebar extra content -->
   <svelte:fragment slot="sidebar-extra">
-    <div class="pt-6 mr-12">
+    <div class="mt-2 pt-6 mr-12 border-t border-contour-weakest">
       <CopyLink />
     </div>
     <SidebarMetadata
@@ -62,7 +62,7 @@
         Back to Case Studies
       </a>
       {#if publicationLabel}
-        <span class="text-text-weaker">Published on {publicationLabel}</span>
+        <span class="font-bold text-text-weaker">Published on {publicationLabel}</span>
       {/if}
     </div>
   </svelte:fragment>
