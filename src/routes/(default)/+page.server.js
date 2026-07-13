@@ -2,7 +2,7 @@ import { loadFromStrapi, loadMetaData } from '$utils/apis.js';
 
 export const load = async ({ fetch }) => {
   const meta = await loadMetaData(fetch);
-  const caseStudies = await loadFromStrapi('case-studies', fetch, 'populate[CoverImage]=*');
+  const caseStudies = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*');
 
   return {
     caseStudies: caseStudies.map((study) => ({

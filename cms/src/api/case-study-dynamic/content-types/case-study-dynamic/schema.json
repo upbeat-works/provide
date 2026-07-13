@@ -1,10 +1,10 @@
 {
   "kind": "collectionType",
-  "collectionName": "case_studies",
+  "collectionName": "case_study_dynamics",
   "info": {
-    "singularName": "case-study",
-    "pluralName": "case-studies",
-    "displayName": "Case Study"
+    "singularName": "case-study-dynamic",
+    "pluralName": "case-study-dynamics",
+    "displayName": "Case Study Dynamic"
   },
   "options": {
     "draftAndPublish": true

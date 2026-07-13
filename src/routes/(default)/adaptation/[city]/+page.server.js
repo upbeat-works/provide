@@ -6,7 +6,7 @@ export const load = async ({ fetch, parent, params }) => {
   const { meta } = await parent();
 
   const caseStudiesRaw = await loadFromStrapi(
-    'case-studies',
+    'case-study-dynamics',
     fetch,
     [
       `populate[CoverImage]=*`,

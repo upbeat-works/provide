@@ -3,7 +3,7 @@ import { loadFromStrapi } from '$utils/apis.js';
 export const load = async ({ fetch, parent }) => {
   const { meta } = await parent();
   const caseStudies = await loadFromStrapi(
-    'case-studies',
+    'case-study-dynamics',
     fetch,
     ['populate[CoverImage]=*', 'populate[Topics]=*', 'populate[Project]=*', 'populate[Geography]=*', 'populate[Scenarios]=*'].join('&')
   );

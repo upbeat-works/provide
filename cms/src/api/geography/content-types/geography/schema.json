@@ -35,7 +35,7 @@
     "CaseStudies": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::case-study.case-study",
+      "target": "api::case-study-dynamic.case-study-dynamic",
       "mappedBy": "Geography"
     }
   }
