@@ -1,5 +1,5 @@
 <script>
-	export let category = 'CASE STUDY';
+	export let category;
 </script>
 
 <span
