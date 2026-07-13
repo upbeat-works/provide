@@ -27,8 +27,14 @@ const config = {
     },
     prerender: {
       handleMissingId: 'warn',
-      handleHttpError: ({ path, message }) => {
-        throw new Error(message);
+      // Fail the build for our own broken routes (referrer is unset for our explicit `entries`
+      // below), but only warn when the broken link was discovered while crawling - e.g. a stale
+      // URL inside CMS-authored markdown content, which we don't fully control.
+      handleHttpError: ({ path, referrer, message }) => {
+        if (!referrer) {
+          throw new Error(message);
+        }
+        console.warn(`${message} (linked from ${referrer})`);
       },
       entries: [
         '/',
