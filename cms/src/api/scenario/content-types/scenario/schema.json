@@ -51,7 +51,7 @@
     "CaseStudies": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::case-study-dynamic.case-study-dynamic",
+      "target": "api::case-study.case-study",
       "mappedBy": "Scenarios"
     }
   }

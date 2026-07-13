@@ -4,8 +4,7 @@
   "info": {
     "singularName": "case-study",
     "pluralName": "case-studies",
-    "displayName": "Case Study",
-    "description": ""
+    "displayName": "Case Study"
   },
   "options": {
     "draftAndPublish": true
@@ -16,26 +15,6 @@
     }
   },
   "attributes": {
-    "CurrentContext": {
-      "type": "component",
-      "repeatable": false,
-      "component": "section.section",
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      }
-    },
-    "FutureHeatstress": {
-      "type": "component",
-      "repeatable": false,
-      "component": "future-impacts.future-impacts",
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      }
-    },
     "CityUid": {
       "pluginOptions": {
         "i18n": {
@@ -44,25 +23,86 @@
       },
       "type": "string"
     },
-    "AvoidingImpacts": {
-      "type": "component",
-      "repeatable": false,
+    "Title": {
       "pluginOptions": {
         "i18n": {
           "localized": true
         }
       },
-      "component": "avoiding-impacts.avoiding-impacts"
+      "type": "string"
     },
-    "Slider": {
-      "type": "component",
-      "repeatable": false,
+    "Abstract": {
       "pluginOptions": {
         "i18n": {
           "localized": true
         }
       },
-      "component": "image-slider.image-slider"
+      "type": "text"
+    },
+    "Authors": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "CoverImage": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      },
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "Topics": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::topic.topic",
+      "inversedBy": "CaseStudies"
+    },
+    "Project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::project.project",
+      "inversedBy": "CaseStudies"
+    },
+    "Geography": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::geography.geography",
+      "inversedBy": "CaseStudies"
+    },
+    "Scenarios": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::scenario.scenario",
+      "inversedBy": "CaseStudies"
+    },
+    "PublicationDate": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      },
+      "type": "date"
+    },
+    "MainContent": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "dynamiczone",
+      "components": [
+        "avoiding-impacts.avoiding-impacts",
+        "future-impacts.future-impacts",
+        "image-slider.image-slider",
+        "section.section"
+      ]
     }
   }
 }
