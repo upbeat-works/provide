@@ -41,7 +41,10 @@ export const load = async ({ fetch, parent, params }) => {
     topics: (caseStudyRaw.Topics?.data ?? []).map((d) => ({ id: d.id, ...d.attributes })),
     project: caseStudyRaw.Project?.data ? { id: caseStudyRaw.Project.data.id, ...caseStudyRaw.Project.data.attributes } : null,
     geography: caseStudyRaw.Geography?.data ? { id: caseStudyRaw.Geography.data.id, ...caseStudyRaw.Geography.data.attributes } : null,
-    scenarios: (caseStudyRaw.Scenarios?.data ?? []).map((d) => ({ id: d.id, ...d.attributes })),
+    scenarios: (caseStudyRaw.Scenarios?.data ?? []).map((d) => {
+      const metaScenario = meta.scenarios.find((s) => s.uid === d.attributes.UID);
+      return { id: d.id, uid: d.attributes.UID, label: metaScenario?.label ?? d.attributes.UID };
+    }),
     mainContent: await Promise.all(
       caseStudyRaw.MainContent.map(async (c) => {
         const type = c.__component.split('.')[1];
