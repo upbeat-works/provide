@@ -35,8 +35,12 @@ export const load = async ({ fetch, parent, params }) => {
   const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.CityUid === params.city)?.attributes;
   if (!caseStudyRaw) error(404, { message: 'No case study available for this city' });
 
-  const city = meta.cities.find((c) => c.uid === caseStudyRaw.CityUid);
-  if (!city) error(404, { message: 'City not found in data' });
+  // Strapi CityUid is the lowercase slug (e.g. "lisbon"), which matches a city
+  // geography's `geoId`, not its `uid` (the ixmp4 id, e.g. "Lisbon"). Expose the
+  // city with uid=slug so /adaptation/<slug> links resolve back here.
+  const cityGeo = meta.cities.find((c) => c.geoId === caseStudyRaw.CityUid);
+  if (!cityGeo) error(404, { message: 'City not found in data' });
+  const city = { ...cityGeo, uid: caseStudyRaw.CityUid };
 
   const caseStudy = {
     city,
@@ -52,7 +56,7 @@ export const load = async ({ fetch, parent, params }) => {
       const metaScenario = meta.scenarios.find((s) => s.uid === d.attributes.UID);
       return { id: d.id, uid: d.attributes.UID, label: metaScenario?.label ?? d.attributes.UID };
     }),
-    mainContent: await Promise.all(
+    mainContent: (await Promise.all(
       caseStudyRaw.MainContent.map(async (c) => {
         const type = c.__component.split('.')[1];
         switch (type) {
@@ -63,30 +67,28 @@ export const load = async ({ fetch, parent, params }) => {
               description: c.Description,
               explorerUrl: c.ExplorerUrl,
             };
-          case 'future-impacts':
+          case 'future-impacts': {
+            // Resolve each snapshot's indicator against the convention catalog.
+            // Legacy urbclim-* slugs aren't in the catalog yet, so skip those
+            // snapshots instead of 404ing the whole page.
+            const resolveSnapshot = (snpsht, extra) => {
+              const indicator = meta.indicators.find((d) => d.uid === snpsht.Indicator);
+              return indicator ? { indicator, image: snpsht.Image?.data?.attributes, ...extra } : null;
+            };
+            const impactGeoSnapshots = c.ImpactGeoSnapshot.map((s) => resolveSnapshot(s, { year: s.Year })).filter(Boolean);
+            const impactTimeSnapshots = c.ImpactTimeSnapshot.map((s) => resolveSnapshot(s, {})).filter(Boolean);
+            // FutureImpacts needs at least one time AND one geo snapshot to
+            // render; drop the whole block when that data isn't available.
+            if (!impactGeoSnapshots.length || !impactTimeSnapshots.length) return null;
             return {
               type,
               explorerUrl: c.ExplorerUrl,
               impactGeoDescription: c.ImpactGeoDescription,
               impactTimeDescription: c.ImpactTimeDescription,
-              impactGeoSnapshots: c.ImpactGeoSnapshot.map((snpsht) => {
-                const indicator = meta.indicators.find((d) => d.uid === snpsht.Indicator);
-                if (!indicator) error(404, { message: `No indicator found for ${snpsht.Indicator} in geo snapshots future-impacts component` });
-                return {
-                  indicator,
-                  year: snpsht.Year,
-                  image: snpsht.Image.data?.attributes,
-                };
-              }),
-              impactTimeSnapshots: c.ImpactTimeSnapshot.map((snpsht) => {
-                const indicator = meta.indicators.find((d) => d.uid === snpsht.Indicator);
-                if (!indicator) error(404, { message: `No indicator found for ${snpsht.Indicator} in time snapshots future-impacts component` });
-                return {
-                  indicator,
-                  image: snpsht.Image.data?.attributes,
-                };
-              }),
+              impactGeoSnapshots,
+              impactTimeSnapshots,
             };
+          }
           case 'image-slider':
             return {
               type,
@@ -112,15 +114,19 @@ export const load = async ({ fetch, parent, params }) => {
             };
         }
       })
-    ),
+    )).filter(Boolean),
   };
 
-  const caseStudies = caseStudiesRaw.map((study) => ({
-    id: study.id,
-    title: study.attributes.Title,
-    city: meta.cities.find((c) => c.uid === study.attributes.CityUid),
-    abstract: study.attributes.Abstract,
-  }));
+  const caseStudies = caseStudiesRaw.map((study) => {
+    const cityUid = study.attributes.CityUid;
+    const cityGeo = meta.cities.find((c) => c.geoId === cityUid);
+    return {
+      id: study.id,
+      title: study.attributes.Title,
+      city: cityGeo ? { ...cityGeo, uid: cityUid } : { uid: cityUid, label: cityUid },
+      abstract: study.attributes.Abstract,
+    };
+  });
 
   return { caseStudy, caseStudies, caseStudyOutro: { title: caseStudyOutro?.Title, text: caseStudyOutro?.Text }, author: caseStudy.authors, description: caseStudy.abstract };
 };
