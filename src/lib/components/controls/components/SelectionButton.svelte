@@ -11,11 +11,12 @@
   export let category = undefined;
   export let open = false;
   export let colors = undefined;
+  export let wrapperClass = '';
 
   $: isDisabled = Boolean(disabled);
 </script>
 
-<div>
+<div class={wrapperClass}>
   <span class={`uppercase text-xs tracking-widest font-semibold text-contour-weak inline-block ${labelClass}`}>{label}</span>
   <button
     aria-disabled={isDisabled}

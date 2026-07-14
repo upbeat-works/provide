@@ -36,7 +36,7 @@
 
 {#each scenariosByCategory as category}
   {#if category.scenarios.length}
-    <Tagline class="px-4 mt-3 text-wrap">{category.label}</Tagline>
+    <Tagline class="px-4 mt-3 mb-2 text-wrap">{category.label}</Tagline>
   {/if}
   {#each category.scenarios as scenario}
     {@const isSelected = scenario.isSelected}

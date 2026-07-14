@@ -35,7 +35,7 @@
         <h4 class="text-xs font-bold uppercase tracking-wide text-theme-900 mb-2">Scenarios</h4>
         <div class="flex flex-wrap gap-2">
           {#each scenarios as scenario}
-            <FilterPill color="petrol">{scenario.Label || scenario.Title}</FilterPill>
+            <FilterPill color="petrol">{scenario.label}</FilterPill>
           {/each}
         </div>
       </div>
