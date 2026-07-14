@@ -6,15 +6,21 @@
   import FutureImpacts from './sections/FutureImpacts.svelte';
   import ImageSlider from './sections/ImageSlider.svelte';
   import SidebarMetadata from './sections/SidebarMetadata.svelte';
+  import CaseStudyCard from '../../landing-page/components/CaseStudiesCarousel/CaseStudyCard.svelte';
   import { PATH_ADAPTATION } from '$src/config.js';
   import { getStrapiImageAtSize } from '$lib/utils/utils';
   import Arrow from '$lib/components/icons/Arrow.svelte';
+  import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
 
   export let data;
 
   $: caseStudy = data.caseStudy;
   $: backgroundImage = caseStudy.coverImage ? getStrapiImageAtSize(caseStudy.coverImage) : undefined;
+
+  $: relatedCaseStudies = caseStudy.project
+    ? data.caseStudies.filter((s) => s.project?.id === caseStudy.project.id && s.city?.uid !== caseStudy.city.uid).slice(0, 3)
+    : [];
 
   $: publicationLabel = caseStudy.publicationDate
     ? new Date(caseStudy.publicationDate).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
@@ -42,7 +48,7 @@
 >
   <!-- Sidebar extra content -->
   <svelte:fragment slot="sidebar-extra">
-    <div class="pt-6 mr-12">
+    <div class="mt-2 pt-6 mr-12 border-t border-contour-weakest">
       <CopyLink />
     </div>
     <SidebarMetadata
@@ -62,8 +68,27 @@
         Back to Case Studies
       </a>
       {#if publicationLabel}
-        <span class="text-text-weaker">Published on {publicationLabel}</span>
+        <span class="font-bold text-text-weaker">Published on {publicationLabel}</span>
       {/if}
     </div>
   </svelte:fragment>
 </ContentPageLayout>
+
+{#if relatedCaseStudies.length}
+  <div class="bg-grass-25 border-t border-contour-weakest py-16">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="text-3xl font-normal text-theme-stronger">More case studies from {caseStudy.project.Title}</h2>
+        <a href="/{PATH_ADAPTATION}" class="flex items-center gap-1.5 text-theme-base font-bold hover:underline whitespace-nowrap">
+          View all
+          <LinkArrow />
+        </a>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {#each relatedCaseStudies as study}
+          <CaseStudyCard {study} />
+        {/each}
+      </div>
+    </div>
+  </div>
+{/if}
