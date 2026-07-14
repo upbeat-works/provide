@@ -34,6 +34,7 @@ const config = {
         '/',
         '/about',
         '/adaptation',
+        '/keyconcepts',
         '/contact',
         '/impacts/avoid',
         '/impacts/explore',

@@ -13,6 +13,7 @@
   export let panelClass = 'max-w-5xl';
   export let isOpen = false;
   export let colors = undefined;
+  export let wrapperClass = undefined;
 </script>
 
 <ModalSelect {panelClass} bind:isOpen>
@@ -28,6 +29,7 @@
       {placeholder}
       {colors}
       {open}
+      {wrapperClass}
       on:click={toggle}
     />
   </svelte:fragment>

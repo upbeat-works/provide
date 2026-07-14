@@ -51,7 +51,7 @@ const loadExplainer = async ({ fetch, parent }) => {
   return {
     entries: [],
     categories: [],
-    scenarios: meta.scenarios,
+    scenarios: catalog.scenarios,
     selectableTimeframes,
     defaultTimeframe,
     scenarioPresets,

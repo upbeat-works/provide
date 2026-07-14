@@ -4,7 +4,7 @@
   "info": {
     "singularName": "case-study-dynamic",
     "pluralName": "case-study-dynamics",
-    "displayName": "Case Study Dynamic"
+    "displayName": "Case Study"
   },
   "options": {
     "draftAndPublish": true
@@ -15,6 +15,81 @@
     }
   },
   "attributes": {
+    "CityUid": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "Title": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "Abstract": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "text"
+    },
+    "Authors": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "CoverImage": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      },
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "Topics": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::topic.topic",
+      "inversedBy": "CaseStudies"
+    },
+    "Project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::project.project",
+      "inversedBy": "CaseStudies"
+    },
+    "Geography": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::geography.geography",
+      "inversedBy": "CaseStudies"
+    },
+    "Scenarios": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::scenario.scenario",
+      "inversedBy": "CaseStudies"
+    },
+    "PublicationDate": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      },
+      "type": "date"
+    },
     "MainContent": {
       "pluginOptions": {
         "i18n": {
@@ -28,14 +103,6 @@
         "image-slider.image-slider",
         "section.section"
       ]
-    },
-    "CityUid": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
-      "type": "string"
     }
   }
 }

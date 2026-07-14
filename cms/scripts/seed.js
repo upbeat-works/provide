@@ -1,0 +1,209 @@
+'use strict';
+/**
+ * Seed a Strapi instance from a production snapshot (see fetch-snapshot.js) and
+ * build the per-tab methodology single types from the seeded content — one pass.
+ *
+ * Boots Strapi programmatically, so run with the dev server stopped:
+ *
+ *   node scripts/fetch-snapshot.js   # refresh ./.snapshot (optional)
+ *   node scripts/seed.js [snapDir]
+ *
+ * On Fly (idle instance):
+ *   fly ssh console -a provide-cms -C \
+ *     "/bin/sh -c 'cd /app && node scripts/fetch-snapshot.js && node scripts/seed.js'"
+ *
+ * Pipeline:
+ *   1. media pre-pass  — create a local file row per Cloudinary media (keeping
+ *                        the absolute URL), building prodMediaId -> localFileId.
+ *   2. entries         — wipe + recreate each type per locale (published), with
+ *                        media refs rewritten and content relations deferred.
+ *   3. relations       — wire scenario <-> scenario-preset by title, per locale.
+ *   4. methodology     — reshape the seeded `methodology` (DataType[]) + glossary
+ *                        into the new per-tab single types (models,
+ *                        data-processing, key-terms, impact). Idempotent.
+ *   5. permissions     — grant Public read on every seeded content type.
+ */
+const fs = require('node:fs');
+const path = require('node:path');
+const { loadContentTypes } = require('./lib/schema');
+const { toCreateData, collectMedia } = require('./lib/transform');
+const { buildTabs } = require('./lib/methodology-map');
+
+const SNAP = process.argv[2] || path.join(__dirname, '..', '.snapshot');
+const LOCALES = ['en', 'en-EU'];
+const PRIMARY = 'en-EU';
+const SKIP = new Set(['case-study']); // not publicly exposed on prod
+const GLOSSARY_LOCALE = 'en-EU'; // glossary is localized; the site serves en-EU
+
+// Target single types for the methodology reshape, keyed by uid -> buildTabs key.
+const METHODOLOGY_TABS = {
+  'api::models.models': 'models',
+  'api::data-processing.data-processing': 'dataProcessing',
+  'api::key-terms.key-terms': 'keyTerms',
+  'api::impact.impact': 'impact',
+};
+
+function readSnap(singularName, locale) {
+  const f = path.join(SNAP, `${singularName}.${locale}.json`);
+  if (!fs.existsSync(f)) return [];
+  const d = JSON.parse(fs.readFileSync(f, 'utf-8')).data;
+  return Array.isArray(d) ? d : d ? [d] : [];
+}
+
+async function main() {
+  const strapi = await require('@strapi/strapi')().load();
+  const log = (m) => strapi.log.info(`[seed] ${m}`);
+  try {
+    const types = loadContentTypes().filter((t) => !SKIP.has(t.singularName));
+
+    // ---- 0. ensure required locales exist (a fresh Strapi has only `en`) ----
+    const localeService = strapi.plugin('i18n').service('locales');
+    const haveLocales = (await localeService.find()).map((l) => l.code);
+    for (const code of LOCALES) {
+      if (!haveLocales.includes(code)) {
+        await localeService.create({ code, name: code });
+        log(`created locale ${code}`);
+      }
+    }
+
+    // ---- 1. media pre-pass ----
+    const mediaNodes = new Map();
+    for (const t of types) {
+      for (const loc of LOCALES) {
+        for (const e of readSnap(t.singularName, loc)) {
+          for (const m of collectMedia(e.attributes)) mediaNodes.set(m.id, m);
+        }
+      }
+    }
+    // Wipe existing files so re-runs stay idempotent (content types are wiped
+    // below; the files table must be cleared here or media rows accumulate).
+    await strapi.db.query('plugin::upload.file').deleteMany({ where: {} });
+    const mediaIdMap = new Map();
+    for (const [prodId, node] of mediaNodes) {
+      const a = node.attributes;
+      const rec = await strapi.db.query('plugin::upload.file').create({
+        data: {
+          name: a.name, alternativeText: a.alternativeText, caption: a.caption,
+          width: a.width, height: a.height, formats: a.formats, hash: a.hash,
+          ext: a.ext, mime: a.mime, size: a.size, url: a.url,
+          previewUrl: a.previewUrl, provider: a.provider || 'cloudinary',
+          provider_metadata: a.provider_metadata, folderPath: '/',
+        },
+      });
+      mediaIdMap.set(prodId, rec.id);
+    }
+    log(`media: created ${mediaIdMap.size} file rows`);
+
+    // ---- 2. entries (wipe + recreate per locale) ----
+    const idByKey = {}; // uid -> locale -> Map(businessKey -> localId)
+    for (const t of types) {
+      await strapi.db.query(t.uid).deleteMany({ where: {} });
+      idByKey[t.uid] = {};
+      const locales = t.i18n ? LOCALES : [PRIMARY];
+      let count = 0;
+      const failures = [];
+      for (const locale of locales) {
+        idByKey[t.uid][locale] = new Map();
+        for (const e of readSnap(t.singularName, locale)) {
+          const key = e.attributes.UID ?? e.attributes.Title ?? e.attributes.Name ?? `#${e.id}`;
+          try {
+            const data = toCreateData(e.attributes, mediaIdMap);
+            // Strapi's i18n decorator reads the target locale from data.locale,
+            // so keep it for localized types and strip it for non-localized ones.
+            if (!t.i18n) delete data.locale;
+            const rec = await strapi.entityService.create(t.uid, { data });
+            idByKey[t.uid][locale].set(key, rec.id);
+            count += 1;
+          } catch (err) {
+            // Keep going so ONE run surfaces every schema-vs-prod-data drift.
+            failures.push(`${locale}/${key}: ${err.message}`);
+          }
+        }
+      }
+      log(`${t.singularName}: created ${count} entries` + (failures.length ? ` — ${failures.length} FAILED` : ''));
+      for (const f of failures) log(`  ✗ ${t.singularName} ${f}`);
+    }
+
+    // ---- 3. wire scenario <-> scenario-preset (by title) per locale ----
+    const scenarioUid = 'api::scenario.scenario';
+    const presetUid = 'api::scenario-preset.scenario-preset';
+    let wired = 0;
+    for (const locale of LOCALES) {
+      const presetByTitle = new Map();
+      for (const p of readSnap('scenario-preset', locale)) {
+        const localId = idByKey[presetUid]?.[locale]?.get(p.attributes.Title);
+        if (localId) presetByTitle.set(p.attributes.Title, localId);
+      }
+      for (const s of readSnap('scenario', locale)) {
+        const localId = idByKey[scenarioUid]?.[locale]?.get(s.attributes.UID);
+        const presetTitles = (s.attributes.ScenarioPresets?.data ?? []).map((x) => x.attributes.Title);
+        const presetIds = presetTitles.map((tt) => presetByTitle.get(tt)).filter(Boolean);
+        if (localId && presetIds.length) {
+          await strapi.entityService.update(scenarioUid, localId, { data: { ScenarioPresets: presetIds } });
+          wired += 1;
+        }
+      }
+    }
+    log(`relations: wired ScenarioPresets on ${wired} scenarios`);
+
+    // ---- 4. reshape methodology + glossary into the new per-tab single types ----
+    // The tab types are not in the snapshot; they are derived from the seeded
+    // `methodology` (DataType[]) + glossary content. Idempotent: re-running
+    // replaces each type's Sections.
+    const methodology = await strapi.entityService.findMany('api::methodology.methodology', {
+      populate: { DataType: { populate: ['Model', 'Simulation', 'Processing'] } },
+    });
+    if (methodology) {
+      const glossaries = await strapi.entityService.findMany('api::glossary.glossary', {
+        fields: ['Title', 'Description'],
+        locale: GLOSSARY_LOCALE,
+        sort: 'id:asc',
+        limit: -1,
+      });
+      log(`methodology source: ${methodology.DataType?.length ?? 0} DataTypes, ${glossaries?.length ?? 0} glossaries (${GLOSSARY_LOCALE})`);
+      const tabs = buildTabs(methodology, glossaries); // pure, unit-tested in lib/methodology-map.test.js
+      for (const [uid, tabKey] of Object.entries(METHODOLOGY_TABS)) {
+        const existing = await strapi.entityService.findMany(uid);
+        const payload = { Sections: tabs[tabKey], publishedAt: new Date() };
+        if (existing) await strapi.entityService.update(uid, existing.id, { data: payload });
+        else await strapi.entityService.create(uid, { data: payload });
+        log(`methodology ${uid}: ${tabs[tabKey].length} section(s)`);
+      }
+    } else {
+      log('methodology: no source entry found — skipping tab reshape');
+    }
+
+    // ---- 5. grant Public read permissions (a fresh Strapi grants none) ----
+    // `types` already includes the methodology tab single types (they live under
+    // src/api), so a single pass covers seeded content and the derived tabs.
+    const pubRole = await strapi.db
+      .query('plugin::users-permissions.role')
+      .findOne({ where: { type: 'public' } });
+    const wanted = [];
+    for (const t of types) {
+      wanted.push(`${t.uid}.find`);
+      if (t.kind === 'collectionType') wanted.push(`${t.uid}.findOne`);
+    }
+    const existing = await strapi.db
+      .query('plugin::users-permissions.permission')
+      .findMany({ where: { role: pubRole.id } });
+    const have = new Set(existing.map((p) => p.action));
+    let granted = 0;
+    for (const action of wanted) {
+      if (have.has(action)) continue;
+      await strapi.db
+        .query('plugin::users-permissions.permission')
+        .create({ data: { action, role: pubRole.id } });
+      granted += 1;
+    }
+    log(`permissions: granted ${granted} of ${wanted.length} public read actions`);
+    log('done');
+  } finally {
+    await strapi.destroy();
+  }
+}
+
+main().then(() => process.exit(0)).catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

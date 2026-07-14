@@ -1,10 +1,6 @@
 import { error } from '@sveltejs/kit';
-import { loadFromAPI, loadFromStrapi } from '$utils/apis.js';
-import qs from 'qs';
+import { loadFromStrapi } from '$utils/apis.js';
 import { parse } from 'marked';
-import { END_AVOIDING_IMPACTS, END_AVOIDING_REFERENCE, URL_PATH_CERTAINTY_LEVEL, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_LEVEL_OF_IMPACT } from '$src/config.js';
-import { scaleLinear } from 'd3-scale';
-import { each } from 'lodash-es';
 
 export const load = async ({ fetch, parent, params }) => {
   const { geographies, catalog, curation } = await parent();
@@ -20,12 +16,17 @@ export const load = async ({ fetch, parent, params }) => {
     'case-study-dynamics',
     fetch,
     [
+      `populate[CoverImage]=*`,
       `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactTimeSnapshot][populate]=Image`,
       `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactGeoSnapshot][populate]=Image`,
       `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image1`,
       `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image2`,
       `populate[MainContent][on][avoiding-impacts.avoiding-impacts][populate]=*`,
       `populate[MainContent][on][section.section][populate]=*`,
+      `populate[Topics]=*`,
+      `populate[Project]=*`,
+      `populate[Geography]=*`,
+      `populate[Scenarios]=*`,
     ].join('&')
   );
 
@@ -37,77 +38,20 @@ export const load = async ({ fetch, parent, params }) => {
   const city = meta.cities.find((c) => c.uid === caseStudyRaw.CityUid);
   if (!city) error(404, { message: 'City not found in data' });
 
-  const loadAvoidingImpactsData = async ({ Indicators, StudyLocations }) => {
-    // Load all avoiding impacts reference data
-    const refRequests = Indicators.map(({ Uid: indicatorUid }) => {
-      const indicator = meta.indicators.find((d) => d.uid === indicatorUid);
-      if (!indicator) error(404, { message: `Indicator ${indicatorUid} not found in metadata` });
-
-      const query = qs.stringify({
-        [URL_PATH_GEOGRAPHY]: caseStudyRaw.CityUid,
-        [URL_PATH_INDICATOR]: indicator.uid,
-      });
-
-      return loadFromAPI(`${import.meta.env.VITE_DATA_API_URL}/${END_AVOIDING_REFERENCE}?${query}`, undefined, { indicator });
-    }, []);
-
-    const refData = await Promise.all(refRequests);
-
-    // For each indicator load a number of sample impact levels and likelihood
-    const dataRequests = refData.reduce((acc, { impact_levels, indicator }) => {
-      const impactSteps = scaleLinear().domain(impact_levels.range_of_interest).ticks(5);
-
-      impactSteps.forEach((impactLevel) => {
-        meta.likelihoods.forEach((likelihood) => {
-          const query = qs.stringify({
-            [URL_PATH_GEOGRAPHY]: caseStudyRaw.CityUid,
-            [URL_PATH_INDICATOR]: indicator.uid,
-            [URL_PATH_LEVEL_OF_IMPACT]: impactLevel,
-            [URL_PATH_CERTAINTY_LEVEL]: likelihood.uid,
-          });
-
-          acc.push(loadFromAPI(`${import.meta.env.VITE_DATA_API_URL}/${END_AVOIDING_IMPACTS}?${query}`, undefined, { indicator, impactLevel, likelihood }));
-        });
-      });
-      return acc;
-    }, []);
-
-    const data = await Promise.all(dataRequests);
-
-    // Process loaded data so we have an array of study location/indicator combinations each
-    // containing an array of scenario/impact level/likelihood combination
-    const processedData = refData.reduce((acc, { indicator }) => {
-      const indicatorData = data.filter((d) => d.indicator.uid === indicator.uid);
-
-      StudyLocations.forEach(({ Uid: studyLocationUid }) => {
-        const studyLocation = meta.studyLocations.find((d) => d.uid === studyLocationUid);
-        if (!studyLocation) error(404, { message: `Study location ${studyLocationUid} not found in metadata` });
-        const table = [];
-        indicatorData.forEach((indicatorData) => {
-          each(indicatorData.study_locations[studyLocationUid].scenarios, ({ year }, scenario) => {
-            table.push({
-              ...indicatorData,
-              studyLocation,
-              indicator,
-              year: { uid: year, label: year },
-              scenario: meta.scenarios.find((d) => d.uid === scenario),
-            });
-          });
-        });
-        acc.push(table);
-      });
-
-      return acc;
-    }, []);
-
-    return processedData;
-  };
-
   const caseStudy = {
     city,
     title: caseStudyRaw.Title,
     abstract: caseStudyRaw.Abstract,
     authors: caseStudyRaw.Authors,
+    coverImage: caseStudyRaw.CoverImage?.data?.attributes ?? null,
+    publicationDate: caseStudyRaw.PublicationDate ?? null,
+    topics: (caseStudyRaw.Topics?.data ?? []).map((d) => ({ id: d.id, ...d.attributes })),
+    project: caseStudyRaw.Project?.data ? { id: caseStudyRaw.Project.data.id, ...caseStudyRaw.Project.data.attributes } : null,
+    geography: caseStudyRaw.Geography?.data ? { id: caseStudyRaw.Geography.data.id, ...caseStudyRaw.Geography.data.attributes } : null,
+    scenarios: (caseStudyRaw.Scenarios?.data ?? []).map((d) => {
+      const metaScenario = meta.scenarios.find((s) => s.uid === d.attributes.UID);
+      return { id: d.id, uid: d.attributes.UID, label: metaScenario?.label ?? d.attributes.UID };
+    }),
     mainContent: await Promise.all(
       caseStudyRaw.MainContent.map(async (c) => {
         const type = c.__component.split('.')[1];
@@ -115,11 +59,9 @@ export const load = async ({ fetch, parent, params }) => {
           case 'avoiding-impacts':
             return {
               type,
-              explorerUrl: c.ExplorerUrl,
-              description: c.Description,
-              indicators: c.Indicators,
               title: c.Title,
-              data: await loadAvoidingImpactsData(c),
+              description: c.Description,
+              explorerUrl: c.ExplorerUrl,
             };
           case 'future-impacts':
             return {

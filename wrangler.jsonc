@@ -6,7 +6,11 @@
   "assets": {
     "directory": "./build",
     "html_handling": "drop-trailing-slash",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // Assets are served before the Worker by default, so the SPA not_found
+    // fallback would answer /api/* with index.html (HTTP 200 HTML) and the
+    // Worker's Hono router would never run. Route /api/* to the Worker first.
+    "run_worker_first": ["/api/*"]
   },
   "d1_databases": [
     {

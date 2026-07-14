@@ -102,8 +102,11 @@ export const getStrapiImageAtSize = (image) => {
   const regex = /(https:\/\/res\.cloudinary\.com\/[^\/]+\/image\/upload)/;
 
   const match = url.match(regex);
-  const extractedUrl = match ? match[0] : '';
-  const newURL = extractedUrl + '/f_auto,q_auto/' + hash;
+  // Assets uploaded through a non-Cloudinary provider (e.g. Strapi's S3/R2 provider)
+  // don't support the on-the-fly transform path, so fall back to the original url.
+  if (!match) return url;
+
+  const newURL = match[0] + '/f_auto,q_auto/' + hash;
 
   return newURL;
 };
