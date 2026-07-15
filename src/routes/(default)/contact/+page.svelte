@@ -14,7 +14,7 @@
         <h1 class="text-5xl text-theme-stronger font-normal mb-6">Get in touch</h1>
         <span class="text-lg">Did you spot a bug or want to collaborate? We are always happy to hear from you.</span>
       </div>
-      <div class="px-6 py-20">
+      <div class="px-6 py-12">
         <HtmlContent content={text} />
       </div>
     </div>
