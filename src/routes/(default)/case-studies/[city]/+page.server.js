@@ -108,12 +108,19 @@ export const load = async ({ fetch, parent, params }) => {
     ),
   };
 
-  const caseStudies = caseStudiesRaw.map((study) => ({
-    id: study.id,
-    title: study.attributes.Title,
-    city: meta.cities.find((c) => c.uid === study.attributes.CityUid),
-    abstract: study.attributes.Abstract,
-  }));
+  const caseStudies = caseStudiesRaw.map((study) => {
+    const attrs = study.attributes;
+    const topics = (attrs.Topics?.data ?? []).map((d) => ({ id: d.id, ...d.attributes }));
+    return {
+      id: study.id,
+      title: attrs.Title,
+      city: meta.cities.find((c) => c.uid === attrs.CityUid),
+      abstract: attrs.Abstract,
+      category: topics[0]?.Title,
+      image: attrs.CoverImage?.data?.attributes ?? null,
+      project: attrs.Project?.data ? { id: attrs.Project.data.id, ...attrs.Project.data.attributes } : null,
+    };
+  });
 
   return { caseStudy, caseStudies, caseStudyOutro: { title: caseStudyOutro?.Title, text: caseStudyOutro?.Text }, author: caseStudy.authors, description: caseStudy.abstract };
 };
