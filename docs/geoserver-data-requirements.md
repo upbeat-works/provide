@@ -192,10 +192,3 @@ Sea — global, 1°, GFDL:
 7. (Frontend, later) point the map at GeoServer — A: Mapbox vector source coloured from the
    value; B: WMS raster source — and delete the old grid code (`coordinatesToRectGrid`,
    `coordinatesToContours`, the geomask worker).
-
-## Open items
-
-1. Option A or B (whether PostGIS can be added to the stack).
-2. How frequency and threshold are written as ids.
-3. Boundary shapes (geo-shape) — from GeoServer, or keep in D1/legacy.
-4. Downloads — WCS GeoTIFF, or skip for the first version.
