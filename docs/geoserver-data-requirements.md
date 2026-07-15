@@ -1,60 +1,47 @@
-# impact-geo on GeoServer — data & id hand-off
+# impact-geo on GeoServer — data and ids
 
-> **Audience:** the team standing up GeoServer and uploading data. It specifies *what* raster
-> data to host, *in what shape*, and *under which ids*, so the frontend renders the map by
-> talking to GeoServer directly.
+## How it works
 
-## 0. Architecture
-
-impact-geo is a **gridded raster** (a value per lat/lng cell). ixmp4 stores only **per-region
-scalars** (one number per country/city/EEZ), so the rasters do not live in ixmp4 — they are
-climate-model outputs (MESMER, UrbClim, GFDL) and belong in **GeoServer**. The browser adds
-GeoServer's **vector tiles (MVT)** as a Mapbox source and colours them client-side with a
-data-driven `fill-color` expression. The rest of the chart (indicator label, description,
-unit, model/source text) comes from the **ixmp4 `/catalog` + Strapi** already used across
-Explore. No adapter sits between the browser and GeoServer.
+The impact-geo map is a grid of cells. ixmp4 only stores one number per country, city, or
+EEZ, so the grid can't come from ixmp4. It comes from the climate models (MESMER, UrbClim,
+GFDL) and goes into GeoServer. The browser loads the map as vector tiles from GeoServer and
+colours them with Mapbox. The labels, units, and text still come from ixmp4 and Strapi.
+Nothing runs between the browser and GeoServer.
 
 ```
-        selectors + metadata            raster tiles
-Browser ───────────────────► ixmp4 /catalog + Strapi
+        labels + options                 map tiles
+Browser ───────────────────► ixmp4 catalog + Strapi
    │
-   └──────────────────────────────────► GeoServer  (MVT vector tiles)
-        indicator/scenario/year/facets as query params
+   └──────────────────────────────────► GeoServer  (vector tiles)
+        indicator / scenario / year / options as query params
 ```
 
-The browser addresses GeoServer with the **same ids ixmp4 exposes**, so §1 is the crux: the
-id vocabulary must be identical on both sides.
+The browser asks GeoServer for data using the same ids ixmp4 uses, so the ids must match on
+both sides. That is the most important part of this document.
 
-## 1. The id convention
+## Matching ids
 
-### 1.1 Why it matters
-There is no translation layer. The frontend takes the user's selection — indicator, scenario,
-year, facet values — as the id strings from ixmp4 `/catalog` and puts them straight into the
-GeoServer request. **Every GeoServer layer name and dimension value must equal the ixmp4
-convention id character-for-character** (spaces, capitalisation and punctuation included). If
-ixmp4 says `SSP5-3.4-OS` and GeoServer's `scenario` dimension says `ssp534-over`, the map is
-blank.
+Nothing translates ids. The browser sends the indicator, scenario, year, and options exactly
+as ixmp4 gives them, straight to GeoServer. So every GeoServer layer name and value must be
+the same as the ixmp4 id — same spelling, capitals, and spaces. If ixmp4 says `SSP5-3.4-OS`
+and GeoServer says `ssp534-over`, the map is blank.
 
-### 1.2 The scheme
-ixmp4 encodes an indicator's data in a pipe-delimited variable name:
+ixmp4 names each variable like this:
 
 ```
 Indicator | Period | Temporal | Spatial | Value
-   e.g.  Mean Temperature | 2011-2020 (Present Day) | Annual | Area | 50th Percentile
+e.g.  Mean Temperature | 2011-2020 (Present Day) | Annual | Area | 50th Percentile
 ```
 
-For impact-geo the pieces that address a raster are **Indicator** (the layer), **scenario**,
-**year**, and the **facets** (`Period`→reference, `Temporal`→time, plus `frequency` /
-`indicator_value` where they apply).
+For the map, the parts that matter are the **Indicator** (the layer), the **scenario**, the
+**year**, and the **options** (Period = reference, Temporal = time, plus frequency and
+threshold where they apply).
 
-The tables in §1.3–1.5 are the id vocabulary, derived from the legacy catalogue. The ixmp4
-upload and the GeoServer configuration must use the **same strings** — the "convention id"
-column — with the ixmp4 `/catalog` authoritative if anything differs.
+The tables below give the id to use. If anything differs, use what the ixmp4 catalog shows.
 
-### 1.3 Scenario ids
-GeoServer `scenario` dimension value = the convention id.
+### Scenarios
 
-| legacy uid | legacy label | convention id |
+| old id | old label | id to use |
 |---|---|---|
 | `curpol` | Current Policies | `2020 Climate Policies` |
 | `gs` | Delayed Action | `Delayed Climate Action` |
@@ -67,151 +54,120 @@ GeoServer `scenario` dimension value = the convention id.
 | `ssp534-over` | SSP5-3.4-OS | `SSP5-3.4-OS` |
 | `ref-1p5` | Stabilisation at 1.5°C | `Stabilisation At 1.5°C` |
 
-Host a scenario only if it exists in the ixmp4 catalogue; the `-os` / `-sap` / `-nzghg` /
-`-extended` legacy variants are not part of it. ixmp4 contains a `SSP5-3.4-OS` / `SSP5-3.4-Os`
-case-duplicate — use the single casing `SSP5-3.4-OS` in GeoServer.
+Only host scenarios that exist in ixmp4. The old `-os` / `-sap` / `-nzghg` / `-extended`
+variants are not included. ixmp4 has both `SSP5-3.4-OS` and `SSP5-3.4-Os` — use `SSP5-3.4-OS`.
 
-### 1.4 Facet ids
-GeoServer dimension values must be the convention id strings.
+### Options
 
-| facet | legacy uid → convention id |
+| option | old id → id to use |
 |---|---|
-| **reference** (`Period`) | `present-day` → `2011-2020 (Present Day)` · `pre-industrial` → `1850-1900 (Pre-industrial)` |
-| **time** (`Temporal`) | `annual` → `Annual` · `djf` → `December - February` · `mam` → `March - May` · `jja` → `June - August` · `son` → `September - November` |
-| **spatial** (`Spatial`) | `area` → `Area` |
-| **frequency** | `0.1` / `0.05` / `0.02` (return period) — convention encoding pinned during the ixmp4 upload |
-| **indicator_value** | `20…35` (°C threshold for `WBGT-dayoverX`) — convention encoding pinned during the ixmp4 upload |
+| reference (Period) | `present-day` → `2011-2020 (Present Day)` · `pre-industrial` → `1850-1900 (Pre-industrial)` |
+| time (Temporal) | `annual` → `Annual` · `djf` → `December - February` · `mam` → `March - May` · `jja` → `June - August` · `son` → `September - November` |
+| spatial | `area` → `Area` |
+| frequency | `0.1` / `0.05` / `0.02` — set the id during the ixmp4 upload |
+| threshold (indicator_value) | `20…35` (°C, for `WBGT-dayoverX`) — set the id during the ixmp4 upload |
 
-### 1.5 Indicator ids
-The convention id is the indicator name ixmp4 uses (the first segment of the variable name);
-use the same string as the GeoServer layer. Take each from the ixmp4 catalogue.
+### Indicators
 
-| legacy uid | legacy label | convention id |
+Use the indicator name from ixmp4 as the GeoServer layer name.
+
+| old id | old label | id to use |
 |---|---|---|
 | `terclim-mean-temperature` | Mean Temperature | `Mean Temperature` |
-| `terclim-hot-extreme` | Hot Extreme | from ixmp4 catalogue |
-| `terclim-cold-extreme` | Cold Extreme | from ixmp4 catalogue |
-| `terclim-txx` | Maximum value of daily maximum temperature | from ixmp4 catalogue |
-| `terclim-mrso-minmon` | Monthly minimum of soil moisture content | from ixmp4 catalogue |
-| `terclim-fwisa` | Seasonal average of the Fire Weather Index | from ixmp4 catalogue |
-| `terclim-fwils` | Length of the fire season | from ixmp4 catalogue |
-| `urbclim-*` (22, see §4) | — | from ixmp4 catalogue |
-| `marclim-sst` | Sea Surface Temperature | from ixmp4 catalogue |
-| `marclim-ph` | pH | from ixmp4 catalogue |
+| `terclim-hot-extreme` | Hot Extreme | from ixmp4 catalog |
+| `terclim-cold-extreme` | Cold Extreme | from ixmp4 catalog |
+| `terclim-txx` | Maximum value of daily maximum temperature | from ixmp4 catalog |
+| `terclim-mrso-minmon` | Monthly minimum of soil moisture content | from ixmp4 catalog |
+| `terclim-fwisa` | Seasonal average of the Fire Weather Index | from ixmp4 catalog |
+| `terclim-fwils` | Length of the fire season | from ixmp4 catalog |
+| `urbclim-*` (22, listed below) | — | from ixmp4 catalog |
+| `marclim-sst` | Sea Surface Temperature | from ixmp4 catalog |
+| `marclim-ph` | pH | from ixmp4 catalog |
 
-**Region types.** Urban indicators require the **8 cities** as ixmp4 regions; maritime require
-**EEZ** regions. Maritime is EEZ-scoped (a country's coastal SST/pH); the SST/pH raster in
-GeoServer is a global ocean field sliced to the EEZ bbox, so no separate ocean region is
-needed to host it.
+Urban indicators need the 8 cities as ixmp4 regions; maritime indicators need EEZ regions.
+Maritime is shown per EEZ. The sea temperature / pH map is one global ocean layer, cut to the
+EEZ area, so you don't need a separate ocean region.
 
-## 2. Source data (legacy `provide-api`)
+## Getting the data from provide-api
 
-Source the rasters from the **model NetCDF** under `provide-api/Datasets/`: `MESMER`,
-`MESMER-M`, `MESMER-X` (terrestrial), `UrbClim` (urban), `GFDL` (maritime). These are the
-lossless model outputs, and GeoServer ingests CF-NetCDF natively. Organise/reproject them to
-**CF-compliant NetCDF, EPSG:4326**, with a `time` dimension (year) and a custom `scenario`
-dimension.
+Use the model NetCDF files in `provide-api/Datasets/`: `MESMER`, `MESMER-M`, `MESMER-X`
+(land), `UrbClim` (cities), `GFDL` (sea). GeoServer reads NetCDF directly. Set them up as
+NetCDF in EPSG:4326, with a time dimension (year) and a scenario dimension.
 
-The legacy API applies three things at serve time; bake them into what GeoServer serves, or
-values/placement will be wrong:
+The old API changes three things before sending the data. Do the same, or the map will be
+wrong:
 
-- **Masking** — cells over sea / outside the region are "no data"; set an explicit GeoServer
-  **nodata** value, or a bbox slice leaks cells outside the region.
-- **Unit representation** — the legacy endpoint rescales some indicators on the way out
-  (`terclim-mrso*` ÷ 100; `urbclim` temperatures `+273.15` for the `absolute` reference —
-  `provide_api.py:974-983`). Confirm whether the NetCDF already holds display units or needs
-  the same rescale, and bake it in.
-- **Reference is different data** — `present-day` and `pre-industrial` are separate value
-  sets; they must be a NetCDF dimension / separate coverage, not computed on the fly.
+- Masking: cells over sea or outside the area have no value. Set a nodata value, or the map
+  shows cells outside the area.
+- Units: the old API divides `terclim-mrso` by 100, and adds 273.15 to `urbclim` temperatures
+  for the `absolute` reference (`provide_api.py` lines 974-983). Check if the NetCDF already
+  uses display units; if not, apply the same.
+- Reference: `present-day` and `pre-industrial` are different data, not computed. Keep them as
+  separate data (a dimension or a separate layer).
 
-## 3. Hosting in GeoServer
+## Setting up GeoServer
 
-### 3.1 Coverage format
-- **CF-NetCDF or Cloud-Optimized GeoTIFF**, **EPSG:4326**, one band = the indicator value,
-  explicit **nodata**, and the **unit** in metadata.
-- **Two families:**
-  - **Global** — terrestrial (**2.5°**) + maritime (**1°**): host the global field once; the
-    frontend requests a bbox for the selected region.
-  - **Per-city** — urban (**100m**), one coverage per city (8: berlin, antwerp, accra,
-    buenos-aires, lisbon, los-angeles, porto, singapore).
+Format: NetCDF or GeoTIFF, EPSG:4326, one value band, a nodata value, and the unit in the
+metadata. Land and sea are global layers (land 2.5°, sea 1°); the browser asks for the area it
+needs. Each city is one 100m layer (8 cities: berlin, antwerp, accra, buenos-aires, lisbon,
+los-angeles, porto, singapore).
 
-### 3.2 Layer organisation — mosaic with dimensions
-Publish **one ImageMosaic per `(indicator + partitioning facets)`**, exposing a **`TIME`**
-(year) and a **custom `scenario`** dimension (both ImageMosaic and NetCDF support custom
-dimensions). Facets that change the physics (reference, season, frequency, threshold) are
-cleanest as separate mosaics encoded in the layer name; this avoids one-layer-per-combination
-blow-up. Layer names and dimension values use the §1 convention ids.
+Layers: one mosaic per indicator, with a time dimension (year) and a scenario dimension. Put
+options that change the data (reference, season, frequency, threshold) in separate layers with
+clear names. This keeps the number of layers small. Name layers and values with the ids above.
 
-### 3.3 Vectorization → MVT
-The frontend renders **vector**, not images. Turn each coverage into vector and serve **MVT
-vector tiles**:
+Vector tiles: the map is drawn as vector, not images. Turn each layer into cell polygons (each
+cell keeps its value) and serve them as vector tiles. One cell layer works at any zoom — big
+cells look like squares, 100m cells look smooth, and vector tiles handle the size. Do not set
+up server-side styling (WMS) — Mapbox colours the cells from the value. WCS is only needed if
+you add downloads.
 
-- Polygonize the raster to **cell polygons** (`ras:PolygonExtraction`, or an equivalent
-  grid→polygon step) carrying the cell **value** as an attribute, and publish as a
-  **vector-tile layer**.
-- One cell-polygon layer works at every resolution: coarse (2.5°) reads as blocky squares,
-  100m reads as a smooth gradient (cells are sub-pixel). MVT tiling + per-zoom simplification
-  handles the density; no separate contour path is needed. Sanity-check tile weight on the
-  densest city, and lightly quantize values if needed.
-- **Do not** configure WMS/SLD server-side styling — colour is applied in Mapbox from the
-  value attribute.
-- **WCS** is needed only if downloads are in scope (§5).
+Access: the browser talks to GeoServer directly, so GeoServer must be public and allow the
+frontend origin (CORS). If it can't be public, put a small proxy in front.
 
-### 3.4 CORS / reachability
-The browser hits GeoServer directly, so GeoServer must be **publicly reachable and
-CORS-enabled** for the frontend origin. If it cannot be public, front it with a **thin
-reverse-proxy** (no logic).
+## What to host
 
-## 4. What to host — the matrix
+31 indicators in 3 groups, across the ixmp4 scenarios, years, and places.
 
-**31 indicators, 3 sectors**, × the catalogue scenarios (§1.3) × years × geographies.
+Land — global, 2.5°, MESMER:
+`terclim-mean-temperature`, `-hot-extreme`, `-cold-extreme`, `-txx`, `-mrso-minmon`, `-fwisa`,
+`-fwils`. Options: time (Annual + 4 seasons), reference (2); the four extreme indicators
+(`hot-extreme`, `cold-extreme`, `txx`, `mrso-minmon`) also have frequency (3). Years: 2020,
+2030, 2050, 2100, 2200, 2300 (check the exact set from the source).
 
-### Terrestrial climate — global, **2.5°**, MESMER
-`terclim-mean-temperature`, `-hot-extreme`, `-cold-extreme`, `-txx`, `-mrso-minmon`,
-`-fwisa`, `-fwils`.
-Facets: **time** (`Annual` + 4 seasons) × **reference** (2) × **spatial** (`Area`); the four
-extreme indicators (`hot-extreme`, `cold-extreme`, `txx`, `mrso-minmon`) also × **frequency** (3).
-Years: 2020, 2030, 2050, 2100, 2200, 2300 (confirm the exact set from the source).
+Cities — 100m, UrbClim, 8 cities:
+`urbclim-T2M-mean`, `-daily-mean-max/min`, `-dayover25/30/35`, `-nightover20/25/28`,
+`urbclim-WBGT-daily-mean-max`, `-dayover25/28/295/31`, `-nightover28`, `-hourover25/28/295/31`,
+`urbclim-WBGT-dayoverX` (with threshold 20–35), `urbclim-heatwave-days`. Options: reference
+(2), plus threshold for `WBGT-dayoverX`. Years: 2030, 2050, 2070, 2090, 2100 (check).
 
-### Urban climate — per-city, **100m**, UrbClim (8 cities)
-22 indicators (WBGT/T2M families): `urbclim-T2M-mean`, `-daily-mean-max/min`,
-`-dayover25/30/35`, `-nightover20/25/28`; `urbclim-WBGT-daily-mean-max`, `-dayover25/28/295/31`,
-`-nightover28`, `-hourover25/28/295/31`; `urbclim-WBGT-dayoverX` (× **indicator_value** 20–35);
-`urbclim-heatwave-days`.
-Facets: **reference** (2) (+ **indicator_value** for `WBGT-dayoverX`).
-Years: 2030, 2050, 2070, 2090, 2100 (confirm the exact set from the source).
+Sea — global, 1°, GFDL:
+`marclim-sst`, `marclim-ph`. Options: reference (2).
 
-### Maritime climate — global, **1°**, GFDL
-`marclim-sst`, `marclim-ph`. Facets: **reference** (2).
+## Difference view and downloads
 
-## 5. Difference mode, downloads
+- The difference view subtracts two scenarios. GeoServer does the subtraction (band-math with
+  WPS/jiffle): subtract the two scenario layers, then make cell polygons and tiles as usual.
+- Downloads (the old resolutions and formats): serve with WCS (GeoTIFF), or skip for the first
+  version.
 
-- **Difference display** subtracts two scenarios cell-by-cell. GeoServer computes it with
-  **band-math** (WPS / `jiffle`): subtract the two scenario coverages into a difference
-  coverage, then polygonize + tile it exactly like the single-scenario path, exposed as a
-  vector-tile layer parameterised by the two scenarios.
-- **Downloads** (the legacy `resolutions` + `formats`) are served via **WCS** (GeoTIFF), or
-  out of scope for v1.
+## Checklist
 
-## 6. Checklist
+1. Agree the ids — one shared table for the ixmp4 upload and GeoServer, including the indicator
+   names and the frequency/threshold ids.
+2. Prepare the NetCDF (EPSG:4326) from `provide-api/Datasets/`, with time and scenario
+   dimensions.
+3. Load the layers — nodata and unit in the metadata; land/sea global, cities 100m; apply the
+   masking, unit changes, and the reference dimension.
+4. Build mosaics with time and scenario dimensions, named with the ids.
+5. Publish vector tiles of the cell polygons; no WMS.
+6. Make GeoServer public with CORS (or a small proxy).
+7. Check that the scenario/year/option set for each group matches what the selectors offer.
+8. (Frontend, later) point the map at the GeoServer tiles and Mapbox colours, and delete the
+   old grid code (`coordinatesToRectGrid`, `coordinatesToContours`, the geomask worker).
 
-1. **Fix the id vocabulary** (§1) — one table shared by the ixmp4 upload and GeoServer,
-   including the indicator convention names and the `frequency` / `indicator_value` encoding.
-2. **Prepare the source** — CF-NetCDF (EPSG:4326) from `provide-api/Datasets/`, with `time`
-   and `scenario` dimensions.
-3. **Load coverages** — nodata + unit metadata; global (2.5° / 1°) + per-city (100m); carry
-   over masking, unit rescales, and the reference dimension (§2).
-4. **Build mosaics** with `TIME` + `scenario` dimensions, named with the convention ids (§3.2).
-5. **Publish MVT vector-tile layers** of the polygonized cells; no WMS.
-6. **Expose publicly + CORS** for the frontend origin (or a thin proxy).
-7. **Confirm coverage** — the `(scenario × year × facet)` set per sector matches what the
-   selectors can request.
-8. *(Frontend, separate track)* swap the map to the GeoServer MVT source + Mapbox
-   `fill-color`, and delete `coordinatesToRectGrid` / `coordinatesToContours` / the geomask
-   worker.
+## Open items
 
-## 7. Open items
-
-1. `frequency` / `indicator_value` encoding in the convention.
-2. **geo-shape** boundaries — served from GeoServer (WFS), or kept in D1 / legacy.
-3. **Downloads** — WCS GeoTIFF, or out of scope for v1.
+1. How frequency and threshold are written as ids.
+2. Boundary shapes (geo-shape) — from GeoServer, or keep in D1/legacy.
+3. Downloads — WCS GeoTIFF, or skip for the first version.
