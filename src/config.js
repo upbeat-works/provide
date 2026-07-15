@@ -25,6 +25,7 @@ export const LABEL_KEY_CONCEPTS = 'Key terms';
 export const LABEL_FUTURE_IMPACTS = 'Future impacts';
 export const LABEL_AVOID_IMPACTS = 'Avoiding future impacts';
 export const LABEL_ADAPTATION = 'Case Studies';
+export const LABEL_TOOLS = 'Tools';
 
 export const LABEL_SCENARIOS_INTRO = 'Scenarios';
 export const LABEL_SCENARIOS_TIMEFRAMES = 'Timeframes';
