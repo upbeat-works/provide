@@ -125,8 +125,8 @@ millions of cells on every tile request is too slow — so do it once, up front.
 
 - Polygonize the NetCDF into polygons that keep the cell value, with columns for scenario,
   year, and options. Land (2.5°) and sea (1°): one polygon per cell. The 100m city data is
-  not small enough — quantize the values into bands and merge same-band cells first; this cuts
-  the polygon count a lot and looks the same at that zoom.
+  much larger — if the vector tiles get too big, simplify or aggregate the geometry during
+  preprocessing (method left open; don't change the values).
 - Load into PostGIS. Name the layers and the scenario/year/option values with the ids above.
 - Serve vector tiles from PostGIS, with scenario/year/options as filter columns. Mapbox colours
   the cells from the value. No WMS.
@@ -183,8 +183,8 @@ Sea — global, 1°, GFDL:
 2. Prepare the NetCDF (EPSG:4326) from `provide-api/Datasets/`, with time and scenario, and
    apply the masking, unit changes, and reference data.
 3. Choose Option A or B:
-   - A — polygonize the NetCDF into vector (banded for 100m cities), load into PostGIS, serve
-     vector tiles filtered by scenario/year/options.
+   - A — polygonize the NetCDF into vector (simplify/aggregate the 100m cities if the tiles get
+     too big), load into PostGIS, serve vector tiles filtered by scenario/year/options.
    - B — load the NetCDF as coverages, serve WMS/WMTS, write an SLD style per indicator.
 4. Difference view — A: a PostGIS query; B: band-math. Benchmark, and cache/precompute if heavy.
 5. Make GeoServer public with CORS (or a small proxy).
