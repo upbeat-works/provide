@@ -1,9 +1,12 @@
 <script>
   import ExplorerLink from './ExplorerLink.svelte';
+  import FilterPill from '$lib/components/ui/FilterPill.svelte';
 
   export let title = undefined;
   export let description = undefined;
   export let explorerUrl = undefined;
+  export let indicators = [];
+  export let studyLocations = [];
 </script>
 
 {#if title}
@@ -18,3 +21,28 @@
     <ExplorerLink href={explorerUrl} />
   {/if}
 </div>
+
+{#if indicators.length || studyLocations.length}
+  <div class="flex flex-wrap gap-6 mt-4">
+    {#if indicators.length}
+      <div>
+        <h5 class="text-xs font-bold uppercase tracking-wide text-theme-900 mb-2">Indicators</h5>
+        <div class="flex flex-wrap gap-2">
+          {#each indicators as indicator}
+            <FilterPill color="petrol" class="cursor-default">{indicator.label}</FilterPill>
+          {/each}
+        </div>
+      </div>
+    {/if}
+    {#if studyLocations.length}
+      <div>
+        <h5 class="text-xs font-bold uppercase tracking-wide text-theme-900 mb-2">Study Locations</h5>
+        <div class="flex flex-wrap gap-2">
+          {#each studyLocations as location}
+            <FilterPill color="petrol" class="cursor-default">{location.label}</FilterPill>
+          {/each}
+        </div>
+      </div>
+    {/if}
+  </div>
+{/if}

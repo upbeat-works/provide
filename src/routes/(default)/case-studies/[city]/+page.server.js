@@ -55,6 +55,16 @@ export const load = async ({ fetch, parent, params }) => {
               title: c.Title,
               description: c.Description,
               explorerUrl: c.ExplorerUrl,
+              indicators: (c.Indicators ?? []).map((d) => {
+                const indicator = meta.indicators.find((i) => i.uid === d.Uid);
+                if (!indicator) error(404, { message: `No indicator found for ${d.Uid} in avoiding-impacts component` });
+                return indicator;
+              }),
+              studyLocations: (c.StudyLocations ?? []).map((d) => {
+                const location = (meta.studyLocations ?? []).find((l) => l.uid === d.Uid);
+                if (!location) error(404, { message: `No study location found for ${d.Uid} in avoiding-impacts component` });
+                return location;
+              }),
             };
           case 'future-impacts':
             return {
