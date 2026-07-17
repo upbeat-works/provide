@@ -31,6 +31,12 @@
         }
       },
       "type": "string"
+    },
+    "CaseStudies": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::case-study-dynamic.case-study-dynamic",
+      "mappedBy": "Scenarios"
     }
   }
 }
