@@ -543,55 +543,84 @@ export const DICTIONARY_CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS], ([$curr
  * selection, and each one's timeframe — read from ixmp4 (not curation). Returns
  * [{ uid, yearStart, yearStep, yearEnd }]. Re-fetches when the selection or any
  * facet (time/reference/spatial) changes.
- * @type {Readable<Array<{uid:string,yearStart:number,yearStep:number,yearEnd:number}>>}
+ *
+ * `axis` picks which value axis the API probes. The percentile axis (default)
+ * backs the percentile-band charts (impact-time/geo) and their ScenarioSelection.
+ * The warming-level axis backs the unavoidable-risk scatter — its scenarios live
+ * on that axis, which can cover a different (usually larger) set than the sparse
+ * percentile axis. Both charts share the explore page, so each needs its own
+ * availability store rather than one page-global axis.
+ * @param {'percentile'|'warmingLevel'} [axis]
+ * @returns {Readable<Array<{uid:string,yearStart:number,yearStep:number,yearEnd:number}>>}
  */
-let scenarioAvailabilityRequestId = 0;
-export const SCENARIO_AVAILABILITY = derived(
-  [CURRENT_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_OPTION_VALUES],
-  ([$indicator, $geoUid, $options], set) => {
-    const indicatorUid = $indicator?.uid;
-    if (!indicatorUid || !$geoUid || !API_URL || !browser) {
-      set([]);
-      return;
-    }
-    const params = new URLSearchParams({ indicator: indicatorUid, region: $geoUid });
-    if ($indicator?.instance) params.set('instance', $indicator.instance);
-    // Facet dropdowns store raw convention values under these keys.
-    for (const key of ['time', 'reference', 'spatial']) {
-      if ($options?.[key]) params.set(key, $options[key]);
-    }
-    const requestId = ++scenarioAvailabilityRequestId;
-    fetch(`${API_URL}/scenarios/?${params}`)
-      .then((r) => r.json())
-      .then(({ scenarios }) => {
-        if (requestId !== scenarioAvailabilityRequestId) return;
-        set(scenarios ?? []);
-      })
-      .catch((e) => {
-        if (requestId !== scenarioAvailabilityRequestId) return;
-        console.warn(`scenarios?indicator=${indicatorUid}&region=${$geoUid} failed:`, e);
+function createScenarioAvailability(axis) {
+  let requestId = 0;
+  return derived(
+    [CURRENT_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_OPTION_VALUES],
+    ([$indicator, $geoUid, $options], set) => {
+      const indicatorUid = $indicator?.uid;
+      if (!indicatorUid || !$geoUid || !API_URL || !browser) {
         set([]);
-      });
-  },
-  [],
-);
+        return;
+      }
+      const params = new URLSearchParams({ indicator: indicatorUid, region: $geoUid });
+      if ($indicator?.instance) params.set('instance', $indicator.instance);
+      if (axis) params.set('axis', axis);
+      // Facet dropdowns store raw convention values under these keys.
+      for (const key of ['time', 'reference', 'spatial']) {
+        if ($options?.[key]) params.set(key, $options[key]);
+      }
+      const rid = ++requestId;
+      fetch(`${API_URL}/scenarios/?${params}`)
+        .then((r) => r.json())
+        .then(({ scenarios }) => {
+          if (rid !== requestId) return;
+          set(scenarios ?? []);
+        })
+        .catch((e) => {
+          if (rid !== requestId) return;
+          console.warn(`scenarios?indicator=${indicatorUid}&region=${$geoUid}&axis=${axis ?? 'percentile'} failed:`, e);
+          set([]);
+        });
+    },
+    [],
+  );
+}
 
-export const AVAILABLE_SCENARIOS = derived([SCENARIOS, SCENARIO_AVAILABILITY], ([$SCENARIOS, $availability]) => {
-  // A scenario is selectable iff ixmp4 has data for it under this selection; its
-  // timeframe (endYear) comes from that data and drives the timeframe pills.
-  // Availability is keyed by the raw ixmp4 scenario name, which may differ in
-  // case from the catalog's canonical uid (the SSP5-3.4-OS/Os duplicate, whose
-  // data is split across casings). Match case-insensitively so the scenario
-  // isn't wrongly disabled and dropped from the selector.
-  const byUid = ciKeyBy($availability);
-  return $SCENARIOS.map((scenario) => ({
-    ...scenario,
-    endYear: ciGet(byUid, scenario.uid)?.yearEnd,
-    disabled: !ciGet(byUid, scenario.uid),
-  }));
-});
+export const SCENARIO_AVAILABILITY = createScenarioAvailability();
+// The unavoidable-risk scatter probes the warming-level axis (see above).
+export const WARMING_LEVEL_AVAILABILITY = createScenarioAvailability('warmingLevel');
+
+/**
+ * Graft ixmp4 availability onto the catalog scenario list: each scenario carries
+ * its data-driven `endYear` (timeframe) and a `disabled` flag when the axis has
+ * no data for it. Availability is keyed by the raw ixmp4 scenario name, which may
+ * differ in case from the catalog's canonical uid (the SSP5-3.4-OS/Os duplicate,
+ * whose data is split across casings). Match case-insensitively so the scenario
+ * isn't wrongly disabled and dropped.
+ */
+function createAvailableScenarios(availabilityStore) {
+  return derived([SCENARIOS, availabilityStore], ([$SCENARIOS, $availability]) => {
+    const byUid = ciKeyBy($availability);
+    return $SCENARIOS.map((scenario) => ({
+      ...scenario,
+      endYear: ciGet(byUid, scenario.uid)?.yearEnd,
+      disabled: !ciGet(byUid, scenario.uid),
+    }));
+  });
+}
+
+export const AVAILABLE_SCENARIOS = createAvailableScenarios(SCENARIO_AVAILABILITY);
 
 export const SELECTABLE_SCENARIOS = derived([AVAILABLE_SCENARIOS], ([$scenarios]) => {
+  return $scenarios.filter(({ disabled }) => !disabled);
+});
+
+// Warming-level equivalents — the scenario universe the unavoidable-risk scatter
+// plots (independent of the percentile-based ScenarioSelection on the same page).
+export const AVAILABLE_WARMING_SCENARIOS = createAvailableScenarios(WARMING_LEVEL_AVAILABILITY);
+
+export const SELECTABLE_WARMING_SCENARIOS = derived([AVAILABLE_WARMING_SCENARIOS], ([$scenarios]) => {
   return $scenarios.filter(({ disabled }) => !disabled);
 });
 

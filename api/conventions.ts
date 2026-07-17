@@ -60,6 +60,11 @@ export function composeVariable(parts: VariableParts): string {
 export const FACET_DEFAULTS = { period: '2011-2020 (Present Day)', temporal: 'Annual', spatial: 'Area' };
 export const REPRESENTATIVE_VALUE = '50th Percentile';
 
+// The present-day baseline is carried as its own run named "Today" (its year-2000
+// values become the unavoidable-risk `today` array). It is never a selectable
+// projection scenario, so the avoid view's availability probe excludes it.
+export const BASELINE_SCENARIO = 'Today';
+
 /**
  * A fully-faceted variable name for an indicator (representative value = the
  * median), used to probe which regions/scenarios have data for it. An indicator

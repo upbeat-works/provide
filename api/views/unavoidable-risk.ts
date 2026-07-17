@@ -1,5 +1,5 @@
 import { createPlatform } from '../platform';
-import { composeVariable, indicatorsFromVariables, FACET_DEFAULTS } from '../conventions';
+import { composeVariable, indicatorsFromVariables, FACET_DEFAULTS, BASELINE_SCENARIO } from '../conventions';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
 import type { Ixmp4Instance } from '../types';
 
@@ -27,8 +27,9 @@ export interface EnsembleResponse {
 
 // The present-day baseline is carried as its own scenario in ixmp4 (the same
 // "Today" run impact-time uses); its exceedance probabilities become the
-// response's `today` array — never a projected line in `data`.
-export const TODAY_SCENARIO = 'Today';
+// response's `today` array — never a projected line in `data`. The name is the
+// shared `BASELINE_SCENARIO` convention constant.
+export const TODAY_SCENARIO = BASELINE_SCENARIO;
 
 // The wide tabulate rows of one threshold's variable (one warming level), plus
 // that level as a number so thresholds can be ordered/emitted numerically.

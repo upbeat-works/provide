@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { instances } from '../instances';
-import { fetchScenarioAvailability } from '../views/scenarios';
+import { fetchScenarioAvailability, type ScenarioAxis } from '../views/scenarios';
 
 const route = new Hono<Env>();
 
@@ -21,6 +21,9 @@ route.get('/', async (c) => {
   }
 
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
+  // The avoid view plots the warming-level axis, so it probes availability there
+  // (`axis=warmingLevel`); everything else defaults to the percentile axis.
+  const axis: ScenarioAxis = c.req.query('axis') === 'warmingLevel' ? 'warmingLevel' : 'percentile';
   // Selector dropdowns send raw convention values under the UI's param keys.
   const scenarios = await fetchScenarioAvailability(
     instance,
@@ -31,6 +34,7 @@ route.get('/', async (c) => {
       period: c.req.query('reference'),
       temporal: c.req.query('time'),
       spatial: c.req.query('spatial'),
+      axis,
     },
   );
   return c.json({ scenarios });
