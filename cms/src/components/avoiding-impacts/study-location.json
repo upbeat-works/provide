@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_avoiding_impacts_study_locations",
+  "info": {
+    "displayName": "StudyLocation",
+    "icon": "map"
+  },
+  "options": {},
+  "attributes": {
+    "Uid": {
+      "type": "string"
+    }
+  }
+}

@@ -26,7 +26,10 @@
     "AttributeValue": {
       "type": "string"
     },
-    "GroupName": {
+    "GroupValue": {
+      "type": "string"
+    },
+    "Description": {
       "type": "string"
     }
   }
