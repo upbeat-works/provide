@@ -7,9 +7,6 @@
   },
   "options": {},
   "attributes": {
-    "Description": {
-      "type": "richtext"
-    },
     "AttributeLabel": {
       "type": "string"
     },
