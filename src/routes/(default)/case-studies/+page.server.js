@@ -25,9 +25,9 @@ export const load = async ({ fetch, parent }) => {
           return {
             id: d.id,
             uid: d.attributes.UID,
-            label: metaScenario?.label ?? d.attributes.UID,
+            label: metaScenario?.label ?? d.attributes.Label ?? d.attributes.UID,
             warmingCategory: metaScenario?.warmingCategory,
-            description: d.attributes.Description,
+            description: metaScenario?.description,
           };
         }),
         image: attrs.CoverImage?.data?.attributes ?? null,
