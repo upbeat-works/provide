@@ -32,7 +32,7 @@
 </script>
 
 {#if !$IS_STATIC}
-  <div class="flex gap-2 font-normal items-center transition-colors {wrapperClass}">
+  <div class="flex gap-2 font-normal transition-colors {wrapperClass}" class:items-center={boxed}>
     <div class="flex gap-2">
       {#if label}
         <label class="uppercase text-xs tracking-widest font-bold text-contour-weak flex items-center {labelClass}" class:text-theme-weaker={disabled} for={id}>{label}</label>
