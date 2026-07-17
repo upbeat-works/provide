@@ -8,6 +8,7 @@ node_modules
 !.env.example
 .netlify
 .claude
+.nvm
 
 # Vendored Strapi (cms/) — generated paths
 cms/node_modules
@@ -24,4 +25,3 @@ cms/.snapshot
 # Local SQLite database — keep the dir (via .gitkeep), ignore the db files
 cms/database/*
 !cms/database/.gitkeep
-
