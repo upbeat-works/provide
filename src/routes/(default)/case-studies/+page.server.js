@@ -20,16 +20,11 @@ export const load = async ({ fetch, parent }) => {
         topics,
         project: attrs.Project?.data ? { id: attrs.Project.data.id, ...attrs.Project.data.attributes } : null,
         geography: attrs.Geography?.data ? { id: attrs.Geography.data.id, ...attrs.Geography.data.attributes } : null,
-        scenarios: (attrs.Scenarios?.data ?? []).map((d) => {
-          const metaScenario = meta.scenarios.find((s) => s.uid === d.attributes.UID);
-          return {
-            id: d.id,
-            uid: d.attributes.UID,
-            label: metaScenario?.label ?? d.attributes.UID,
-            warmingCategory: metaScenario?.warmingCategory,
-            description: d.attributes.Description,
-          };
-        }),
+        scenarios: (attrs.Scenarios?.data ?? []).map((d) => ({
+          id: d.id,
+          uid: d.attributes.UID,
+          label: d.attributes.Label ?? d.attributes.UID,
+        })),
         image: attrs.CoverImage?.data?.attributes ?? null,
       };
     }),
