@@ -1,6 +1,10 @@
 import { error } from '@sveltejs/kit';
-import { loadFromStrapi } from '$utils/apis.js';
+import { loadFromAPI, loadFromStrapi } from '$utils/apis.js';
 import { parse } from 'marked';
+import qs from 'qs';
+import { scaleLinear } from 'd3-scale';
+import { each } from 'lodash-es';
+import { END_AVOIDING_IMPACTS, END_AVOIDING_REFERENCE, URL_PATH_CERTAINTY_LEVEL, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_LEVEL_OF_IMPACT } from '$config';
 
 export const load = async ({ fetch, parent, params }) => {
   const { meta } = await parent();
@@ -31,6 +35,74 @@ export const load = async ({ fetch, parent, params }) => {
   const city = meta.cities.find((c) => c.uid === caseStudyRaw.CityUid);
   if (!city) error(404, { message: 'City not found in data' });
 
+  const loadAvoidingImpactsData = async ({ Indicators = [], StudyLocations = [] }) => {
+    if (!Indicators.length || !StudyLocations.length) return [];
+
+    // Load all avoiding impacts reference data
+    const refRequests = Indicators.map(({ Uid: indicatorUid }) => {
+      const indicator = meta.indicators.find((d) => d.uid === indicatorUid);
+      if (!indicator) error(404, { message: `Indicator ${indicatorUid} not found in metadata` });
+
+      const query = qs.stringify({
+        [URL_PATH_GEOGRAPHY]: caseStudyRaw.CityUid,
+        [URL_PATH_INDICATOR]: indicator.uid,
+      });
+
+      return loadFromAPI(`${import.meta.env.VITE_DATA_API_URL}/${END_AVOIDING_REFERENCE}?${query}`, fetch, { indicator });
+    });
+
+    const refData = await Promise.all(refRequests);
+
+    // For each indicator load a number of sample impact levels and likelihood
+    const dataRequests = refData.reduce((acc, { impact_levels, indicator }) => {
+      const impactSteps = scaleLinear().domain(impact_levels.range_of_interest).ticks(5);
+
+      impactSteps.forEach((impactLevel) => {
+        meta.likelihoods.forEach((likelihood) => {
+          const query = qs.stringify({
+            [URL_PATH_GEOGRAPHY]: caseStudyRaw.CityUid,
+            [URL_PATH_INDICATOR]: indicator.uid,
+            [URL_PATH_LEVEL_OF_IMPACT]: impactLevel,
+            [URL_PATH_CERTAINTY_LEVEL]: likelihood.uid,
+          });
+
+          acc.push(loadFromAPI(`${import.meta.env.VITE_DATA_API_URL}/${END_AVOIDING_IMPACTS}?${query}`, fetch, { indicator, impactLevel, likelihood }));
+        });
+      });
+      return acc;
+    }, []);
+
+    const data = await Promise.all(dataRequests);
+
+    // Process loaded data so we have an array of study location/indicator combinations each
+    // containing an array of scenario/impact level/likelihood combinations
+    const processedData = refData.reduce((acc, { indicator }) => {
+      const indicatorData = data.filter((d) => d.indicator.uid === indicator.uid);
+
+      StudyLocations.forEach(({ Uid: studyLocationUid }) => {
+        const studyLocation = meta.studyLocations.find((d) => d.uid === studyLocationUid);
+        if (!studyLocation) error(404, { message: `Study location ${studyLocationUid} not found in metadata` });
+        const table = [];
+        indicatorData.forEach((indicatorDatum) => {
+          each(indicatorDatum.study_locations[studyLocationUid].scenarios, ({ year }, scenario) => {
+            table.push({
+              ...indicatorDatum,
+              studyLocation,
+              indicator,
+              year: { uid: year, label: year },
+              scenario: meta.scenarios.find((d) => d.uid === scenario),
+            });
+          });
+        });
+        acc.push(table);
+      });
+
+      return acc;
+    }, []);
+
+    return processedData;
+  };
+
   const caseStudy = {
     city,
     title: caseStudyRaw.Title,
@@ -55,16 +127,7 @@ export const load = async ({ fetch, parent, params }) => {
               title: c.Title,
               description: c.Description,
               explorerUrl: c.ExplorerUrl,
-              indicators: (c.Indicators ?? []).map((d) => {
-                const indicator = meta.indicators.find((i) => i.uid === d.Uid);
-                if (!indicator) error(404, { message: `No indicator found for ${d.Uid} in avoiding-impacts component` });
-                return indicator;
-              }),
-              studyLocations: (c.StudyLocations ?? []).map((d) => {
-                const location = (meta.studyLocations ?? []).find((l) => l.uid === d.Uid);
-                if (!location) error(404, { message: `No study location found for ${d.Uid} in avoiding-impacts component` });
-                return location;
-              }),
+              data: await loadAvoidingImpactsData(c),
             };
           case 'future-impacts':
             return {
