@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_avoiding_impacts_indicators",
+  "info": {
+    "displayName": "Indicator",
+    "icon": "bars"
+  },
+  "options": {},
+  "attributes": {
+    "Uid": {
+      "type": "string"
+    }
+  }
+}

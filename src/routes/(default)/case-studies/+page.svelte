@@ -4,12 +4,11 @@
   import Select from '$lib/components/ui/Select.svelte';
   import FilterPill from '$lib/components/ui/FilterPill.svelte';
   import Magnify from '$lib/components/icons/Magnify.svelte';
-  import ScenarioFilterSelection from './components/ScenarioFilterSelection.svelte';
 
   export let data;
 
   let selectedCities = [];
-  let selectedScenarios = [];
+  let scenarioValue = '';
   let geographyValue = '';
   let projectValue = '';
   let topicValue = '';
@@ -20,10 +19,13 @@
     'uid'
   );
 
-  $: scenarioOptions = uniqBy(
-    data.caseStudies.flatMap((s) => s.scenarios),
-    'id'
-  ).map((s) => ({ id: s.id, label: s.label, warmingCategory: s.warmingCategory, description: s.description }));
+  $: scenarioOptions = [
+    { value: '', label: 'ALL' },
+    ...uniqBy(
+      data.caseStudies.flatMap((s) => s.scenarios),
+      'id'
+    ).map((s) => ({ value: s.id, label: s.label })),
+  ];
   $: geographyOptions = [
     { value: '', label: 'ALL' },
     ...uniqBy(compact(data.caseStudies.map((s) => s.geography)), 'id').map((g) => ({ value: g.id, label: g.Title })),
@@ -46,7 +48,7 @@
 
   $: filteredCaseStudies = data.caseStudies.filter((study) => {
     const matchesCity = !selectedCities.length || selectedCities.includes(study.city.uid);
-    const matchesScenario = !selectedScenarios.length || study.scenarios.some((s) => selectedScenarios.includes(s.id));
+    const matchesScenario = !scenarioValue || study.scenarios.some((s) => s.id === scenarioValue);
     const matchesGeography = !geographyValue || study.geography?.id === geographyValue;
     const matchesProject = !projectValue || study.project?.id === projectValue;
     const matchesTopic = !topicValue || study.topics.some((t) => t.id === topicValue);
@@ -79,7 +81,7 @@
 <!-- Filters -->
 <div class="bg-white border-b border-contour-weakest">
   <div class="max-w-7xl mx-auto flex h-fit [&>*]:border-r [&>*]:border-contour-weakest [&>*]:px-6 [&>*]:py-4">
-    <ScenarioFilterSelection options={scenarioOptions} bind:selected={selectedScenarios} />
+    <Select label="Scenario" options={scenarioOptions} bind:value={scenarioValue} wrapperClass="flex-col" />
     <Select label="Geography" options={geographyOptions} bind:value={geographyValue} wrapperClass="flex-col" />
     <Select label="Projects" options={projectOptions} bind:value={projectValue} wrapperClass="flex-col" />
     <Select label="Topics" options={topicOptions} bind:value={topicValue} wrapperClass="flex-col" />

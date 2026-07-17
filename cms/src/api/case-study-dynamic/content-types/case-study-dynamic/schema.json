@@ -79,7 +79,7 @@
     "Scenarios": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::scenario.scenario",
+      "target": "api::scenario-simplified.scenario-simplified",
       "inversedBy": "CaseStudies"
     },
     "PublicationDate": {

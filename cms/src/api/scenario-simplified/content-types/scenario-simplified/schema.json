@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "scenario_simplifieds",
+  "info": {
+    "singularName": "scenario-simplified",
+    "pluralName": "scenario-simplifieds",
+    "displayName": "Scenario (Simplified)",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "UID": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "Label": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "CaseStudies": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::case-study-dynamic.case-study-dynamic",
+      "mappedBy": "Scenarios"
+    }
+  }
+}
