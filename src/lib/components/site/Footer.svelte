@@ -36,7 +36,6 @@
       <ul class="flex flex-col gap-y-2">
         <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_IMPACT}/{PATH_EXPLORE}">{LABEL_EXPLORE}</a></li>
         <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_ADAPTATION}">{LABEL_ADAPTATION}</a></li>
-        <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_ADAPTATION}">Case Studies</a></li>
         <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_DOCUMENTATION}">{LABEL_DOCUMENTATION}</a></li>
         <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_ABOUT}">{LABEL_ABOUT}</a></li>
         <li><a class="text-sm text-theme-stronger hover:underline transition-colors" href="/{PATH_CONTACT}">{LABEL_CONTACT}</a></li>

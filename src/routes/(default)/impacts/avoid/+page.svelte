@@ -96,7 +96,6 @@
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
-    <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">Report Index</h2>
     <SimpleNav {sections} {activeIndex} onNavClick={handleNavClick} />
     <hr class="my-4 border-contour-weakest mr-6" />
     <ShareLink />
