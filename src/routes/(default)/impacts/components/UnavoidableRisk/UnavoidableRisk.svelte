@@ -6,7 +6,7 @@
     CURRENT_INDICATOR_OPTION_VALUES,
     TEMPLATE_PROPS,
     CURRENT_SCENARIOS,
-    SELECTABLE_SCENARIOS,
+    SELECTABLE_WARMING_SCENARIOS,
     IS_COMBINATION_AVAILABLE,
     DOWNLOAD_URL_PARAMS,
   } from '$stores/state.js';
@@ -37,14 +37,17 @@
 
   // This checks if the passed list of scenarios is valid. If yes, it uses it, otherwise it falls back to the list in the state.
   // endYear (the timeframe that drives the year filtering below) is data-driven
-  // and lives on SELECTABLE_SCENARIOS, not on the bare CURRENT_SCENARIOS — graft
-  // it on, or timeframe is undefined and every year gets filtered out (blank chart).
+  // and lives on SELECTABLE_WARMING_SCENARIOS, not on the bare CURRENT_SCENARIOS —
+  // graft it on, or timeframe is undefined and every year gets filtered out (blank
+  // chart). The scatter plots the warming-level axis, so its scenario universe and
+  // timeframes come from the warming-level availability, not the percentile-based
+  // selector shared with the impact-time/geo band charts on this page.
   $: currentSelectedScenarios = withScenarioTimeframe(
     (Array.isArray(currentScenarios) && currentScenarios.length ? currentScenarios : $CURRENT_SCENARIOS).map(
       // We just need a small set of attributes
       ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe }) => ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe })
     ),
-    $SELECTABLE_SCENARIOS,
+    $SELECTABLE_WARMING_SCENARIOS,
     KEY_SCENARIO_ENDYEAR
   );
 
@@ -59,11 +62,11 @@
       params: {
         [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY.uid,
         [URL_PATH_INDICATOR]: $CURRENT_INDICATOR.uid,
-        // Request ALL selectable scenarios (not just the selected one) so the chart
-        // can plot the exceedance scatter across scenarios; the selected ones are
-        // highlighted, the rest render as "Other scenarios". The adapter omits any
-        // scenario that has no exceedance data.
-        [URL_PATH_SCENARIOS]: $SELECTABLE_SCENARIOS.map(({ uid }) => uid),
+        // Request ALL warming-level-selectable scenarios (not just the selected
+        // one) so the chart can plot the exceedance scatter across scenarios; the
+        // selected ones are highlighted, the rest render as "Other scenarios". The
+        // adapter omits any scenario that has no exceedance data.
+        [URL_PATH_SCENARIOS]: $SELECTABLE_WARMING_SCENARIOS.map(({ uid }) => uid),
         instance: $CURRENT_INDICATOR.instance,
         ...$CURRENT_INDICATOR_OPTION_VALUES,
       },
@@ -218,7 +221,7 @@
     asyncProps={$STORE}
     props={{
       ...$TEMPLATE_PROPS,
-      allScenarios: $SELECTABLE_SCENARIOS,
+      allScenarios: $SELECTABLE_WARMING_SCENARIOS,
       selectedScenarios: currentSelectedScenarios,
       threshold,
       urlParams: $DOWNLOAD_URL_PARAMS,

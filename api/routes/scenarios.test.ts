@@ -47,4 +47,24 @@ describe('GET /api/scenarios', () => {
       spatial: 'Area',
     });
   });
+
+  test('forwards the scenario axis to the resolver (avoid view probes warming levels)', async () => {
+    await api.request(
+      `/api/scenarios?indicator=Mean%20Temperature&region=France&axis=warmingLevel&instance=${instance.slug}`,
+      {},
+      createTestEnv(),
+    );
+    const [, , params] = spy.mock.calls[0];
+    expect(params).toMatchObject({ axis: 'warmingLevel' });
+  });
+
+  test('defaults the axis to percentile when the query omits it', async () => {
+    await api.request(
+      `/api/scenarios?indicator=Mean%20Temperature&region=France&instance=${instance.slug}`,
+      {},
+      createTestEnv(),
+    );
+    const [, , params] = spy.mock.calls[0];
+    expect(params.axis).toBe('percentile');
+  });
 });
