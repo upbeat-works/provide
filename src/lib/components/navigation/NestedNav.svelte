@@ -7,7 +7,7 @@
   export let sections = [];
   export let contentRef;
   export let activeIndex = 0;
-  export let title = 'Index';
+  export let title = '';
 
   // Holds key/values for all open sections
   let openSections = {};
