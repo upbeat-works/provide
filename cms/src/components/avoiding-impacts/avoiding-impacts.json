@@ -15,6 +15,16 @@
     },
     "ExplorerUrl": {
       "type": "string"
+    },
+    "Indicators": {
+      "type": "component",
+      "repeatable": true,
+      "component": "avoiding-impacts.indicator"
+    },
+    "StudyLocations": {
+      "type": "component",
+      "repeatable": true,
+      "component": "avoiding-impacts.study-location"
     }
   }
 }
