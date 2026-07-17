@@ -1,5 +1,5 @@
 <script>
-  import PillGroup from '$lib/components/ui/PillGroup.svelte';
+  import Select from '$lib/components/ui/Select.svelte';
   import CompareImage from 'svelte-compare-image/CompareImage.svelte';
   import SideScrollIndicator from '$lib/components/ui/SideScrollIndicator.svelte';
   import _ from 'lodash-es';
@@ -31,13 +31,13 @@
   let widthContent;
 </script>
 
-<div class="flex flex-wrap gap-10">
+<div class="flex flex-wrap gap-6 mb-6">
   {#if allowImageSelection && groupingValues.length > 1}
-    <PillGroup class="mb-6" label={groupingLabel} size="sm" allowWrap={false} options={groupingValues} bind:currentUid={$currentGroup} />
+    <Select boxed label={groupingLabel} options={groupingValues.map((g) => ({ value: g.uid, label: g.label }))} bind:value={$currentGroup} />
   {/if}
 
   {#if attributeValues.length > 1}
-    <PillGroup class="mb-6" label={attributeLabel} size="sm" allowWrap={false} options={attributeValues} bind:currentUid={$currentAttribute} />
+    <Select boxed label={attributeLabel} options={attributeValues.map((a) => ({ value: a.uid, label: a.label }))} bind:value={$currentAttribute} />
   {/if}
 </div>
 
@@ -50,7 +50,7 @@
       {/if}
     </div>
   {:else if imagePair.image1 && imagePair.image2}
-    <figure class="mb-2 flex flex-col gap-1">
+    <figure class="mb-2 flex flex-col gap-8">
       <CompareImage
         imageLeftSrc={getStrapiImageAtSize(imagePair.image1)}
         imageLeftAlt="left"
@@ -68,7 +68,7 @@
         </svelte:fragment>
       </CompareImage>
       {#if imagePair.description}
-        <figcaption class="flex justify-between align-middle mb-4" class:justify-end={imagePair.description}>
+        <figcaption class="flex flex-col items-start gap-6 mb-4">
           <p class="text-sm text-text-weaker max-w-[40em]">{imagePair.description}</p>
           {#if explorerUrl}
             <ExplorerLink href={explorerUrl} />

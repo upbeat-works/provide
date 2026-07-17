@@ -26,7 +26,7 @@
     <slot name="content-header" />
     <div bind:this={contentRef}>
       {#each sections as section}
-        <section class="pt-4 pb-8 border-contour-weakest first:border-0 first:mt-0 last:mb-12" class:border-t={section.title && !section.omitBorder} class:pt-12={section.title}>
+        <section class="pt-12 pb-12 border-contour-weakest first:border-0 first:mt-0 last:mb-12" class:border-t={section.title && !section.omitBorder} class:pt-12={section.title}>
           <svelte:component this={section.component} {...section.props} />
           {#each section.sections ?? [] as part1}
              <svelte:component this={part1.component} {...part1.props} />
