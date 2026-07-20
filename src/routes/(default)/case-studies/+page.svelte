@@ -1,17 +1,17 @@
 <script>
   import { uniqBy, compact } from 'lodash-es';
   import CaseStudyCard from '../landing-page/components/CaseStudiesCarousel/CaseStudyCard.svelte';
-  import Select from '$lib/components/ui/Select.svelte';
+  import MultiSelect from '$lib/components/ui/MultiSelect.svelte';
   import FilterPill from '$lib/components/ui/FilterPill.svelte';
   import Magnify from '$lib/components/icons/Magnify.svelte';
 
   export let data;
 
   let selectedCities = [];
-  let scenarioValue = '';
-  let geographyValue = '';
-  let projectValue = '';
-  let topicValue = '';
+  let selectedScenarios = [];
+  let selectedGeographies = [];
+  let selectedProjects = [];
+  let selectedTopics = [];
   let search = '';
 
   $: cities = uniqBy(
@@ -19,28 +19,16 @@
     'uid'
   );
 
-  $: scenarioOptions = [
-    { value: '', label: 'ALL' },
-    ...uniqBy(
-      data.caseStudies.flatMap((s) => s.scenarios),
-      'id'
-    ).map((s) => ({ value: s.id, label: s.label })),
-  ];
-  $: geographyOptions = [
-    { value: '', label: 'ALL' },
-    ...uniqBy(compact(data.caseStudies.map((s) => s.geography)), 'id').map((g) => ({ value: g.id, label: g.Title })),
-  ];
-  $: projectOptions = [
-    { value: '', label: 'ALL' },
-    ...uniqBy(compact(data.caseStudies.map((s) => s.project)), 'id').map((p) => ({ value: p.id, label: p.Title })),
-  ];
-  $: topicOptions = [
-    { value: '', label: 'ALL' },
-    ...uniqBy(
-      data.caseStudies.flatMap((s) => s.topics),
-      'id'
-    ).map((t) => ({ value: t.id, label: t.Title })),
-  ];
+  $: scenarioOptions = uniqBy(
+    data.caseStudies.flatMap((s) => s.scenarios),
+    'id'
+  ).map((s) => ({ value: s.id, label: s.label }));
+  $: geographyOptions = uniqBy(compact(data.caseStudies.map((s) => s.geography)), 'id').map((g) => ({ value: g.id, label: g.Title }));
+  $: projectOptions = uniqBy(compact(data.caseStudies.map((s) => s.project)), 'id').map((p) => ({ value: p.id, label: p.Title }));
+  $: topicOptions = uniqBy(
+    data.caseStudies.flatMap((s) => s.topics),
+    'id'
+  ).map((t) => ({ value: t.id, label: t.Title }));
 
   function toggleCity(uid) {
     selectedCities = selectedCities.includes(uid) ? selectedCities.filter((d) => d !== uid) : [...selectedCities, uid];
@@ -48,10 +36,10 @@
 
   $: filteredCaseStudies = data.caseStudies.filter((study) => {
     const matchesCity = !selectedCities.length || selectedCities.includes(study.city.uid);
-    const matchesScenario = !scenarioValue || study.scenarios.some((s) => s.id === scenarioValue);
-    const matchesGeography = !geographyValue || study.geography?.id === geographyValue;
-    const matchesProject = !projectValue || study.project?.id === projectValue;
-    const matchesTopic = !topicValue || study.topics.some((t) => t.id === topicValue);
+    const matchesScenario = !selectedScenarios.length || study.scenarios.some((s) => selectedScenarios.includes(s.id));
+    const matchesGeography = !selectedGeographies.length || (study.geography && selectedGeographies.includes(study.geography.id));
+    const matchesProject = !selectedProjects.length || (study.project && selectedProjects.includes(study.project.id));
+    const matchesTopic = !selectedTopics.length || study.topics.some((t) => selectedTopics.includes(t.id));
     const query = search.trim().toLowerCase();
     const matchesSearch = !query || compact([study.city.label, study.abstract]).some((v) => v.toLowerCase().includes(query));
     return matchesCity && matchesScenario && matchesGeography && matchesProject && matchesTopic && matchesSearch;
@@ -81,10 +69,10 @@
 <!-- Filters -->
 <div class="bg-white border-b border-contour-weakest">
   <div class="max-w-7xl mx-auto flex h-fit [&>*]:border-r [&>*]:border-contour-weakest [&>*]:px-6 [&>*]:py-4">
-    <Select label="Scenario" options={scenarioOptions} bind:value={scenarioValue} wrapperClass="flex-col" />
-    <Select label="Geography" options={geographyOptions} bind:value={geographyValue} wrapperClass="flex-col" />
-    <Select label="Projects" options={projectOptions} bind:value={projectValue} wrapperClass="flex-col" />
-    <Select label="Topics" options={topicOptions} bind:value={topicValue} wrapperClass="flex-col" />
+    <MultiSelect label="Scenario" options={scenarioOptions} bind:selected={selectedScenarios} wrapperClass="flex-col" />
+    <MultiSelect label="Geography" options={geographyOptions} bind:selected={selectedGeographies} wrapperClass="flex-col" />
+    <MultiSelect label="Projects" options={projectOptions} bind:selected={selectedProjects} wrapperClass="flex-col" />
+    <MultiSelect label="Topics" options={topicOptions} bind:selected={selectedTopics} wrapperClass="flex-col" />
     <div class="flex-1 flex items-center gap-2">
       <Magnify class="text-theme-base w-4 h-4 flex-shrink-0" />
       <input
