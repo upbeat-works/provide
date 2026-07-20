@@ -62,7 +62,7 @@
 
   <!-- Content slot (back link + date + authors + outro) -->
   <svelte:fragment slot="content-header">
-    <div class="flex items-center justify-between pb-4 text-sm">
+    <div class="flex items-center justify-between pt-2 text-sm">
       <a href="/{PATH_ADAPTATION}" class="flex items-center gap-1.5 text-theme-base hover:text-theme-700 transition-colors font-medium">
         <span class="scale-x-[-1] inline-flex"><Arrow /></span>
         Back to Case Studies

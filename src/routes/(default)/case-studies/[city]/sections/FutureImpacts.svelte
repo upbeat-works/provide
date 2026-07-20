@@ -1,5 +1,5 @@
 <script>
-  import PillGroup from '$lib/components/ui/PillGroup.svelte';
+  import Select from '$lib/components/ui/Select.svelte';
   import { getStrapiImageAtSize } from '$lib/utils/utils';
   import ExplorerLink from './ExplorerLink.svelte';
   import _ from 'lodash-es';
@@ -22,22 +22,26 @@
 
 <div class="max-w-3xl">
   {#if indicators.length > 1}
-    <PillGroup class="mb-6" label="Indicator" size="sm" allowWrap={false} options={indicators} bind:currentUid={$indicator} />
+    <div class="mb-6">
+      <Select boxed label="Indicator" options={indicators.map((d) => ({ value: d.uid, label: d.label }))} bind:value={$indicator} />
+    </div>
   {/if}
   <figure class="mb-10">
-    <img class="mb-2" src={getStrapiImageAtSize(timeSelection.image)} alt={timeSelection.image?.alternativeText} />
-    <figcaption class="flex gap-6 justify-between align-middle">
+    <img class="mb-8" src={getStrapiImageAtSize(timeSelection.image)} alt={timeSelection.image?.alternativeText} />
+    <figcaption class="flex flex-col items-start gap-6">
       <div class="text-sm text-text-weaker max-w-[40em]">{impactTimeDescription}</div>
       <ExplorerLink href={explorerUrl} />
     </figcaption>
   </figure>
 
   {#if years.length > 1}
-    <PillGroup class="mb-4" label="Year" size="sm" allowWrap={false} options={years} bind:currentUid={$year} />
+    <div class="mb-4">
+      <Select boxed label="Year" options={years.map((d) => ({ value: d.uid, label: d.label }))} bind:value={$year} />
+    </div>
   {/if}
   <figure>
-    <img class="mb-2" src={getStrapiImageAtSize(geoSelection.image)} alt={timeSelection.image?.alternativeText} />
-    <figcaption class="flex gap-6 justify-between align-middle">
+    <img class="mb-8" src={getStrapiImageAtSize(geoSelection.image)} alt={timeSelection.image?.alternativeText} />
+    <figcaption class="flex flex-col items-start gap-6">
       <div class="text-sm text-text-weaker max-w-[40em]">{impactGeoDescription}</div>
       <ExplorerLink href={explorerUrl} />
     </figcaption>
