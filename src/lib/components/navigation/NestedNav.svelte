@@ -7,7 +7,7 @@
   export let sections = [];
   export let contentRef;
   export let activeIndex = 0;
-  export let title = 'Index';
+  export let title = '';
 
   // Holds key/values for all open sections
   let openSections = {};
@@ -155,7 +155,7 @@
   {#if title}
     <h2 class="font-display text-xs uppercase text-theme-800 font-semibold tracking-wide">{title}</h2>
   {/if}
-  <ul data-index={effectiveActiveIndex}>
+  <ul data-index={effectiveActiveIndex} class="[&>li:last-child>div]:border-b-0">
     {#each processedSections as { title, slug, isActive, index, isOpen, sections, hasContent }}
       {#if hasContent}
         <li class="border-r-3 pr-12"

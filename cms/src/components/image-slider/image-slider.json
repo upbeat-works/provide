@@ -24,6 +24,12 @@
     },
     "ExplorerUrl": {
       "type": "string"
+    },
+    "ShowThumbnails": {
+      "type": "boolean"
+    },
+    "AllowImageSelection": {
+      "type": "boolean"
     }
   }
 }

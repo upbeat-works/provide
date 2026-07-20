@@ -40,7 +40,7 @@
 </script>
 
 <button
-  class="flex items-center gap-1 py-1 px-3 text-xs leading-tight border rounded-full transition-colors whitespace-nowrap {selected ? c.selected : c.unselected}"
+  class="flex items-center gap-1 py-1 px-3 text-xs leading-tight border rounded-full transition-colors whitespace-nowrap {selected ? c.selected : c.unselected} {$$props.class ?? ''}"
   on:click
 >
   <slot />
