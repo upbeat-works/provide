@@ -35,8 +35,6 @@
 
   const navLinkClass =
     'text-white hover:text-sky-100 text-[14px] font-semibold leading-[150%] transition-colors';
-
-  let toolsOpen = false;
 </script>
 
 <nav class={`py-4 border-b border-dashed ${$HEADER_CLASS || 'bg-sky-700 border-sky-600'}`}>
@@ -50,33 +48,25 @@
           {href}>{label}</NavLink
         >
       {/each}
-      <li
-        class="relative"
-        on:mouseenter={() => (toolsOpen = true)}
-        on:mouseleave={() => (toolsOpen = false)}
-        on:focusin={() => (toolsOpen = true)}
-        on:focusout={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) toolsOpen = false;
-        }}
-      >
-        <button type="button" class={navLinkClass} aria-haspopup="true" aria-expanded={toolsOpen}>
+      <li class="relative group">
+        <button type="button" class={`${navLinkClass} cursor-pointer`} aria-haspopup="true">
           {toolsMenu.label}
         </button>
-        {#if toolsOpen}
-          <ul class="absolute z-10 top-full left-0 pt-[10px]">
-            <div class="flex flex-col items-stretch bg-surface-base shadow-xl">
-              {#each toolsMenu.options as option}
-                <li>
-                  <NavLink
-                    href={option.href}
-                    class="px-4 py-2 hover:bg-surface-weaker text-sm text-theme-base whitespace-nowrap block"
-                    >{option.label}</NavLink
-                  >
-                </li>
-              {/each}
-            </div>
-          </ul>
-        {/if}
+        <ul
+          class="invisible absolute z-10 top-full left-0 pt-[10px] opacity-0 pointer-events-none transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+        >
+          <div class="flex flex-col items-stretch bg-surface-base shadow-xl">
+            {#each toolsMenu.options as option}
+              <li>
+                <NavLink
+                  href={option.href}
+                  class="px-4 py-2 hover:bg-surface-weaker text-sm text-theme-base whitespace-nowrap block"
+                  >{option.label}</NavLink
+                >
+              </li>
+            {/each}
+          </div>
+        </ul>
       </li>
       {#each itemsAfterTools as { label, href }}
         <NavLink
