@@ -1,11 +1,14 @@
 import { generatePageTitle } from '$utils/meta.js';
 import { LABEL_AVOID_IMPACTS } from '$config';
-import { loadFromStrapi } from '$lib/utils/apis.js';
+import { loadFromStrapi, loadAvoidMeta } from '$lib/utils/apis.js';
 
 export const load = async ({ fetch, parent }) => {
-  const [{ geographies }, caseStudiesRaw] = await Promise.all([
+  // Avoid runs on the frozen legacy /meta (avoidMeta) — no ixmp4 catalog. geographies
+  // come from the shared impacts layout via parent(), used only for case studies.
+  const [{ geographies }, caseStudiesRaw, avoidMeta] = await Promise.all([
     parent(),
     loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*'),
+    loadAvoidMeta(fetch),
   ]);
 
   const cities = geographies.cities ?? [];
@@ -20,5 +23,6 @@ export const load = async ({ fetch, parent }) => {
   return {
     title: generatePageTitle(LABEL_AVOID_IMPACTS),
     caseStudies,
+    avoidMeta,
   };
 };

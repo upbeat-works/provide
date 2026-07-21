@@ -3,7 +3,7 @@
   import ImpactGeo from './components/ImpactGeo/ImpactGeo.svelte';
   import UnAvoidableRisk from '../components/UnavoidableRisk/UnavoidableRisk.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, CURRENT_GEOGRAPHY, IS_STATIC } from '$stores/state';
+  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, CURRENT_GEOGRAPHY, CURRENT_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_UID, IS_STATIC } from '$stores/state';
   import { GEOGRAPHIES } from '$stores/meta.js';
   import VisData from '$lib/components/icons/VisData.svelte';
   import { PATH_AVOID, GEOGRAPHY_TYPE_CITY } from '$config';
@@ -14,8 +14,10 @@
   import PageHero from '$lib/components/layouts/PageHero.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { page } from '$app/stores';
   import { createScrollSpy } from '$lib/utils/scrollSpy';
+  import { toLegacyGeoId, toLegacyIndicatorUid, resolveGeo, resolveIndicator } from '$lib/catalog/translate.js';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
@@ -24,6 +26,38 @@
   export let data;
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE;
+
+  // Explore -> avoid handoff. Explore owns the translation: a city selection with
+  // avoid data (an indicator carrying a legacyUid) becomes an avoid-native
+  // (geoId, legacyUid) deep-link; otherwise fall back to the generic avoid page
+  // (avoid is cities-only, so non-city selections can't carry over).
+  // Avoiding future impacts is cities-only, so the handoff needs a city; carry
+  // its geoId (== the avoid-native legacy city uid), plus the indicator only if
+  // it maps to an avoid indicator (legacyUid). When the current geography isn't a
+  // city, the button is disabled — avoid can't represent it.
+  $: avoidIsCity = $CURRENT_GEOGRAPHY?.geographyType === GEOGRAPHY_TYPE_CITY;
+  $: avoidGeoId = avoidIsCity ? toLegacyGeoId($CURRENT_GEOGRAPHY) : undefined;
+  $: avoidLegacyUid = toLegacyIndicatorUid($CURRENT_INDICATOR?.uid, data.catalog?.indicators ?? []);
+  $: avoidAvailable = isValidSelection && !!avoidGeoId;
+  $: avoidHref = avoidAvailable
+    ? `/impacts/${PATH_AVOID}?geography=${encodeURIComponent(avoidGeoId)}${avoidLegacyUid ? `&indicator=${encodeURIComponent(avoidLegacyUid)}` : ''}`
+    : `/impacts/${PATH_AVOID}`;
+
+  // Inbound (avoid -> explore, or a shared avoid link): params may be in either id
+  // space; resolve to the new uid and seed the shared stores.
+  onMount(() => {
+    const params = $page.url.searchParams;
+    const geo = params.get('geography');
+    const ind = params.get('indicator');
+    if (geo) {
+      const g = resolveGeo(geo, Object.values($GEOGRAPHIES).flat());
+      if (g) CURRENT_GEOGRAPHY_UID.set(g.uid);
+    }
+    if (ind) {
+      const i = resolveIndicator(ind, data.catalog?.indicators ?? []);
+      if (i) CURRENT_INDICATOR_UID.set(i.uid);
+    }
+  });
 
   $: caseStudyGeography = $CURRENT_GEOGRAPHY?.adaptationCaseStudy
     ? $GEOGRAPHIES[GEOGRAPHY_TYPE_CITY]?.find((d) => d.uid === $CURRENT_GEOGRAPHY.adaptationCaseStudy) ?? null
@@ -126,9 +160,9 @@
         {/if}
       {/if}
     {/each}
-    {#if isValidSelection}
+    {#if avoidAvailable}
       <div class="flex justify-center">
-        <Button href="/impacts/{PATH_AVOID}" variant="secondary" class="!px-8 !py-4 !text-base !gap-3">
+        <Button href={avoidHref} variant="secondary" class="!px-8 !py-4 !text-base !gap-3">
           <VisData class="h-8 w-8 shrink-0" color="fill-current" />
           Visualize this data on avoiding future impacts
           <LinkArrow />

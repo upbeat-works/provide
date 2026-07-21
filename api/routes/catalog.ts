@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
+import { schema } from '../db';
 import { createPlatforms } from '../platform';
 import { parseVariable, indicatorsFromVariables } from '../conventions';
 import { distinct, distinctCaseInsensitive } from '../util';
@@ -39,15 +40,25 @@ catalog.get('/', async (c) => {
   // Map the convention facets onto the parameter keys the selector UI expects.
   // Values are raw convention strings (their own label); the warming-level and
   // percentile axes are the chart's value dimension, not user dropdowns.
-  const indicators = indicatorFacets.map((ind) => ({
-    ...ind,
-    instance: instanceByIndicator.get(ind.uid),
-    parameters: {
-      time: ind.temporals,
-      reference: ind.periods,
-      spatial: ind.spatials,
-    },
-  }));
+  // Additive curated enrichment (sector + legacy translation uid) that ixmp4
+  // can't tag onto variables. Left-joined by indicator id; a missing row leaves
+  // the indicator unchanged.
+  const enrichmentRows = await c.env.DB.select().from(schema.indicators);
+  const enrichmentById = new Map(enrichmentRows.map((r) => [r.id, r]));
+
+  const indicators = indicatorFacets.map((ind) => {
+    const extra = enrichmentById.get(ind.uid);
+    return {
+      ...ind,
+      instance: instanceByIndicator.get(ind.uid),
+      parameters: {
+        time: ind.temporals,
+        reference: ind.periods,
+        spatial: ind.spatials,
+      },
+      ...(extra ? { sector: extra.sector, legacyUid: extra.legacyUid } : {}),
+    };
+  });
 
   // The global parameter dictionary: one entry per dimension, options = the
   // union of raw facet values across indicators (uid === label).

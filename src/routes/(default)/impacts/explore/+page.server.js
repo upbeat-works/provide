@@ -1,10 +1,13 @@
 import { generatePageTitle } from '$utils/meta.js';
 import { LABEL_FUTURE_IMPACTS } from '$config';
-import { loadFromStrapi } from '$lib/utils/apis.js';
+import { loadFromStrapi, loadCatalog } from '$lib/utils/apis.js';
 
 export const load = async ({ fetch, parent }) => {
-  const [{ geographies }, caseStudiesRaw] = await Promise.all([
+  // Explore owns the ixmp4 catalog (the expensive variable scan). geographies
+  // come from the shared impacts layout via parent().
+  const [{ geographies }, catalog, caseStudiesRaw] = await Promise.all([
     parent(),
+    loadCatalog(fetch),
     loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*'),
   ]);
 
@@ -20,5 +23,6 @@ export const load = async ({ fetch, parent }) => {
   return {
     title: generatePageTitle(LABEL_FUTURE_IMPACTS),
     caseStudies,
+    catalog,
   };
 };

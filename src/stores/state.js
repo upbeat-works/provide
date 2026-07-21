@@ -13,7 +13,7 @@ import {
 } from '$config';
 import THEME from '$styles/theme-store.js';
 import { interpolateLab, piecewise } from 'd3-interpolate';
-import _, { every, get, keyBy, map, reduce, without, isEqual, isString } from 'lodash-es';
+import _, { get, keyBy, map, reduce } from 'lodash-es';
 import { derived, get as getStore, writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getLocalStorage, setLocalStorage, getAllLocalStorage } from './utils.js';
@@ -23,6 +23,7 @@ import { extractEndYear, extractStartYear } from '$utils/meta.js';
 
 import { DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
 import { GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, GEOGRAPHY_INDEX, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
+import { resolveScenarioSelection, isScenarioCombinationAvailable, parseStoredScenarios } from './scenario-selection.js';
 
 // Optional CSS class(es) to override the header background, set per-page
 export const HEADER_CLASS = writable('');
@@ -421,7 +422,10 @@ export const CURRENT_INDICATOR_OPTIONS = derived([CURRENT_INDICATOR_OPTION_VALUE
   return reduce(
     $currentOptions,
     (acc, uid, key) => {
-      acc[key] = $parameters[key].options.find((option) => option.uid === uid);
+      // A stale localStorage param key may not exist in the current parameter
+      // dictionary (e.g. on the avoid page, which loads no ixmp4 catalog) — guard
+      // so it resolves to undefined instead of throwing.
+      acc[key] = $parameters[key]?.options?.find((option) => option.uid === uid);
       return acc;
     },
     {}
@@ -461,24 +465,7 @@ export const CURRENT_INDICATOR_PARAMETERS_KEYS = derived(CURRENT_INDICATOR_PARAM
 
 export const CURRENT_SCENARIOS_UID = (() => {
   const { subscribe, set, update } = writable(
-    getLocalStorage(LOCALSTORE_SCENARIOS, DEFAULT_SCENARIOS_UID, (v) => {
-      let value = DEFAULT_SCENARIOS_UID;
-      if (Boolean(v) && isString(value) && value.trim() !== '') {
-        try {
-          const json = JSON.parse(v);
-          if (Array.isArray(json)) {
-            if (json.length > MAX_NUMBER_SELECTABLE_SCENARIOS) {
-              console.warn('Too many scenarios selected.');
-            }
-            value = json.sort().slice(0, MAX_NUMBER_SELECTABLE_SCENARIOS);
-          }
-        } catch (e) {
-          console.log('Error loading current scenarios from localstore:', e);
-        }
-      }
-
-      return value;
-    })
+    getLocalStorage(LOCALSTORE_SCENARIOS, DEFAULT_SCENARIOS_UID, (v) => parseStoredScenarios(v, DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS))
   );
 
   return {
@@ -626,23 +613,20 @@ export const SELECTABLE_WARMING_SCENARIOS = derived([AVAILABLE_WARMING_SCENARIOS
 
 export const SELECTABLE_SCENARIOS_UID = derived(SELECTABLE_SCENARIOS, ($scenarios) => $scenarios.map(({ uid }) => uid));
 
-// Keep the scenario selection in sync with what ixmp4 actually has for the
-// current indicator/geography/parameters (availability is data-driven, not
-// curated). When the current selection becomes invalid or empty, fall back to
-// the preferred default (DEFAULT_SCENARIOS_UID, e.g. the "Current Policies"
-// equivalent) if it's available, otherwise the first available scenario. An
-// empty selectable set means availability is still loading — leave it untouched.
+// Keep the scenario selection in sync with what ixmp4 actually has. We only
+// auto-fill a genuinely empty selection (first use). We deliberately never swap
+// or prune a selection the user already has: on slow in-app navigations the old
+// swap-on-invalid logic left a "no scenario / unavailable" gap and then flipped
+// the selection under the user. Now an unavailable selection stays put and the
+// picker surfaces "no data here — pick another".
 if (browser) {
   SELECTABLE_SCENARIOS_UID.subscribe((selectable) => {
-    if (!selectable.length) return;
-    const current = getStore(CURRENT_SCENARIOS_UID) || [];
-    const valid = current.filter((uid) => selectable.includes(uid));
-    if (valid.length) {
-      if (!isEqual(valid, current)) CURRENT_SCENARIOS_UID.set(valid);
-      return;
-    }
-    const preferred = DEFAULT_SCENARIOS_UID.filter((uid) => selectable.includes(uid));
-    CURRENT_SCENARIOS_UID.set(preferred.length ? preferred : [selectable[0]]);
+    const next = resolveScenarioSelection({
+      selectable,
+      current: getStore(CURRENT_SCENARIOS_UID) || [],
+      defaults: DEFAULT_SCENARIOS_UID,
+    });
+    if (next) CURRENT_SCENARIOS_UID.set(next);
   });
 }
 
@@ -682,9 +666,8 @@ export const IS_EMPTY_SELECTION = derived([IS_EMPTY_GEOGRAPHY, IS_EMPTY_INDICATO
 
 export const IS_COMBINATION_AVAILABLE_SCENARIO = derived(
   [IS_AVOID_PAGE, SELECTABLE_SCENARIOS_UID, CURRENT_SCENARIOS_UID],
-  ([$isAvoidPage, $SELECTABLE_SCENARIOS, $CURRENT_SCENARIOS_UID]) =>
-    $isAvoidPage || // The Avoid page does not need any selected scenarios
-    (Array.isArray($CURRENT_SCENARIOS_UID) && $CURRENT_SCENARIOS_UID.length && every($CURRENT_SCENARIOS_UID, (scenario) => $SELECTABLE_SCENARIOS.includes(scenario)))
+  ([$isAvoidPage, $selectable, $current]) =>
+    isScenarioCombinationAvailable({ isAvoidPage: $isAvoidPage, selectable: $selectable, current: $current })
 );
 
 export const IS_COMBINATION_AVAILABLE = derived(

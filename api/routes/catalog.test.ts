@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'bun:test';
 import { http, HttpResponse } from 'msw';
 import { api } from '../index';
+import { schema } from '../db';
 import { createTestEnv, listEnvelope, server, testInstance } from '../test-helpers';
 
 function useFixtureHandlers() {
@@ -97,5 +98,38 @@ describe('GET /api/catalog', () => {
     const res = await api.request('/api/catalog', {}, createTestEnv());
     const json = (await res.json()) as { scenarios: Array<{ uid: string; label: string }> };
     expect(json.scenarios).toEqual([{ uid: 'SSP5-3.4-OS', label: 'SSP5-3.4-OS' }]);
+  });
+
+  test('left-joins sector and legacyUid from the indicators table (additive)', async () => {
+    server.use(
+      http.patch(`${testInstance.url}/iamc/variables/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 1, name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile' },
+            { id: 2, name: 'Glacier area|2011-2020 (Present Day)|Annual|Area|50th Percentile' },
+          ]),
+        ),
+      ),
+      http.patch(`${testInstance.url}/runs/`, () => HttpResponse.json(listEnvelope([]))),
+    );
+    const env = createTestEnv();
+    // Only "Mean Temperature" has a curated enrichment row.
+    await env.DB.insert(schema.indicators).values({
+      id: 'Mean Temperature',
+      sector: 'terrestrial-climate',
+      legacyUid: 'terclim-mean-temperature',
+    });
+
+    const res = await api.request('/api/catalog', {}, env);
+    const { indicators } = (await res.json()) as {
+      indicators: Array<{ uid: string; sector?: string | null; legacyUid?: string | null }>;
+    };
+    const mean = indicators.find((i) => i.uid === 'Mean Temperature');
+    expect(mean?.sector).toBe('terrestrial-climate');
+    expect(mean?.legacyUid).toBe('terclim-mean-temperature');
+    // No row → unchanged (additive; no sector/legacyUid).
+    const glacier = indicators.find((i) => i.uid === 'Glacier area');
+    expect(glacier?.sector ?? null).toBeNull();
+    expect(glacier?.legacyUid ?? null).toBeNull();
   });
 });

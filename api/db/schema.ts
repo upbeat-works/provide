@@ -25,6 +25,17 @@ export const geographies = sqliteTable('geographies', {
   geoId: text('geo_id'),
 });
 
+// Additive indicator enrichment: curated facts ixmp4 cannot tag onto variables
+// (it tags runs, not variables). A row ADDS fields to the convention indicator
+// whose id matches (id = the ixmp4 variable's first segment); a missing row
+// leaves that indicator unchanged. Curated columns only — `project` comes from
+// the ixmp4 instance, not from here.
+export const indicators = sqliteTable('indicators', {
+  id: text('id').primaryKey(),
+  sector: text('sector'),
+  legacyUid: text('legacy_uid'),
+});
+
 // Single source of truth for the geography hierarchy. Many-to-many so a
 // trans-boundary river basin / shared EEZ can belong to several countries, and
 // a country belongs to exactly one continent.

@@ -79,13 +79,15 @@ export const DICTIONARY_INDICATORS = derived(INDICATORS, ($indicators) => keyBy(
 export const INDICATOR_PARAMETERS = derived(page, ($page) => $page.data?.catalog?.indicatorParameters ?? []);
 export const DICTIONARY_INDICATOR_PARAMETERS = derived(INDICATOR_PARAMETERS, ($parameters) => keyBy($parameters, 'uid'));
 
+// On the avoid page these come from the frozen legacy /meta (avoidMeta); other
+// surfaces (adaptation, methodology) still provide them via the curation slice.
 export const LIKELIHOODS = derived(page, ($page) => {
-  return $page.data?.curation?.likelihoods ?? [];
+  return $page.data?.avoidMeta?.likelihoods ?? $page.data?.curation?.likelihoods ?? [];
 });
 
 export const STUDY_LOCATIONS = derived(page, ($page) => {
   const locations = sortBy(
-    ($page.data?.curation?.studyLocations ?? []).map((location, i) => {
+    ($page.data?.avoidMeta?.studyLocations ?? $page.data?.curation?.studyLocations ?? []).map((location, i) => {
       const isAverage = location.uid === UID_STUDY_LOCATION_AVERAGE;
       return {
         ...location,

@@ -18,7 +18,7 @@
     "export": "BUILD_ENV=static svelte-kit build && cp -R ./static/* ./build",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply provide-catalog --local",
-    "db:seed": "bun run api/db/import/import-geographies.ts && wrangler d1 execute provide-catalog --local --file=api/db/seed.sql",
+    "db:seed": "bun run api/db/import/import-geographies.ts && bun run api/db/import/import-indicators.ts && wrangler d1 execute provide-catalog --local --file=api/db/seed.sql && wrangler d1 execute provide-catalog --local --file=api/db/seed-indicators.sql",
     "db:studio": "drizzle-kit studio"
   },
   "devDependencies": {

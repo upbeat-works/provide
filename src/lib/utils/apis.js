@@ -1,5 +1,6 @@
 import { get } from 'lodash-es';
 import { ciEquals } from '$lib/utils/case-insensitive.js';
+import { buildAvoidMeta } from '$lib/catalog/avoid-meta.js';
 import { KEY_CHARACTERISTICS, KEY_SCENARIO_YEAR_DESCRIPTION, SCENARIO_DATA_KEYS } from '$config';
 
 // We use different locals to simulate different versions of the content.
@@ -176,6 +177,19 @@ export const loadCuration = async function (svelteFetch = fetch) {
     studyLocations: studyLocations.studyLocations ?? [],
     likelihoods: likelihoods.likelihoods ?? [],
   };
+};
+
+// Loads the frozen legacy catalog for the avoid page. Legacy host only — never
+// touches the ixmp4 / Hono adapter. Pure shaping lives in `buildAvoidMeta`
+// (src/lib/catalog/avoid-meta.js), kept alias-free so it is unit-testable.
+export const loadAvoidMeta = async function (svelteFetch = fetch) {
+  // Scenario labels come from the frozen /meta itself; only indicator
+  // descriptions need Strapi enrichment.
+  const [meta, indicators] = await Promise.all([
+    getJSON(`${ENV_URL_DATA}/meta/`, svelteFetch),
+    loadFromStrapi('indicators', svelteFetch),
+  ]);
+  return buildAvoidMeta(meta, { indicators });
 };
 
 export function trimLinebreakAtEnd(str) {

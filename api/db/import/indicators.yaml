@@ -1,0 +1,91 @@
+# Curated indicator enrichment (sector + legacy translation uid).
+#
+# `id` MUST equal the convention indicator name (the ixmp4 variable's first
+# segment, as returned by GET /api/catalog). The values below are a best-effort
+# PLACEHOLDER seeded from the legacy indicator LABEL — verify/replace each `id`
+# against a live `/catalog` before relying on explore `sector` or the
+# explore->avoid handoff. Because the /catalog join is additive, a mismatched
+# `id` simply yields no enrichment for that indicator (never an error), and the
+# avoid page works regardless (it uses the legacy uids directly).
+#
+# `legacyUid` = the frozen legacy /meta indicator uid (stable; from Appendix A).
+# `sector`    = the legacy sector. Cities/avoid indicators are all urban-climate.
+
+- id: Days a year with maximum temperatures above X°C
+  sector: urban-climate
+  legacyUid: urbclim-T2M-dayoverX
+- id: Nights a year with minimum temperatures above X°C
+  sector: urban-climate
+  legacyUid: urbclim-T2M-nightoverX
+- id: Days a year with extreme heat stress
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-dayover31
+- id: Days a year with very high heat stress
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-dayover295
+- id: Days a year with moderate heat stress
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-dayover25
+- id: Days a year with high heat stress
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-dayover28
+- id: Cooling degree hours
+  sector: urban-climate
+  legacyUid: urbclim-cooling-degree-hours
+- id: Hours a year with extreme heat stress
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-hourover31
+- id: Mean daily maximum temperature
+  sector: urban-climate
+  legacyUid: urbclim-T2M-daily-mean-max
+- id: Nights a year with high heat stress
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-nightover28
+- id: Lost working hours per year for moderate activities
+  sector: urban-climate
+  legacyUid: urbclim-LWH-mod
+- id: Heat-wave magnitude index daily (HWMId)
+  sector: urban-climate
+  legacyUid: urbclim-HWMI
+- id: Mean daily minimum temperature
+  sector: urban-climate
+  legacyUid: urbclim-T2M-daily-mean-min
+- id: Hours a year with moderate heat stress
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-hourover25
+- id: Mean daily maximum wet bulb globe temperature
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-daily-mean-max
+- id: Lost working hours per year for light activities
+  sector: urban-climate
+  legacyUid: urbclim-LWH-light
+- id: Mean daily temperature
+  sector: urban-climate
+  legacyUid: urbclim-T2M-mean
+- id: Lost working hours per year for intense activities
+  sector: urban-climate
+  legacyUid: urbclim-LWH-int
+- id: Hours a year with high heat stress
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-hourover28
+- id: Hours a year with very high heat stress
+  sector: urban-climate
+  legacyUid: urbclim-WBGT-hourover295
+- id: Heatwave days per year
+  sector: urban-climate
+  legacyUid: urbclim-heatwave-days
+- id: Population exposed to heatwaves
+  sector: urban-climate
+  legacyUid: urbclim-heatwaves-population-exposed
+- id: Population exposed to moderate heatstress
+  sector: urban-climate
+  legacyUid: urbclim-heatstressimpact-wbgt-dayover25
+- id: Population exposed to high heat stress
+  sector: urban-climate
+  legacyUid: urbclim-heatstressimpact-wbgt-dayover28
+- id: Population exposed to very high heat stress
+  sector: urban-climate
+  legacyUid: urbclim-heatstressimpact-wbgt-dayover295
+- id: Population exposed to extreme heatstress
+  sector: urban-climate
+  legacyUid: urbclim-heatstressimpact-wbgt-dayover31
