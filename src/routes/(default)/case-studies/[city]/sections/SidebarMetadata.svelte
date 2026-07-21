@@ -9,7 +9,7 @@
 </script>
 
 {#if city || topics.length || scenarios.length || project}
-  <div class="mr-12 pt-3 mt-2 border-t border-contour-weakest flex flex-col gap-6">
+  <div class="mr-12 pt-8 mt-2 border-t border-contour-weakest flex flex-col gap-6">
     {#if city}
       <div>
         <h4 class="text-xs font-bold uppercase tracking-wide text-theme-900 mb-2">Location</h4>

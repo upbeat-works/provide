@@ -1,5 +1,5 @@
 <script>
-  import PillGroup from '$lib/components/ui/PillGroup.svelte';
+  import Select from '$lib/components/ui/Select.svelte';
   import { uniqBy } from 'lodash-es';
   import { writable } from 'svelte/store';
   import { getContext } from 'svelte';
@@ -51,16 +51,18 @@
 {/if}
 
 {#if data.length}
-  {#if indicators.length > 1}
-    <PillGroup class="mb-3" label="Indicator" size="sm" allowWrap={false} options={indicators} bind:currentUid={$indicator} />
-  {/if}
-  {#if studyLocations.length > 1}
-    <PillGroup class="mb-8" label="Study location" size="sm" allowWrap={false} options={studyLocations} bind:currentUid={$studyLocation} />
-  {/if}
+  <div class="flex flex-wrap gap-6 mb-8">
+    {#if indicators.length > 1}
+      <Select boxed label="Indicator" options={indicators.map((d) => ({ value: d.uid, label: d.label }))} bind:value={$indicator} />
+    {/if}
+    {#if studyLocations.length > 1}
+      <Select boxed label="Study location" options={studyLocations.map((d) => ({ value: d.uid, label: d.label }))} bind:value={$studyLocation} />
+    {/if}
+  </div>
 
   <table class="w-full mb-10 max-w-[45em]">
     <caption class="caption-bottom text-text-weaker text-sm mt-3 text-left">
-      <div class="flex gap-4 justify-between">
+      <div class="flex flex-col items-start gap-6">
         <p class="max-w-[40em]">{description}</p>
         <ExplorerLink href={explorerUrl} />
       </div>
@@ -86,7 +88,7 @@
     {/each}
   </table>
 {:else}
-  <div class="flex gap-4 justify-between max-w-[45em]">
+  <div class="flex flex-col items-start gap-6 max-w-[45em]">
     {#if description}
       <p class="max-w-[40em] text-text-weaker">{description}</p>
     {/if}
