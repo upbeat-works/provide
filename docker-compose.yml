@@ -62,12 +62,14 @@ services:
       DATABASE_PASSWORD: ''
       DATABASE_SCHEMA: strapi
       DATABASE_SSL: 'false'
+      # Strapi's public origin — its own subdomain (root-mounted), mirrors prod.
+      PUBLIC_URL: http://cms.localhost:8080
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
       - ./cms/dumps:/app/dumps # so `db:cms:import` can read the transfer archive
     ports:
-      - '1337:1337' # direct admin access (content is fetched through nginx /cms)
+      - '1337:1337' # direct admin access (canonical admin is cms.localhost:8080/admin)
 
   web:
     image: node:20-slim
@@ -79,9 +81,9 @@ services:
     env_file:
       - .env # frontend VITE_* vars (Mapbox, etc.)
     environment:
-      # Browser (client-side) hits the public origin through nginx — relative paths
+      # Browser: API is a relative path on the apex; CMS is its own subdomain.
       VITE_API_URL: /api
-      VITE_CMS_URL: /cms
+      VITE_CMS_URL: http://cms.localhost:8080
       # SSR (server-side loaders in the container) hit the services directly
       VITE_API_URL_INTERNAL: http://api:8080/api
       VITE_CMS_URL_INTERNAL: http://cms:1337

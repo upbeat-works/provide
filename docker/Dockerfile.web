@@ -3,10 +3,11 @@
 #   docker build -f docker/Dockerfile.web -t provide-web .
 #
 # VITE_* vars are baked at BUILD time (Vite inlines them), so pass them as build
-# args. Defaults match the nginx single-origin routing: the browser uses relative
-# /api and /cms, while SSR (in the container) reaches the services directly.
-# (.env is .dockerignore'd, so only these args feed the build.) The frontend has
-# no database access — the API/CMS own that.
+# args. Defaults match the nginx routing: the browser uses the relative /api path
+# on the apex and the CMS on its own subdomain, while SSR (in the container)
+# reaches the services directly. Override VITE_CMS_URL per environment
+# (https://cms.DOMAIN). (.env is .dockerignore'd, so only these args feed the
+# build.) The frontend has no database access — the API/CMS own that.
 
 # ---- build ----
 FROM node:20-slim AS build
@@ -15,9 +16,10 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 
-# Browser-facing (relative — routed by nginx)
+# Browser-facing: API is a relative path on the apex; CMS is its own subdomain
+# (absolute — override per environment, e.g. https://cms.DOMAIN).
 ARG VITE_API_URL=/api
-ARG VITE_CMS_URL=/cms
+ARG VITE_CMS_URL=http://cms.localhost:8080
 # SSR-facing (server reaches the services directly, e.g. k8s Service DNS)
 ARG VITE_API_URL_INTERNAL=http://api:8080/api
 ARG VITE_CMS_URL_INTERNAL=http://cms:1337

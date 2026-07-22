@@ -33,7 +33,7 @@ ENV API_TOKEN_SALT=
 ENV ADMIN_JWT_SECRET=
 ENV JWT_SECRET=
 ENV TRANSFER_TOKEN_SALT=
-# Public URL when served under a sub-path behind a proxy (e.g. https://host/cms):
+# Public origin behind the proxy — Strapi's own subdomain (e.g. https://cms.DOMAIN):
 ENV PUBLIC_URL=
 
 # --- Media uploads (Cloudflare R2 / S3; unset = local filesystem provider) ----
