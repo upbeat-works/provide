@@ -8,5 +8,3 @@ export const load = async ({ fetch }) => {
   ]);
   return { geographies, catalog, curation };
 };
-
-export const prerender = true;
