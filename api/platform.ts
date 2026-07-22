@@ -2,17 +2,53 @@ import { Platform, type IAuth } from '@iiasa/ixmp4-ts';
 import { instances } from './instances';
 import type { Ixmp4Instance } from './types';
 
+// Refresh this long before the access token's `exp`, to cover clock skew and the
+// latency of the request the token is about to authorize.
+const TOKEN_SKEW_MS = 60_000;
+// Assumed access-token lifetime when the JWT carries no readable `exp` (kept under
+// the real ~15 min so we still refresh in time).
+const FALLBACK_ACCESS_TTL_MS = 10 * 60 * 1000;
+
+// Overridable clock so tests can drive token expiry deterministically.
+let now: () => number = () => Date.now();
+export function __setPlatformClock(fn: () => number): void {
+  now = fn;
+}
+export function __resetPlatformClock(): void {
+  now = () => Date.now();
+}
+
+/** Read the `exp` (ms) out of a JWT access token, or null if it has none. */
+function parseJwtExpMs(token: string): number | null {
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as {
+      exp?: number;
+    };
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
 // Auth for the IIASA Scenario Services Manager (Django SimpleJWT). `token/obtain`
 // trades username+password for a short-lived `access` (~15 min) plus a long-lived
 // `refresh` (~24 h), but costs ~2 s of server-side password hashing. `token/refresh`
 // trades the refresh token for a fresh access token in ~150 ms, no hashing. We hold
 // both so the expensive obtain runs at most once per refresh-token lifetime (or on a
 // cold start / rejected refresh); every access-token expiry in between is a cheap
-// refresh. The ixmp4 client drives this lazily — it only calls
-// refreshOrObtainAccessToken() when a request comes back 401 `invalid_token`.
+// refresh.
+//
+// We refresh PROACTIVELY (see ensureFreshToken) rather than relying on the ixmp4
+// client's built-in 401 retry: that interceptor keys off `error_name === 'invalid_token'`,
+// but this server sends the field as `name: 'InvalidToken'`, so it never fires and an
+// expired token would surface as an unrecovered InvalidToken error.
 export class ManagerAuth implements IAuth {
   accessToken: string | null = null;
   private refreshToken: string | null = null;
+  private accessExpiresAt = 0;
+  private inFlight: Promise<void> | null = null;
 
   constructor(
     private managerUrl: string,
@@ -20,9 +56,29 @@ export class ManagerAuth implements IAuth {
     private password: string,
   ) {}
 
+  /**
+   * Guarantee a non-expired access token before a request goes out. A no-op while
+   * the current token is comfortably valid; otherwise refreshes/obtains. Concurrent
+   * callers share the single in-flight auth so an expiry can't fan out into N calls.
+   */
+  ensureFreshToken(): Promise<void> {
+    if (this.accessToken && now() < this.accessExpiresAt - TOKEN_SKEW_MS) return Promise.resolve();
+    if (!this.inFlight) {
+      this.inFlight = this.refreshOrObtainAccessToken().finally(() => {
+        this.inFlight = null;
+      });
+    }
+    return this.inFlight;
+  }
+
   async refreshOrObtainAccessToken(): Promise<void> {
     if (this.refreshToken && (await this.tryRefresh())) return;
     await this.obtain();
+  }
+
+  private setAccessToken(token: string): void {
+    this.accessToken = token;
+    this.accessExpiresAt = parseJwtExpMs(token) ?? now() + FALLBACK_ACCESS_TTL_MS;
   }
 
   /** Cheap path: exchange the refresh token for a new access token (~150 ms). */
@@ -38,7 +94,7 @@ export class ManagerAuth implements IAuth {
       return false;
     }
     const data = (await res.json()) as { access: string; refresh?: string };
-    this.accessToken = data.access;
+    this.setAccessToken(data.access);
     // SimpleJWT can be configured to rotate refresh tokens; keep the new one if sent.
     if (data.refresh) this.refreshToken = data.refresh;
     return true;
@@ -53,18 +109,12 @@ export class ManagerAuth implements IAuth {
     });
     if (!res.ok) throw new Error(`ixmp4 auth → ${res.status}`);
     const data = (await res.json()) as { access: string; refresh?: string };
-    this.accessToken = data.access;
+    this.setAccessToken(data.access);
     this.refreshToken = data.refresh ?? null;
   }
 }
 
-// One Platform per instance, reused across requests. The ixmp4 client is built for
-// a single long-lived Platform whose IAuth it refreshes lazily on 401 — so the old
-// per-request createPlatform needlessly re-ran the ~2 s obtain every time. Keyed by
-// slug + username so a credential change starts a fresh platform. We cache the
-// in-flight Promise (not the resolved Platform) so concurrent cold-start callers
-// share one build, and a rejected build is evicted so the next call can retry.
-const platformCache = new Map<string, Promise<Platform>>();
+const platformCache = new Map<string, Promise<{ platform: Platform; auth: ManagerAuth }>>();
 
 function cacheKey(instance: Ixmp4Instance, username: string): string {
   return `${instance.slug}::${username}`;
@@ -74,15 +124,13 @@ async function buildPlatform(
   instance: Ixmp4Instance,
   username: string,
   password: string,
-): Promise<Platform> {
+): Promise<{ platform: Platform; auth: ManagerAuth }> {
   const url = new URL(instance.url);
   const baseUrl = `${url.protocol}//${url.host}`;
   const auth = new ManagerAuth(instance.managerUrl, username, password);
-  // Obtain eagerly so the first real request already carries a token (the client
-  // would otherwise fire it unauthenticated, eat a 403, then retry). Runs once per
-  // process now that the platform is cached, not once per request.
-  await auth.refreshOrObtainAccessToken();
-  return Platform.create({ name: instance.slug, baseUrl, auth });
+  await auth.ensureFreshToken(); // initial obtain, so the first request carries a token
+  const platform = await Platform.create({ name: instance.slug, baseUrl, auth });
+  return { platform, auth };
 }
 
 export async function createPlatform(
@@ -100,7 +148,12 @@ export async function createPlatform(
     });
     platformCache.set(key, pending);
   }
-  return pending;
+  const { platform, auth } = await pending;
+  // The platform is reused for the whole process, so its token outlives a single
+  // request; refresh it before handing it back (the client's own 401 refresh is
+  // broken against this server — see ManagerAuth).
+  await auth.ensureFreshToken();
+  return platform;
 }
 
 export async function createPlatforms(
