@@ -4,17 +4,16 @@
  * the same on a dev machine and inside the API container.
  *
  * Assumes the tables already exist (run `db:migrate` / boot `server.ts` first).
- * Usage: DATABASE_URL=postgres://… bun run api/db/seed.ts [schema]
+ * Usage: bun run api/db/seed.ts [schema]   (DB from DATABASE_* env)
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Pool } from 'pg';
+import { pgBaseConfig, DB_SCHEMA } from './connection';
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/provide';
-const targetSchema = process.argv[2] ?? process.env.DB_SCHEMA ?? 'catalog';
+const targetSchema = process.argv[2] ?? DB_SCHEMA;
 
-const pool = new Pool({ connectionString: DATABASE_URL, options: `-c search_path=${targetSchema}` });
+const pool = new Pool({ ...pgBaseConfig(), options: `-c search_path=${targetSchema}` });
 await pool.query(`CREATE SCHEMA IF NOT EXISTS "${targetSchema}"`);
 for (const file of ['seed.sql', 'seed-indicators.sql']) {
   const sql = readFileSync(path.join(import.meta.dir, file), 'utf-8');

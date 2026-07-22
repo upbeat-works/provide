@@ -27,13 +27,19 @@ services:
       - '8080:80'
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
     command: bun run --watch server.ts # server.ts migrates catalog on boot (idempotent)
     env_file:
       - .env # for IXMP4_USERNAME / IXMP4_PASSWORD
     environment:
-      DATABASE_URL: postgres://${DB_USER:-rodrigo}@host.docker.internal:5432/${DB_NAME:-provide}
-      DB_SCHEMA: catalog
+      DATABASE_HOST: host.docker.internal
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DB_NAME:-provide}
+      DATABASE_USERNAME: ${DB_USER:-rodrigo}
+      DATABASE_PASSWORD: ''
+      DATABASE_SCHEMA: catalog
       PORT: 8080
     extra_hosts:
       - 'host.docker.internal:host-gateway'
@@ -42,7 +48,9 @@ services:
       - ./server.ts:/app/server.ts
 
   cms:
-    build: ./cms
+    build:
+      context: ./cms
+      dockerfile: ../docker/Dockerfile.cms
     env_file:
       - cms/.env # app secrets (APP_KEYS, *_SECRET, R2_*)
     environment:

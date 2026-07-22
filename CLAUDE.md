@@ -1,6 +1,6 @@
 # PROVIDE
 
-SvelteKit frontend + Hono/Cloudflare-Workers API. The catalog is **convention-driven**:
+SvelteKit frontend + Hono API (Node/Bun runtime). The catalog is **convention-driven**:
 ixmp4 exposes only pipe-delimited variable names (`Indicator | Period | Temporal | Spatial | Value`),
 and parsing those names IS the metadata — there is no hand-curated catalog layer.
 

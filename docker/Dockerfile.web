@@ -1,10 +1,12 @@
 # Production image for the SvelteKit frontend (SSR via adapter-node).
-# Build context is the repo root:  docker build -f Dockerfile.web -t provide-web .
+# Build context is the repo root:
+#   docker build -f docker/Dockerfile.web -t provide-web .
 #
 # VITE_* vars are baked at BUILD time (Vite inlines them), so pass them as build
 # args. Defaults match the nginx single-origin routing: the browser uses relative
 # /api and /cms, while SSR (in the container) reaches the services directly.
-# (.env is .dockerignore'd, so only these args feed the build.)
+# (.env is .dockerignore'd, so only these args feed the build.) The frontend has
+# no database access — the API/CMS own that.
 
 # ---- build ----
 FROM node:20-slim AS build

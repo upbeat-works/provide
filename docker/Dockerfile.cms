@@ -1,0 +1,52 @@
+# Build stage — compile the admin panel.
+# Debian slim (glibc) is used instead of Alpine (musl) because Strapi's `sharp`
+# image library ships working prebuilt binaries for glibc and is painful on musl.
+FROM node:20.13.1-slim AS build
+WORKDIR /app
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
+COPY . .
+ENV NODE_ENV=production
+RUN yarn build
+
+# Runtime stage
+FROM node:20.13.1-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=1337
+
+# --- Database (Postgres) — discrete fields (user & password as separate secrets)
+ENV DATABASE_CLIENT=postgres
+ENV DATABASE_HOST=
+ENV DATABASE_PORT=5432
+ENV DATABASE_NAME=provide
+ENV DATABASE_USERNAME=
+ENV DATABASE_PASSWORD=
+ENV DATABASE_SSL=false
+# Strapi's tables live in this schema (isolated from the API's `catalog`):
+ENV DATABASE_SCHEMA=strapi
+
+# --- App secrets (required — generate fresh per environment) ------------------
+ENV APP_KEYS=
+ENV API_TOKEN_SALT=
+ENV ADMIN_JWT_SECRET=
+ENV JWT_SECRET=
+ENV TRANSFER_TOKEN_SALT=
+# Public URL when served under a sub-path behind a proxy (e.g. https://host/cms):
+ENV PUBLIC_URL=
+
+# --- Media uploads (Cloudflare R2 / S3; unset = local filesystem provider) ----
+ENV R2_BUCKET=
+ENV R2_ENDPOINT=
+ENV R2_ACCESS_KEY_ID=
+ENV R2_SECRET_ACCESS_KEY=
+ENV R2_PUBLIC_URL=
+
+COPY --from=build /app ./
+# Ensure the local upload provider's target dir exists (dev uploads are
+# .dockerignore'd, so the empty folder must be created). Unused when the
+# Cloudinary provider is active (production).
+RUN mkdir -p public/uploads
+EXPOSE 1337
+CMD ["yarn", "start"]

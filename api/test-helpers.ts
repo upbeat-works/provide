@@ -4,11 +4,9 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { schema } from './db';
 import { migrationStatements } from './db/migrations-sql';
+import { pgBaseConfig } from './db/connection';
 import { instances } from './instances';
 import type { Env } from './types';
-
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/provide';
 
 // The generated DDL, replayed into each test's ephemeral schema.
 const MIGRATION_SQL = migrationStatements();
@@ -16,7 +14,7 @@ const MIGRATION_SQL = migrationStatements();
 // A single admin connection used only to CREATE/DROP the per-test schemas.
 let adminPool: Pool | null = null;
 function admin(): Pool {
-  if (!adminPool) adminPool = new Pool({ connectionString: DATABASE_URL });
+  if (!adminPool) adminPool = new Pool(pgBaseConfig());
   return adminPool;
 }
 
@@ -41,7 +39,7 @@ function uniqueSchemaName(): string {
 export async function createTestEnv(): Promise<Env['Bindings']> {
   const name = uniqueSchemaName();
   await admin().query(`CREATE SCHEMA "${name}"`);
-  const client = new Client({ connectionString: DATABASE_URL, options: `-c search_path=${name}` });
+  const client = new Client({ ...pgBaseConfig(), options: `-c search_path=${name}` });
   await client.connect();
   for (const stmt of MIGRATION_SQL) await client.query(stmt);
   active.push({ schema: name, client });

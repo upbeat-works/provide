@@ -23,7 +23,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.web
+      dockerfile: docker/Dockerfile.web
       args:
         # Browser hits nginx via relative paths; SSR reaches the services directly.
         VITE_API_URL: /api
@@ -41,18 +41,26 @@ services:
       - cms
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
     env_file:
       - .env # IXMP4_USERNAME / IXMP4_PASSWORD
     environment:
-      DATABASE_URL: postgres://${DB_USER:-rodrigo}@host.docker.internal:5432/${DB_NAME:-provide}
-      DB_SCHEMA: catalog
+      DATABASE_HOST: host.docker.internal
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DB_NAME:-provide}
+      DATABASE_USERNAME: ${DB_USER:-rodrigo}
+      DATABASE_PASSWORD: ''
+      DATABASE_SCHEMA: catalog
       PORT: 8080
     extra_hosts:
       - 'host.docker.internal:host-gateway'
 
   cms:
-    build: ./cms
+    build:
+      context: ./cms
+      dockerfile: ../docker/Dockerfile.cms
     env_file:
       - cms/.env
     environment:

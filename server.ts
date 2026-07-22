@@ -5,14 +5,11 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { api } from './api/index.ts';
 import { schema } from './api/db/index.ts';
-
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/provide';
-const DB_SCHEMA = process.env.DB_SCHEMA ?? 'catalog';
+import { pgBaseConfig, DB_SCHEMA } from './api/db/connection.ts';
 
 // One shared pool; every connection pins the search_path to the API's schema so
 // the unqualified tables resolve to (and migrations land in) `catalog`.
-const pool = new Pool({ connectionString: DATABASE_URL, options: `-c search_path=${DB_SCHEMA}` });
+const pool = new Pool({ ...pgBaseConfig(), options: `-c search_path=${DB_SCHEMA}` });
 await pool.query(`CREATE SCHEMA IF NOT EXISTS "${DB_SCHEMA}"`);
 
 const db = drizzle(pool, { schema });
