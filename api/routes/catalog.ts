@@ -1,11 +1,25 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import type { Env } from '../types';
 import { schema } from '../db';
 import { createPlatforms } from '../platform';
 import { parseVariable, indicatorsFromVariables } from '../conventions';
-import { distinct, distinctCaseInsensitive } from '../util';
+import { distinct, distinctCaseInsensitive, createTtlCache } from '../util';
 
 const catalog = new Hono<Env>();
+
+// The catalog reflects the ixmp4 variable universe + the curation enrichment
+// table; both change only when data is (re)published, so the ~0.5 s scan is wasted
+// on every page load. Cache the assembled payload for a few minutes — the whole
+// deployment shares one logical catalog, so a single key suffices.
+const CATALOG_TTL_MS = 10 * 60 * 1000;
+type CatalogResponse = Awaited<ReturnType<typeof buildCatalog>>;
+const catalogCache = createTtlCache<CatalogResponse>(CATALOG_TTL_MS);
+
+// Test seam: drop the cached catalog so a test starts from a cold scan.
+export function __resetCatalogCache(): void {
+  catalogCache.clear();
+}
 
 // The convention-derived catalog: the searchable indicators (with their facet
 // values + parameter dimensions) and the scenario universe. Both come straight
@@ -14,6 +28,11 @@ const catalog = new Hono<Env>();
 // variable name), so it loads only on the data-exploring sections, never on the
 // global layout.
 catalog.get('/', async (c) => {
+  const payload = await catalogCache.get('catalog', () => buildCatalog(c));
+  return c.json(payload);
+});
+
+async function buildCatalog(c: Context<Env>) {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
   const platforms = await createPlatforms(username, password);
 
@@ -78,7 +97,7 @@ catalog.get('/', async (c) => {
   const scenarioNames = distinctCaseInsensitive(instanceRuns.flat().map((run) => run.scenario.name));
   const scenarios = scenarioNames.map((name) => ({ uid: name, label: name }));
 
-  return c.json({ indicators, indicatorParameters, scenarios });
-});
+  return { indicators, indicatorParameters, scenarios };
+}
 
 export { catalog };

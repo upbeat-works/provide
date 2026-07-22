@@ -1,3 +1,38 @@
+export interface TtlCache<T> {
+  /** Return the cached value for `key`, or compute + store it (shared in-flight). */
+  get(key: string, compute: () => Promise<T>): Promise<T>;
+  /** Drop all entries (e.g. between tests). */
+  clear(): void;
+}
+
+/**
+ * A tiny in-memory time-to-live cache for expensive, rarely-changing async work
+ * (e.g. the ixmp4 catalog scan). Entries expire after `ttlMs`; the clock is
+ * injectable so expiry is testable without waiting. Concurrent cold callers share
+ * one in-flight computation, and a rejected computation is not cached.
+ */
+export function createTtlCache<T>(ttlMs: number, now: () => number = Date.now): TtlCache<T> {
+  // Store the in-flight Promise (not the resolved value) so concurrent cold
+  // callers share one computation.
+  const entries = new Map<string, { value: Promise<T>; expiresAt: number }>();
+  return {
+    get(key, compute) {
+      const hit = entries.get(key);
+      if (hit && hit.expiresAt > now()) return hit.value;
+      const entry = { value: compute(), expiresAt: now() + ttlMs };
+      entries.set(key, entry);
+      // Don't cache a rejected computation — evict so the next get retries.
+      entry.value.catch(() => {
+        if (entries.get(key) === entry) entries.delete(key);
+      });
+      return entry.value;
+    },
+    clear() {
+      entries.clear();
+    },
+  };
+}
+
 /** Unique items by key, keeping the first occurrence and preserving order. */
 export function distinct<T>(items: T[], key: (item: T) => string = (x) => String(x)): T[] {
   const seen = new Set<string>();

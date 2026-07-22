@@ -100,6 +100,39 @@ describe('GET /api/catalog', () => {
     expect(json.scenarios).toEqual([{ uid: 'SSP5-3.4-OS', label: 'SSP5-3.4-OS' }]);
   });
 
+  test('serves repeat requests from cache without re-scanning ixmp4', async () => {
+    let variableScans = 0;
+    let runScans = 0;
+    server.use(
+      http.patch(`${testInstance.url}/iamc/variables/`, () => {
+        variableScans++;
+        return HttpResponse.json(
+          listEnvelope([
+            { id: 1, name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile' },
+          ]),
+        );
+      }),
+      http.patch(`${testInstance.url}/runs/`, () => {
+        runScans++;
+        return HttpResponse.json(
+          listEnvelope([
+            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
+          ]),
+        );
+      }),
+    );
+    const env = await createTestEnv();
+    const first = await api.request('/api/catalog', {}, env);
+    const second = await api.request('/api/catalog', {}, env);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(await first.json()).toEqual(await second.json());
+    // The expensive ixmp4 scan runs once and is reused, not once per request.
+    expect(variableScans).toBe(1);
+    expect(runScans).toBe(1);
+  });
+
   test('left-joins sector and legacyUid from the indicators table (additive)', async () => {
     server.use(
       http.patch(`${testInstance.url}/iamc/variables/`, () =>
