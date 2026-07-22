@@ -4,7 +4,7 @@ import { createTestEnv } from '../test-helpers';
 
 describe('GET /api/likelihoods', () => {
   test('returns curated likelihoods with uid, label, value', async () => {
-    const res = await api.request('/api/likelihoods', {}, createTestEnv());
+    const res = await api.request('/api/likelihoods', {}, await createTestEnv());
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
       likelihoods: Array<{ uid: string; label: string; value: number }>;

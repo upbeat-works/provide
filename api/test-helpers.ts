@@ -1,34 +1,83 @@
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { Database } from 'bun:sqlite';
-import { readFileSync, readdirSync } from 'node:fs';
-import path from 'node:path';
+import { Pool, Client } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { schema } from './db';
+import { migrationStatements } from './db/migrations-sql';
 import { instances } from './instances';
 import type { Env } from './types';
 
-const MIGRATIONS_DIR = path.join(import.meta.dir, 'db/migrations');
+const DATABASE_URL =
+  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/provide';
 
-function applyMigrations(sqlite: Database) {
-  const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort();
-  for (const file of files) {
-    const sql = readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8');
-    for (const stmt of sql.split('--> statement-breakpoint')) {
-      const trimmed = stmt.trim();
-      if (trimmed) sqlite.exec(trimmed);
-    }
-  }
+// The generated DDL, replayed into each test's ephemeral schema.
+const MIGRATION_SQL = migrationStatements();
+
+// A single admin connection used only to CREATE/DROP the per-test schemas.
+let adminPool: Pool | null = null;
+function admin(): Pool {
+  if (!adminPool) adminPool = new Pool({ connectionString: DATABASE_URL });
+  return adminPool;
 }
 
-export function createTestEnv(): Env['Bindings'] {
-  const sqlite = new Database(':memory:');
-  applyMigrations(sqlite);
+interface ActiveEnv {
+  schema: string;
+  client: Client;
+}
+// Every env created since the last teardown, so a global afterEach can drop
+// their schemas and close their connections without each test tracking them.
+const active: ActiveEnv[] = [];
+
+function uniqueSchemaName(): string {
+  return `test_${crypto.randomUUID().replace(/-/g, '')}`;
+}
+
+/**
+ * Stands up an isolated database for one test: a fresh `test_*` schema on the
+ * local Postgres, with the migrations replayed into it and the connection's
+ * search_path pinned to it. Fully isolated per call (mirrors the old in-memory
+ * SQLite). The schema + connection are torn down by `teardownTestEnvs()`.
+ */
+export async function createTestEnv(): Promise<Env['Bindings']> {
+  const name = uniqueSchemaName();
+  await admin().query(`CREATE SCHEMA "${name}"`);
+  const client = new Client({ connectionString: DATABASE_URL, options: `-c search_path=${name}` });
+  await client.connect();
+  for (const stmt of MIGRATION_SQL) await client.query(stmt);
+  active.push({ schema: name, client });
   return {
-    DB: drizzle(sqlite, { schema }) as unknown as Env['Bindings']['DB'],
+    DB: drizzle(client, { schema }),
     IXMP4_USERNAME: 'test-user',
     IXMP4_PASSWORD: 'test-pass',
   };
+}
+
+/** Drop every schema + close every connection created since the last call. */
+export async function teardownTestEnvs(): Promise<void> {
+  const envs = active.splice(0);
+  for (const { schema: name, client } of envs) {
+    await client.end().catch(() => {});
+    await admin().query(`DROP SCHEMA IF EXISTS "${name}" CASCADE`);
+  }
+}
+
+/** Sweep any `test_*` schemas leaked by a previously crashed run. */
+export async function dropStaleTestSchemas(): Promise<void> {
+  const { rows } = await admin().query<{ schema_name: string }>(
+    "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'test\\_%'",
+  );
+  for (const { schema_name } of rows) {
+    await admin().query(`DROP SCHEMA IF EXISTS "${schema_name}" CASCADE`);
+  }
+}
+
+/** Final cleanup: tear down active envs and close the admin pool. */
+export async function closeTestDb(): Promise<void> {
+  await teardownTestEnvs();
+  if (adminPool) {
+    await adminPool.end();
+    adminPool = null;
+  }
 }
 
 /**

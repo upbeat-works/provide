@@ -19,7 +19,7 @@ describe('GET /api/indicators', () => {
         ),
       ),
     );
-    const res = await api.request('/api/indicators', {}, createTestEnv());
+    const res = await api.request('/api/indicators', {}, await createTestEnv());
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
       indicators: Array<{ uid: string; label: string; instance: string }>;
@@ -37,7 +37,7 @@ describe('GET /api/indicators', () => {
         return HttpResponse.json(listEnvelope([]));
       }),
     );
-    await api.request('/api/indicators?q=temperature', {}, createTestEnv());
+    await api.request('/api/indicators?q=temperature', {}, await createTestEnv());
     expect(captured).toEqual({ name__ilike: '*temperature*' });
   });
 
@@ -51,7 +51,7 @@ describe('GET /api/indicators', () => {
         );
       }),
     );
-    const res = await api.request('/api/indicators?region=DEU', {}, createTestEnv());
+    const res = await api.request('/api/indicators?region=DEU', {}, await createTestEnv());
     expect(res.status).toBe(200);
     const json = (await res.json()) as { indicators: Array<{ uid: string }> };
     expect(json.indicators.map((i) => i.uid)).toEqual(['terclim-mean-temperature']);
@@ -66,7 +66,7 @@ describe('GET /api/indicators', () => {
         return HttpResponse.json(listEnvelope([]));
       }),
     );
-    await api.request('/api/indicators?region=DEU&q=temperature', {}, createTestEnv());
+    await api.request('/api/indicators?region=DEU&q=temperature', {}, await createTestEnv());
     expect(capturedFilter).toMatchObject({
       name__ilike: '*temperature*',
       region: { name: 'DEU' },
@@ -86,7 +86,7 @@ describe('GET /api/indicators', () => {
         return HttpResponse.json(listEnvelope([]));
       }),
     );
-    await api.request('/api/indicators', {}, createTestEnv());
+    await api.request('/api/indicators', {}, await createTestEnv());
     expect(captured).toEqual({});
   });
 });

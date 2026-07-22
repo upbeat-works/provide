@@ -12,11 +12,11 @@ COPY server.ts ./
 COPY api ./api
 
 ENV NODE_ENV=production
-ENV DB_PATH=/data/provide.db
 ENV PORT=8080
+# DATABASE_URL and IXMP4_* credentials are supplied at runtime (--env-file / compose).
+# The API's tables live in the `catalog` schema of the shared Postgres.
+ENV DB_SCHEMA=catalog
 
-RUN mkdir -p /data
-VOLUME ["/data"]
 EXPOSE 8080
 
 CMD ["bun", "run", "server.ts"]

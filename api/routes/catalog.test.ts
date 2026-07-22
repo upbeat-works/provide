@@ -27,7 +27,7 @@ function useFixtureHandlers() {
 describe('GET /api/catalog', () => {
   test('returns the catalog keys (indicators, indicatorParameters, scenarios)', async () => {
     useFixtureHandlers();
-    const res = await api.request('/api/catalog', {}, createTestEnv());
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
     expect(res.status).toBe(200);
     const json = (await res.json()) as Record<string, unknown>;
     for (const key of ['indicators', 'indicatorParameters', 'scenarios']) {
@@ -38,7 +38,7 @@ describe('GET /api/catalog', () => {
 
   test('collapses convention variables into one indicator with its facet values', async () => {
     useFixtureHandlers();
-    const res = await api.request('/api/catalog', {}, createTestEnv());
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
     const json = (await res.json()) as {
       indicators: Array<{
         uid: string;
@@ -59,7 +59,7 @@ describe('GET /api/catalog', () => {
 
   test('exposes convention facets as selector parameters (time/reference/spatial)', async () => {
     useFixtureHandlers();
-    const res = await api.request('/api/catalog', {}, createTestEnv());
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
     const json = (await res.json()) as {
       indicators: Array<{ uid: string; parameters: Record<string, string[]> }>;
       indicatorParameters: Array<{ uid: string; label: string; options: Array<{ uid: string; label: string }> }>;
@@ -75,7 +75,7 @@ describe('GET /api/catalog', () => {
 
   test('derives scenarios from ixmp4 runs (name is the id, no curation)', async () => {
     useFixtureHandlers();
-    const res = await api.request('/api/catalog', {}, createTestEnv());
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
     const json = (await res.json()) as { scenarios: Array<{ uid: string; label: string }> };
     // The runs fixture exposes one scenario, "curpol"; it surfaces verbatim.
     expect(json.scenarios).toEqual([{ uid: 'curpol', label: 'curpol' }]);
@@ -95,7 +95,7 @@ describe('GET /api/catalog', () => {
         ),
       ),
     );
-    const res = await api.request('/api/catalog', {}, createTestEnv());
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
     const json = (await res.json()) as { scenarios: Array<{ uid: string; label: string }> };
     expect(json.scenarios).toEqual([{ uid: 'SSP5-3.4-OS', label: 'SSP5-3.4-OS' }]);
   });
@@ -112,7 +112,7 @@ describe('GET /api/catalog', () => {
       ),
       http.patch(`${testInstance.url}/runs/`, () => HttpResponse.json(listEnvelope([]))),
     );
-    const env = createTestEnv();
+    const env = await createTestEnv();
     // Only "Mean Temperature" has a curated enrichment row.
     await env.DB.insert(schema.indicators).values({
       id: 'Mean Temperature',

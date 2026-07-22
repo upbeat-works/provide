@@ -1,23 +1,24 @@
 import { Hono } from 'hono';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { Database } from 'bun:sqlite';
+import path from 'node:path';
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { api } from './api/index.ts';
 import { schema } from './api/db/index.ts';
-import { readFileSync, readdirSync } from 'node:fs';
-import path from 'node:path';
 
-const sqlite = new Database(process.env.DB_PATH ?? 'data.db');
+const DATABASE_URL =
+  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/provide';
+const DB_SCHEMA = process.env.DB_SCHEMA ?? 'catalog';
 
-const migrationsDir = path.join(import.meta.dir, 'api/db/migrations');
-for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()) {
-  const sql = readFileSync(path.join(migrationsDir, file), 'utf-8');
-  for (const stmt of sql.split('--> statement-breakpoint')) {
-    const trimmed = stmt.trim();
-    if (trimmed) sqlite.exec(trimmed);
-  }
-}
+// One shared pool; every connection pins the search_path to the API's schema so
+// the unqualified tables resolve to (and migrations land in) `catalog`.
+const pool = new Pool({ connectionString: DATABASE_URL, options: `-c search_path=${DB_SCHEMA}` });
+await pool.query(`CREATE SCHEMA IF NOT EXISTS "${DB_SCHEMA}"`);
 
-const db = drizzle(sqlite, { schema });
+const db = drizzle(pool, { schema });
+
+// Apply pending migrations at boot (idempotent — Drizzle tracks them).
+await migrate(db, { migrationsFolder: path.join(import.meta.dir, 'api/db/migrations') });
 
 const app = new Hono({ strict: false });
 

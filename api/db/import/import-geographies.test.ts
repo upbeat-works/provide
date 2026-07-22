@@ -79,7 +79,7 @@ describe('buildSeedSql', () => {
   test('emits continents as a non-selectable type', () => {
     const sql = buildSeedSql(types, hierarchy);
     expect(sql).toContain(
-      "INSERT INTO geography_types (id, label, label_singular, \"order\", is_available, is_selectable) VALUES ('continent', 'Continents', 'Continent', -1, 1, 0);",
+      "INSERT INTO geography_types (id, label, label_singular, \"order\", is_available, is_selectable) VALUES ('continent', 'Continents', 'Continent', -1, true, false);",
     );
   });
 

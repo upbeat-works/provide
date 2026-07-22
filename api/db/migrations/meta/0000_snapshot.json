@@ -1,46 +1,36 @@
 {
-  "version": "6",
-  "dialect": "sqlite",
-  "id": "5625e50f-0066-4c74-8d70-9fc544480f83",
+  "id": "72f30a12-4f56-49de-aa5d-40c3bcf1edc1",
   "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
   "tables": {
-    "geographies": {
+    "public.geographies": {
       "name": "geographies",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "label": {
           "name": "label",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "geography_type": {
           "name": "geography_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
-        "parent_id": {
-          "name": "parent_id",
+        "geo_id": {
+          "name": "geo_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "shared_id": {
-          "name": "shared_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
       "indexes": {},
@@ -55,12 +45,51 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.geography_parents": {
+      "name": "geography_parents",
+      "schema": "",
+      "columns": {
+        "geography_id": {
+          "name": "geography_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "geography_parents_geography_id_geographies_id_fk": {
+          "name": "geography_parents_geography_id_geographies_id_fk",
+          "tableFrom": "geography_parents",
+          "tableTo": "geographies",
+          "columnsFrom": [
+            "geography_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "geographies_parent_id_geographies_id_fk": {
-          "name": "geographies_parent_id_geographies_id_fk",
-          "tableFrom": "geographies",
+        "geography_parents_parent_id_geographies_id_fk": {
+          "name": "geography_parents_parent_id_geographies_id_fk",
+          "tableFrom": "geography_parents",
           "tableTo": "geographies",
           "columnsFrom": [
             "parent_id"
@@ -68,51 +97,64 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "geography_parents_geography_id_parent_id_pk": {
+          "name": "geography_parents_geography_id_parent_id_pk",
+          "columns": [
+            "geography_id",
+            "parent_id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "geography_types": {
+    "public.geography_types": {
       "name": "geography_types",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "label": {
           "name": "label",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "label_singular": {
           "name": "label_singular",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "order": {
           "name": "order",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "is_available": {
           "name": "is_available",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false,
+          "default": true
+        },
+        "is_selectable": {
+          "name": "is_selectable",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
           "default": true
         }
       },
@@ -120,17 +162,51 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.indicators": {
+      "name": "indicators",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "sector": {
+          "name": "sector",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "legacy_uid": {
+          "name": "legacy_uid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
-  "views": {},
   "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
   "_meta": {
+    "columns": {},
     "schemas": {},
-    "tables": {},
-    "columns": {}
-  },
-  "internal": {
-    "indexes": {}
+    "tables": {}
   }
 }

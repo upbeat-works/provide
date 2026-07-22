@@ -4,8 +4,8 @@ import { createTestEnv } from '../test-helpers';
 import type { Env } from '../types';
 
 let env: Env['Bindings'];
-beforeEach(() => {
-  env = createTestEnv();
+beforeEach(async () => {
+  env = await createTestEnv();
 });
 
 describe('indicators enrichment table', () => {

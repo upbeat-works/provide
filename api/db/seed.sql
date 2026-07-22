@@ -5,14 +5,14 @@ DELETE FROM geographies;
 DELETE FROM geography_types;
 
 -- Geography types
-INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('continent', 'Continents', 'Continent', -1, 1, 0);
-INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('admin0', 'Countries', 'Country', 0, 1, 1);
-INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('eez', 'Exclusive Economic Zones (EEZ)', 'Exclusive Economic Zone (EEZ)', 1, 1, 1);
-INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('cities', 'Cities', 'City', 2, 1, 1);
-INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('river_basins', 'River Basins (RB)', 'River Basin (RB)', 3, 1, 1);
-INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('glacier_regions', 'Glacier Regions (GR)', 'Glacier Region (GR)', 4, 1, 1);
-INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('macroeconomies', 'Macroeconomies (ME)', 'Macroeconomy (ME)', 5, 1, 1);
-INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('northern_latitudes', 'Northern Latitudes', 'Northern Latitude', 6, 1, 1);
+INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('continent', 'Continents', 'Continent', -1, true, false);
+INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('admin0', 'Countries', 'Country', 0, true, true);
+INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('eez', 'Exclusive Economic Zones (EEZ)', 'Exclusive Economic Zone (EEZ)', 1, true, true);
+INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('cities', 'Cities', 'City', 2, true, true);
+INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('river_basins', 'River Basins (RB)', 'River Basin (RB)', 3, true, true);
+INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('glacier_regions', 'Glacier Regions (GR)', 'Glacier Region (GR)', 4, true, true);
+INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('macroeconomies', 'Macroeconomies (ME)', 'Macroeconomy (ME)', 5, true, true);
+INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES ('northern_latitudes', 'Northern Latitudes', 'Northern Latitude', 6, true, true);
 
 -- Continent geographies
 INSERT INTO geographies (id, label, geography_type, geo_id) VALUES ('continent:Africa', 'Africa', 'continent', NULL);

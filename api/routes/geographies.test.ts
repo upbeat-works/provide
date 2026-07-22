@@ -7,8 +7,8 @@ import type { Env } from '../types';
 
 let env: Env['Bindings'];
 
-beforeEach(() => {
-  env = createTestEnv();
+beforeEach(async () => {
+  env = await createTestEnv();
 });
 
 describe('GET /api/geographies', () => {

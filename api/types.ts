@@ -1,7 +1,7 @@
-import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type * as schema from './db/schema';
 
-export type Db = BaseSQLiteDatabase<'async' | 'sync', unknown, typeof schema>;
+export type Db = NodePgDatabase<typeof schema>;
 
 export type Env = {
   Bindings: {

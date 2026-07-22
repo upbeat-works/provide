@@ -2,11 +2,8 @@
 .svelte-kit
 build
 node_modules
-.dev.vars
-.wrangler
+.env
+.env.*
+!.env.example
 .claude
-data.db
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal
 .DS_Store

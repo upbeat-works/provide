@@ -219,13 +219,13 @@ export function buildSeedSql(
 
   // continent type first (order -1, not selectable)
   lines.push(
-    `INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES (${esc(CONTINENT_TYPE.id)}, ${esc(CONTINENT_TYPE.label)}, ${esc(CONTINENT_TYPE.labelSingular)}, -1, 1, 0);`,
+    `INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES (${esc(CONTINENT_TYPE.id)}, ${esc(CONTINENT_TYPE.label)}, ${esc(CONTINENT_TYPE.labelSingular)}, -1, true, false);`,
   );
   types.forEach((t, i) => {
     const cfg = typeConfig[t.id];
     if (!cfg) throw new Error(`Unmapped geography type in YAML: "${t.id}" — add it to typeConfig.`);
     lines.push(
-      `INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES (${esc(cfg.id)}, ${esc(t.id)}, ${esc(cfg.labelSingular)}, ${i}, 1, 1);`,
+      `INSERT INTO geography_types (id, label, label_singular, "order", is_available, is_selectable) VALUES (${esc(cfg.id)}, ${esc(t.id)}, ${esc(cfg.labelSingular)}, ${i}, true, true);`,
     );
   });
   lines.push('');

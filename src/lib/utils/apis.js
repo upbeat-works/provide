@@ -8,13 +8,20 @@ import { KEY_CHARACTERISTICS, KEY_SCENARIO_YEAR_DESCRIPTION, SCENARIO_DATA_KEYS 
 // Version 1: `en-EU`
 const ENV_CONTENT_LOCALE = import.meta.env.VITE_STRAPI_LOCALE;
 const localCode = ENV_CONTENT_LOCALE ?? 'en';
-const ENV_URL_CONTENT = import.meta.env.VITE_CMS_URL;
-// Legacy Climate Analytics API — used for impact-time, unavoidable-risk,
-// impact-geo, geo-shape, avoiding-impacts, avoiding-reference.
+// These loaders run server-side (in +*.server.js). In a containerised stack the
+// server can't resolve the browser origin (e.g. `/api` via nginx), so during SSR
+// we prefer an internal service URL when one is provided (VITE_*_INTERNAL, e.g.
+// http://api:8080/api). The browser always uses the public value. Both fall back
+// to the public URL when no internal one is set (host dev, static prod build).
+const SSR = import.meta.env.SSR;
+const ENV_URL_CONTENT = (SSR && import.meta.env.VITE_CMS_URL_INTERNAL) || import.meta.env.VITE_CMS_URL;
+// Legacy Climate Analytics API — public, resolvable from anywhere; used for
+// impact-time, unavoidable-risk, impact-geo, geo-shape, avoiding-*.
 const ENV_URL_DATA = import.meta.env.VITE_DATA_API_URL;
-// New Hono adapter — used for the indicator catalogue surface (/meta and
-// related). Falls back to the legacy URL until the cutover is complete.
-const ENV_URL_API = import.meta.env.VITE_API_URL ?? ENV_URL_DATA;
+// New Hono adapter — the indicator catalogue surface. Falls back to the legacy
+// URL until the cutover is complete.
+const ENV_URL_API =
+  (SSR && import.meta.env.VITE_API_URL_INTERNAL) || (import.meta.env.VITE_API_URL ?? ENV_URL_DATA);
 
 export const loadFromStrapi = function (path, fetch, populate = 'populate=*', qs) {
   return new Promise(async (resolve, reject) => {

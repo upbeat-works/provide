@@ -40,7 +40,7 @@ describe('GET /api/tags', () => {
         ],
       }),
     );
-    const res = await api.request('/api/tags', {}, createTestEnv());
+    const res = await api.request('/api/tags', {}, await createTestEnv());
     expect(res.status).toBe(200);
     const json = (await res.json()) as Record<string, Array<{ value: string; count: number }>>;
 
@@ -60,7 +60,7 @@ describe('GET /api/tags', () => {
   });
 
   test('returns empty option lists when no runs carry the meta key', async () => {
-    const res = await api.request('/api/tags', {}, createTestEnv());
+    const res = await api.request('/api/tags', {}, await createTestEnv());
     const json = (await res.json()) as Record<string, unknown[]>;
     for (const key of TAG_KEYS) {
       expect(json[key]).toEqual([]);
@@ -102,7 +102,7 @@ describe('GET /api/tags', () => {
       }),
     );
 
-    const res = await api.request('/api/tags?Sector=Energy', {}, createTestEnv());
+    const res = await api.request('/api/tags?Sector=Energy', {}, await createTestEnv());
     const json = (await res.json()) as Record<string, Array<{ value: string; count: number }>>;
     expect(json.Project).toEqual([{ value: 'PROVIDE', count: 2 }]);
     // SDK serializes `runId_in` -> `run_id__in` on the wire (camelCase ->
@@ -121,7 +121,7 @@ describe('GET /api/tags', () => {
         return HttpResponse.json(tabulateEnvelope(['run__id', 'key', 'value'], []));
       }),
     );
-    await api.request('/api/tags?Project=PROVIDE,SPARCCLE', {}, createTestEnv());
+    await api.request('/api/tags?Project=PROVIDE,SPARCCLE', {}, await createTestEnv());
     // The Project filter resolves to a run_id list, which becomes run_id_in
     // on the Sector tabulate. We're asserting the multi-value parse happened
     // on the Project resolution step before fan-out.

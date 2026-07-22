@@ -1,6 +1,15 @@
 import { beforeAll, afterEach, afterAll } from 'bun:test';
-import { server } from './test-helpers';
+import { server, teardownTestEnvs, dropStaleTestSchemas, closeTestDb } from './test-helpers';
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+beforeAll(async () => {
+  server.listen({ onUnhandledRequest: 'error' });
+  await dropStaleTestSchemas();
+});
+afterEach(async () => {
+  server.resetHandlers();
+  await teardownTestEnvs();
+});
+afterAll(async () => {
+  server.close();
+  await closeTestDb();
+});

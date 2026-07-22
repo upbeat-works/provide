@@ -8,7 +8,7 @@ const instance = instances[0];
 
 let spy: ReturnType<typeof spyOn<typeof scenarios, 'fetchScenarioAvailability'>>;
 
-beforeEach(() => {
+beforeEach(async () => {
   spy = spyOn(scenarios, 'fetchScenarioAvailability').mockResolvedValue([
     { uid: '2020 Climate Policies', yearStart: 2020, yearStep: 5, yearEnd: 2100 },
   ]);
@@ -17,7 +17,7 @@ afterEach(() => spy.mockRestore());
 
 describe('GET /api/scenarios', () => {
   test('returns 400 when indicator or region is missing', async () => {
-    const res = await api.request('/api/scenarios', {}, createTestEnv());
+    const res = await api.request('/api/scenarios', {}, await createTestEnv());
     expect(res.status).toBe(400);
   });
 
@@ -25,7 +25,7 @@ describe('GET /api/scenarios', () => {
     const res = await api.request(
       `/api/scenarios?indicator=Mean%20Temperature&region=France&instance=${instance.slug}`,
       {},
-      createTestEnv(),
+      await createTestEnv(),
     );
     expect(res.status).toBe(200);
     const json = (await res.json()) as { scenarios: Array<{ uid: string; yearEnd: number }> };
@@ -36,7 +36,7 @@ describe('GET /api/scenarios', () => {
     await api.request(
       '/api/scenarios?indicator=Mean%20Temperature&region=France&time=December%20-%20February&reference=1850-1900%20(Pre-industrial)&spatial=Area',
       {},
-      createTestEnv(),
+      await createTestEnv(),
     );
     const [, , params] = spy.mock.calls[0];
     expect(params).toMatchObject({
@@ -52,7 +52,7 @@ describe('GET /api/scenarios', () => {
     await api.request(
       `/api/scenarios?indicator=Mean%20Temperature&region=France&axis=warmingLevel&instance=${instance.slug}`,
       {},
-      createTestEnv(),
+      await createTestEnv(),
     );
     const [, , params] = spy.mock.calls[0];
     expect(params).toMatchObject({ axis: 'warmingLevel' });
@@ -62,7 +62,7 @@ describe('GET /api/scenarios', () => {
     await api.request(
       `/api/scenarios?indicator=Mean%20Temperature&region=France&instance=${instance.slug}`,
       {},
-      createTestEnv(),
+      await createTestEnv(),
     );
     const [, , params] = spy.mock.calls[0];
     expect(params.axis).toBe('percentile');

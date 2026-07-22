@@ -196,7 +196,9 @@ export const load = async ({ fetch, parent, params }) => {
     return {
       id: study.id,
       title: attrs.Title,
-      city: meta.cities.find((c) => c.uid === attrs.CityUid),
+      // CityUid is the lowercase slug — it matches a city's `geoId`, not its
+      // `uid` (the ixmp4 id). Same convention as the main city lookup above.
+      city: meta.cities.find((c) => c.geoId === attrs.CityUid),
       abstract: attrs.Abstract,
       category: topics[0]?.Title,
       image: attrs.CoverImage?.data?.attributes ?? null,

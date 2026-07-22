@@ -1,19 +1,19 @@
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, integer, boolean, primaryKey } from 'drizzle-orm/pg-core';
 
-export const geographyTypes = sqliteTable('geography_types', {
+export const geographyTypes = pgTable('geography_types', {
   id: text('id').primaryKey(),
   label: text('label').notNull(),
   labelSingular: text('label_singular'),
   order: integer('order'),
-  isAvailable: integer('is_available', { mode: 'boolean' }).default(true),
+  isAvailable: boolean('is_available').default(true),
   // Continents are grouping headers, not pickable data geographies.
-  isSelectable: integer('is_selectable', { mode: 'boolean' }).default(true),
+  isSelectable: boolean('is_selectable').default(true),
 });
 
 // Simple primary key on `id`. Geography ids are globally unique. Where the same
 // "place" exists across types and the bare id would collide (country vs. its
 // EEZ), the EEZ row carries a ` (EEZ)` suffix by convention.
-export const geographies = sqliteTable('geographies', {
+export const geographies = pgTable('geographies', {
   id: text('id').primaryKey(),
   label: text('label').notNull(),
   geographyType: text('geography_type')
@@ -30,7 +30,7 @@ export const geographies = sqliteTable('geographies', {
 // whose id matches (id = the ixmp4 variable's first segment); a missing row
 // leaves that indicator unchanged. Curated columns only — `project` comes from
 // the ixmp4 instance, not from here.
-export const indicators = sqliteTable('indicators', {
+export const indicators = pgTable('indicators', {
   id: text('id').primaryKey(),
   sector: text('sector'),
   legacyUid: text('legacy_uid'),
@@ -39,7 +39,7 @@ export const indicators = sqliteTable('indicators', {
 // Single source of truth for the geography hierarchy. Many-to-many so a
 // trans-boundary river basin / shared EEZ can belong to several countries, and
 // a country belongs to exactly one continent.
-export const geographyParents = sqliteTable(
+export const geographyParents = pgTable(
   'geography_parents',
   {
     geographyId: text('geography_id')
