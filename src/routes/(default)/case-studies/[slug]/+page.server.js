@@ -29,11 +29,13 @@ export const load = async ({ fetch, parent, params }) => {
 
   const caseStudyOutro = (await loadFromStrapi('case-study-outro', fetch))?.attributes;
 
-  const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.CityUid === params.city)?.attributes;
-  if (!caseStudyRaw) error(404, { message: 'No case study available for this city' });
+  const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.CityUid === params.slug)?.attributes;
+  if (!caseStudyRaw) error(404, { message: 'No case study available for this slug' });
 
-  const city = meta.cities.find((c) => c.uid === caseStudyRaw.CityUid);
-  if (!city) error(404, { message: 'City not found in data' });
+  // CityUid is really a slug — not every case study is about a city (e.g. the
+  // adaptation overview). Fall back to a synthetic entry so non-city studies
+  // still render, mirroring the list page (case-studies/+page.server.js).
+  const city = meta.cities.find((c) => c.uid === caseStudyRaw.CityUid) ?? { uid: caseStudyRaw.CityUid, label: caseStudyRaw.Title ?? caseStudyRaw.CityUid };
 
   const loadAvoidingImpactsData = async ({ Indicators = [], StudyLocations = [] }) => {
     if (!Indicators.length || !StudyLocations.length) return [];
@@ -186,7 +188,7 @@ export const load = async ({ fetch, parent, params }) => {
     return {
       id: study.id,
       title: attrs.Title,
-      city: meta.cities.find((c) => c.uid === attrs.CityUid),
+      city: meta.cities.find((c) => c.uid === attrs.CityUid) ?? { uid: attrs.CityUid, label: attrs.Title ?? attrs.CityUid },
       abstract: attrs.Abstract,
       category: topics[0]?.Title,
       image: attrs.CoverImage?.data?.attributes ?? null,
