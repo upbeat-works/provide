@@ -2,7 +2,7 @@
   import ThresholdLevels from './components/ThresholdLevels/ThresholdLevels.svelte';
   import StudyLocations from './components/StudyLocations/StudyLocations.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, HEADER_CLASS, IS_STATIC, CURRENT_GEOGRAPHY } from '$stores/state';
+  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, IS_STATIC, CURRENT_GEOGRAPHY } from '$stores/state';
   import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import SelectionCertaintyLevels from './components/Selection/CertaintyLevels/CertaintyLevels.svelte';
@@ -13,7 +13,7 @@
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
   import Reference from './components/Reference/Reference.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
-  import { onMount, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { createScrollSpy } from '$lib/utils/scrollSpy';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
@@ -24,9 +24,6 @@
   import IndicatorFilters from '../explore/components/IndicatorFilters.svelte';
 
   export let data;
-
-  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-400'));
-  onDestroy(() => HEADER_CLASS.set(''));
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
 
@@ -78,7 +75,7 @@
 
 <PageLayout>
   <svelte:fragment slot="hero">
-    <PageHero className="bg-[#1F2B59]" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid.">
+    <PageHero className="bg-[#163A52]" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid.">
       <img slot="label" src="/img/provide-logo-white.png" alt="provide" class="h-6" />
     </PageHero>
 

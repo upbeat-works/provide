@@ -1,5 +1,6 @@
 <script>
   import { page } from '$app/stores';
+  import HeroGrain from '$lib/components/ui/HeroGrain.svelte';
   export let label = undefined;
   export let title;
   export let description = undefined;
@@ -13,7 +14,7 @@
     <img src={backgroundImage} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-60" />
     <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(8,32,45,0.85)_0%,rgba(8,32,45,0.55)_25%,rgba(8,32,45,0)_50%)]" />
   {/if}
-  <img src="/img/grain-bg.png" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-[0.18] pointer-events-none mix-blend-soft-light" />
+  <HeroGrain id="page-hero-grain" />
   <div class="relative mx-auto max-w-6xl px-2 sm:px-6 {tabItems ? 'pb-14 sm:pb-20' : 'pb-20 sm:pb-28'} pt-10 sm:pt-20">
     {#if $$slots.label}
       <div class="mb-3"><slot name="label" /></div>

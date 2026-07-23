@@ -1,13 +1,11 @@
-<header class="bg-[#1F2B59] overflow-hidden relative">
+<script>
+  import HeroGrain from '$lib/components/ui/HeroGrain.svelte';
+</script>
+
+<header class="bg-[#163A52] overflow-hidden relative">
 
   <!-- Grain texture overlay -->
-  <svg class="absolute inset-0 w-full h-full opacity-[0.18] pointer-events-none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-    <filter id="provide-hero-grain">
-      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch" />
-      <feColorMatrix type="saturate" values="0" />
-    </filter>
-    <rect width="100%" height="100%" filter="url(#provide-hero-grain)" />
-  </svg>
+  <HeroGrain id="provide-hero-grain" />
 
   <div class="max-w-6xl mx-auto px-6 py-14 md:py-20 lg:py-28 relative z-10">
     <div class="text-white max-w-2xl">
