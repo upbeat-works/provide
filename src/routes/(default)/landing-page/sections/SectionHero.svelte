@@ -2,13 +2,14 @@
   import { PATH_IMPACT, PATH_EXPLORE } from '$config';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import HeroGrain from '$lib/components/ui/HeroGrain.svelte';
   import { goto } from '$app/navigation';
 </script>
 
 <header class="bg-theme-700 overflow-hidden relative">
 
   <!-- Grain texture overlay -->
-  <img src="/img/grain-bg.png" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-[0.18] pointer-events-none mix-blend-soft-light" />
+  <HeroGrain id="landing-hero-grain" />
 
   <!-- Tile background -->
   <img src="/img/hero-bg-tiles.svg" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover pointer-events-none" />

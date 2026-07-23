@@ -5,11 +5,6 @@
   import SectionCaseStudies from '../../landing-page/sections/SectionCaseStudies.svelte';
   import SectionProject from '../../landing-page/sections/SectionProject.svelte';
   import { PATH_IMPACT, PATH_AVOID } from '$config';
-  import { HEADER_CLASS } from '$stores/state';
-  import { onMount, onDestroy } from 'svelte';
-
-  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-800/50'));
-  onDestroy(() => HEADER_CLASS.set(''));
 
   export let data;
   $: ({ caseStudies } = data);

@@ -36,15 +36,18 @@ export const load = async ({ fetch, parent, params }) => {
 
   const caseStudyOutro = (await loadFromStrapi('case-study-outro', fetch))?.attributes;
 
-  const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.CityUid === params.city)?.attributes;
-  if (!caseStudyRaw) error(404, { message: 'No case study available for this city' });
+  const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.CityUid === params.slug)?.attributes;
+  if (!caseStudyRaw) error(404, { message: 'No case study available for this slug' });
 
   // Strapi CityUid is the lowercase slug (e.g. "lisbon"), which matches a city
-  // geography's `geoId`, not its `uid` (the ixmp4 id, e.g. "Lisbon"). Expose the
-  // city with uid=slug so /adaptation/<slug> links resolve back here.
+  // geography's `geoId`, not its `uid` (the ixmp4 id, e.g. "Lisbon"). Not every
+  // case study is about a city (e.g. the adaptation overview), so fall back to a
+  // synthetic entry — exposing uid=slug so /adaptation/<slug> links resolve back
+  // here — instead of 404ing.
   const cityGeo = meta.cities.find((c) => c.geoId === caseStudyRaw.CityUid);
-  if (!cityGeo) error(404, { message: 'City not found in data' });
-  const city = { ...cityGeo, uid: caseStudyRaw.CityUid };
+  const city = cityGeo
+    ? { ...cityGeo, uid: caseStudyRaw.CityUid }
+    : { uid: caseStudyRaw.CityUid, label: caseStudyRaw.Title ?? caseStudyRaw.CityUid };
 
   const loadAvoidingImpactsData = async ({ Indicators = [], StudyLocations = [] }) => {
     if (!Indicators.length || !StudyLocations.length) return [];
@@ -197,8 +200,8 @@ export const load = async ({ fetch, parent, params }) => {
       id: study.id,
       title: attrs.Title,
       // CityUid is the lowercase slug — it matches a city's `geoId`, not its
-      // `uid` (the ixmp4 id). Same convention as the main city lookup above.
-      city: meta.cities.find((c) => c.geoId === attrs.CityUid),
+      // `uid` (the ixmp4 id). Fall back to a synthetic entry for non-city studies.
+      city: meta.cities.find((c) => c.geoId === attrs.CityUid) ?? { uid: attrs.CityUid, label: attrs.Title ?? attrs.CityUid },
       abstract: attrs.Abstract,
       category: topics[0]?.Title,
       image: attrs.CoverImage?.data?.attributes ?? null,

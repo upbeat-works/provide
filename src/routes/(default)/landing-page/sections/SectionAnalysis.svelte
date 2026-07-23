@@ -1,4 +1,5 @@
 <script>
+	import { onMount } from 'svelte';
 	import { PATH_EXPLORE, PATH_IMPACT, PATH_AVOID } from '$config';
 	import AnalysisTools from '$lib/components/icons/AnalysisTools.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -58,6 +59,44 @@
 	function handleNext() {
 		if (canGoNext) scrollToCard(currentIndex + 1);
 	}
+
+	const AUTOPLAY_INTERVAL = 10000;
+	let autoplayTimer;
+	let isPaused = false;
+
+	function advance() {
+		const next = currentIndex >= cards.length - 1 ? 0 : currentIndex + 1;
+		scrollToCard(next);
+	}
+
+	function startAutoplay() {
+		stopAutoplay();
+		if (cards.length <= 1) return;
+		autoplayTimer = setInterval(() => {
+			if (!isPaused) advance();
+		}, AUTOPLAY_INTERVAL);
+	}
+
+	function stopAutoplay() {
+		if (autoplayTimer) {
+			clearInterval(autoplayTimer);
+			autoplayTimer = undefined;
+		}
+	}
+
+	function pauseAutoplay() {
+		isPaused = true;
+	}
+
+	function resumeAutoplay() {
+		isPaused = false;
+	}
+
+	onMount(() => {
+		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (!prefersReducedMotion) startAutoplay();
+		return stopAutoplay;
+	});
 </script>
 
 <section class="max-w-7xl mx-auto">
@@ -76,7 +115,13 @@
 				{/if}
 			</h2>
 			{#if showNav}
-				<div class="flex gap-2">
+				<div
+					class="flex gap-2"
+					on:pointerenter={pauseAutoplay}
+					on:pointerleave={resumeAutoplay}
+					on:focusin={pauseAutoplay}
+					on:focusout={resumeAutoplay}
+				>
 					<Button
 						variant="secondary"
 						on:click={handlePrev}
@@ -103,7 +148,14 @@
 		<div class="hidden md:block border-l border-dashed border-contour-weakest self-stretch"></div>
 
 		<!-- Right: carousel -->
-		<div class="py-2 md:py-4 min-w-0 -ml-4 md:pl-0">
+		<div
+			class="py-2 md:py-4 min-w-0 -ml-4 md:pl-0"
+			role="group"
+			on:pointerenter={pauseAutoplay}
+			on:pointerleave={resumeAutoplay}
+			on:focusin={pauseAutoplay}
+			on:focusout={resumeAutoplay}
+		>
 			<div
 				bind:this={scrollContainer}
 				on:scroll={handleScroll}
