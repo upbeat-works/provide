@@ -47,6 +47,17 @@ const indicatorFormats = {
   default: f(FORMAT_INTEGER),
 };
 
+// Display labels per unit id. Consumers (charts, axes, sentence formatting)
+// look up unit.label / unit.labelLong from here. ixmp4 instances must use
+// one of these unit ids on their timeseries to get correct formatting.
+export const unitLabels = {
+  [KEY_DEGREES_CELSIUS]: { label: '°C', labelLong: 'degrees Celsius' },
+  [KEY_DEGREES_WARMING]: { label: '°C', labelLong: 'degrees Celsius' },
+  'gigaton-co2eq-year': { label: 'GtCO₂eq/yr', labelLong: 'Gigaton of CO2 equivalent per year' },
+  'days-year': { label: 'd/yr', labelLong: 'Days per Year' },
+  'hours-year': { label: 'h/yr', labelLong: 'Hours per Year' },
+};
+
 const suffixes = {
   [KEY_DEGREES_CELSIUS]: ' °C',
   [KEY_DEGREES_WARMING]: ' °C',
@@ -63,9 +74,27 @@ export const formatValue = (value, indicatorId = DEFAULT_FORMAT_UID, { addSuffix
   }
   const formatter = customFormatter || indicatorFormats[indicatorId] || indicatorFormats['default'];
   const str = formatter(value);
-  const suffix = addSuffix && suffixes[indicatorId];
+  let suffix = addSuffix ? suffixes[indicatorId] : '';
+  // Natural-language units (e.g. "°C", "days/year") aren't in the registry; the
+  // unit string is its own suffix.
+  if (addSuffix && !suffix && isNaturalLanguageUnit(indicatorId)) {
+    suffix = ` ${indicatorId}`;
+  }
   return suffix ? str + suffix : str;
 };
+
+// A unit id that the format registry knows nothing about is treated as a
+// natural-language unit — its string is used verbatim as the display suffix.
+function isNaturalLanguageUnit(id) {
+  return (
+    typeof id === 'string' &&
+    Boolean(id) &&
+    id !== UID_NO_UNIT &&
+    !(id in indicatorFormats) &&
+    !(id in unitLabels) &&
+    !(id in suffixes)
+  );
+}
 
 function getFormatter(unit, decimals) {
   switch (unit) {

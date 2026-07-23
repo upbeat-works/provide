@@ -1,6 +1,5 @@
 <script>
-  import { CURRENT_INDICATOR, CURRENT_GEOGRAPHY, CURRENT_INDICATOR_LABEL } from '$stores/state.js';
-  import { SCENARIOS } from '$stores/meta.js';
+  import { AVOID_INDICATOR, AVOID_GEOGRAPHY, AVOID_INDICATOR_LABEL, AVOID_SCENARIOS } from '$stores/avoid-catalog.js';
   import { SELECTED_STUDY_LOCATION, LEVEL_OF_IMPACT, SELECTED_LIKELIHOOD_LEVEL_LABEL, IS_STUDY_LOCATION_WHOLE_URBAN_AREA, SELECTED_STUDY_LOCATION_LABEL } from '$stores/avoid.js';
   import THEME from '$styles/theme-store.js';
   import { SCENARIOS_IN_AVOIDING_IMPACTS } from '$config';
@@ -15,12 +14,12 @@
   $: certainty_level = $SELECTED_LIKELIHOOD_LEVEL_LABEL;
   $: level_of_impact = $LEVEL_OF_IMPACT;
 
-  $: geography = $CURRENT_GEOGRAPHY.label;
+  $: geography = $AVOID_GEOGRAPHY?.label;
   $: studyLocation = $SELECTED_STUDY_LOCATION_LABEL;
 
-  $: ({ isCountable, direction, unit } = $CURRENT_INDICATOR);
+  $: ({ isCountable, direction, unit } = $AVOID_INDICATOR ?? {});
 
-  $: ({ labelWithinSentence } = $CURRENT_INDICATOR_LABEL);
+  $: ({ labelWithinSentence } = $AVOID_INDICATOR_LABEL ?? {});
 
   $: isWholeUrbanArea = $IS_STUDY_LOCATION_WHOLE_URBAN_AREA;
 
@@ -28,7 +27,7 @@
 
   $: scenarios = SCENARIOS_IN_AVOIDING_IMPACTS.map((uid, i) => {
     const scenario = datum.scenarios[uid];
-    const label = $SCENARIOS.find(({ uid: id }) => uid === id)?.label ?? uid;
+    const label = $AVOID_SCENARIOS.find(({ uid: id }) => uid === id)?.label ?? uid;
     if (scenario.year !== VALUE_NEVER && !Number.isInteger(scenario.year)) {
       console.warn(`Invalid year for scenario ${uid}: ${scenario.year}`);
     }

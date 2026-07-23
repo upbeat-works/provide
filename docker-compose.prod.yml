@@ -1,0 +1,82 @@
+# Prod-shaped stack, runnable locally — exercises docker/nginx.prod.conf in front
+# of the BUILT images (no vite dev, no hot-reload): the SvelteKit SSR server
+# (adapter-node), the API, and the CMS. Single origin on http://localhost:8080,
+# against your existing host Postgres (same data as the dev stack).
+#
+#   docker compose -f docker-compose.prod.yml up --build     # first build ~a few min
+#   Open: http://localhost:8080   (Strapi admin: http://localhost:1337/admin)
+#
+# This is the local mirror of the prod deploy: nginx -> web:3000 / api:8080 / cms:1337.
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - api
+      - cms
+      - web
+    volumes:
+      - ./docker/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - '8080:80'
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        # Browser: API is a relative path on the apex; CMS is its own subdomain.
+        # SSR reaches the services directly over the compose network.
+        VITE_API_URL: /api
+        VITE_CMS_URL: http://cms.localhost:8080
+        VITE_API_URL_INTERNAL: http://api:8080/api
+        VITE_CMS_URL_INTERNAL: http://cms:1337
+        VITE_APP_URL: http://localhost:8080
+        VITE_MAPBOX_ACCESS_TOKEN: ${VITE_MAPBOX_ACCESS_TOKEN:-}
+    environment:
+      PORT: 3000
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+    depends_on:
+      - api
+      - cms
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    env_file:
+      - .env # IXMP4_USERNAME / IXMP4_PASSWORD
+    environment:
+      DATABASE_HOST: host.docker.internal
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DB_NAME:-provide}
+      DATABASE_USERNAME: ${DB_USER:-rodrigo}
+      DATABASE_PASSWORD: ''
+      DATABASE_SCHEMA: catalog
+      PORT: 8080
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  cms:
+    build:
+      context: ./cms
+      dockerfile: ../docker/Dockerfile.cms
+    env_file:
+      - cms/.env
+    environment:
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: host.docker.internal
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DB_NAME:-provide}
+      DATABASE_USERNAME: ${DB_USER:-rodrigo}
+      DATABASE_PASSWORD: ''
+      DATABASE_SCHEMA: strapi
+      DATABASE_SSL: 'false'
+      # Strapi's public origin — its own subdomain (root-mounted). In real prod
+      # this is https://cms.DOMAIN.
+      PUBLIC_URL: http://cms.localhost:8080
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '1337:1337' # direct admin access (canonical admin is cms.localhost:8080/admin)

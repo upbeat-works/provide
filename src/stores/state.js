@@ -13,15 +13,17 @@ import {
 } from '$config';
 import THEME from '$styles/theme-store.js';
 import { interpolateLab, piecewise } from 'd3-interpolate';
-import _, { every, get, keyBy, map, reduce, without, isEqual, isString } from 'lodash-es';
+import _, { get, keyBy, map, reduce } from 'lodash-es';
 import { derived, get as getStore, writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getLocalStorage, setLocalStorage, getAllLocalStorage } from './utils.js';
 import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
+import { ciKeyBy, ciGet } from '$lib/utils/case-insensitive.js';
 import { extractEndYear, extractStartYear } from '$utils/meta.js';
 
-import { DEFAULT_GEOGRAPHY_UID, DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
-import { GEOGRAPHY_TYPES, INDICATORS, SECTORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
+import { DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
+import { GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, GEOGRAPHY_INDEX, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
+import { resolveScenarioSelection, isScenarioCombinationAvailable, parseStoredScenarios } from './scenario-selection.js';
 
 // Optional CSS class(es) to override the header background, set per-page
 export const HEADER_CLASS = writable('');
@@ -83,14 +85,40 @@ export const SELECTABLE_GEOGRAPHY_TYPES = derived(AVAILABLE_GEOGRAPHY_TYPES, ($t
 
 /**
  * Writable store that holds the uid of the currently selected geography.
- * Upon loading it checks the localstore. If fallbacks to a default value.
- * @type {Writable<number>}
+ * Initialised from localStorage only — there is no hardcoded default geography;
+ * the first geography in the list is auto-selected once the catalog loads (see
+ * the effect below).
+ * @type {Writable<string|undefined>}
  */
-export const CURRENT_GEOGRAPHY_UID = writable(getLocalStorage(LOCALSTORE_GEOGRAPHY, DEFAULT_GEOGRAPHY_UID));
+export const CURRENT_GEOGRAPHY_UID = writable(getLocalStorage(LOCALSTORE_GEOGRAPHY, undefined));
 // Listen to the store to update the localstorage on change.
 CURRENT_GEOGRAPHY_UID.subscribe((value) => {
   setLocalStorage(LOCALSTORE_GEOGRAPHY, value);
 });
+
+// Auto-select a default geography — the first one in the list — whenever none is
+// valid (no localStorage value, or a stored id that no longer exists). For the
+// Countries tab this is the first country of the first continent group, matching
+// what the selector renders at the top; otherwise the first geography of the
+// first selectable type, by label.
+if (browser) {
+  derived([SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES, GEOGRAPHY_INDEX], (v) => v).subscribe(
+    ([$types, $geographies, $index]) => {
+      if (!$types.length) return;
+      const uid = getStore(CURRENT_GEOGRAPHY_UID);
+      const isValid = uid && $types.some(({ uid: type }) => ($geographies[type] ?? []).some((g) => g.uid === uid));
+      if (isValid) return;
+      const firstType = $types[0].uid;
+      let first;
+      if (firstType === 'admin0') {
+        const groups = _.sortBy(Object.entries($index.countriesByContinent ?? {}), '0');
+        first = groups[0]?.[1]?.[0];
+      }
+      first ??= _.sortBy($geographies[firstType] ?? [], 'label')[0];
+      if (first) CURRENT_GEOGRAPHY_UID.set(first.uid);
+    },
+  );
+}
 
 /**
  * Derived store that filters the disabled geography types
@@ -184,104 +212,92 @@ export const AVAILABLE_GEOGOGRAPHIES = derived([GEOGRAPHIES, CURRENT_GEOGRAPHY_T
  * INDICATOR STATE
  */
 
+// New Hono adapter base URL. If unset, the per-region / per-indicator filters
+// degrade to a no-op (full list shown) — the legacy data URL doesn't expose
+// `/indicators?region=` or `/geographies?indicator=` so falling back to it is
+// not an option.
+const API_URL = import.meta.env.VITE_API_URL;
+
+const byLabel = (a, b) => (a.label ?? '').localeCompare(b.label ?? '');
+
 /**
- * Derived store that holds a list of available indicators based on the geography type
+ * Derived store that holds the list of indicators ixmp4 has data for given the
+ * currently selected geography. In indicator-first mode (or when no geography
+ * is selected) returns every known indicator. Fetches from
+ * `${API_URL}/indicators?region=${uid}` and intersects with `INDICATORS` so
+ * downstream consumers keep the rich curated fields (description, unit, …).
  * @type {Readable<Object[]>}
  */
-export const AVAILABLE_INDICATORS = derived([INDICATORS, CURRENT_GEOGRAPHY_TYPE, CURRENT_GEOGRAPHY_UID, SECTORS, SELECTION_MODE], ([$indicators, $type, $geography, $sectors, $mode]) => {
-  // In indicator-first mode, show all indicators without geography filtering
-  if ($mode === 'indicator') {
-    return [...$indicators].sort((a, b) => a.label.localeCompare(b.label));
-  }
-
-  // Geography types have specific indicators available
-  const listOfAvailableIndicatorsForThisGeographyType = get($type, 'availableIndicators', []);
-  // Filter the list of indicators if they are included for the current geography type
-  let indicators = $indicators.filter(({ uid }) => listOfAvailableIndicatorsForThisGeographyType.includes(uid));
-  // Filter the list of indicators if they are available for the current geography
-  let geography = ($geography ?? '').toLowerCase(); // TODO: Temporally convert to lowercase to mimic uids
-  indicators = indicators.filter(
-    ({ availableGeographies }) => !Boolean(availableGeographies) || (Array.isArray(availableGeographies) && availableGeographies.length && availableGeographies.includes(geography))
-  );
-  // Filter the list of indicators if they are available for the current sector
-  indicators = indicators.filter(({ sector: sectorID }) => {
-    const { availableGeographies } = $sectors.find(({ uid }) => uid === sectorID) ?? {};
-    return !Boolean(availableGeographies) || (Array.isArray(availableGeographies) && availableGeographies.length && availableGeographies.map((d) => d.toLowerCase()).includes(geography)); // TODO: Temporally convert to lowercase to mimic uids
-  });
-
-  return indicators.sort((a, b) => a.label.localeCompare(b.label));
-});
-
-export const SELECTABLE_SECTORS = derived([SECTORS, AVAILABLE_INDICATORS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE], ([$sectors, $indicators, $geography, $mode]) => {
-  return $sectors.map(({ uid, label, availableGeographies }) => {
-    // Initialize indicators array to hold filtered indicator objects later
-    let indicators = [];
-
-    if ($mode === 'indicator') {
-      // In indicator-first mode, show all sectors with their indicators (no geography filter)
-      indicators = $indicators.filter(({ sector: sectorUID }) => sectorUID === uid);
-    } else {
-      // Check if 'availableGeographies' is not an array, is empty, or does not include the current geography ('$geography')
-      if (!Array.isArray(availableGeographies) || !availableGeographies.length || !availableGeographies.includes($geography)) {
-        // If any of the conditions above are true, keep the 'indicators' array empty
-        indicators = [];
-      } else {
-        // If 'availableGeographies' is a valid array, is not empty, and includes the current geography
-        // Filter the '$indicators' array to find indicators that have a sector matching the given 'uid'
-        indicators = $indicators.filter(({ sector: sectorUID }) => sectorUID === uid);
-      }
+let availableIndicatorsRequestId = 0;
+export const AVAILABLE_INDICATORS = derived(
+  [INDICATORS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE],
+  ([$indicators, $uid, $mode], set) => {
+    if ($mode === 'indicator' || !$uid || !API_URL) {
+      set([...$indicators].sort(byLabel));
+      return;
     }
-
-    // NOTE: This only filters the list of selectable sectors. The indicator is still selectable.
-
-    return {
-      label,
-      uid,
-      indicators,
-      amount: indicators.length,
-      disabled: !indicators.length,
-      count: indicators.length,
-    };
-  });
-});
+    if (!browser) {
+      set([]);
+      return;
+    }
+    const requestId = ++availableIndicatorsRequestId;
+    fetch(`${API_URL}/indicators/?region=${encodeURIComponent($uid)}`)
+      .then((r) => r.json())
+      .then(({ indicators }) => {
+        if (requestId !== availableIndicatorsRequestId) return;
+        const allowed = new Set(indicators.map((i) => i.uid));
+        set([...$indicators].filter((i) => allowed.has(i.uid)).sort(byLabel));
+      })
+      .catch((e) => {
+        if (requestId !== availableIndicatorsRequestId) return;
+        console.warn(`indicators?region=${$uid} failed:`, e);
+        set([]);
+      });
+  },
+  [],
+);
 
 export const CURRENT_INDICATOR_UID = writable(getLocalStorage(LOCALSTORE_INDICATOR, undefined));
 
 /**
- * Derived store that filters GEOGRAPHIES to only those compatible with the currently selected indicator.
- * Used in indicator-first mode to restrict the geography selector.
- * Returns the same GEOGRAPHIES structure (object keyed by geography type uid) but filtered.
+ * Derived store that filters GEOGRAPHIES to only those ixmp4 has data for under
+ * the currently selected indicator. Returns the same shape as `GEOGRAPHIES`
+ * (object keyed by geography type uid). Fetches from
+ * `${API_URL}/geographies?indicator=${uid}` and intersects ids with the local
+ * `GEOGRAPHIES` so the per-type structure is preserved.
  * @type {Readable<Object>}
  */
+let availableGeographiesRequestId = 0;
 export const AVAILABLE_GEOGRAPHIES_FOR_INDICATOR = derived(
-  [INDICATORS, CURRENT_INDICATOR_UID, SECTORS, GEOGRAPHY_TYPES, GEOGRAPHIES],
-  ([$indicators, $indicatorUid, $sectors, $geographyTypes, $geographies]) => {
-    if (!$indicatorUid) return $geographies; // No filter when no indicator selected
-
-    const indicator = $indicators.find(({ uid }) => uid === $indicatorUid);
-    if (!indicator) return $geographies;
-
-    const sector = $sectors.find(({ uid }) => uid === indicator.sector);
-    const result = {};
-
-    $geographyTypes.forEach(({ uid: typeUid, availableIndicators }) => {
-      // Geography type must support this indicator
-      if (!availableIndicators.includes($indicatorUid)) {
-        result[typeUid] = [];
-        return;
-      }
-
-      const geosOfType = $geographies[typeUid] ?? [];
-      result[typeUid] = geosOfType.filter(({ uid: geoUid }) => {
-        const lower = geoUid.toLowerCase();
-        const okForIndicator = !indicator.availableGeographies?.length || indicator.availableGeographies.includes(lower);
-        const okForSector = !sector?.availableGeographies?.length || sector.availableGeographies.map((d) => d.toLowerCase()).includes(lower);
-        return okForIndicator && okForSector;
+  [CURRENT_INDICATOR_UID, GEOGRAPHIES],
+  ([$indicatorUid, $geographies], set) => {
+    if (!$indicatorUid || !API_URL) {
+      set($geographies);
+      return;
+    }
+    if (!browser) {
+      set({});
+      return;
+    }
+    const requestId = ++availableGeographiesRequestId;
+    fetch(`${API_URL}/geographies/?indicator=${encodeURIComponent($indicatorUid)}`)
+      .then((r) => r.json())
+      .then((rows) => {
+        if (requestId !== availableGeographiesRequestId) return;
+        const allowed = new Set(rows.map((r) => r.id));
+        const out = {};
+        for (const [typeUid, list] of Object.entries($geographies)) {
+          out[typeUid] = list.filter((g) => allowed.has(g.uid));
+        }
+        set(out);
+      })
+      .catch((e) => {
+        if (requestId !== availableGeographiesRequestId) return;
+        console.warn(`geographies?indicator=${$indicatorUid} failed:`, e);
+        set({});
       });
-    });
-
-    return result;
-  }
+  },
+  {},
 );
 
 export const IS_EMPTY_INDICATOR = derived(CURRENT_INDICATOR_UID, ($uid) => {
@@ -401,14 +417,15 @@ export const CURRENT_INDICATOR_PARAMETERS = derived([CURRENT_INDICATOR, INDICATO
   return indicatorParameters;
 });
 
-// export const CURRENT_GEOGRAPHY_UID = writable(getLocalStorage(LOCALSTORE_GEOGRAPHY, DEFAULT_GEOGRAPHY_UID));
-
 // Key value store of full parameter objects
 export const CURRENT_INDICATOR_OPTIONS = derived([CURRENT_INDICATOR_OPTION_VALUES, DICTIONARY_INDICATOR_PARAMETERS], ([$currentOptions, $parameters]) => {
   return reduce(
     $currentOptions,
     (acc, uid, key) => {
-      acc[key] = $parameters[key].options.find((option) => option.uid === uid);
+      // A stale localStorage param key may not exist in the current parameter
+      // dictionary (e.g. on the avoid page, which loads no ixmp4 catalog) — guard
+      // so it resolves to undefined instead of throwing.
+      acc[key] = $parameters[key]?.options?.find((option) => option.uid === uid);
       return acc;
     },
     {}
@@ -420,7 +437,7 @@ export const CURRENT_INDICATOR_LABEL = derived([CURRENT_INDICATOR, CURRENT_INDIC
   let labelWithinSentence = get($indicator, ['labelWithinSentence']); // This is the regular label we use
   let label = get($indicator, ['label']); // This is the regular label we use
   // Check if the current options hold an indicator value and if the indicator has the indicator value option
-  if ($options.hasOwnProperty('indicator_value') && $indicator?.parameters.indicator_value?.length) {
+  if ($options.hasOwnProperty('indicator_value') && $indicator?.parameters?.indicator_value?.length) {
     // Check if there is a X°C in the label
     if (labelWithinSentence.match(/X°C/)) {
       // Replace the part with the label from the options
@@ -448,24 +465,7 @@ export const CURRENT_INDICATOR_PARAMETERS_KEYS = derived(CURRENT_INDICATOR_PARAM
 
 export const CURRENT_SCENARIOS_UID = (() => {
   const { subscribe, set, update } = writable(
-    getLocalStorage(LOCALSTORE_SCENARIOS, DEFAULT_SCENARIOS_UID, (v) => {
-      let value = DEFAULT_SCENARIOS_UID;
-      if (Boolean(v) && isString(value) && value.trim() !== '') {
-        try {
-          const json = JSON.parse(v);
-          if (Array.isArray(json)) {
-            if (json.length > MAX_NUMBER_SELECTABLE_SCENARIOS) {
-              console.warn('Too many scenarios selected.');
-            }
-            value = json.sort().slice(0, MAX_NUMBER_SELECTABLE_SCENARIOS);
-          }
-        } catch (e) {
-          console.log('Error loading current scenarios from localstore:', e);
-        }
-      }
-
-      return value;
-    })
+    getLocalStorage(LOCALSTORE_SCENARIOS, DEFAULT_SCENARIOS_UID, (v) => parseStoredScenarios(v, DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS))
   );
 
   return {
@@ -477,17 +477,17 @@ export const CURRENT_SCENARIOS_UID = (() => {
         if (selectedUids.length === 0) return [id]; // If there was no scenarios previously selected
 
         const availableScenarios = getStore(SELECTABLE_SCENARIOS);
-        const availableScenariosUids = availableScenarios.map((d) => d.uid);
-        // Make sure we only keep the scenarios that are actually available. Otherwise we might
-        // prevent the selection of a new scenario if the three selected are not available
-        const availableSelected = selectedUids.filter((uid) => availableScenariosUids.includes(uid));
-        if (availableSelected.length === 0) return [id]; // If there was no available scenarios previously selected
-        // Find current timeframe to see if the timeframe changed
-        const scenarios = getStore(DICTIONARY_SCENARIOS);
-        const currentTimeframe = extractEndYear(scenarios[availableSelected[0]]);
-        const timeframeChanged = currentTimeframe !== timeframe;
-        // If timeframe changed we want to remove all the old scenarios
-        if (timeframeChanged) return [id];
+        const byUid = ciKeyBy(availableScenarios);
+        // Keep only scenarios still available, so an unavailable existing
+        // selection doesn't block adding a new one. Case-insensitive so a stale
+        // differently-cased uid (URL/localStorage) still matches.
+        const availableSelected = selectedUids.filter((uid) => ciGet(byUid, uid));
+        if (availableSelected.length === 0) return [id];
+        // Timeframes can't be mixed: if a timeframe is active and the current
+        // selection belongs to a different one, reset. endYear is data-driven
+        // (it lives on the available scenarios, not on the bare meta list).
+        const currentTimeframe = ciGet(byUid, availableSelected[0])?.endYear;
+        if (timeframe != null && currentTimeframe !== timeframe) return [id];
 
         // The default list
         let updatedList = availableSelected;
@@ -514,27 +514,10 @@ CURRENT_SCENARIOS_UID.subscribe((value) => {
   setLocalStorage(LOCALSTORE_SCENARIOS, JSON.stringify(scenarios));
 });
 
-if (browser) {
-  // This is necessary since CURRENT_INDICATOR depends on the page store (some levels down)
-  // Because of this, we can not subscribe to it.
-  // More information here: https://kit.svelte.dev/docs/state-management#avoid-shared-state-on-the-server
-  CURRENT_INDICATOR.subscribe((indicator) => {
-    const selectableScenarios = indicator?.availableScenarios ?? [];
-    if (selectableScenarios.length) {
-      // The list of available scenarios is empty at the first loading of the page. This should not result in filtering the list.
-      const currentScenarios = getStore(CURRENT_SCENARIOS_UID) || [];
-      const validScenarios = currentScenarios.filter((scenario) => selectableScenarios.includes(scenario));
-      if (!isEqual(validScenarios, currentScenarios)) {
-        console.warn(`Unavailable scenario(s) selected. Will reset to list of available scenarios.`);
-        CURRENT_SCENARIOS_UID.set(validScenarios);
-      }
-    }
-  });
-}
 
 export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCENARIOS, THEME], ([$uids, $scenarios, $theme]) =>
   ($uids ?? []).map((uid, i) => ({
-    ...$scenarios[uid],
+    ...ciGet($scenarios, uid),
     color: $theme.color.category.base[i],
     colorInterpolator: piecewise(interpolateLab, [$theme.color.category.weakest[i], $theme.color.category.base[i], $theme.color.category.strongest[i]]),
   }))
@@ -542,20 +525,110 @@ export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCEN
 
 export const DICTIONARY_CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS], ([$currentScenarios]) => keyBy($currentScenarios, 'uid'));
 
-export const AVAILABLE_SCENARIOS = derived([SCENARIOS, CURRENT_INDICATOR], ([$SCENARIOS, $CURRENT_INDICATOR]) => {
-  return $SCENARIOS.map((scenario) => {
-    return {
+/**
+ * Which scenarios have data for the current indicator + geography + parameter
+ * selection, and each one's timeframe — read from ixmp4 (not curation). Returns
+ * [{ uid, yearStart, yearStep, yearEnd }]. Re-fetches when the selection or any
+ * facet (time/reference/spatial) changes.
+ *
+ * `axis` picks which value axis the API probes. The percentile axis (default)
+ * backs the percentile-band charts (impact-time/geo) and their ScenarioSelection.
+ * The warming-level axis backs the unavoidable-risk scatter — its scenarios live
+ * on that axis, which can cover a different (usually larger) set than the sparse
+ * percentile axis. Both charts share the explore page, so each needs its own
+ * availability store rather than one page-global axis.
+ * @param {'percentile'|'warmingLevel'} [axis]
+ * @returns {Readable<Array<{uid:string,yearStart:number,yearStep:number,yearEnd:number}>>}
+ */
+function createScenarioAvailability(axis) {
+  let requestId = 0;
+  return derived(
+    [CURRENT_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_OPTION_VALUES],
+    ([$indicator, $geoUid, $options], set) => {
+      const indicatorUid = $indicator?.uid;
+      if (!indicatorUid || !$geoUid || !API_URL || !browser) {
+        set([]);
+        return;
+      }
+      const params = new URLSearchParams({ indicator: indicatorUid, region: $geoUid });
+      if ($indicator?.instance) params.set('instance', $indicator.instance);
+      if (axis) params.set('axis', axis);
+      // Facet dropdowns store raw convention values under these keys.
+      for (const key of ['time', 'reference', 'spatial']) {
+        if ($options?.[key]) params.set(key, $options[key]);
+      }
+      const rid = ++requestId;
+      fetch(`${API_URL}/scenarios/?${params}`)
+        .then((r) => r.json())
+        .then(({ scenarios }) => {
+          if (rid !== requestId) return;
+          set(scenarios ?? []);
+        })
+        .catch((e) => {
+          if (rid !== requestId) return;
+          console.warn(`scenarios?indicator=${indicatorUid}&region=${$geoUid}&axis=${axis ?? 'percentile'} failed:`, e);
+          set([]);
+        });
+    },
+    [],
+  );
+}
+
+export const SCENARIO_AVAILABILITY = createScenarioAvailability();
+// The unavoidable-risk scatter probes the warming-level axis (see above).
+export const WARMING_LEVEL_AVAILABILITY = createScenarioAvailability('warmingLevel');
+
+/**
+ * Graft ixmp4 availability onto the catalog scenario list: each scenario carries
+ * its data-driven `endYear` (timeframe) and a `disabled` flag when the axis has
+ * no data for it. Availability is keyed by the raw ixmp4 scenario name, which may
+ * differ in case from the catalog's canonical uid (the SSP5-3.4-OS/Os duplicate,
+ * whose data is split across casings). Match case-insensitively so the scenario
+ * isn't wrongly disabled and dropped.
+ */
+function createAvailableScenarios(availabilityStore) {
+  return derived([SCENARIOS, availabilityStore], ([$SCENARIOS, $availability]) => {
+    const byUid = ciKeyBy($availability);
+    return $SCENARIOS.map((scenario) => ({
       ...scenario,
-      disabled: !get($CURRENT_INDICATOR, 'availableScenarios', []).includes(scenario.uid),
-    };
+      endYear: ciGet(byUid, scenario.uid)?.yearEnd,
+      disabled: !ciGet(byUid, scenario.uid),
+    }));
   });
-});
+}
+
+export const AVAILABLE_SCENARIOS = createAvailableScenarios(SCENARIO_AVAILABILITY);
 
 export const SELECTABLE_SCENARIOS = derived([AVAILABLE_SCENARIOS], ([$scenarios]) => {
   return $scenarios.filter(({ disabled }) => !disabled);
 });
 
+// Warming-level equivalents — the scenario universe the unavoidable-risk scatter
+// plots (independent of the percentile-based ScenarioSelection on the same page).
+export const AVAILABLE_WARMING_SCENARIOS = createAvailableScenarios(WARMING_LEVEL_AVAILABILITY);
+
+export const SELECTABLE_WARMING_SCENARIOS = derived([AVAILABLE_WARMING_SCENARIOS], ([$scenarios]) => {
+  return $scenarios.filter(({ disabled }) => !disabled);
+});
+
 export const SELECTABLE_SCENARIOS_UID = derived(SELECTABLE_SCENARIOS, ($scenarios) => $scenarios.map(({ uid }) => uid));
+
+// Keep the scenario selection in sync with what ixmp4 actually has. We only
+// auto-fill a genuinely empty selection (first use). We deliberately never swap
+// or prune a selection the user already has: on slow in-app navigations the old
+// swap-on-invalid logic left a "no scenario / unavailable" gap and then flipped
+// the selection under the user. Now an unavailable selection stays put and the
+// picker surfaces "no data here — pick another".
+if (browser) {
+  SELECTABLE_SCENARIOS_UID.subscribe((selectable) => {
+    const next = resolveScenarioSelection({
+      selectable,
+      current: getStore(CURRENT_SCENARIOS_UID) || [],
+      defaults: DEFAULT_SCENARIOS_UID,
+    });
+    if (next) CURRENT_SCENARIOS_UID.set(next);
+  });
+}
 
 export const AVAILABLE_TIMEFRAMES = derived([AVAILABLE_SCENARIOS, SELECTABLE_SCENARIOS], ([$available, $selectable]) => {
   return extractEndYearFromScenarios($available ?? [], $selectable ?? []);
@@ -593,9 +666,8 @@ export const IS_EMPTY_SELECTION = derived([IS_EMPTY_GEOGRAPHY, IS_EMPTY_INDICATO
 
 export const IS_COMBINATION_AVAILABLE_SCENARIO = derived(
   [IS_AVOID_PAGE, SELECTABLE_SCENARIOS_UID, CURRENT_SCENARIOS_UID],
-  ([$isAvoidPage, $SELECTABLE_SCENARIOS, $CURRENT_SCENARIOS_UID]) =>
-    $isAvoidPage || // The Avoid page does not need any selected scenarios
-    (Array.isArray($CURRENT_SCENARIOS_UID) && $CURRENT_SCENARIOS_UID.length && every($CURRENT_SCENARIOS_UID, (scenario) => $SELECTABLE_SCENARIOS.includes(scenario)))
+  ([$isAvoidPage, $selectable, $current]) =>
+    isScenarioCombinationAvailable({ isAvoidPage: $isAvoidPage, selectable: $selectable, current: $current })
 );
 
 export const IS_COMBINATION_AVAILABLE = derived(

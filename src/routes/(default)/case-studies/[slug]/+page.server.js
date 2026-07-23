@@ -7,7 +7,14 @@ import { each } from 'lodash-es';
 import { END_AVOIDING_IMPACTS, END_AVOIDING_REFERENCE, URL_PATH_CERTAINTY_LEVEL, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_LEVEL_OF_IMPACT } from '$config';
 
 export const load = async ({ fetch, parent, params }) => {
-  const { meta } = await parent();
+  const { geographies, catalog, curation } = await parent();
+  const meta = {
+    cities: geographies.cities ?? [],
+    indicators: catalog.indicators ?? [],
+    scenarios: catalog.scenarios ?? [],
+    likelihoods: curation.likelihoods ?? [],
+    studyLocations: curation.studyLocations ?? [],
+  };
 
   const caseStudiesRaw = await loadFromStrapi(
     'case-study-dynamics',
@@ -32,10 +39,15 @@ export const load = async ({ fetch, parent, params }) => {
   const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.CityUid === params.slug)?.attributes;
   if (!caseStudyRaw) error(404, { message: 'No case study available for this slug' });
 
-  // CityUid is really a slug — not every case study is about a city (e.g. the
-  // adaptation overview). Fall back to a synthetic entry so non-city studies
-  // still render, mirroring the list page (case-studies/+page.server.js).
-  const city = meta.cities.find((c) => c.uid === caseStudyRaw.CityUid) ?? { uid: caseStudyRaw.CityUid, label: caseStudyRaw.Title ?? caseStudyRaw.CityUid };
+  // Strapi CityUid is the lowercase slug (e.g. "lisbon"), which matches a city
+  // geography's `geoId`, not its `uid` (the ixmp4 id, e.g. "Lisbon"). Not every
+  // case study is about a city (e.g. the adaptation overview), so fall back to a
+  // synthetic entry — exposing uid=slug so /adaptation/<slug> links resolve back
+  // here — instead of 404ing.
+  const cityGeo = meta.cities.find((c) => c.geoId === caseStudyRaw.CityUid);
+  const city = cityGeo
+    ? { ...cityGeo, uid: caseStudyRaw.CityUid }
+    : { uid: caseStudyRaw.CityUid, label: caseStudyRaw.Title ?? caseStudyRaw.CityUid };
 
   const loadAvoidingImpactsData = async ({ Indicators = [], StudyLocations = [] }) => {
     if (!Indicators.length || !StudyLocations.length) return [];
@@ -119,67 +131,66 @@ export const load = async ({ fetch, parent, params }) => {
       const metaScenario = meta.scenarios.find((s) => s.uid === d.attributes.UID);
       return { id: d.id, uid: d.attributes.UID, label: metaScenario?.label ?? d.attributes.UID };
     }),
-    mainContent: await Promise.all(
-      caseStudyRaw.MainContent.map(async (c) => {
-        const type = c.__component.split('.')[1];
-        switch (type) {
-          case 'avoiding-impacts':
-            return {
-              type,
-              title: c.Title,
-              description: c.Description,
-              explorerUrl: c.ExplorerUrl,
-              data: await loadAvoidingImpactsData(c),
-            };
-          case 'future-impacts':
-            return {
-              type,
-              explorerUrl: c.ExplorerUrl,
-              impactGeoDescription: c.ImpactGeoDescription,
-              impactTimeDescription: c.ImpactTimeDescription,
-              impactGeoSnapshots: c.ImpactGeoSnapshot.map((snpsht) => {
+    mainContent: (
+      await Promise.all(
+        caseStudyRaw.MainContent.map(async (c) => {
+          const type = c.__component.split('.')[1];
+          switch (type) {
+            case 'avoiding-impacts':
+              return {
+                type,
+                title: c.Title,
+                description: c.Description,
+                explorerUrl: c.ExplorerUrl,
+              };
+            case 'future-impacts': {
+              // Resolve each snapshot's indicator against the convention catalog.
+              // Legacy urbclim-* slugs aren't in the catalog yet, so skip those
+              // snapshots instead of 404ing the whole page.
+              const resolveSnapshot = (snpsht, extra) => {
                 const indicator = meta.indicators.find((d) => d.uid === snpsht.Indicator);
-                if (!indicator) error(404, { message: `No indicator found for ${snpsht.Indicator} in geo snapshots future-impacts component` });
-                return {
-                  indicator,
-                  year: snpsht.Year,
-                  image: snpsht.Image.data?.attributes,
-                };
-              }),
-              impactTimeSnapshots: c.ImpactTimeSnapshot.map((snpsht) => {
-                const indicator = meta.indicators.find((d) => d.uid === snpsht.Indicator);
-                if (!indicator) error(404, { message: `No indicator found for ${snpsht.Indicator} in time snapshots future-impacts component` });
-                return {
-                  indicator,
-                  image: snpsht.Image.data?.attributes,
-                };
-              }),
-            };
-          case 'image-slider':
-            return {
-              type,
-              explorerUrl: c.ExplorerUrl,
-              attributeLabel: c.AttributeLabel,
-              groupingLabel: c.GroupingLabel,
-              allowImageSelection: c.AllowImageSelection,
-              showThumbnails: c.ShowThumbnails,
-              imagePairs: c.ImageSliderPair.map((img) => ({
-                image1: img.Image1.data?.attributes,
-                image2: img.Image2.data?.attributes,
-                description: img.Description?.trim(),
-                attribute: { uid: img.AttributeValue?.trim(), label: img.AttributeValue?.trim() },
-                group: { uid: img.GroupValue?.trim(), label: img.GroupValue?.trim() },
-              })),
-            };
-          default:
-            return {
-              type,
-              title: c.Title,
-              text: parse(c.Text ?? ''),
-            };
-        }
-      })
-    ),
+                return indicator ? { indicator, image: snpsht.Image?.data?.attributes, ...extra } : null;
+              };
+              const impactGeoSnapshots = c.ImpactGeoSnapshot.map((s) => resolveSnapshot(s, { year: s.Year })).filter(Boolean);
+              const impactTimeSnapshots = c.ImpactTimeSnapshot.map((s) => resolveSnapshot(s, {})).filter(Boolean);
+              // FutureImpacts needs at least one time AND one geo snapshot to
+              // render; drop the whole block when that data isn't available.
+              if (!impactGeoSnapshots.length || !impactTimeSnapshots.length) return null;
+              return {
+                type,
+                explorerUrl: c.ExplorerUrl,
+                impactGeoDescription: c.ImpactGeoDescription,
+                impactTimeDescription: c.ImpactTimeDescription,
+                impactGeoSnapshots,
+                impactTimeSnapshots,
+              };
+            }
+            case 'image-slider':
+              return {
+                type,
+                explorerUrl: c.ExplorerUrl,
+                attributeLabel: c.AttributeLabel,
+                groupingLabel: c.GroupingLabel,
+                allowImageSelection: c.AllowImageSelection,
+                showThumbnails: c.ShowThumbnails,
+                imagePairs: c.ImageSliderPair.map((img) => ({
+                  image1: img.Image1.data?.attributes,
+                  image2: img.Image2.data?.attributes,
+                  description: img.Description?.trim(),
+                  attribute: { uid: img.AttributeValue?.trim(), label: img.AttributeValue?.trim() },
+                  group: { uid: img.GroupValue?.trim(), label: img.GroupValue?.trim() },
+                })),
+              };
+            default:
+              return {
+                type,
+                title: c.Title,
+                text: parse(c.Text ?? ''),
+              };
+          }
+        })
+      )
+    ).filter(Boolean),
   };
 
   const caseStudies = caseStudiesRaw.map((study) => {
@@ -188,7 +199,9 @@ export const load = async ({ fetch, parent, params }) => {
     return {
       id: study.id,
       title: attrs.Title,
-      city: meta.cities.find((c) => c.uid === attrs.CityUid) ?? { uid: attrs.CityUid, label: attrs.Title ?? attrs.CityUid },
+      // CityUid is the lowercase slug — it matches a city's `geoId`, not its
+      // `uid` (the ixmp4 id). Fall back to a synthetic entry for non-city studies.
+      city: meta.cities.find((c) => c.geoId === attrs.CityUid) ?? { uid: attrs.CityUid, label: attrs.Title ?? attrs.CityUid },
       abstract: attrs.Abstract,
       category: topics[0]?.Title,
       image: attrs.CoverImage?.data?.attributes ?? null,

@@ -179,7 +179,9 @@ To run this project locally:
 
 4. Run the development server:
    ```
-   bun run dev
+   bun run dev        # full stack (API + CMS + frontend) via Docker Compose
+   # or run just the frontend on the host:
+   bun run dev:web
    ```
 5. Open [http://localhost:5173/](http://localhost:5173/) in your browser.
 

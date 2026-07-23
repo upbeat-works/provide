@@ -22,10 +22,19 @@
     { uid: 'high', label: 'Temperature well above 1.5°C' },
   ];
 
-  $: scenariosByCategory = scenarioWarmingCategories.map((category) => ({
-    ...category,
-    scenarios: scenarios.filter((s) => s.warmingCategory === category.uid),
-  }));
+  $: scenariosByCategory = [
+    ...scenarioWarmingCategories.map((category) => ({
+      ...category,
+      scenarios: scenarios.filter((s) => s.warmingCategory === category.uid),
+    })),
+    {
+      // Scenarios without a recognised warming category fall here — currently
+      // all of them, since warmingCategory isn't in the convention data yet.
+      uid: 'other',
+      label: '',
+      scenarios: scenarios.filter((s) => !scenarioWarmingCategories.some((c) => c.uid === s.warmingCategory)),
+    },
+  ];
 
   function hoverItem(scenario) {
     if (!scenario.disabled) {
@@ -35,7 +44,7 @@
 </script>
 
 {#each scenariosByCategory as category}
-  {#if category.scenarios.length}
+  {#if category.scenarios.length && category.label}
     <Tagline class="px-4 mt-3 mb-2 text-wrap">{category.label}</Tagline>
   {/if}
   {#each category.scenarios as scenario}

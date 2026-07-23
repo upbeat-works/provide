@@ -1,14 +1,12 @@
 <script>
-  import { IS_EMPTY_GEOGRAPHY, CURRENT_INDICATOR, IS_EMPTY_INDICATOR, CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS, SELECTABLE_SECTORS, IS_COMBINATION_AVAILABLE_INDICATOR, SELECTION_MODE } from '$stores/state.js';
+  import { IS_EMPTY_GEOGRAPHY, CURRENT_INDICATOR, IS_EMPTY_INDICATOR, CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS, IS_COMBINATION_AVAILABLE_INDICATOR, SELECTION_MODE } from '$stores/state.js';
   import SelectionModal from './components/SelectionModal.svelte';
   import SelectionPanel from './components/SelectionPanel.svelte';
   import AdvancedFilters from './components/AdvancedFilters.svelte';
-  import PillGroup from '$lib/components/ui/PillGroup.svelte';
   import SearchInput from '$lib/components/ui/SearchInput.svelte';
   import InteractiveListItem from '$lib/components/ui/InteractiveListItem.svelte';
   import { RadioGroup, RadioGroupOption } from '@rgossiaux/svelte-headlessui';
   import { derived } from 'svelte/store';
-  import { onMount } from 'svelte';
   import Fuse from 'fuse.js';
 
   export let label = 'Indicator';
@@ -16,20 +14,15 @@
   let modalOpen = false;
   $: if ($CURRENT_INDICATOR_UID) modalOpen = false;
 
-  let currentFilterUid;
   let hoveredItem = null;
   let term = '';
   let listBox;
 
-  $: currentFilterUid, (term = '');
   $: term, listBox?.scrollTo({ top: 0 });
 
-  onMount(() => {
-    const current = $AVAILABLE_INDICATORS.find((d) => d.uid === $CURRENT_INDICATOR_UID);
-    currentFilterUid = current?.sector ?? $SELECTABLE_SECTORS.find((s) => !s.disabled)?.uid;
-  });
-
-  $: availableItems = currentFilterUid ? $AVAILABLE_INDICATORS.filter((d) => d.sector === currentFilterUid) : $AVAILABLE_INDICATORS;
+  // Sectors are no longer a convention facet, so the list shows all indicators
+  // available for the geography (search narrows them).
+  $: availableItems = $AVAILABLE_INDICATORS;
 
   $: fuse = new Fuse(availableItems, { includeScore: true, keys: ['label', 'uid'], includeMatches: true });
   $: hasSearchTerm = String(term).trim().length > 0;
@@ -51,7 +44,12 @@
         return { ...item, label };
       });
   $: current = $AVAILABLE_INDICATORS.find((d) => d.uid === $CURRENT_INDICATOR_UID);
-  $: detailsItem = $AVAILABLE_INDICATORS.find((d) => d.uid === hoveredItem) || current;
+  // Keep showing the last hovered item so the detail panel doesn't flicker
+  // (appear/disappear) as the pointer crosses the gap between rows — InteractiveListItem
+  // clears `hoveredItem` on mouseleave, which would otherwise blank the panel.
+  let lastHovered = null;
+  $: if (hoveredItem) lastHovered = hoveredItem;
+  $: detailsItem = $AVAILABLE_INDICATORS.find((d) => d.uid === (hoveredItem ?? lastHovered)) || current;
 
   const DISABLED = derived([IS_EMPTY_GEOGRAPHY, SELECTION_MODE], ([$isEmptyGeography, $mode]) => {
     if ($mode === 'geography' && $isEmptyGeography) {
@@ -72,7 +70,6 @@
   <SelectionPanel>
     <svelte:fragment slot="header">
       <SearchInput bind:value={term} placeholder="Search indicators" class="mb-3" />
-      <PillGroup bind:currentUid={currentFilterUid} options={$SELECTABLE_SECTORS} disabledMessage="No indicators available in this sector for this geography" allowWrap={true} />
       <AdvancedFilters />
     </svelte:fragment>
     <svelte:fragment slot="sidebar">
@@ -93,9 +90,11 @@
     </svelte:fragment>
     <svelte:fragment slot="content">
       {#if detailsItem}
-        <div class="p-8 m-4 h-min border rounded-sm border-theme-base/20">
+        <div class="p-8">
           <h3 class="font-bold mb-2 text-lg">{detailsItem.label}</h3>
-          <p class="text-contour-weak text-sm">{@html detailsItem.description || ''}</p>
+          {#if detailsItem.description}
+            <p class="text-text-weaker text-sm">{@html detailsItem.description}</p>
+          {/if}
         </div>
       {/if}
     </svelte:fragment>

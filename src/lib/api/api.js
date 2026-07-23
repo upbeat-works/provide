@@ -118,16 +118,21 @@ const fetchMultiple = (store, configs) => {
   });
 };
 
-const fetchSingle = (store, { endpoint, params }) => {
+const fetchSingle = (store, { endpoint, params, base, arrayFormat }) => {
   if (typeof store === 'undefined') {
     console.warn('Store to save fetch result is undefined');
     return false;
   }
   // console.log(`Fetching single ${endpoint}`, get(store), { id });
+  // The Hono adapter reads repeated array params (`scenarios=a&scenarios=b`);
+  // the legacy API uses qs's default indices format. Callers pick via arrayFormat.
   const query = qs.stringify(params, {
     encodeValuesOnly: true,
+    arrayFormat: arrayFormat ?? 'indices',
   });
-  const url = `${import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`;
+  // `base` lets a caller target the new Hono adapter (VITE_API_URL); defaults to
+  // the legacy Climate Analytics API for endpoints not yet migrated.
+  const url = `${base ?? import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`;
   const cached = cache[url];
 
   if (cached) {

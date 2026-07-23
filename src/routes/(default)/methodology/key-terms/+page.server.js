@@ -30,26 +30,28 @@ function processScenarioPresets(list) {
 }
 
 const loadExplainer = async ({ fetch, parent }) => {
-  const { meta } = await parent();
+  const { catalog } = await parent();
 
   // Scenario Presets
   const scenarioPresetsRaw = await loadFromStrapi('scenario-presets', fetch);
   const scenarioPresets = processScenarioPresets(scenarioPresetsRaw);
 
   // Selectable timeframes
-  const selectableTimeframes = _(meta.scenarios)
+  const selectableTimeframes = _(catalog.scenarios)
     .map(extractEndYear)
     .uniq()
     .sort()
     .map((uid) => ({ uid: parseInt(uid), label: uid })) // The uid should already be a int, but let’s make sure. Note: This needs to be the same type as the scenario presets’ timeframe
     .value();
 
-  const defaultTimeframe = selectableTimeframes[0].uid;
+  // Convention scenarios carry no timeframe metadata yet, so selectableTimeframes
+  // may be empty — guard against crashing the methodology page.
+  const defaultTimeframe = selectableTimeframes[0]?.uid;
 
   return {
     entries: [],
     categories: [],
-    scenarios: meta.scenarios,
+    scenarios: catalog.scenarios,
     selectableTimeframes,
     defaultTimeframe,
     scenarioPresets,

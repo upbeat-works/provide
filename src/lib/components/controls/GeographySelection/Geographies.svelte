@@ -2,6 +2,7 @@
   import { RadioGroup } from '@rgossiaux/svelte-headlessui';
   import GeographyGroup from './GeographyGroup.svelte';
   import Fuse from 'fuse.js';
+  import { GEOGRAPHY_INDEX } from '$stores/meta.js';
 
   import { sortBy, groupBy } from 'lodash-es';
 
@@ -9,6 +10,7 @@
   export let currentUid;
   export let hoveredItem;
   export let term = '';
+  export let geographyType; // { uid, label, ... } of the active type pill
 
   const options = {
     includeScore: true,
@@ -72,25 +74,37 @@
     return sortBy(Object.entries(groups), '0');
   }
 
+  // Country-rooted hierarchy: the Countries tab groups by continent and lets the
+  // user expand a country to drill into its children inline.
+  $: isCountryMode = geographyType?.uid === 'admin0';
+
+  // Countries grouped by continent (ordered by continent label).
+  $: continentGroups = sortBy(Object.entries($GEOGRAPHY_INDEX.countriesByContinent), ['0']);
+
   let box;
   $: term, box?.scrollTo({ top: 0 });
 </script>
 
 <div bind:this={box} class="w-full overflow-x-hidden">
   <RadioGroup bind:value={currentUid} on:change={(e) => (currentUid = e.detail)}>
-      {#key results.length}
-        {#if results.length}
-          {#if hasSearchTerm}
-            <GeographyGroup group={results} bind:hoveredItem />
-          {:else}
-            {#each groupedItems as [key, group]}
-              <span class="mx-5 mb-1 block text-xs text-text-weaker uppercase tracking-wide border-b border-b-contour-weakest mt-4">{key}</span>
-              <GeographyGroup {group} bind:hoveredItem />
-            {/each}
-          {/if}
-        {:else}
-          <span class="text-xs py-4 px-5 block text-text-weaker" role="status">Could not find any geographies for this type.</span>
-        {/if}
-      {/key}
+    {#if hasSearchTerm}
+      {#if results.length}
+        <GeographyGroup group={results} bind:hoveredItem />
+      {:else}
+        <span class="text-xs py-4 px-5 block text-text-weaker" role="status">Could not find any geographies for this type.</span>
+      {/if}
+    {:else if isCountryMode}
+      {#each continentGroups as [continentId, countries]}
+        <span class="mx-5 mb-1 block text-xs text-text-weaker uppercase tracking-wide border-b border-b-contour-weakest mt-4">{$GEOGRAPHY_INDEX.byId[continentId]?.label ?? continentId}</span>
+        <GeographyGroup group={countries} bind:hoveredItem asCountries={true} />
+      {/each}
+    {:else if results.length}
+      {#each groupedItems as [key, group]}
+        <span class="mx-5 mb-1 block text-xs text-text-weaker uppercase tracking-wide border-b border-b-contour-weakest mt-4">{key}</span>
+        <GeographyGroup {group} bind:hoveredItem />
+      {/each}
+    {:else}
+      <span class="text-xs py-4 px-5 block text-text-weaker" role="status">Could not find any geographies for this type.</span>
+    {/if}
   </RadioGroup>
 </div>

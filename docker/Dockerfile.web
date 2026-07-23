@@ -1,0 +1,72 @@
+# Production image for the SvelteKit frontend (SSR via adapter-node).
+# Build context is the repo root:
+#   docker build -f docker/Dockerfile.web -t provide-web .
+#
+# VITE_* vars are baked at BUILD time (Vite inlines them), so pass them as build
+# args. Defaults match the nginx routing: the browser uses the relative /api path
+# on the apex and the CMS on its own subdomain, while SSR (in the container)
+# reaches the services directly. Override VITE_CMS_URL per environment
+# (https://cms.DOMAIN). (.env is .dockerignore'd, so only these args feed the
+# build.) The frontend has no database access — the API/CMS own that.
+
+# ---- build ----
+FROM node:20-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+
+# Browser-facing: API is a relative path on the apex; CMS is its own subdomain
+# (absolute — override per environment, e.g. https://cms.DOMAIN).
+ARG VITE_API_URL=/api
+ARG VITE_CMS_URL=http://cms.localhost:8080
+# SSR-facing (server reaches the services directly, e.g. k8s Service DNS)
+ARG VITE_API_URL_INTERNAL=http://api:8080/api
+ARG VITE_CMS_URL_INTERNAL=http://cms:1337
+# Legacy Climate Analytics API (public) + content locale
+ARG VITE_DATA_API_URL=https://provide-api.iiasa.ac.at/api
+ARG VITE_STRAPI_LOCALE=en-EU
+# App + integrations (pass real values at build time)
+ARG VITE_APP_URL=
+ARG VITE_SCREENSHOT_URL=
+ARG VITE_IS_PUBLIC_VERSION=false
+ARG VITE_MAPBOX_ACCESS_TOKEN=
+ARG VITE_MAPBOX_STYLE_LIGHT=mapbox://styles/mapbox/light-v11
+ARG VITE_MAPBOX_STYLE_SATELLITE=mapbox://styles/mapbox/satellite-v9
+ARG VITE_MAPBOX_STYLE_GLOBE=
+ARG VITE_MAPBOX_STYLE_STUDY_LOCATIONS=mapbox://styles/mapbox/light-v11
+
+# Surface the args to Vite (it reads VITE_* from the environment)
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_CMS_URL=$VITE_CMS_URL \
+    VITE_API_URL_INTERNAL=$VITE_API_URL_INTERNAL \
+    VITE_CMS_URL_INTERNAL=$VITE_CMS_URL_INTERNAL \
+    VITE_DATA_API_URL=$VITE_DATA_API_URL \
+    VITE_STRAPI_LOCALE=$VITE_STRAPI_LOCALE \
+    VITE_APP_URL=$VITE_APP_URL \
+    VITE_SCREENSHOT_URL=$VITE_SCREENSHOT_URL \
+    VITE_IS_PUBLIC_VERSION=$VITE_IS_PUBLIC_VERSION \
+    VITE_MAPBOX_ACCESS_TOKEN=$VITE_MAPBOX_ACCESS_TOKEN \
+    VITE_MAPBOX_STYLE_LIGHT=$VITE_MAPBOX_STYLE_LIGHT \
+    VITE_MAPBOX_STYLE_SATELLITE=$VITE_MAPBOX_STYLE_SATELLITE \
+    VITE_MAPBOX_STYLE_GLOBE=$VITE_MAPBOX_STYLE_GLOBE \
+    VITE_MAPBOX_STYLE_STUDY_LOCATIONS=$VITE_MAPBOX_STYLE_STUDY_LOCATIONS
+RUN npm run build
+
+# ---- runtime ----
+FROM node:20-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+# Trust the nginx proxy so SvelteKit derives the right origin (form actions, URLs).
+ENV PROTOCOL_HEADER=x-forwarded-proto
+ENV HOST_HEADER=x-forwarded-host
+
+# adapter-node externalizes runtime deps (lodash-es, d3, mapbox-gl, …), so install
+# production deps. --ignore-scripts skips the `prepare` (svelte-kit sync) hook.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+COPY --from=build /app/build ./build
+
+EXPOSE 3000
+CMD ["node", "build"]

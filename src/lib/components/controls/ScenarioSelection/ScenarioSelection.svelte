@@ -69,7 +69,7 @@
   colors={hasScenarioSelected ? $CURRENT_SCENARIOS.map((s) => s.color) : undefined}
   labelClass="mb-0 p-0 text-text-stronger uppercase text-xs leading-tight"
   buttonClass="text-sm p-0"
-  warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `Unavailable scenario${multipleScenariosSelected ? 's' : ''} selected` : undefined}
+  warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `No data for ${multipleScenariosSelected ? 'these scenarios' : 'this scenario'} here — pick another` : undefined}
   placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
   disabled={$DISABLED}
   panelClass="max-w-4xl"

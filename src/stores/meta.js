@@ -1,28 +1,34 @@
 import { page } from '$app/stores';
 import { UID_STUDY_LOCATION_AVERAGE } from '$config';
-import { get, keyBy, uniq, without, sortBy } from 'lodash-es';
+import { unitLabels } from '$lib/utils/formatting';
+import { buildIndex } from '$lib/components/controls/GeographySelection/geography-tree.js';
+import { get, keyBy, sortBy } from 'lodash-es';
 import { derived } from 'svelte/store';
+import { ciKeyBy } from '$lib/utils/case-insensitive.js';
 
 // META DATA (This will only be set once on load and won't change again)
+// Non-selectable types (continents) are grouping headers only — they must never
+// appear as a selectable pill, so they are filtered out here.
 export const GEOGRAPHY_TYPES = derived(page, ($page) =>
   sortBy(
-    ($page.data?.meta?.geographyTypes ?? []).map((t) => ({ ...t, disabled: !(t.isAvailable && t.availableIndicators.length) })),
+    ($page.data?.geographies?.geographyTypes ?? [])
+      .filter((t) => t.isSelectable !== false)
+      .map((t) => ({ ...t, disabled: !t.isAvailable })),
     [
       (t) => t.disabled, // This sorts the available types first
       (t) => t.order,
-      (t) => 9999 - t.availableIndicators.length, // Highest number first
       (t) => t.label,
     ]
   )
 );
 
 export const GEOGRAPHIES = derived(page, ($page) => {
-  // Extract the geography types and its data from the data provided by the load function
-  const { geographyTypes, ...meta } = $page.data?.meta ?? {};
-  if (geographyTypes.length) {
+  // Extract the geography types and its data from the geographies slice
+  const { geographyTypes, ...byType } = $page.data?.geographies ?? {};
+  if (geographyTypes?.length) {
     const geographies = geographyTypes.map(({ uid }) => {
-      // Find the array of geographies for this geography type in the meta endpoint
-      const geographiesOfType = get(meta, uid, []).map((d) => ({
+      // Find the array of geographies for this geography type in the geographies slice
+      const geographiesOfType = get(byType, uid, []).map((d) => ({
         ...d,
         geographyType: uid, // Add the geography type to each geography in the array
       }));
@@ -34,31 +40,35 @@ export const GEOGRAPHIES = derived(page, ($page) => {
   }
 });
 
+// Tree lookups (byId, childrenByParent, countriesByContinent) derived once from
+// the flat per-type geography map. Continents flow through GEOGRAPHIES under the
+// `continent` key, so country -> continent grouping resolves here even though
+// continents are not a selectable type.
+export const GEOGRAPHY_INDEX = derived(GEOGRAPHIES, ($geographies) => buildIndex($geographies));
+
 export const SCENARIOS = derived(page, ($page) => {
-  return $page.data?.meta?.scenarios ?? [];
+  return $page.data?.catalog?.scenarios ?? [];
 });
 
-export const DICTIONARY_SCENARIOS = derived(SCENARIOS, ($scenarios) => keyBy($scenarios, 'uid'));
+// Case-insensitive keys so a lookup by a differently-cased scenario uid (the
+// SSP5-3.4-OS/Os source duplicate) still resolves. Read it with ciGet.
+export const DICTIONARY_SCENARIOS = derived(SCENARIOS, ($scenarios) => ciKeyBy($scenarios));
 
-export const SECTORS = derived(page, ($page) => $page.data?.meta?.sectors ?? []);
 
 export const INDICATORS = derived(page, ($page) => {
-  const { indicators, units, sectors } = $page.data?.meta ?? {
-    indicators: [],
-  };
+  const catalog = $page.data?.catalog ?? {};
+  const indicators = catalog.indicators ?? [];
   return indicators.map((indicator) => {
-    const sector = sectors.find((s) => s.uid === indicator.sector);
-    const unit = units.find((unit) => unit.uid === indicator.unit) || {
+    // Scenario availability + geography filtering are no longer curated — they
+    // come from ixmp4 (`/api/scenarios?indicator=&region=`, `/api/geographies?indicator=`).
+    const labels = unitLabels[indicator.unit];
+    const unit = {
       uid: indicator.unit,
-      label: indicator.unit,
+      label: labels?.label ?? indicator.unit,
+      labelLong: labels?.labelLong ?? indicator.unit,
     };
-    const availableGeographies = uniq([...sector.availableGeographies, ...indicator.availableGeographies]).map((d) => d.toLowerCase()); // TODO: Temporally convert to lowercase to mimic uids
-    const availableScenarios = without(uniq([...sector.availableScenarios, ...indicator.availableScenarios]), ...(indicator.excludedScenarios ?? []));
-
     return {
       ...indicator,
-      availableScenarios,
-      availableGeographies,
       unit,
     };
   });
@@ -66,25 +76,18 @@ export const INDICATORS = derived(page, ($page) => {
 
 export const DICTIONARY_INDICATORS = derived(INDICATORS, ($indicators) => keyBy($indicators, 'uid'));
 
-export const INDICATOR_PARAMETERS = derived(page, ($page) => $page.data?.meta?.indicatorParameters ?? []);
+export const INDICATOR_PARAMETERS = derived(page, ($page) => $page.data?.catalog?.indicatorParameters ?? []);
 export const DICTIONARY_INDICATOR_PARAMETERS = derived(INDICATOR_PARAMETERS, ($parameters) => keyBy($parameters, 'uid'));
 
-export const UNITS = derived(page, ($page) => {
-  const units = $page.data?.meta?.units ?? [];
-  if (units.length) {
-    return keyBy(units, 'uid');
-  } else {
-    return {};
-  }
-});
-
+// On the avoid page these come from the frozen legacy /meta (avoidMeta); other
+// surfaces (adaptation, methodology) still provide them via the curation slice.
 export const LIKELIHOODS = derived(page, ($page) => {
-  return $page.data?.meta?.likelihoods ?? [];
+  return $page.data?.avoidMeta?.likelihoods ?? $page.data?.curation?.likelihoods ?? [];
 });
 
 export const STUDY_LOCATIONS = derived(page, ($page) => {
   const locations = sortBy(
-    ($page.data?.meta?.studyLocations ?? []).map((location, i) => {
+    ($page.data?.avoidMeta?.studyLocations ?? $page.data?.curation?.studyLocations ?? []).map((location, i) => {
       const isAverage = location.uid === UID_STUDY_LOCATION_AVERAGE;
       return {
         ...location,

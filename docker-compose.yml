@@ -1,0 +1,94 @@
+# Local dev stack — `docker compose up` runs an nginx that fronts the API, CMS and
+# frontend on a SINGLE origin (http://localhost:8080), like prod. All three use
+# your EXISTING host Postgres (Homebrew on :5432): `catalog` schema (API), `strapi`
+# schema (CMS).
+#
+#   nginx :8080  single entry ->  /api (API) · /cms (Strapi) · / (SvelteKit)
+#   web   :5173  vite dev server (also exposed directly, for HMR)
+#   api          internal, reached through nginx /api
+#   cms   :1337  internal for content (nginx /cms); admin also exposed on :1337
+#
+# Containers reach the host DB via host.docker.internal. Host role/db default to
+# rodrigo / provide; override with DB_USER / DB_NAME. Homebrew trust auth, no password.
+#
+#   docker compose up --build          # first build of cms/web takes a few minutes
+#   Open: http://localhost:8080
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - api
+      - cms
+      - web
+    volumes:
+      - ./docker/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - '8080:80'
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    command: bun run --watch server.ts # server.ts migrates catalog on boot (idempotent)
+    env_file:
+      - .env # for IXMP4_USERNAME / IXMP4_PASSWORD
+    environment:
+      DATABASE_HOST: host.docker.internal
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DB_NAME:-provide}
+      DATABASE_USERNAME: ${DB_USER:-rodrigo}
+      DATABASE_PASSWORD: ''
+      DATABASE_SCHEMA: catalog
+      PORT: 8080
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ./api:/app/api # hot-reload: source only; node_modules stays from the image
+      - ./server.ts:/app/server.ts
+
+  cms:
+    build:
+      context: ./cms
+      dockerfile: ../docker/Dockerfile.cms
+    env_file:
+      - cms/.env # app secrets (APP_KEYS, *_SECRET, R2_*)
+    environment:
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: host.docker.internal
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DB_NAME:-provide}
+      DATABASE_USERNAME: ${DB_USER:-rodrigo}
+      DATABASE_PASSWORD: ''
+      DATABASE_SCHEMA: strapi
+      DATABASE_SSL: 'false'
+      # Strapi's public origin — its own subdomain (root-mounted), mirrors prod.
+      PUBLIC_URL: http://cms.localhost:8080
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ./cms/dumps:/app/dumps # so `db:cms:import` can read the transfer archive
+    ports:
+      - '1337:1337' # direct admin access (canonical admin is cms.localhost:8080/admin)
+
+  web:
+    image: node:20-slim
+    working_dir: /app
+    command: sh -c "npm install && npm run dev:web -- --host 0.0.0.0 --port 5173"
+    depends_on:
+      - api
+      - cms
+    env_file:
+      - .env # frontend VITE_* vars (Mapbox, etc.)
+    environment:
+      # Browser: API is a relative path on the apex; CMS is its own subdomain.
+      VITE_API_URL: /api
+      VITE_CMS_URL: http://cms.localhost:8080
+      # SSR (server-side loaders in the container) hit the services directly
+      VITE_API_URL_INTERNAL: http://api:8080/api
+      VITE_CMS_URL_INTERNAL: http://cms:1337
+    volumes:
+      - .:/app
+      - /app/node_modules # keep the container's Linux-built node_modules
+    ports:
+      - '5173:5173' # vite HMR websocket connects here directly

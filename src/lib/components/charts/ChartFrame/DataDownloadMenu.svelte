@@ -8,8 +8,12 @@
   export let options = [];
   export let endpoint;
 
+  // Ignore params with no options (e.g. no scenarios selected yet) so we never
+  // dereference an empty options list.
+  $: validOptions = (options ?? []).filter((param) => param.options?.length);
+
   $: selectedParams = writable(
-    options.reduce(
+    validOptions.reduce(
       (memo, param) => ({
         ...memo,
         [param.uid]: param.options[0].uid,
@@ -22,14 +26,14 @@
   $: query = stringify(queryParameters);
   $: url = new URL(`${import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`);
 
-  $: maxVersions = options.reduce((memo, param) => param.options.length * memo, 1);
+  $: maxVersions = validOptions.reduce((memo, param) => param.options.length * memo, 1);
 </script>
 
 {#if maxVersions > 1}
   <PopoverButton label="Download data">
     <div class="max-w-xs px-3 py-3 flex gap-y-4 flex-col">
       <div class="flex gap-y-2 flex-col">
-        {#each options as param}
+        {#each validOptions as param}
           <div class="grid pt-2 grid-cols-7 gap-2 border-t items-start border-contour-weakest first:border-none">
             <span class="leading-none col-span-2 text-contour-weak text-sm py-1.5">{param.label}</span>
             <div class="col-span-5 col-start-3">
