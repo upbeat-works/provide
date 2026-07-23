@@ -28,7 +28,7 @@
   // (on a white panel) are tinted to the current page's theme. Dashed border uses
   // petrol-400 (#6FA5BA) per the design; the tool pages (avoid, provide) share one theme.
   const HEADER_THEME_DEFAULT = { bg: 'bg-sky-700', border: 'border-petrol-400', menuText: 'text-sky-700' };
-  const HEADER_THEME_TOOL = { bg: 'bg-[#1C4157]', border: 'border-petrol-800/50', menuText: 'text-[#1C4157]' };
+  const HEADER_THEME_TOOL = { bg: 'bg-[#1C4157]', border: 'border-petrol-400', menuText: 'text-[#1C4157]' };
 
   function getHeaderTheme(pathname = '') {
     if (pathname.startsWith(`/${PATH_IMPACT}/${PATH_AVOID}`)) return HEADER_THEME_TOOL;

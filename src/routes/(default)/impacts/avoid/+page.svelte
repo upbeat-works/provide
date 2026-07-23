@@ -75,7 +75,7 @@
 
 <PageLayout>
   <svelte:fragment slot="hero">
-    <PageHero className="bg-[#163A52]" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid.">
+    <PageHero className="bg-[#14364D]" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid.">
       <img slot="label" src="/img/provide-logo-white.png" alt="provide" class="h-6" />
     </PageHero>
 

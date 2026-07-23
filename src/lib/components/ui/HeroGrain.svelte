@@ -4,9 +4,9 @@
   // because it references an SVG filter. A lower `baseFrequency` / fewer
   // `numOctaves` make the grain coarser ("thicker"); `opacity` controls presence.
   export let id = 'hero-grain';
-  export let baseFrequency = 0.55;
+  export let baseFrequency = 0.4;
   export let numOctaves = 2;
-  export let opacity = 0.22;
+  export let opacity = 0.1;
 </script>
 
 <svg

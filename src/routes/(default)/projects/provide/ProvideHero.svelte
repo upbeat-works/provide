@@ -2,7 +2,7 @@
   import HeroGrain from '$lib/components/ui/HeroGrain.svelte';
 </script>
 
-<header class="bg-[#163A52] overflow-hidden relative">
+<header class="bg-[#14364D] overflow-hidden relative">
 
   <!-- Grain texture overlay -->
   <HeroGrain id="provide-hero-grain" />
