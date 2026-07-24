@@ -80,6 +80,24 @@ def main(argv: list[str] | None = None) -> int:
     pub.add_argument("--dest", required=True, help="destination directory (API data dir / mounted bucket)")
     pub.add_argument("--no-check", action="store_true", help="publish even if the check gate fails")
 
+    fetch = sub.add_parser("fetch-legacy", help="download legacy-API impact-geo slices as parity references")
+    fetch.add_argument("--out", default="./legacy", help="directory to write the slices into")
+    fetch.add_argument("--geographies", nargs="+", required=True, help="ISO-A3 codes, e.g. DEU IND")
+    fetch.add_argument("--scenarios", nargs="+", required=True, help="e.g. CurPol GS SP")
+    fetch.add_argument("--years", nargs="+", type=int, default=[2030, 2050, 2100])
+    fetch.add_argument("--indicator", default="mean-temperature", choices=list(config.INDICATORS))
+    fetch.add_argument("--reference", default="pre-industrial", choices=list(config.REFERENCE_PERIODS))
+    fetch.add_argument("--frequency", type=float, default=None, help="required for extreme indicators")
+    fetch.add_argument("--base-url", default=None, help="legacy API base (default: staging)")
+
+    cmp_ = sub.add_parser("compare-legacy", help="compare one legacy netCDF slice against our impact-geo JSON")
+    cmp_.add_argument("--legacy", required=True, help="a fetched legacy .nc slice")
+    cmp_.add_argument("--modern", required=True, help="an impact_geo_*.json produced by this pipeline")
+    cmp_.add_argument("--geography", required=True, help="ISO-A3 code")
+    cmp_.add_argument("--year", type=int, required=True)
+    cmp_.add_argument("--tolerance", type=float, default=None,
+                      help="fail (exit 1) if max abs diff exceeds this (deg C)")
+
     args = parser.parse_args(argv)
 
     if args.command == "run":
@@ -96,6 +114,10 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_check(args)
     if args.command == "publish":
         return _cmd_publish(args)
+    if args.command == "fetch-legacy":
+        return _cmd_fetch_legacy(args)
+    if args.command == "compare-legacy":
+        return _cmd_compare_legacy(args)
     parser.error("no command")
     return 2
 
@@ -206,6 +228,38 @@ def _cmd_publish(args) -> int:
         publish(args.src, args.dest, run_check=not args.no_check)
     except PublishError as exc:
         print(str(exc))
+        return 1
+    return 0
+
+
+def _cmd_fetch_legacy(args) -> int:
+    from . import legacy
+
+    kwargs = dict(indicator=args.indicator, reference=args.reference, frequency=args.frequency)
+    if args.base_url:
+        kwargs["base_url"] = args.base_url
+    written = legacy.fetch_impact_geo(args.out, args.geographies, args.scenarios, args.years, **kwargs)
+    wanted = len(args.geographies) * len(args.scenarios) * len(args.years)
+    print(f"fetched {len(written)}/{wanted} slices -> {args.out}")
+    return 0 if written else 1
+
+
+def _cmd_compare_legacy(args) -> int:
+    import json
+
+    from . import legacy
+
+    with open(args.modern, encoding="utf-8") as handle:
+        document = json.load(handle)
+    try:
+        stats = legacy.compare_impact_geo(args.legacy, document, args.geography, args.year)
+    except ValueError as exc:
+        print(f"cannot compare: {exc}")
+        return 1
+    for key, value in stats.items():
+        print(f"{key}: {value}")
+    if args.tolerance is not None and stats["max_abs_diff"] > args.tolerance:
+        print(f"FAILED: max abs diff {stats['max_abs_diff']:.4g} exceeds tolerance {args.tolerance}")
         return 1
     return 0
 

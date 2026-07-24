@@ -245,6 +245,34 @@ CI runs the test suite and builds this image on every PR touching
 
 ---
 
+## Legacy parity (before switching production)
+
+The legacy PROVIDE API (`provide-api[-staging].climateanalytics.org`) serves the
+*outputs* of the old pipeline — per-country anomaly slices with the ensemble
+already collapsed. Useless as pipeline *input* (no `tas`, no ensemble, one
+year per file — `validate` rejects it), but it is exactly the reference we
+must reproduce before production switches over (deviation #3 above):
+
+```bash
+# Pull legacy impact-geo slices for the parity countries…
+provide-pipeline fetch-legacy --out ./legacy \
+    --geographies DEU IND --scenarios CurPol GS SP --years 2030 2050 2100
+
+# …then compare each against our impact-geo JSON (built from real MESMER cubes):
+provide-pipeline compare-legacy \
+    --legacy ./legacy/legacy_impact_geo_CurPol_DEU_mean-temperature_2030_pre-industrial.nc \
+    --modern ../data_out/impact_geo_CurPol_mean-temperature_None_pre-industrial.json \
+    --geography DEU --year 2030 --tolerance 0.05
+```
+
+Cells are aligned by exact lat/lon coordinate and compared only where both
+grids have values (the legacy grid is bbox-cropped, ours is mask-cropped).
+Naming mapping (from legacy `metadata.py`): indicator uids match ours; the API
+param carries a sector prefix (`terclim-mean-temperature`); scenario uids are
+lowercased (`CurPol` → `curpol`).
+
+---
+
 ## Devcontainer
 
 `.devcontainer/` provides a **slim** environment: `python:3.12-slim` + pip.
