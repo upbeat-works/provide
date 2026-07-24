@@ -1,47 +1,34 @@
 #!/usr/bin/env bash
 #
-# Dump the REMOTE Strapi database (Fly app `provide-cms`) into a local .sql file.
+# Dump the REMOTE Strapi database (Fly app `provide-cms`) to a local .sql file —
+# a faithful, human-readable SQLite snapshot for backup/inspection. READ-ONLY on
+# the remote (copies the DB down over SSH; the remote is never modified).
 #
-# The remote CMS still runs on SQLite (a file on a Fly volume) and `main` depends
-# on it, so this is strictly READ-ONLY: it copies the DB file down over SSH and
-# runs `sqlite3 .dump` locally. The remote is never modified.
+# This is a BACKUP, not the reimport pipeline: a SQLite-dialect .sql does not load
+# into Postgres as-is. To pull remote content INTO the local Postgres `strapi`
+# schema, use `npm run db:cms:pull` instead.
 #
-# Requires: flyctl (authenticated: `fly auth login`) and the sqlite3 CLI.
+# Requires: flyctl (authed), jq, and the sqlite3 CLI.
 # Usage:
-#   npm run db:cms:dump                 # → cms/dumps/strapi-remote.sql
+#   npm run db:cms:dump                 # -> cms/dumps/strapi-remote.sql
 #   npm run db:cms:dump -- path/to.sql  # custom output path
-#
-# Note: the output is a SQLite-dialect dump (a faithful snapshot/backup of the
-# remote data). It is not directly loadable into Postgres as-is; to move the CMS
-# content into the local `strapi` Postgres schema use Strapi's transfer/import.
 set -euo pipefail
 
-APP="${FLY_CMS_APP:-provide-cms}"
-REMOTE_DB="${FLY_CMS_DB_PATH:-/data/data.db}"
-OUT="${1:-cms/dumps/strapi-remote.sql}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+# shellcheck source=scripts/lib/cms-remote.sh
+source "$ROOT/scripts/lib/cms-remote.sh"
 
-command -v flyctl >/dev/null 2>&1 || { echo "error: flyctl not found (see https://fly.io/docs/flyctl/install)." >&2; exit 1; }
-command -v sqlite3 >/dev/null 2>&1 || { echo "error: sqlite3 CLI not found." >&2; exit 1; }
+cms_require sqlite3 "Install the sqlite3 CLI."
+
+RAW_DB="$ROOT/cms/dumps/data-remote.db"
+OUT="${1:-$ROOT/cms/dumps/strapi-remote.sql}"
+
+# Reuse the shared read-only fetch; leaves cms/dumps/data-remote.db in place
+# (the same file `db:cms:pull` exports from).
+cms_fetch_db "$RAW_DB"
 
 mkdir -p "$(dirname "$OUT")"
-# `fly ssh sftp get` refuses to overwrite an existing local file, so hand it a
-# fresh path inside a temp dir (not a pre-created mktemp file).
-TMP_DIR="$(mktemp -d -t strapi-remote-XXXXXX)"
-TMP_DB="$TMP_DIR/data.db"
-trap 'rm -rf "$TMP_DIR"' EXIT
-
-echo "-> Fetching $REMOTE_DB from Fly app '$APP' (read-only)..."
-if ! flyctl ssh sftp get "$REMOTE_DB" "$TMP_DB" -a "$APP"; then
-  echo "error: failed to fetch the remote DB. Is the machine reachable? Try 'fly machine list -a $APP'." >&2
-  exit 1
-fi
-
-# Sanity-check that we got a real SQLite database before dumping.
-if ! sqlite3 "$TMP_DB" 'SELECT 1;' >/dev/null 2>&1; then
-  echo "error: the fetched file is not a readable SQLite database." >&2
-  exit 1
-fi
-
 echo "-> Dumping to $OUT ..."
-sqlite3 "$TMP_DB" .dump > "$OUT"
+sqlite3 "$RAW_DB" .dump > "$OUT"
 echo "Wrote $(wc -l < "$OUT" | tr -d ' ') lines -> $OUT"

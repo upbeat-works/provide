@@ -28,12 +28,23 @@ node scripts/fetch-snapshot.js
 node scripts/seed.js
 ```
 
-Alternatively, pull the remote CMS data and import it (from the monorepo root):
+Alternatively, pull the live remote CMS content into the local Postgres `strapi`
+schema in one step (from the monorepo root):
 
 ```
-npm run db:cms:dump      # pull the remote DB into cms/dumps/
-npm run db:cms:import     # import it into the local Postgres `strapi` schema
+npm run db:cms:pull      # fetch remote DB -> export -> back up -> import -> verify
 ```
+
+`db:cms:pull` copies the remote SQLite DB down (read-only), exports a Strapi
+transfer archive from it inside the cms container, backs up the local `strapi`
+schema, then imports with `--force`. Media stays on R2 (only file-entry URLs
+transfer). Stage toggles: `SKIP_FETCH=1` (reuse `cms/dumps/data-remote.db`),
+`SKIP_IMPORT=1` (build the tarball only), `SKIP_BACKUP=1`, `SKIP_VERIFY=1`,
+`KEEP_ASSETS=1` (bundle R2 media — large).
+
+The lower-level pieces are still available: `db:cms:dump` writes a standalone
+SQLite `.sql` backup of the remote (not loadable into Postgres as-is), and
+`db:cms:import` imports an existing `cms/dumps/strapi-transfer.tar.gz` on its own.
 
 ## Scripts
 

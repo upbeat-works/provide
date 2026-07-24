@@ -21,6 +21,7 @@
     "db:migrate": "bun run api/db/migrate.ts",
     "db:seed": "bun run api/db/import/import-geographies.ts && bun run api/db/import/import-indicators.ts && bun run api/db/seed.ts",
     "db:studio": "drizzle-kit studio",
+    "db:cms:pull": "bash scripts/cms-pull.sh",
     "db:cms:dump": "bash scripts/dump-cms-remote.sh",
     "db:cms:import": "docker compose run --rm cms yarn strapi import --file dumps/strapi-transfer.tar.gz --force"
   },

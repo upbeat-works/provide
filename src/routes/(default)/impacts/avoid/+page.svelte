@@ -2,7 +2,7 @@
   import ThresholdLevels from './components/ThresholdLevels/ThresholdLevels.svelte';
   import StudyLocations from './components/StudyLocations/StudyLocations.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
-  import { HEADER_CLASS, IS_STATIC } from '$stores/state';
+  import { IS_STATIC } from '$stores/state';
   import { AVOID_IS_EMPTY, AVOID_IS_AVAILABLE, AVOID_GEOGRAPHY, AVOID_CITY_UID, AVOID_INDICATOR_UID, AVOID_PARAMS } from '$stores/avoid-catalog.js';
   import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
@@ -23,9 +23,6 @@
   import { page } from '$app/stores';
 
   export let data;
-
-  onMount(() => HEADER_CLASS.set('bg-[#1F2B59] border-petrol-400'));
-  onDestroy(() => HEADER_CLASS.set(''));
 
   // Deep-link handoff (explore -> avoid): the incoming ids are already in the
   // avoid-native legacy space (geoId, legacyUid), so we just apply them. Param
