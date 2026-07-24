@@ -98,12 +98,20 @@ def validate_cube(data_dir: str, scenario: str) -> list[Problem]:
         return problems  # coordinate checks below need year/lat/lon
 
     # -- grid regularity (the mask_3D_frac_approx requirement) -------------
-    from .masks import spacing_problem
+    from .masks import missing_bands, spacing_problem
 
     for dim in (config.LAT, config.LON):
         message = spacing_problem(cube[dim].values, dim)
         if message:
             problems.append(Problem(ERROR, where, message))
+        else:
+            gaps = missing_bands(cube[dim].values)
+            if gaps:
+                problems.append(Problem(
+                    WARNING, where,
+                    f"{dim} has {gaps} missing band(s) (no-land rows/columns dropped at "
+                    f"source?); the pipeline reinserts them as all-null.",
+                ))
 
     # -- coordinate ranges -------------------------------------------------
     lat = np.asarray(cube[config.LAT])

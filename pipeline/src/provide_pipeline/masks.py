@@ -81,18 +81,41 @@ def build_regions(geodataframe, geographies: list[str], code_column: str = confi
     return Regions(regionmask=regions, codes=ordered_codes)
 
 
+def grid_step(coord: np.ndarray) -> float:
+    """The base grid step: the smallest gap between consecutive coordinates."""
+    return float(np.diff(np.sort(np.asarray(coord))).min())
+
+
+def missing_bands(coord: np.ndarray) -> int:
+    """How many grid bands are absent from an otherwise-regular coordinate.
+
+    Land-only datasets (e.g. the published MESMER cubes) drop lat/lon bands
+    that contain no land at all, leaving gaps that are exact multiples of the
+    base step.  Those are benign -- :func:`ensure_regular` reinserts them as
+    all-NaN bands.  Returns 0 for a gapless coordinate.
+    """
+    coord = np.sort(np.asarray(coord))
+    if coord.size < 2:
+        return 0
+    steps = np.diff(coord)
+    return int(round((steps / grid_step(coord)).sum())) - len(steps)
+
+
 def spacing_problem(coord: np.ndarray, dim: str) -> str | None:
-    """Return a plain-language message if ``coord`` is not equally spaced.
+    """Return a plain-language message if ``coord`` cannot be made regular.
 
     ``mask_3D_frac_approx`` requires an equally-spaced grid; this single rule is
     shared by :func:`ensure_regular` (which raises) and ``validate`` (which
-    reports).  ``None`` means the coordinate is fine.
+    reports).  ``None`` means the coordinate is fine -- either already regular
+    or regular-with-missing-bands (gaps that are exact multiples of the base
+    step, which :func:`ensure_regular` fills).
     """
     coord = np.sort(np.asarray(coord))
     if coord.size < 2:
         return None
     steps = np.diff(coord)
-    if not np.allclose(steps, steps[0], rtol=1e-3, atol=1e-6):
+    multiples = steps / grid_step(coord)
+    if not np.allclose(multiples, np.round(multiples), rtol=1e-3, atol=1e-6):
         return (
             f"{dim} is not equally spaced (steps range "
             f"{steps.min():.4g}..{steps.max():.4g}); mask_3D_frac_approx needs a regular grid. "
@@ -104,16 +127,23 @@ def spacing_problem(coord: np.ndarray, dim: str) -> str | None:
 def ensure_regular(cube: xr.Dataset) -> xr.Dataset:
     """Return ``cube`` with ascending, equally-spaced lat/lon.
 
-    ``mask_3D_frac_approx`` requires an equally-spaced grid.  This is the modern
-    equivalent of the legacy ``reindex(... np.arange(min, max+2.5, 2.5) ...)``
-    "make it a regular grid" step -- but here we only *verify* regularity and
-    fix ordering rather than blindly resampling.
+    ``mask_3D_frac_approx`` requires an equally-spaced grid.  Coordinates whose
+    gaps are exact multiples of the base step (bands dropped from land-only
+    datasets) are reindexed onto the full grid, reinserting the missing bands
+    as NaN -- the principled version of the legacy
+    ``reindex(... np.arange(min, max+2.5, 2.5) ...)`` step.  Genuinely
+    irregular grids still raise.
     """
     cube = cube.sortby([config.LAT, config.LON])
     for dim in (config.LAT, config.LON):
-        problem = spacing_problem(cube[dim].values, dim)
+        coord = cube[dim].values
+        problem = spacing_problem(coord, dim)
         if problem:
             raise ValueError(problem)
+        if missing_bands(coord):
+            step = grid_step(coord)
+            full = np.arange(coord.min(), coord.max() + step / 2, step)
+            cube = cube.reindex({dim: full})
     return cube
 
 

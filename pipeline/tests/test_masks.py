@@ -63,3 +63,33 @@ def test_missing_geography_warns_but_continues(cube):
     with pytest.warns(UserWarning):
         built = build_regions(gdf, ["AAA", "ZZZ"])  # ZZZ absent
     assert built.codes == ["AAA"]
+
+
+def test_missing_band_is_reinserted_as_nan():
+    # Land-only datasets drop all-ocean bands; ensure_regular must reinsert
+    # them (as NaN) instead of rejecting the grid.
+    import numpy as np
+    from provide_pipeline import synthetic
+    from provide_pipeline.masks import ensure_regular, missing_bands, spacing_problem
+
+    cube = synthetic.make_cube("GS", years=synthetic.DEMO_YEARS)
+    dropped = cube.isel(lon=[i for i in range(cube.sizes["lon"]) if i != 7])
+    assert missing_bands(dropped["lon"].values) == 1
+    assert spacing_problem(dropped["lon"].values, "lon") is None  # fillable, not irregular
+
+    fixed = ensure_regular(dropped)
+    assert fixed.sizes["lon"] == cube.sizes["lon"]
+    assert np.allclose(fixed["lon"].values, cube["lon"].values)
+    assert bool(fixed["tas"].isel(lon=7).isnull().all())  # reinserted band is all-NaN
+
+
+def test_genuinely_irregular_still_raises():
+    import pytest
+    from provide_pipeline import synthetic
+    from provide_pipeline.masks import ensure_regular
+
+    cube = synthetic.make_cube("GS", years=synthetic.DEMO_YEARS)
+    lat = cube["lat"].values.copy()
+    lat[3] += 1.7  # not a multiple of the base step
+    with pytest.raises(ValueError, match="not equally spaced"):
+        ensure_regular(cube.assign_coords(lat=lat))

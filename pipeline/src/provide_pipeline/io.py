@@ -40,9 +40,14 @@ def load_scenario_cube(data_dir: str, scenario: str, engine: str | None = None) 
     matches = [m for m in matches if m.endswith((".nc", ".nc4", ".zarr"))] or matches
     if not matches:
         raise FileNotFoundError(f"no MESMER file matching {pattern!r}")
+    # A single file is opened eagerly: dask's "auto" chunking misaligns with
+    # the stored HDF5 chunks of the published MESMER cubes and turns a
+    # 50-second computation into hours.  Multi-file scenarios (the 100
+    # FaIR-trajectory sets) do need lazy loading; ``chunks={}`` keeps dask
+    # chunks aligned with the on-disk chunking.
     if len(matches) == 1:
-        return xr.open_dataset(matches[0], engine=engine, chunks="auto")
-    return xr.open_mfdataset(matches, engine=engine, chunks="auto", combine="by_coords")
+        return xr.open_dataset(matches[0], engine=engine)
+    return xr.open_mfdataset(matches, engine=engine, chunks={}, combine="by_coords")
 
 
 def load_regions_geodataframe(shapefile: str):
