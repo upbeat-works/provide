@@ -209,5 +209,5 @@ export const load = async ({ fetch, parent, params }) => {
     };
   });
 
-  return { caseStudy, caseStudies, caseStudyOutro: { title: caseStudyOutro?.Title, text: caseStudyOutro?.Text }, author: caseStudy.authors, description: caseStudy.abstract };
+  return { caseStudy, caseStudies, caseStudyOutro: { title: caseStudyOutro?.Title, text: caseStudyOutro?.Text ? parse(caseStudyOutro.Text) : null }, author: caseStudy.authors, description: caseStudy.abstract };
 };
