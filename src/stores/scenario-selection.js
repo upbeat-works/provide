@@ -47,3 +47,15 @@ export function parseStoredScenarios(raw, defaults, max) {
   }
   return defaults;
 }
+
+// Graft ixmp4 availability onto the catalog scenarios: `disabled` when the axis
+// has no data, `endYear` refined by availability but FALLING BACK to the catalog
+// timeframe. Blanking endYear would make the selector's `endYear === timeframe`
+// filter drop unavailable scenarios from the list rather than grey them out.
+export function graftScenarioAvailability(scenarios = [], availability = []) {
+  const byUid = new Map((availability ?? []).map((a) => [String(a.uid).toLowerCase(), a]));
+  return (scenarios ?? []).map((scenario) => {
+    const found = byUid.get(String(scenario.uid).toLowerCase());
+    return { ...scenario, endYear: found?.yearEnd ?? scenario.endYear, disabled: !found };
+  });
+}

@@ -4,7 +4,7 @@ import { groupBy, kebabCase } from 'lodash-es';
 import { parse } from 'marked';
 import { LABEL_KEY_CONCEPTS, KEY_SCENARIOPRESET_UID } from '$config';
 import _ from 'lodash-es';
-import { extractEndYear } from '$utils/meta.js';
+import { extractEndYear, extractStartYear } from '$utils/meta.js';
 
 function filterUniqueObjects(value, index, array) {
   return array.indexOf(value) === index;
@@ -36,16 +36,18 @@ const loadExplainer = async ({ fetch, parent }) => {
   const scenarioPresetsRaw = await loadFromStrapi('scenario-presets', fetch);
   const scenarioPresets = processScenarioPresets(scenarioPresetsRaw);
 
-  // Selectable timeframes
-  const selectableTimeframes = _(catalog.scenarios)
+  // Selectable timeframes. Only projections count: the `Today` baseline is a
+  // single present-day datapoint (yearEnd === yearStart), and would otherwise add
+  // a timeframe pill with no scenarios and no table columns behind it.
+  const projections = (catalog.scenarios ?? []).filter((s) => extractEndYear(s) > extractStartYear(s));
+  const selectableTimeframes = _(projections)
     .map(extractEndYear)
     .uniq()
     .sort()
     .map((uid) => ({ uid: parseInt(uid), label: uid })) // The uid should already be a int, but let’s make sure. Note: This needs to be the same type as the scenario presets’ timeframe
     .value();
 
-  // Convention scenarios carry no timeframe metadata yet, so selectableTimeframes
-  // may be empty — guard against crashing the methodology page.
+  // Still guard: an instance with no year metadata yields no timeframes.
   const defaultTimeframe = selectableTimeframes[0]?.uid;
 
   return {

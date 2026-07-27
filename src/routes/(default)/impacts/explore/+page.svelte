@@ -3,10 +3,32 @@
   import ImpactGeo from './components/ImpactGeo/ImpactGeo.svelte';
   import UnAvoidableRisk from '../components/UnavoidableRisk/UnavoidableRisk.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, CURRENT_GEOGRAPHY, CURRENT_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_UID, IS_STATIC } from '$stores/state';
+  import {
+    IS_COMBINATION_AVAILABLE,
+    IS_EMPTY_SELECTION,
+    CURRENT_GEOGRAPHY,
+    CURRENT_INDICATOR,
+    CURRENT_GEOGRAPHY_UID,
+    CURRENT_INDICATOR_UID,
+    CURRENT_SCENARIOS_UID,
+    CURRENT_INDICATOR_OPTION_VALUES,
+    IS_STATIC,
+  } from '$stores/state';
   import { GEOGRAPHIES } from '$stores/meta.js';
   import VisData from '$lib/components/icons/VisData.svelte';
-  import { PATH_AVOID, GEOGRAPHY_TYPE_CITY } from '$config';
+  import { parse } from 'qs';
+  import {
+    PATH_AVOID,
+    GEOGRAPHY_TYPE_CITY,
+    URL_PATH_GEOGRAPHY,
+    URL_PATH_INDICATOR,
+    URL_PATH_SCENARIOS,
+    URL_PATH_TIME,
+    URL_PATH_REFERENCE,
+    URL_PATH_SPATIAL,
+    URL_PATH_FREQUENCY,
+    URL_PATH_INDICATOR_VALUE,
+  } from '$config';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
@@ -17,7 +39,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/stores';
   import { createScrollSpy } from '$lib/utils/scrollSpy';
-  import { toLegacyGeoId, toLegacyIndicatorUid, resolveGeo, resolveIndicator } from '$lib/catalog/translate.js';
+  import { toLegacyGeoId, toLegacyIndicatorUid, resolveGeo, resolveIndicator, resolveScenarioUids } from '$lib/catalog/translate.js';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
@@ -44,20 +66,34 @@
     ? `/impacts/${PATH_AVOID}?geography=${encodeURIComponent(avoidGeoId)}${avoidLegacyUid ? `&indicator=${encodeURIComponent(avoidLegacyUid)}` : ''}`
     : `/impacts/${PATH_AVOID}`;
 
-  // Inbound (avoid -> explore, or a shared avoid link): params may be in either id
-  // space; resolve to the new uid and seed the shared stores.
+  // Inbound deep links (avoid -> explore, key-terms -> explore, a shared URL):
+  // seed every store the link can carry. Geography/indicator params may be in
+  // either id space, so they go through the resolvers. Parsed with qs because
+  // `scenarios` arrives as `scenarios[0]=…`.
   onMount(() => {
-    const params = $page.url.searchParams;
-    const geo = params.get('geography');
-    const ind = params.get('indicator');
+    const params = parse($page.url.search.replace(/^\?/, ''));
+
+    const geo = params[URL_PATH_GEOGRAPHY];
     if (geo) {
       const g = resolveGeo(geo, Object.values($GEOGRAPHIES).flat());
       if (g) CURRENT_GEOGRAPHY_UID.set(g.uid);
     }
+
+    const ind = params[URL_PATH_INDICATOR];
     if (ind) {
       const i = resolveIndicator(ind, data.catalog?.indicators ?? []);
       if (i) CURRENT_INDICATOR_UID.set(i.uid);
     }
+
+    const scenarios = resolveScenarioUids(params[URL_PATH_SCENARIOS], data.catalog?.scenarios ?? []);
+    if (scenarios.length) CURRENT_SCENARIOS_UID.set(scenarios);
+
+    // Parameter options are raw convention values; the selectors validate them
+    // against the current indicator, so an unknown one falls back on its own.
+    const options = Object.fromEntries(
+      [URL_PATH_TIME, URL_PATH_REFERENCE, URL_PATH_SPATIAL, URL_PATH_FREQUENCY, URL_PATH_INDICATOR_VALUE].filter((key) => params[key] != null).map((key) => [key, params[key]])
+    );
+    if (Object.keys(options).length) CURRENT_INDICATOR_OPTION_VALUES.update((prev) => ({ ...prev, ...options }));
   });
 
   $: caseStudy = findCaseStudy(data.caseStudies, $CURRENT_GEOGRAPHY);

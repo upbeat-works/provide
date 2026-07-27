@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test';
-import { resolveScenarioSelection, isScenarioCombinationAvailable, parseStoredScenarios } from './scenario-selection.js';
+import { resolveScenarioSelection, isScenarioCombinationAvailable, parseStoredScenarios, graftScenarioAvailability } from './scenario-selection.js';
 
 describe('resolveScenarioSelection', () => {
   const defaults = ['2020 Climate Policies'];
@@ -74,5 +74,45 @@ describe('parseStoredScenarios', () => {
 
   test('caps at max scenarios', () => {
     expect(parseStoredScenarios(JSON.stringify(['a', 'b', 'c', 'd']), defaults, 3).length).toBe(3);
+  });
+});
+
+describe('graftScenarioAvailability', () => {
+  const catalog = [
+    { uid: '2020 Climate Policies', endYear: 2100 },
+    { uid: 'SSP5-3.4-OS', endYear: 2100 },
+    { uid: 'Today', endYear: 2000 },
+  ];
+
+  test('marks scenarios the axis has no data for as disabled', () => {
+    const out = graftScenarioAvailability(catalog, [{ uid: 'SSP5-3.4-OS', yearEnd: 2100 }]);
+    expect(out.map((s) => s.disabled)).toEqual([true, false, true]);
+  });
+
+  test('keeps the catalog timeframe on scenarios with no availability', () => {
+    // Blanking endYear here makes the selector's `endYear === currentTimeframe`
+    // filter hide them entirely, instead of greying them out.
+    const out = graftScenarioAvailability(catalog, [{ uid: 'SSP5-3.4-OS', yearEnd: 2100 }]);
+    expect(out.map((s) => s.endYear)).toEqual([2100, 2100, 2000]);
+  });
+
+  test('availability refines the timeframe when it differs from the catalog', () => {
+    const out = graftScenarioAvailability(catalog, [{ uid: '2020 Climate Policies', yearEnd: 2300 }]);
+    expect(out[0].endYear).toBe(2300);
+  });
+
+  test('matches case-insensitively, for the case-only duplicate runs', () => {
+    const out = graftScenarioAvailability(catalog, [{ uid: 'ssp5-3.4-os', yearEnd: 2100 }]);
+    expect(out[1].disabled).toBe(false);
+  });
+
+  test('with no availability yet, everything keeps its catalog timeframe', () => {
+    const out = graftScenarioAvailability(catalog, []);
+    expect(out.map((s) => s.endYear)).toEqual([2100, 2100, 2000]);
+    expect(out.every((s) => s.disabled)).toBe(true);
+  });
+
+  test('tolerates missing input', () => {
+    expect(graftScenarioAvailability(undefined, undefined)).toEqual([]);
   });
 });

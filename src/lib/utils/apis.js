@@ -1,7 +1,7 @@
 import { get } from 'lodash-es';
 import { ciEquals } from '$lib/utils/case-insensitive.js';
 import { buildAvoidMeta } from '$lib/catalog/avoid-meta.js';
-import { KEY_CHARACTERISTICS, KEY_SCENARIO_YEAR_DESCRIPTION, SCENARIO_DATA_KEYS } from '$config';
+import { KEY_CHARACTERISTICS, KEY_SCENARIO_YEAR_DESCRIPTION, KEY_SCENARIO_ENDYEAR, KEY_SCENARIO_STARTYEAR, SCENARIO_DATA_KEYS } from '$config';
 
 // We use different locals to simulate different versions of the content.
 // Version 0: `en` and fallback version
@@ -165,6 +165,10 @@ export const loadCatalog = async function (svelteFetch = fetch) {
         ...scenario,
         description,
         ...timelineData,
+        // The catalog names these yearStart/yearEnd (as /scenarios does); the UI
+        // reads startYear/endYear.
+        [KEY_SCENARIO_STARTYEAR]: scenario.yearStart,
+        [KEY_SCENARIO_ENDYEAR]: scenario.yearEnd,
         [KEY_SCENARIO_YEAR_DESCRIPTION]: descriptionYears,
         [KEY_CHARACTERISTICS]: scenario.characteristics,
       };

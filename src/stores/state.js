@@ -23,7 +23,7 @@ import { extractEndYear, extractStartYear } from '$utils/meta.js';
 
 import { DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
 import { GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, GEOGRAPHY_INDEX, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
-import { resolveScenarioSelection, isScenarioCombinationAvailable, parseStoredScenarios } from './scenario-selection.js';
+import { resolveScenarioSelection, isScenarioCombinationAvailable, parseStoredScenarios, graftScenarioAvailability } from './scenario-selection.js';
 
 // Optional CSS class(es) to override the header background, set per-page
 export const HEADER_CLASS = writable('');
@@ -587,14 +587,9 @@ export const WARMING_LEVEL_AVAILABILITY = createScenarioAvailability('warmingLev
  * isn't wrongly disabled and dropped.
  */
 function createAvailableScenarios(availabilityStore) {
-  return derived([SCENARIOS, availabilityStore], ([$SCENARIOS, $availability]) => {
-    const byUid = ciKeyBy($availability);
-    return $SCENARIOS.map((scenario) => ({
-      ...scenario,
-      endYear: ciGet(byUid, scenario.uid)?.yearEnd,
-      disabled: !ciGet(byUid, scenario.uid),
-    }));
-  });
+  return derived([SCENARIOS, availabilityStore], ([$SCENARIOS, $availability]) =>
+    graftScenarioAvailability($SCENARIOS, $availability),
+  );
 }
 
 export const AVAILABLE_SCENARIOS = createAvailableScenarios(SCENARIO_AVAILABILITY);

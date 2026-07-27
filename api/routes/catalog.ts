@@ -5,6 +5,7 @@ import { schema } from '../db';
 import { createPlatforms } from '../platform';
 import { parseVariable, indicatorsFromVariables } from '../conventions';
 import { distinct, distinctCaseInsensitive, createTtlCache } from '../util';
+import { fetchScenarioTimeframes } from '../views/scenarios';
 
 const catalog = new Hono<Env>();
 
@@ -95,7 +96,16 @@ async function buildCatalog(c: Context<Env>) {
   // to one canonical entry so the selector shows it once; the views match the
   // requested name case-insensitively to reach either casing's data.
   const scenarioNames = distinctCaseInsensitive(instanceRuns.flat().map((run) => run.scenario.name));
-  const scenarios = scenarioNames.map((name) => ({ uid: name, label: name }));
+
+  // Each scenario's timeframe, derived from the data itself (max year, not
+  // curation) — the methodology scenario list keys its table columns on it, and
+  // the timeline charts get their x-axis grid from the same probe.
+  const timeframes = await fetchScenarioTimeframes(platforms, indicatorFacets, scenarioNames);
+  const scenarios = scenarioNames.map((name) => ({
+    uid: name,
+    label: name,
+    ...(timeframes.get(name.toLowerCase()) ?? {}),
+  }));
 
   return { indicators, indicatorParameters, scenarios };
 }

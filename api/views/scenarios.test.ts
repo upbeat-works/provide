@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { scenarioAvailabilityFromRows, pickRepresentativeWarmingLevel } from './scenarios';
+import { scenarioAvailabilityFromRows, pickRepresentativeWarmingLevel, scenarioTimeframesFromRows } from './scenarios';
 
 describe('scenarioAvailabilityFromRows', () => {
   test('derives each scenario timeframe from its finite year columns', () => {
@@ -59,5 +59,53 @@ describe('pickRepresentativeWarmingLevel', () => {
 
   test('returns undefined when the indicator has no warming levels', () => {
     expect(pickRepresentativeWarmingLevel([])).toBeUndefined();
+  });
+});
+
+describe('scenarioTimeframesFromRows', () => {
+  test('unions the year span across every region row of a scenario', () => {
+    const rows = [
+      { scenario: 'A', model: 'M', region: 'X', '2020': 1, '2025': 2, '2030': null },
+      { scenario: 'A', model: 'M', region: 'Y', '2020': null, '2025': 2, '2030': 3 },
+    ];
+    expect(scenarioTimeframesFromRows(rows).get('a')).toEqual({ yearStart: 2020, yearStep: 5, yearEnd: 2030 });
+  });
+
+  test('merges the case-only duplicates the two value axes use', () => {
+    // Percentile data lands under `SSP5-3.4-Os`, warming-level under `SSP5-3.4-OS`.
+    const rows = [
+      { scenario: 'SSP5-3.4-Os', model: 'M', region: 'X', '2020': 1, '2025': 2 },
+      { scenario: 'SSP5-3.4-OS', model: 'M', region: 'X', '2030': 3, '2100': 4 },
+    ];
+    const out = scenarioTimeframesFromRows(rows);
+    expect(out.size).toBe(1);
+    expect(out.get('ssp5-3.4-os')).toEqual({ yearStart: 2020, yearStep: 5, yearEnd: 2100 });
+  });
+
+  test('ignores null and non-finite cells', () => {
+    const rows = [{ scenario: 'A', model: 'M', '2020': null, '2025': 'n/a', '2030': 3, '2035': 4 }];
+    expect(scenarioTimeframesFromRows(rows).get('a')).toEqual({ yearStart: 2030, yearStep: 5, yearEnd: 2035 });
+  });
+
+  test('a single-year baseline (Today) has no step', () => {
+    const rows = [{ scenario: 'Today', model: 'M', '2000': 1 }];
+    expect(scenarioTimeframesFromRows(rows).get('today')).toEqual({ yearStart: 2000, yearStep: 0, yearEnd: 2000 });
+  });
+
+  test('takes the smallest gap as the step, so a sparse region cannot inflate it', () => {
+    const rows = [
+      { scenario: 'A', model: 'M', region: 'X', '2020': 1, '2100': 2 },
+      { scenario: 'A', model: 'M', region: 'Y', '2020': 1, '2025': 2, '2100': 3 },
+    ];
+    expect(scenarioTimeframesFromRows(rows).get('a')?.yearStep).toBe(5);
+  });
+
+  test('drops scenarios whose every cell is empty', () => {
+    const rows = [{ scenario: 'A', model: 'M', '2020': null, '2025': null }];
+    expect(scenarioTimeframesFromRows(rows).size).toBe(0);
+  });
+
+  test('tolerates no rows', () => {
+    expect(scenarioTimeframesFromRows([]).size).toBe(0);
   });
 });
