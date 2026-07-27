@@ -24,7 +24,8 @@
     "db:cms:pull": "bash scripts/cms-pull.sh",
     "db:cms:dump": "bash scripts/dump-cms-remote.sh",
     "db:cms:import": "docker compose run --rm cms yarn strapi import --file dumps/strapi-transfer.tar.gz --force",
-    "db:cms:rekey": "docker compose run --rm cms node scripts/rekey-scenario-uids.js"
+    "db:cms:rekey": "docker compose run --rm cms node scripts/rekey-scenario-uids.js",
+    "db:cms:coverage": "docker compose run --rm cms node scripts/seed-case-study-coverage.js"
   },
   "devDependencies": {
     "@melt-ui/pp": "^0.1.4",
