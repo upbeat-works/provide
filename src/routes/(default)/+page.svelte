@@ -6,7 +6,7 @@
   import SectionProject from './landing-page/sections/SectionProject.svelte';
 
   export let data;
-  $: ({ caseStudies } = data);
+  $: ({ caseStudies, projectSection } = data);
 </script>
 
 <SectionHero />
@@ -19,6 +19,6 @@
 <div class="bg-gold-50 border-t border-contour-weakest py-24">
   <div class="mx-auto max-w-7xl px-6">
     <SectionCaseStudies {caseStudies} />
-    <SectionProject />
+    <SectionProject content={projectSection} />
   </div>
 </div>

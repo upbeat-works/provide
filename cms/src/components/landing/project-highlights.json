@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_landing_project_highlights",
+  "info": {
+    "displayName": "ProjectHighlights",
+    "icon": "bulletList",
+    "description": "The second card of the landing \"About the project\" block: an intro line, the titled highlights beneath it, and an optional link."
+  },
+  "options": {},
+  "attributes": {
+    "Text": {
+      "type": "richtext"
+    },
+    "Items": {
+      "type": "component",
+      "repeatable": true,
+      "component": "landing.project-highlight"
+    },
+    "LinkLabel": {
+      "type": "string"
+    },
+    "LinkUrl": {
+      "type": "string"
+    }
+  }
+}

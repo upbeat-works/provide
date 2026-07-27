@@ -21,6 +21,8 @@
  *   4. methodology     — reshape the seeded `methodology` (DataType[]) + glossary
  *                        into the new per-tab single types (models,
  *                        data-processing, key-terms, impact). Idempotent.
+ *   4b. landing        — restore the landing "About the project" block, which is
+ *                        code-authored rather than snapshotted.
  *   5. permissions     — grant Public read on every seeded content type.
  */
 const fs = require('node:fs');
@@ -28,6 +30,7 @@ const path = require('node:path');
 const { loadContentTypes } = require('./lib/schema');
 const { toCreateData, collectMedia } = require('./lib/transform');
 const { buildTabs } = require('./lib/methodology-map');
+const { seedLandingProject } = require('./seed-landing-project');
 
 const SNAP = process.argv[2] || path.join(__dirname, '..', '.snapshot');
 const LOCALES = ['en', 'en-EU'];
@@ -172,6 +175,11 @@ async function main() {
     } else {
       log('methodology: no source entry found — skipping tab reshape');
     }
+
+    // ---- 4b. landing page "About the project" block ----
+    // Also absent from the snapshot (it started life as hardcoded markup), and
+    // step 2 wiped it, so restore the shipped copy. Editors take it from there.
+    await seedLandingProject(strapi, LOCALES, (m) => log(`landing-project ${m}`));
 
     // ---- 5. grant Public read permissions (a fresh Strapi grants none) ----
     // `types` already includes the methodology tab single types (they live under
