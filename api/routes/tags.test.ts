@@ -11,11 +11,32 @@ const TAG_KEYS = [
   'Temporal resolution',
 ] as const;
 
-function metaHandler(rowsByKey: Record<string, Array<[number, string]>>) {
+// Mirrors ixmp4's `/meta/`: `join_run_index` defaults to true, and the joined
+// response carries model/scenario/version instead of `run__id`.
+function metaHandler(
+  rowsByKey: Record<string, Array<[number, string]>>,
+  onRequest?: (body: Record<string, unknown>, url: URL) => void,
+) {
   return http.patch(`${testInstance.url}/meta/`, async ({ request }) => {
     const body = (await request.json()) as { key: string };
-    const rows = (rowsByKey[body.key] ?? []).map(([runId, value]) => [runId, body.key, value]);
-    return HttpResponse.json(tabulateEnvelope(['run__id', 'key', 'value'], rows));
+    const url = new URL(request.url);
+    onRequest?.(body as Record<string, unknown>, url);
+    const joined = url.searchParams.get('join_run_index') !== 'false';
+    const entries = rowsByKey[body.key] ?? [];
+    if (joined) {
+      return HttpResponse.json(
+        tabulateEnvelope(
+          ['key', 'model', 'scenario', 'version', 'value'],
+          entries.map(([runId, value]) => [body.key, `model-${runId}`, `scenario-${runId}`, 1, value]),
+        ),
+      );
+    }
+    return HttpResponse.json(
+      tabulateEnvelope(
+        ['run__id', 'key', 'value'],
+        entries.map(([runId, value]) => [runId, body.key, value]),
+      ),
+    );
   });
 }
 
@@ -72,42 +93,28 @@ describe('GET /api/tags', () => {
     // that also have Sector=Energy. The SDK chains via run_id_in.
     let projectFilterBody: Record<string, unknown> | undefined;
     server.use(
-      http.patch(`${testInstance.url}/meta/`, async ({ request }) => {
-        const body = (await request.json()) as Record<string, unknown>;
-        if (body.key === 'Sector') {
-          // First call: resolve runs matching Sector=Energy
-          return HttpResponse.json(
-            tabulateEnvelope(
-              ['run__id', 'key', 'value'],
-              [
-                [1, 'Sector', 'Energy'],
-                [2, 'Sector', 'Energy'],
-              ],
-            ),
-          );
-        }
-        if (body.key === 'Project') {
-          projectFilterBody = body;
-          return HttpResponse.json(
-            tabulateEnvelope(
-              ['run__id', 'key', 'value'],
-              [
-                [1, 'Project', 'PROVIDE'],
-                [2, 'Project', 'PROVIDE'],
-              ],
-            ),
-          );
-        }
-        return HttpResponse.json(tabulateEnvelope(['run__id', 'key', 'value'], []));
-      }),
+      metaHandler(
+        {
+          Sector: [
+            [1, 'Energy'],
+            [2, 'Energy'],
+          ],
+          Project: [
+            [1, 'PROVIDE'],
+            [2, 'PROVIDE'],
+          ],
+        },
+        (body) => {
+          if (body.key === 'Project') projectFilterBody = body;
+        },
+      ),
     );
 
     const res = await api.request('/api/tags?Sector=Energy', {}, await createTestEnv());
     const json = (await res.json()) as Record<string, Array<{ value: string; count: number }>>;
     expect(json.Project).toEqual([{ value: 'PROVIDE', count: 2 }]);
-    // SDK serializes `runId_in` -> `run_id__in` on the wire (camelCase ->
-    // snake_case for the field name, preserves the Lookup `__in` suffix).
-    expect(projectFilterBody).toMatchObject({ key: 'Project', run_id__in: [1, 2] });
+    // The SDK doubles underscores, so `run_id_in` goes out as `run__id__in`.
+    expect(projectFilterBody).toMatchObject({ key: 'Project', run__id__in: [1, 2] });
   });
 
   test('supports multiple values within a single tag (OR semantics)', async () => {

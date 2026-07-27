@@ -8,6 +8,7 @@
   import { RadioGroup, RadioGroupOption } from '@rgossiaux/svelte-headlessui';
   import { derived } from 'svelte/store';
   import Fuse from 'fuse.js';
+  import { indicatorTags } from '$lib/catalog/indicator-tags.js';
 
   export let label = 'Indicator';
 
@@ -90,10 +91,17 @@
     </svelte:fragment>
     <svelte:fragment slot="content">
       {#if detailsItem}
+        {@const tags = indicatorTags(detailsItem)}
         <div class="p-8">
-          <h3 class="font-bold mb-2 text-lg">{detailsItem.label}</h3>
+          <h3 class="font-bold mb-2 text-lg text-theme-stronger">{detailsItem.label}</h3>
           {#if detailsItem.description}
-            <p class="text-text-weaker text-sm">{@html detailsItem.description}</p>
+            <p class="text-theme-base text-sm">{@html detailsItem.description}</p>
+          {/if}
+          {#if tags.length}
+            <!-- Each tag stays whole; only the gaps between them wrap. -->
+            <p class="mt-4 text-sm font-bold text-theme-stronger">
+              {#each tags as tag, i}<span class="whitespace-nowrap">{tag}</span>{#if i < tags.length - 1}<span class="mx-1.5">·</span>{/if}{/each}
+            </p>
           {/if}
         </div>
       {/if}

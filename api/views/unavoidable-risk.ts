@@ -2,6 +2,7 @@ import { createPlatform } from '../platform';
 import { composeVariable, indicatorsFromVariables, FACET_DEFAULTS, BASELINE_SCENARIO } from '../conventions';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
 import type { Ixmp4Instance } from '../types';
+import { fetchCitationsByModel } from '../facets';
 
 export interface EnsembleParams {
   indicator: string;
@@ -195,12 +196,15 @@ export async function fetchEnsemble(
     return { threshold: l.threshold, rows };
   });
 
+  // Prefer the curated citation strings the run carries; fall back to the bare
+  // model name off the datapoints when a run has no meta.
+  const cited = (await fetchCitationsByModel(platform)).get((model ?? '').toLowerCase());
   return assembleEnsemble({
     indicator: params.indicator,
     thresholdRows,
     scenarios: params.scenarios,
     todayScenario: TODAY_SCENARIO,
-    model,
-    source: instance.slug,
+    model: cited?.model ?? model,
+    source: cited?.source ?? '',
   });
 }

@@ -156,6 +156,8 @@ const defaultHandlers = [
   ...enumerationPaths.map((p) =>
     http.patch(`${testInstance.url}${p}`, ({ request }) => emptyEnumerationResponse(request, p)),
   ),
+  // Variable docs are a GET enumeration, not a PATCH one.
+  http.get(`${testInstance.url}/docs/iamc/variables/`, () => HttpResponse.json(listEnvelope([]))),
 ];
 
 export const server = setupServer(...defaultHandlers);

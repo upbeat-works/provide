@@ -76,6 +76,10 @@ export const INDICATORS = derived(page, ($page) => {
 
 export const DICTIONARY_INDICATORS = derived(INDICATORS, ($indicators) => keyBy($indicators, 'uid'));
 
+// Advanced-filter groups as served on page load (no filters active). Keys are
+// static; their values and counts come from the data.
+export const FACETS_INITIAL = derived(page, ($page) => $page.data?.catalog?.facets ?? []);
+
 export const INDICATOR_PARAMETERS = derived(page, ($page) => $page.data?.catalog?.indicatorParameters ?? []);
 export const DICTIONARY_INDICATOR_PARAMETERS = derived(INDICATOR_PARAMETERS, ($parameters) => keyBy($parameters, 'uid'));
 

@@ -6,6 +6,8 @@ import { createPlatforms } from '../platform';
 import { parseVariable, indicatorsFromVariables } from '../conventions';
 import { distinct, distinctCaseInsensitive, createTtlCache } from '../util';
 import { fetchScenarioTimeframes } from '../views/scenarios';
+import { FACET_KEYS, fetchRunFacetData, resolveFacetSelection, citationsByIndicator, type FacetFilters } from '../facets';
+import { indicatorDescriptions } from '../descriptions';
 
 const catalog = new Hono<Env>();
 
@@ -28,26 +30,70 @@ export function __resetCatalogCache(): void {
 // scenarios — with no curation. This is the expensive slice (it scans every
 // variable name), so it loads only on the data-exploring sections, never on the
 // global layout.
+// The cached payload is the unfiltered universe; the active filters are applied
+// per request in memory, so the cache key stays a constant.
 catalog.get('/', async (c) => {
-  const payload = await catalogCache.get('catalog', () => buildCatalog(c));
-  return c.json(payload);
+  const { runTags, runIndicators, ...base } = await catalogCache.get('catalog', () => buildCatalog(c));
+
+  const filters: FacetFilters = {};
+  for (const { key } of FACET_KEYS) {
+    const value = c.req.query(key);
+    if (value) filters[key] = value.split(',');
+  }
+
+  const { indicators, facets } = resolveFacetSelection(runTags, runIndicators, filters);
+  const isFiltered = Object.keys(filters).length > 0;
+  return c.json({
+    ...base,
+    indicators: isFiltered ? base.indicators.filter((i) => indicators.has(i.uid)) : base.indicators,
+    // Ordered groups so the UI renders straight from the registry and keeps no
+    // key list of its own.
+    facets: FACET_KEYS.map(({ key, label, color }) => ({
+      key,
+      label,
+      color,
+      options: facets[key] ?? [],
+      selected: filters[key] ?? [],
+    })),
+  });
 });
 
 async function buildCatalog(c: Context<Env>) {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
   const platforms = await createPlatforms(username, password);
 
-  const [instanceVariables, instanceRuns] = await Promise.all([
+  const [instanceVariables, instanceRuns, facetData] = await Promise.all([
     Promise.all(
       platforms.map(async ({ instance, platform }) => {
-        const variables = await platform.iamc.variables.list();
-        return variables.map((v) => ({ name: v.name, instance: instance.slug }));
+        // Docs are per-variable and keyed by variable id, so both lists are
+        // needed to attach the prose to a name. Two calls, not one per variable.
+        const [variables, docs] = await Promise.all([
+          platform.iamc.variables.list(),
+          platform.backend.iamc.variables.docs.list(),
+        ]);
+        const proseById = new Map(docs.map((d) => [d.dimension__id, d.description]));
+        return variables.map((v) => ({
+          name: v.name,
+          instance: instance.slug,
+          project: instance.project,
+          description: proseById.get(v.id) ?? '',
+        }));
       }),
     ),
     Promise.all(platforms.map(({ platform }) => platform.runs.list())),
+    fetchRunFacetData(platforms),
   ]);
 
   const variablesFlat = instanceVariables.flat();
+  const descriptions = indicatorDescriptions(
+    variablesFlat.map(({ name, description }) => ({ variable: name, description })),
+  );
+  const citations = citationsByIndicator(facetData.runIndicators, facetData.citations);
+  const projectByIndicator = new Map<string, string | undefined>();
+  for (const { name, project } of variablesFlat) {
+    const { indicator } = parseVariable(name);
+    if (!projectByIndicator.has(indicator)) projectByIndicator.set(indicator, project);
+  }
   // Collapse the raw ixmp4 variable strings into one searchable indicator each,
   // carrying its available facet values — derived purely from the naming
   // convention (no curation). Track the source instance per indicator.
@@ -68,9 +114,15 @@ async function buildCatalog(c: Context<Env>) {
 
   const indicators = indicatorFacets.map((ind) => {
     const extra = enrichmentById.get(ind.uid);
+    const cited = citations.get(ind.uid);
     return {
       ...ind,
       instance: instanceByIndicator.get(ind.uid),
+      project: projectByIndicator.get(ind.uid),
+      // Prose from the ixmp4 variable docs; Strapi may still override it.
+      description: descriptions.get(ind.uid),
+      models: cited?.models ?? [],
+      sources: cited?.sources ?? [],
       parameters: {
         time: ind.temporals,
         reference: ind.periods,
@@ -107,7 +159,13 @@ async function buildCatalog(c: Context<Env>) {
     ...(timeframes.get(name.toLowerCase()) ?? {}),
   }));
 
-  return { indicators, indicatorParameters, scenarios };
+  return {
+    indicators,
+    indicatorParameters,
+    scenarios,
+    runTags: facetData.runTags,
+    runIndicators: facetData.runIndicators,
+  };
 }
 
 export { catalog };

@@ -1,8 +1,9 @@
 import { describe, test, expect } from 'bun:test';
 import { http, HttpResponse } from 'msw';
 import { api } from '../index';
+import { __resetCatalogCache } from './catalog';
 import { schema } from '../db';
-import { createTestEnv, listEnvelope, server, testInstance } from '../test-helpers';
+import { createTestEnv, listEnvelope, server, tabulateEnvelope, testInstance } from '../test-helpers';
 
 function useFixtureHandlers() {
   server.use(
@@ -123,14 +124,16 @@ describe('GET /api/catalog', () => {
     );
     const env = await createTestEnv();
     const first = await api.request('/api/catalog', {}, env);
+    const afterFirst = { variableScans, runScans };
     const second = await api.request('/api/catalog', {}, env);
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     expect(await first.json()).toEqual(await second.json());
-    // The expensive ixmp4 scan runs once and is reused, not once per request.
-    expect(variableScans).toBe(1);
-    expect(runScans).toBe(1);
+    // The second request adds no ixmp4 traffic — it is served from the cache.
+    expect(variableScans).toBe(afterFirst.variableScans);
+    expect(runScans).toBe(afterFirst.runScans);
+    expect(runScans).toBeGreaterThan(0);
   });
 
   test('left-joins sector and legacyUid from the indicators table (additive)', async () => {
@@ -164,5 +167,143 @@ describe('GET /api/catalog', () => {
     const glacier = indicators.find((i) => i.uid === 'Glacier area');
     expect(glacier?.sector ?? null).toBeNull();
     expect(glacier?.legacyUid ?? null).toBeNull();
+  });
+});
+
+describe('GET /api/catalog advanced filters', () => {
+  // Two runs, two indicators, distinguished by their Temporal Resolution tag.
+  function useFacetHandlers() {
+    server.use(
+      http.patch(`${testInstance.url}/runs/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
+            { id: 2, model: { name: 'M' }, scenario: { name: 'ssp119' }, version: 1, is_default: true },
+          ]),
+        ),
+      ),
+      http.patch(`${testInstance.url}/meta/`, () =>
+        HttpResponse.json(
+          tabulateEnvelope(
+            ['run__id', 'key', 'value'],
+            [
+              [1, 'Temporal Resolution', 'Annual'],
+              [2, 'Temporal Resolution', '5 years'],
+              [1, 'Model Information', 'MESMER (Beusch et al., 2020)'],
+            ],
+          ),
+        ),
+      ),
+      http.patch(`${testInstance.url}/iamc/variables/`, async ({ request }) => {
+        const body = (await request.json().catch(() => null)) as { run?: { id__in?: number[] } } | null;
+        const runId = body?.run?.id__in?.[0];
+        const mt = { id: 1, name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile' };
+        const glacier = { id: 2, name: 'Glacier area|2011-2020 (Present Day)|Annual|Area|50th Percentile' };
+        if (runId === 1) return HttpResponse.json(listEnvelope([mt]));
+        if (runId === 2) return HttpResponse.json(listEnvelope([glacier]));
+        return HttpResponse.json(listEnvelope([mt, glacier]));
+      }),
+    );
+  }
+
+  test('exposes discovered facet values with indicator counts', async () => {
+    useFacetHandlers();
+    __resetCatalogCache();
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
+    const { facets } = (await res.json()) as {
+      facets: Array<{ key: string; label: string; color: string; options: Array<{ value: string; count: number }>; selected: string[] }>;
+    };
+    const temporal = facets.find((f) => f.key === 'Temporal Resolution')!;
+    expect(temporal.options).toEqual([
+      { value: '5 years', count: 1 },
+      { value: 'Annual', count: 1 },
+    ]);
+    expect(temporal.label).toBe('TEMPORAL');
+    expect(temporal.selected).toEqual([]);
+    // Citation keys are not facets.
+    expect(facets.map((f) => f.key)).not.toContain('Model Information');
+  });
+
+  test('narrows the indicator list to runs carrying the selected value', async () => {
+    useFacetHandlers();
+    __resetCatalogCache();
+    const res = await api.request(
+      `/api/catalog?${new URLSearchParams({ 'Temporal Resolution': '5 years' })}`,
+      {},
+      await createTestEnv(),
+    );
+    const { indicators } = (await res.json()) as { indicators: Array<{ uid: string }> };
+    expect(indicators.map((i) => i.uid)).toEqual(['Glacier area']);
+  });
+
+  test('an unfiltered request restricts nothing', async () => {
+    useFacetHandlers();
+    __resetCatalogCache();
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
+    const { indicators } = (await res.json()) as { indicators: Array<{ uid: string }> };
+    expect(indicators.map((i) => i.uid).sort()).toEqual(['Glacier area', 'Mean Temperature']);
+  });
+});
+
+describe('GET /api/catalog indicator detail', () => {
+  const PROSE = 'Temperature of the air near the surface.';
+
+  test('serves the description from ixmp4 variable docs, without the unit marker', async () => {
+    server.use(
+      http.patch(`${testInstance.url}/iamc/variables/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 7, name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile' },
+          ]),
+        ),
+      ),
+      http.get(`${testInstance.url}/docs/iamc/variables/`, () =>
+        HttpResponse.json(listEnvelope([{ id: 1, dimension__id: 7, description: `${PROSE} [°C]` }])),
+      ),
+      http.patch(`${testInstance.url}/runs/`, () => HttpResponse.json(listEnvelope([]))),
+    );
+    __resetCatalogCache();
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
+    const { indicators } = (await res.json()) as { indicators: Array<{ uid: string; description?: string }> };
+    expect(indicators.find((i) => i.uid === 'Mean Temperature')?.description).toBe(PROSE);
+  });
+
+  test('attaches models/sources from run meta and the project from the instance', async () => {
+    server.use(
+      http.patch(`${testInstance.url}/runs/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 1, model: { name: 'M' }, scenario: { name: 'curpol' }, version: 1, is_default: true },
+          ]),
+        ),
+      ),
+      http.patch(`${testInstance.url}/meta/`, () =>
+        HttpResponse.json(
+          tabulateEnvelope(
+            ['run__id', 'key', 'value'],
+            [
+              [1, 'Model Information', 'MESMER (Beusch et al., 2020)'],
+              [1, 'References', 'Schwaab et al., in prep.'],
+            ],
+          ),
+        ),
+      ),
+      http.patch(`${testInstance.url}/iamc/variables/`, () =>
+        HttpResponse.json(
+          listEnvelope([
+            { id: 7, name: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile' },
+          ]),
+        ),
+      ),
+    );
+    __resetCatalogCache();
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
+    const { indicators } = (await res.json()) as {
+      indicators: Array<{ uid: string; models: string[]; sources: string[]; project?: string }>;
+    };
+    const mt = indicators.find((i) => i.uid === 'Mean Temperature')!;
+    expect(mt.models).toEqual(['MESMER (Beusch et al., 2020)']);
+    expect(mt.sources).toEqual(['Schwaab et al., in prep.']);
+    expect(mt.project).toBe('PROVIDE');
   });
 });

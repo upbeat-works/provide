@@ -34,11 +34,13 @@ route.get('/', async (c) => {
     let scopedIds: number[] | null = null;
     for (const [k, vs] of otherFilters) {
       const filter: MetaIndicatorFilter = { key: k, valueStr_in: vs };
-      if (scopedIds !== null) filter.runId_in = scopedIds;
+      // `run_id_in`, not `runId_in` — the camelCase form 400s.
+      if (scopedIds !== null) filter.run_id_in = scopedIds;
 
       const allIds: number[] = [];
       for (const { platform } of platforms) {
-        const df = await platform.meta.tabulate(filter);
+        // joinRunIndex defaults to true, which drops `run__id`.
+        const df = await platform.meta.tabulate({ ...filter, joinRunIndex: false });
         allIds.push(...(df.columnValues('run__id') as number[]));
       }
       scopedIds = [...new Set(allIds)];
@@ -52,7 +54,7 @@ route.get('/', async (c) => {
     const scopedIds = await resolveScopedRunIds(tagKey);
     const counts: Record<string, number> = {};
     const filter: MetaIndicatorFilter = { key: tagKey };
-    if (scopedIds !== null) filter.runId_in = scopedIds;
+    if (scopedIds !== null) filter.run_id_in = scopedIds;
 
     for (const { platform } of platforms) {
       const df = await platform.meta.tabulate(filter);

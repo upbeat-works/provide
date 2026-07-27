@@ -3,6 +3,7 @@ import { composeVariable, FACET_DEFAULTS } from '../conventions';
 import { caseInsensitiveLookup } from '../util';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
 import type { Ixmp4Instance } from '../types';
+import { fetchCitationsByModel } from '../facets';
 
 export interface ImpactTimeParams {
   indicator: string;
@@ -207,11 +208,15 @@ export async function fetchImpactTime(
     spatial: params.spatial ?? DEFAULTS.spatial,
   };
 
-  const [indicatorBands, gmtBands] = await Promise.all([
+  const [indicatorBands, gmtBands, citations] = await Promise.all([
     fetchBands(platform, params.geography, base),
     fetchBands(platform, params.geography, GMT_BASE),
+    fetchCitationsByModel(platform),
   ]);
 
+  // Prefer the curated citation strings the run carries; fall back to the bare
+  // model name off the datapoints when a run has no meta.
+  const cited = citations.get((indicatorBands.model ?? '').toLowerCase());
   const response = assembleImpactTime({
     indicator: params.indicator,
     years: indicatorBands.years,
@@ -219,8 +224,8 @@ export async function fetchImpactTime(
     p50: indicatorBands.p50,
     p95: indicatorBands.p95,
     scenarios: params.scenarios,
-    model: indicatorBands.model,
-    source: instance.slug,
+    model: cited?.model ?? indicatorBands.model,
+    source: cited?.source ?? '',
   });
   response.gmt = zipBands(gmtBands.years, gmtBands.p5, gmtBands.p50, gmtBands.p95, params.scenarios);
   // Natural-language unit straight from the ixmp4 data (e.g. "°C", "%").

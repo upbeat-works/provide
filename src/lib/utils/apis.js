@@ -120,12 +120,17 @@ export const loadCatalog = async function (svelteFetch = fetch) {
 
   return {
     indicatorParameters: catalog.indicatorParameters,
+    // Advanced-filter groups: static keys, values discovered from the data.
+    facets: catalog.facets ?? [],
     indicators: catalog.indicators.map((indicator) => ({
       ...indicator,
-      description: get(
-        descriptionIndicators.find((d) => d.attributes.UID === indicator.uid),
-        ['attributes', 'Description'],
-      ),
+      // Strapi wins when it has a row; otherwise keep the prose ixmp4 ships in
+      // the variable docs (most indicators have no Strapi match).
+      description:
+        get(
+          descriptionIndicators.find((d) => d.attributes.UID === indicator.uid),
+          ['attributes', 'Description'],
+        ) ?? indicator.description,
     })),
     scenarios: catalog.scenarios.map((scenario) => {
       // Find the correct scenario in the list coming from Strapi

@@ -16,4 +16,7 @@ export interface Ixmp4Instance {
   name: string;
   url: string;
   managerUrl: string;
+  // The project this instance's data belongs to (PROVIDE, SPARCCLE, …). Not a
+  // run tag — the instance IS the project.
+  project?: string;
 }

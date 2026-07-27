@@ -22,7 +22,8 @@ import { ciKeyBy, ciGet } from '$lib/utils/case-insensitive.js';
 import { extractEndYear, extractStartYear } from '$utils/meta.js';
 
 import { DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
-import { GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, GEOGRAPHY_INDEX, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
+import { FACETS_INITIAL, GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, GEOGRAPHY_INDEX, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
+import { facetQuery, activeFacetGroupCount } from './facet-selection.js';
 import { resolveScenarioSelection, isScenarioCombinationAvailable, parseStoredScenarios, graftScenarioAvailability } from './scenario-selection.js';
 
 // Optional CSS class(es) to override the header background, set per-page
@@ -221,6 +222,50 @@ const API_URL = import.meta.env.VITE_API_URL;
 const byLabel = (a, b) => (a.label ?? '').localeCompare(b.label ?? '');
 
 /**
+ * Active advanced-filter selection: `{ [tagKey]: string[] }`. Empty means no
+ * restriction.
+ */
+export const FACET_FILTERS = writable({});
+
+export const HAS_ACTIVE_FACET_FILTERS = derived(FACET_FILTERS, ($filters) => activeFacetGroupCount($filters) > 0);
+
+/**
+ * Re-resolves `/catalog` whenever the filter selection changes. The server
+ * scopes each group by the *other* active filters, so the option counts
+ * cascade. Falls back to the page-load groups before the first fetch settles.
+ * @type {Readable<{groups: Object[], indicatorUids: Set<string>|null}>}
+ */
+let facetRequestId = 0;
+export const FACET_SELECTION = derived(
+  [FACETS_INITIAL, FACET_FILTERS],
+  ([$initial, $filters], set) => {
+    const query = facetQuery($filters);
+    if (!query || !browser || !API_URL) {
+      set({ groups: $initial, indicatorUids: null });
+      return;
+    }
+    const requestId = ++facetRequestId;
+    fetch(`${API_URL}/catalog/?${query}`)
+      .then((r) => r.json())
+      .then(({ facets, indicators }) => {
+        if (requestId !== facetRequestId) return;
+        set({
+          groups: facets ?? $initial,
+          indicatorUids: new Set((indicators ?? []).map((i) => i.uid)),
+        });
+      })
+      .catch((e) => {
+        if (requestId !== facetRequestId) return;
+        console.warn(`catalog?${query} failed:`, e);
+        set({ groups: $initial, indicatorUids: null });
+      });
+  },
+  { groups: [], indicatorUids: null },
+);
+
+export const FACET_GROUPS = derived(FACET_SELECTION, ($selection) => $selection.groups);
+
+/**
  * Derived store that holds the list of indicators ixmp4 has data for given the
  * currently selected geography. In indicator-first mode (or when no geography
  * is selected) returns every known indicator. Fetches from
@@ -230,10 +275,13 @@ const byLabel = (a, b) => (a.label ?? '').localeCompare(b.label ?? '');
  */
 let availableIndicatorsRequestId = 0;
 export const AVAILABLE_INDICATORS = derived(
-  [INDICATORS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE],
-  ([$indicators, $uid, $mode], set) => {
+  [INDICATORS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE, FACET_SELECTION],
+  ([$indicators, $uid, $mode, $facets], set) => {
+    // The advanced filters narrow the list on top of geography availability.
+    const byFacet = $facets.indicatorUids;
+    const faceted = byFacet ? $indicators.filter((i) => byFacet.has(i.uid)) : $indicators;
     if ($mode === 'indicator' || !$uid || !API_URL) {
-      set([...$indicators].sort(byLabel));
+      set([...faceted].sort(byLabel));
       return;
     }
     if (!browser) {
@@ -246,7 +294,7 @@ export const AVAILABLE_INDICATORS = derived(
       .then(({ indicators }) => {
         if (requestId !== availableIndicatorsRequestId) return;
         const allowed = new Set(indicators.map((i) => i.uid));
-        set([...$indicators].filter((i) => allowed.has(i.uid)).sort(byLabel));
+        set([...faceted].filter((i) => allowed.has(i.uid)).sort(byLabel));
       })
       .catch((e) => {
         if (requestId !== availableIndicatorsRequestId) return;
