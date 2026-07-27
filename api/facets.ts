@@ -1,10 +1,18 @@
 // The advanced-filter facets. Keys are static (we only surface the ones the UI
 // has a group for); their values are discovered from the data.
+//
+// Two sources: `run` keys are ixmp4 run meta; `indicator` keys are per-indicator
+// attributes that are not run meta at all — Sector is curated in the DB and
+// Project is the ixmp4 instance.
 export const FACET_KEYS = [
-  { key: 'Temporal Resolution', label: 'TEMPORAL', color: 'sky' },
-  { key: 'Spatial Resolution', label: 'SPATIAL RESOLUTION', color: 'orange' },
-  { key: 'Data Source', label: 'DATA SOURCE', color: 'gray' },
+  { key: 'Sector', label: 'SECTOR', color: 'grass', source: 'indicator' },
+  { key: 'Project', label: 'PROJECT', color: 'pink', source: 'indicator' },
+  { key: 'Data Source', label: 'DATA SOURCE', color: 'gray', source: 'run' },
+  { key: 'Spatial Resolution', label: 'SPATIAL RESOLUTION', color: 'orange', source: 'run' },
+  { key: 'Temporal Resolution', label: 'TEMPORAL', color: 'sky', source: 'run' },
 ] as const;
+
+const RUN_KEYS = FACET_KEYS.filter((f) => f.source === 'run').map((f) => f.key);
 
 // Per-run display strings, read by the chart footer — never facets.
 export const CITATION_KEYS = { model: 'Model Information', source: 'References' } as const;
@@ -19,6 +27,8 @@ export type RunKey = string;
 export type RunTags = Map<RunKey, Record<string, string>>;
 /** run -> indicator uids carried by that run */
 export type RunIndicators = Map<RunKey, string[]>;
+/** indicator uid -> its non-run facet values (Sector, Project) */
+export type IndicatorAttrs = Map<string, Record<string, string | undefined>>;
 
 export interface FacetOption {
   value: string;
@@ -56,32 +66,54 @@ export function resolveFacetSelection(
   runTags: RunTags,
   runIndicators: RunIndicators,
   filters: FacetFilters,
+  indicatorAttrs: IndicatorAttrs = new Map(),
 ): FacetSelection {
-  const runIds = runsMatching(runTags, filters);
-  const facets: Record<string, FacetOption[]> = {};
+  // The indicators surviving a filter set: run-level keys are matched per run
+  // (so an AND across them means one run carries both), then intersected with
+  // the indicator-level keys. `pin` forces one extra key=value on top.
+  const select = (active: FacetFilters, pin?: { key: string; value: string }): Set<string> => {
+    const runFilters: FacetFilters = {};
+    const indFilters: FacetFilters = {};
+    for (const [key, values] of Object.entries(active)) {
+      if (!values?.length) continue;
+      (RUN_KEYS.includes(key as never) ? runFilters : indFilters)[key] = values;
+    }
+    if (pin) {
+      (RUN_KEYS.includes(pin.key as never) ? runFilters : indFilters)[pin.key] = [pin.value];
+    }
 
-  for (const { key } of FACET_KEYS) {
-    // Every value the data has for this key stays listed, so an option that the
+    const fromRuns = indicatorsOf(runIndicators, runsMatching(runTags, runFilters));
+    const indEntries = Object.entries(indFilters);
+    if (!indEntries.length) return fromRuns;
+    return new Set(
+      [...fromRuns].filter((uid) => {
+        const attrs = indicatorAttrs.get(uid) ?? {};
+        return indEntries.every(([key, values]) => values.includes(attrs[key] as string));
+      }),
+    );
+  };
+
+  const facets: Record<string, FacetOption[]> = {};
+  for (const { key, source } of FACET_KEYS) {
+    // Every value the data has for this key stays listed, so an option the
     // other filters exclude renders muted at 0 rather than disappearing.
     const allValues = new Set<string>();
-    for (const tags of runTags.values()) {
-      if (tags[key] !== undefined) allValues.add(tags[key]);
+    if (source === 'run') {
+      for (const tags of runTags.values()) if (tags[key] !== undefined) allValues.add(tags[key]);
+    } else {
+      for (const attrs of indicatorAttrs.values()) {
+        if (attrs[key] !== undefined) allValues.add(attrs[key] as string);
+      }
     }
 
-    const scoped = runsMatching(runTags, filters, key);
-    const byValue = new Map<string, RunKey[]>();
-    for (const runId of scoped) {
-      const value = runTags.get(runId)?.[key];
-      if (value === undefined) continue;
-      byValue.set(value, [...(byValue.get(value) ?? []), runId]);
-    }
-
+    // The group is scoped by every OTHER active filter, never by its own.
+    const others = Object.fromEntries(Object.entries(filters).filter(([k]) => k !== key));
     facets[key] = [...allValues]
-      .map((value) => ({ value, count: indicatorsOf(runIndicators, byValue.get(value) ?? []).size }))
+      .map((value) => ({ value, count: select(others, { key, value }).size }))
       .sort((a, b) => a.value.localeCompare(b.value));
   }
 
-  return { runIds, indicators: indicatorsOf(runIndicators, runIds), facets };
+  return { runIds: runsMatching(runTags, filters), indicators: select(filters), facets };
 }
 
 export interface RunFacetData {
@@ -191,4 +223,14 @@ export async function fetchCitationsByModel(platform: Platform) {
   return citationsByModel(
     keys.map((key, i) => ({ model: models[i], key, value: String(values[i]) })),
   );
+}
+
+/** `terrestrial-climate` -> `Terrestrial Climate`. Slugs are stored; labels are shown. */
+export function sectorLabel(sector?: string | null): string | undefined {
+  if (!sector) return undefined;
+  return sector
+    .split('-')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }

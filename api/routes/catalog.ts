@@ -6,7 +6,7 @@ import { createPlatforms } from '../platform';
 import { parseVariable, indicatorsFromVariables } from '../conventions';
 import { distinct, distinctCaseInsensitive, createTtlCache } from '../util';
 import { fetchScenarioTimeframes } from '../views/scenarios';
-import { FACET_KEYS, fetchRunFacetData, resolveFacetSelection, citationsByIndicator, type FacetFilters } from '../facets';
+import { FACET_KEYS, fetchRunFacetData, resolveFacetSelection, citationsByIndicator, sectorLabel, type FacetFilters, type IndicatorAttrs } from '../facets';
 import { indicatorDescriptions } from '../descriptions';
 
 const catalog = new Hono<Env>();
@@ -33,7 +33,9 @@ export function __resetCatalogCache(): void {
 // The cached payload is the unfiltered universe; the active filters are applied
 // per request in memory, so the cache key stays a constant.
 catalog.get('/', async (c) => {
-  const { runTags, runIndicators, ...base } = await catalogCache.get('catalog', () => buildCatalog(c));
+  const { runTags, runIndicators, indicatorAttrs, ...base } = await catalogCache.get('catalog', () =>
+    buildCatalog(c),
+  );
 
   const filters: FacetFilters = {};
   for (const { key } of FACET_KEYS) {
@@ -41,7 +43,7 @@ catalog.get('/', async (c) => {
     if (value) filters[key] = value.split(',');
   }
 
-  const { indicators, facets } = resolveFacetSelection(runTags, runIndicators, filters);
+  const { indicators, facets } = resolveFacetSelection(runTags, runIndicators, filters, indicatorAttrs);
   const isFiltered = Object.keys(filters).length > 0;
   return c.json({
     ...base,
@@ -159,12 +161,23 @@ async function buildCatalog(c: Context<Env>) {
     ...(timeframes.get(name.toLowerCase()) ?? {}),
   }));
 
+  // Sector/Project are faceted per indicator, not per run: sector is the curated
+  // DB column, project is the ixmp4 instance. Sector is stored as a slug and
+  // surfaced as its label, which is what the filter chips show and send back.
+  const indicatorAttrs: IndicatorAttrs = new Map(
+    indicators.map((ind) => [
+      ind.uid,
+      { Sector: sectorLabel(ind.sector), Project: ind.project },
+    ]),
+  );
+
   return {
     indicators,
     indicatorParameters,
     scenarios,
     runTags: facetData.runTags,
     runIndicators: facetData.runIndicators,
+    indicatorAttrs,
   };
 }
 

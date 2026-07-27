@@ -92,15 +92,16 @@
     <svelte:fragment slot="content">
       {#if detailsItem}
         {@const tags = indicatorTags(detailsItem)}
-        <div class="p-8">
-          <h3 class="font-bold mb-2 text-lg text-theme-stronger">{detailsItem.label}</h3>
+        <!-- min-w-0 lets this shrink inside the flex parent; without it the
+             widest line sets the panel width and scrolls it sideways. -->
+        <div class="p-8 min-w-0 w-full">
+          <h3 class="font-bold mb-2 text-lg text-theme-stronger break-words">{detailsItem.label}</h3>
           {#if detailsItem.description}
-            <p class="text-theme-base text-sm">{@html detailsItem.description}</p>
+            <p class="text-theme-base text-sm break-words">{@html detailsItem.description}</p>
           {/if}
           {#if tags.length}
-            <!-- Each tag stays whole; only the gaps between them wrap. -->
-            <p class="mt-4 text-sm font-bold text-theme-stronger">
-              {#each tags as tag, i}<span class="whitespace-nowrap">{tag}</span>{#if i < tags.length - 1}<span class="mx-1.5">·</span>{/if}{/each}
+            <p class="mt-4 text-sm font-bold text-theme-stronger break-words">
+              {#each tags as tag, i}{tag}{#if i < tags.length - 1}<span class="mx-1.5">·</span>{/if}{/each}
             </p>
           {/if}
         </div>

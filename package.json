@@ -23,7 +23,8 @@
     "db:studio": "drizzle-kit studio",
     "db:cms:pull": "bash scripts/cms-pull.sh",
     "db:cms:dump": "bash scripts/dump-cms-remote.sh",
-    "db:cms:import": "docker compose run --rm cms yarn strapi import --file dumps/strapi-transfer.tar.gz --force"
+    "db:cms:import": "docker compose run --rm cms yarn strapi import --file dumps/strapi-transfer.tar.gz --force",
+    "db:cms:rekey": "docker compose run --rm cms node scripts/rekey-scenario-uids.js"
   },
   "devDependencies": {
     "@melt-ui/pp": "^0.1.4",
