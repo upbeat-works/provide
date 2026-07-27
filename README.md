@@ -183,6 +183,12 @@ To run this project locally:
    # or run just the frontend on the host:
    bun run dev:web
    ```
+
+   Both services share one Postgres database and create their schema on boot if
+   it is missing — `catalog` for the API ([`server.ts`](server.ts)), `strapi` for
+   the CMS ([`cms/scripts/ensure-schema.js`](cms/scripts/ensure-schema.js), run as
+   a `pre` hook of `yarn develop`/`yarn start`). The database itself still has to
+   exist: `createdb provide`.
 5. Open [http://localhost:5173/](http://localhost:5173/) in your browser.
 
 6. To build the project for production:

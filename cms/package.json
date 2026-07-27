@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "description": "A Strapi application",
   "scripts": {
+    "ensure-schema": "node scripts/ensure-schema.js",
+    "predevelop": "yarn ensure-schema",
     "develop": "strapi develop",
+    "prestart": "yarn ensure-schema",
     "start": "strapi start",
     "build": "strapi build",
     "strapi": "strapi"
