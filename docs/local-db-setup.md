@@ -93,24 +93,43 @@ two scripts are escape hatches you won't need on a fresh setup:
   (e.g. built by a `SKIP_IMPORT=1` pull, or handed to you) without re-fetching.
   Follow it with `docker compose restart cms`.
 
-## 5. Re-key scenario UIDs to the catalog ids
+## 5. Post-pull fixups (align the CMS with the catalog)
 
-CMS scenarios still carry legacy slugs (`curpol`); the catalog serves ixmp4 names
-(`2020 Climate Policies`). Without this, CMS descriptions don't join
-`GET /api/catalog`. The script boots Strapi programmatically, so **stop the cms
-container first**:
+Two scripts, both of which boot Strapi programmatically — so **stop the cms
+container**, run them, and start it again. Both are idempotent, and order between
+them doesn't matter.
 
 ```bash
 docker compose stop cms
-npm run db:cms:rekey
+npm run db:cms:rekey       # scenario UIDs -> ixmp4 names
+npm run db:cms:coverage    # case-study Slug, then Covers / IsDefault
 docker compose start cms
 ```
 
-Idempotent — re-running changes nothing. Scenarios without an ixmp4 counterpart
-keep their legacy uid and are reported as skipped.
+⚠️ **This tail must be re-run after every `npm run db:cms:pull`.** The pull ends
+in `import --force`, which replaces the `strapi` schema and reverts both. The
+content of record is the remote Strapi, not your local edits.
 
-⚠️ A local-only run is reverted by the next `npm run db:cms:pull`. The content of
-record is the **remote** Strapi; re-run the pull, then re-run this script.
+**`db:cms:rekey`** — CMS scenarios carry legacy slugs (`curpol`); the catalog
+serves ixmp4 names (`2020 Climate Policies`). Without it, CMS descriptions don't
+join `GET /api/catalog`. Scenarios with no ixmp4 counterpart keep their legacy
+uid and are reported as skipped.
+
+**`db:cms:coverage`** — two stages in one script:
+
+1. *Slugs.* The remote CMS still has the pre-rename `CityUid` field, and
+   `strapi export` serialises through the *local* content-type (where it is now
+   `Slug`), so the value is dropped in transit and imported rows arrive with
+   `slug = NULL`. Stage 1 restores it from `cms/dumps/data-remote.db` — the raw
+   snapshot the pull leaves behind — matching on Title + locale. It no-ops once
+   the remote runs the renamed schema, at which point it can be deleted.
+2. *Coverage.* Seeds each case study's `Covers`/`IsDefault` from the legacy
+   `/meta` cities, which drive `findCaseStudy`.
+
+They are one script because stage 2 matches entries **by Slug** — run alone
+against a fresh pull it logs "no case study with that slug" and skips all of
+them. Note that `DRY_RUN=1` reports that same skip, since stage 1 writes nothing
+to match against.
 
 ## 6. Verify
 
@@ -118,7 +137,11 @@ record is the **remote** Strapi; re-run the pull, then re-run this script.
 npm test                                    # bun test api/
 psql -d "$DB_NAME" -At -c "select count(*) from catalog.indicators"
 psql -d "$DB_NAME" -At -c "select \"UID\" from strapi.scenarios limit 5"
+psql -d "$DB_NAME" -At -c "select id, slug, is_default from strapi.case_study_dynamics"
 ```
+
+No NULL slugs in that last query — if any are NULL, step 5 hasn't run since the
+last pull.
 
 Then open http://localhost:8080 and check an indicator page renders its CMS
 description.
