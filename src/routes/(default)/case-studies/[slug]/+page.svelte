@@ -60,7 +60,7 @@
     />
   </svelte:fragment>
 
-  <!-- Content slot (back link + date + authors + outro) -->
+  <!-- Content header slot (back link + publication date) -->
   <svelte:fragment slot="content-header">
     <div class="flex items-center justify-between pt-2 text-sm">
       <a href="/{PATH_ADAPTATION}" class="flex items-center gap-1.5 text-theme-base hover:text-theme-700 transition-colors font-medium">
@@ -72,6 +72,19 @@
       {/if}
     </div>
   </svelte:fragment>
+
+  <!-- Contributors block (rendered after the main content) -->
+  {#if caseStudy.authors}
+    <section class="html-content mt-16 pt-10 flex items-baseline gap-4 border-t border-contour-weakest">
+      <h4>Contributors</h4>
+      <p class="text-text-weaker">{caseStudy.authors}</p>
+    </section>
+  {/if}
+
+  <!-- Shared outro / call-to-action (case-study-outro single-type) -->
+  {#if data.caseStudyOutro?.title}
+    <Outro {...data.caseStudyOutro} />
+  {/if}
 </ContentPageLayout>
 
 {#if relatedCaseStudies.length}
