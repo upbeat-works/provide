@@ -52,7 +52,7 @@ services:
       context: ./cms
       dockerfile: ../docker/Dockerfile.cms
     env_file:
-      - cms/.env # app secrets (APP_KEYS, *_SECRET, R2_*)
+      - cms/.env # app secrets (APP_KEYS, *_SECRET, S3_*)
     environment:
       DATABASE_CLIENT: postgres
       DATABASE_HOST: host.docker.internal

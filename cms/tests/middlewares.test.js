@@ -25,13 +25,18 @@ test('always allows Cloudinary for existing assets', () => {
   expect(d['media-src']).toContain('res.cloudinary.com');
 });
 
-test('allows the R2 public host when R2_PUBLIC_URL is set', () => {
-  const d = directivesFor(envWith({ R2_PUBLIC_URL: 'https://cdn.example.com/' }));
+test('allows the media host when S3_PUBLIC_URL is set', () => {
+  const d = directivesFor(envWith({ S3_PUBLIC_URL: 'https://cdn.example.com/media' }));
   expect(d['img-src']).toContain('cdn.example.com');
   expect(d['media-src']).toContain('cdn.example.com');
 });
 
-test('adds no R2 host when R2_PUBLIC_URL is unset', () => {
+test('adds no media host when S3_PUBLIC_URL is unset', () => {
   const d = directivesFor(envWith({}));
+  expect(d['img-src']).not.toContain('cdn.example.com');
+});
+
+test('ignores the legacy R2_PUBLIC_URL name', () => {
+  const d = directivesFor(envWith({ R2_PUBLIC_URL: 'https://cdn.example.com' }));
   expect(d['img-src']).not.toContain('cdn.example.com');
 });
