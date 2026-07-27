@@ -68,6 +68,13 @@ services:
       - 'host.docker.internal:host-gateway'
     volumes:
       - ./cms/dumps:/app/dumps # so `db:cms:import` can read the transfer archive
+      # Content-types/config/migrations are read at runtime. Without these the
+      # image's baked-in copy wins, and a schema edit on the host gets silently
+      # reverted by this container's next boot (it syncs the DB to what it has).
+      - ./cms/src:/app/src
+      - ./cms/config:/app/config
+      - ./cms/database:/app/database
+      - ./cms/scripts:/app/scripts
     ports:
       - '1337:1337' # direct admin access (canonical admin is cms.localhost:8080/admin)
 

@@ -1,26 +1,22 @@
 <script>
   import Study from '$lib/components/icons/Study.svelte';
-  import { GEOGRAPHY_TYPE_CITY, PATH_ADAPTATION } from '$config';
-  import { GEOGRAPHIES } from '$stores/meta.js';
+  import { PATH_ADAPTATION } from '$config';
   import CategoryBadge from '../../../../landing-page/components/CaseStudiesCarousel/CategoryBadge.svelte';
   import { getStrapiImageAtSize } from '$lib/utils/utils';
 
   export let geography;
   export let caseStudy = null;
 
-  $: isCity = geography.geographyType === GEOGRAPHY_TYPE_CITY;
-  $: caseStudyGeography = isCity && $GEOGRAPHIES[GEOGRAPHY_TYPE_CITY].find((d) => d.uid === geography.adaptationCaseStudy);
+  // The case study, when there is one, is about THIS geography — so the label
+  // comes from here, not a geo-tree lookup.
+  $: hasCaseStudy = Boolean(caseStudy);
 </script>
 
-<div class="rounded overflow-hidden {caseStudyGeography ? 'grid grid-cols-[2fr,3fr]' : ''}">
-  {#if caseStudyGeography}
+<div class="rounded overflow-hidden {hasCaseStudy ? 'grid grid-cols-[2fr,3fr]' : ''}">
+  {#if hasCaseStudy}
     <div class="relative overflow-hidden bg-gray-200 min-h-48">
       {#if caseStudy?.image}
-        <img
-          src={getStrapiImageAtSize(caseStudy.image)}
-          alt={caseStudy.image.alternativeText ?? caseStudyGeography.label}
-          class="w-full h-full object-cover"
-        />
+        <img src={getStrapiImageAtSize(caseStudy.image)} alt={caseStudy.image.alternativeText ?? geography.label} class="w-full h-full object-cover" />
       {/if}
       <CategoryBadge category={caseStudy?.category ?? 'CASE STUDY'} />
     </div>
@@ -36,14 +32,14 @@
         </a>
       </div>
     </div>
-    {#if caseStudyGeography}
+    {#if hasCaseStudy}
       <div class="px-5 py-6 lg:px-7 lg:py-8 flex flex-col gap-2">
-        <h4 class="text-lg font-bold">{caseStudyGeography.label}</h4>
+        <h4 class="text-lg font-bold">{caseStudy.title}</h4>
         {#if caseStudy?.abstract}
           <p class="text-text-weaker text-sm">{caseStudy.abstract}</p>
         {/if}
-        <a class="text-theme-base font-bold mt-2" href="/{PATH_ADAPTATION}/{caseStudyGeography.uid}">
-          See {caseStudyGeography.label} case study <span class="font-normal text-sm">→</span>
+        <a class="text-theme-base font-bold mt-2" href="/{PATH_ADAPTATION}/{caseStudy.slug}">
+          Read the case study <span class="font-normal text-sm">→</span>
         </a>
       </div>
     {/if}

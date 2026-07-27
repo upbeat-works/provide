@@ -13,10 +13,8 @@ export const load = async ({ fetch, parent }) => {
   return {
     caseStudies: caseStudies.map((study) => {
       const attrs = study.attributes;
-      // CityUid is the lowercase slug; it matches a city geography's `geoId`, not
-      // its `uid` (the ixmp4 id). Keep uid=slug so card links resolve.
-      const cityGeo = cities.find((c) => c.geoId === attrs.CityUid);
-      const city = { uid: attrs.CityUid, label: cityGeo?.label ?? attrs.CityUid };
+      const cityGeo = cities.find((c) => c.geoId === attrs.Slug);
+      const city = { uid: attrs.Slug, label: cityGeo?.label ?? attrs.Slug };
       const topics = (attrs.Topics?.data ?? []).map((d) => ({ id: d.id, ...d.attributes }));
       return {
         city,

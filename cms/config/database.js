@@ -46,5 +46,8 @@ module.exports = ({ env }) => {
       ...connections[client],
       acquireConnectionTimeout: env.int('DATABASE_CONNECTION_TIMEOUT', 60000),
     },
+    // Run database/migrations on boot. They run BEFORE the schema sync, which is
+    // what makes a column rename survive (sync would otherwise drop + recreate).
+    settings: { runMigrations: true },
   };
 };

@@ -1,8 +1,8 @@
 // Isolated selection + catalog state for the avoid page. Everything is in the
 // LEGACY id space (city uid == geoId slug, sector-prefixed indicator uid) — the
 // avoid page never sees a new/ixmp4 uid. Legacy /meta cities already carry
-// `group` (parent country) and `adaptationCaseStudy`, and their uid is the geoId
-// the map keys on, so no new-geo tree is needed. Pure logic lives in
+// `group` (parent country), and their uid is the geoId the map and the
+// case-study cross-link key on, so no new-geo tree is needed. Pure logic lives in
 // `$lib/catalog/avoid-selection.js`; this module wires it to page data + storage.
 import { derived, writable, get as getStore } from 'svelte/store';
 import { page } from '$app/stores';

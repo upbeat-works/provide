@@ -29,9 +29,9 @@ export function buildAvoidMeta(legacyMeta = {}, descriptions = {}) {
     }));
 
   return {
-    // Legacy cities already carry `group` (parent country) and
-    // `adaptationCaseStudy` — everything the grouped list + case-study cross-link
-    // need, so no new-geo tree is required.
+    // Legacy cities already carry `group` (parent country), and their uid is the
+    // geoId the case-study cross-link joins on — everything the grouped list
+    // needs, so no new-geo tree is required.
     cities: legacyMeta.cities ?? [],
     indicators,
     indicatorParameters: legacyMeta.indicatorParameters ?? [],

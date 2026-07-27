@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_case_study_covered_geographies",
+  "info": {
+    "displayName": "Covered Geography",
+    "icon": "earth"
+  },
+  "options": {},
+  "attributes": {
+    "GeographyId": {
+      "type": "string"
+    }
+  }
+}

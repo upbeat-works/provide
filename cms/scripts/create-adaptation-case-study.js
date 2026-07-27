@@ -6,7 +6,7 @@
  * for the field mapping). Source content is the committed snapshot
  * lib/adaptation-source.json (downloaded from https://provide-cms.herokuapp.com).
  *
- * Idempotent — matches an existing entry by CityUid + locale and updates it in
+ * Idempotent — matches an existing entry by Slug + locale and updates it in
  * place, so it is safe to re-run.
  *
  * Boots Strapi programmatically, so run with the dev server stopped:
@@ -72,16 +72,16 @@ async function main() {
 
       const existing = await strapi.entityService.findMany(UID, {
         locale,
-        filters: { CityUid: base.CityUid },
+        filters: { Slug: base.Slug },
         limit: 1,
       });
 
       if (existing?.[0]) {
         await strapi.entityService.update(UID, existing[0].id, { data });
-        log(`${locale}: updated "${base.Title}" (${base.CityUid}) id=${existing[0].id}`);
+        log(`${locale}: updated "${base.Title}" (${base.Slug}) id=${existing[0].id}`);
       } else {
         const rec = await strapi.entityService.create(UID, { data });
-        log(`${locale}: created "${base.Title}" (${base.CityUid}) id=${rec.id}`);
+        log(`${locale}: created "${base.Title}" (${base.Slug}) id=${rec.id}`);
       }
     }
 

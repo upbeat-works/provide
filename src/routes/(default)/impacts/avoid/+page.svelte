@@ -18,6 +18,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import LinkSection from '../explore/components/ImpactGeo/LinkSection.svelte';
+  import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import AvoidParameterSelection from './components/Selection/AvoidParameterSelection.svelte';
   import AvoidParamFilters from './components/Selection/AvoidParamFilters.svelte';
   import { page } from '$app/stores';
@@ -45,11 +46,7 @@
 
   $: isValidSelection = !$AVOID_IS_EMPTY && $AVOID_IS_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
 
-  // Legacy cities carry `adaptationCaseStudy` (a legacy city slug) directly, and
-  // case studies key on CityUid (the same slug) — no geo-tree lookup needed.
-  $: caseStudy = $AVOID_GEOGRAPHY?.adaptationCaseStudy
-    ? (data.caseStudies?.find((d) => d.cityUid === $AVOID_GEOGRAPHY.adaptationCaseStudy) ?? null)
-    : null;
+  $: caseStudy = findCaseStudy(data.caseStudies, $AVOID_GEOGRAPHY);
 
   let THRESHOLD_LEVELS_DATA = writable({});
 
@@ -81,18 +78,26 @@
     spy?.destroy();
     spy = createScrollSpy(contentEl, {
       getItems: () => sections.map((s) => (s.slug && !s.disabled ? document.getElementById(s.slug) : null)),
-      onActive: (i) => { activeIndex = i; },
+      onActive: (i) => {
+        activeIndex = i;
+      },
     });
   }
 
-  function handleNavClick(i) { spy?.click(i); }
+  function handleNavClick(i) {
+    spy?.click(i);
+  }
 
   onDestroy(() => spy?.destroy());
 </script>
 
 <PageLayout>
   <svelte:fragment slot="hero">
-    <PageHero className="bg-[#14364D]" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid.">
+    <PageHero
+      className="bg-[#14364D]"
+      title="Avoiding future impacts"
+      description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid."
+    >
       <img slot="label" src="/img/provide-logo-white.png" alt="provide" class="h-6" />
     </PageHero>
     <hr class="border-t border-contour-weakest" />
@@ -122,16 +127,16 @@
 
   <svelte:fragment slot="content">
     <div bind:this={contentEl}>
-    {#each sections as section, i}
-      {#if !section.disabled}
-        <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest last:border-none">
-          <svelte:component this={section.component} {...section.props} />
-        </section>
+      {#each sections as section, i}
+        {#if !section.disabled}
+          <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest last:border-none">
+            <svelte:component this={section.component} {...section.props} />
+          </section>
+        {/if}
+      {/each}
+      {#if !$IS_STATIC && $AVOID_GEOGRAPHY}
+        <LinkSection geography={$AVOID_GEOGRAPHY} {caseStudy} />
       {/if}
-    {/each}
-    {#if !$IS_STATIC && $AVOID_GEOGRAPHY}
-      <LinkSection geography={$AVOID_GEOGRAPHY} {caseStudy} />
-    {/if}
     </div>
   </svelte:fragment>
 </PageLayout>

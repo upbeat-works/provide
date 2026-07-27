@@ -81,7 +81,7 @@ test('buildAdaptationCaseStudy accepts either the full JSON or the attributes ob
 
 test('buildAdaptationCaseStudy sets the slug, title and abstract', () => {
   const cs = buildAdaptationCaseStudy(source);
-  assert.strictEqual(cs.CityUid, 'adaptation');
+  assert.strictEqual(cs.Slug, 'adaptation');
   assert.strictEqual(cs.Title, 'Climate risk dashboard for adaptation support');
   assert.strictEqual(cs.Abstract, source.data.attributes.Description);
 });
@@ -144,6 +144,6 @@ test('buildAdaptationCaseStudy publications section lists all seven publications
 
 test('buildAdaptationCaseStudy accepts an override slug/title', () => {
   const cs = buildAdaptationCaseStudy(source, { slug: 'adapt', title: 'X' });
-  assert.strictEqual(cs.CityUid, 'adapt');
+  assert.strictEqual(cs.Slug, 'adapt');
   assert.strictEqual(cs.Title, 'X');
 });

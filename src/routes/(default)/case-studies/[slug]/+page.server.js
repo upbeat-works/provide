@@ -36,18 +36,15 @@ export const load = async ({ fetch, parent, params }) => {
 
   const caseStudyOutro = (await loadFromStrapi('case-study-outro', fetch))?.attributes;
 
-  const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.CityUid === params.slug)?.attributes;
+  const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.Slug === params.slug)?.attributes;
   if (!caseStudyRaw) error(404, { message: 'No case study available for this slug' });
 
-  // Strapi CityUid is the lowercase slug (e.g. "lisbon"), which matches a city
-  // geography's `geoId`, not its `uid` (the ixmp4 id, e.g. "Lisbon"). Not every
-  // case study is about a city (e.g. the adaptation overview), so fall back to a
-  // synthetic entry — exposing uid=slug so /adaptation/<slug> links resolve back
-  // here — instead of 404ing.
-  const cityGeo = meta.cities.find((c) => c.geoId === caseStudyRaw.CityUid);
+  // Not every case study is about a city (the adaptation overview isn't), so fall
+  // back to a synthetic entry instead of 404ing.
+  const cityGeo = meta.cities.find((c) => c.geoId === caseStudyRaw.Slug);
   const city = cityGeo
-    ? { ...cityGeo, uid: caseStudyRaw.CityUid }
-    : { uid: caseStudyRaw.CityUid, label: caseStudyRaw.Title ?? caseStudyRaw.CityUid };
+    ? { ...cityGeo, uid: caseStudyRaw.Slug }
+    : { uid: caseStudyRaw.Slug, label: caseStudyRaw.Title ?? caseStudyRaw.Slug };
 
   const loadAvoidingImpactsData = async ({ Indicators = [], StudyLocations = [] }) => {
     if (!Indicators.length || !StudyLocations.length) return [];
@@ -58,7 +55,7 @@ export const load = async ({ fetch, parent, params }) => {
       if (!indicator) error(404, { message: `Indicator ${indicatorUid} not found in metadata` });
 
       const query = qs.stringify({
-        [URL_PATH_GEOGRAPHY]: caseStudyRaw.CityUid,
+        [URL_PATH_GEOGRAPHY]: caseStudyRaw.Slug,
         [URL_PATH_INDICATOR]: indicator.uid,
       });
 
@@ -74,7 +71,7 @@ export const load = async ({ fetch, parent, params }) => {
       impactSteps.forEach((impactLevel) => {
         meta.likelihoods.forEach((likelihood) => {
           const query = qs.stringify({
-            [URL_PATH_GEOGRAPHY]: caseStudyRaw.CityUid,
+            [URL_PATH_GEOGRAPHY]: caseStudyRaw.Slug,
             [URL_PATH_INDICATOR]: indicator.uid,
             [URL_PATH_LEVEL_OF_IMPACT]: impactLevel,
             [URL_PATH_CERTAINTY_LEVEL]: likelihood.uid,
@@ -199,9 +196,7 @@ export const load = async ({ fetch, parent, params }) => {
     return {
       id: study.id,
       title: attrs.Title,
-      // CityUid is the lowercase slug — it matches a city's `geoId`, not its
-      // `uid` (the ixmp4 id). Fall back to a synthetic entry for non-city studies.
-      city: meta.cities.find((c) => c.geoId === attrs.CityUid) ?? { uid: attrs.CityUid, label: attrs.Title ?? attrs.CityUid },
+      city: meta.cities.find((c) => c.geoId === attrs.Slug) ?? { uid: attrs.Slug, label: attrs.Title ?? attrs.Slug },
       abstract: attrs.Abstract,
       category: topics[0]?.Title,
       image: attrs.CoverImage?.data?.attributes ?? null,

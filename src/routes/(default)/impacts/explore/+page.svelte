@@ -18,6 +18,7 @@
   import { page } from '$app/stores';
   import { createScrollSpy } from '$lib/utils/scrollSpy';
   import { toLegacyGeoId, toLegacyIndicatorUid, resolveGeo, resolveIndicator } from '$lib/catalog/translate.js';
+  import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
@@ -59,12 +60,7 @@
     }
   });
 
-  $: caseStudyGeography = $CURRENT_GEOGRAPHY?.adaptationCaseStudy
-    ? $GEOGRAPHIES[GEOGRAPHY_TYPE_CITY]?.find((d) => d.uid === $CURRENT_GEOGRAPHY.adaptationCaseStudy) ?? null
-    : null;
-  $: caseStudy = caseStudyGeography
-    ? (data.caseStudies?.find((d) => d.cityUid === caseStudyGeography.uid) ?? null)
-    : null;
+  $: caseStudy = findCaseStudy(data.caseStudies, $CURRENT_GEOGRAPHY);
 
   $: sections = [
     {
@@ -102,18 +98,26 @@
     spy?.destroy();
     spy = createScrollSpy(contentEl, {
       getItems: () => sections.map((s) => (s.slug && !s.disabled ? document.getElementById(s.slug) : null)),
-      onActive: (i) => { activeIndex = i; },
+      onActive: (i) => {
+        activeIndex = i;
+      },
     });
   }
 
-  function handleNavClick(i) { spy?.click(i); }
+  function handleNavClick(i) {
+    spy?.click(i);
+  }
 
   onDestroy(() => spy?.destroy());
 </script>
 
 <PageLayout>
   <svelte:fragment slot="hero">
-    <PageHero label="EXPLORER" title="Future impacts" description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided." />
+    <PageHero
+      label="EXPLORER"
+      title="Future impacts"
+      description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided."
+    />
     <div class="bg-slate-50 pt-8">
       <div class="mx-auto max-w-7xl px-6">
         <ModeSelectionTabs />
@@ -148,27 +152,27 @@
 
   <svelte:fragment slot="content">
     <div bind:this={contentEl}>
-    {#each sections as section, i}
-      {#if !section.disabled}
-        <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-contour-weakest border-b last:border-none">
-          <svelte:component this={section.component} {...section.props} />
-        </section>
-        {#if section.slug === 'impact-geo' && !$IS_STATIC && $CURRENT_GEOGRAPHY}
-          <div class="mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest">
-            <LinkSection geography={$CURRENT_GEOGRAPHY} {caseStudy} />
-          </div>
+      {#each sections as section, i}
+        {#if !section.disabled}
+          <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-contour-weakest border-b last:border-none">
+            <svelte:component this={section.component} {...section.props} />
+          </section>
+          {#if section.slug === 'impact-geo' && !$IS_STATIC && $CURRENT_GEOGRAPHY}
+            <div class="mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest">
+              <LinkSection geography={$CURRENT_GEOGRAPHY} {caseStudy} />
+            </div>
+          {/if}
         {/if}
+      {/each}
+      {#if avoidAvailable}
+        <div class="flex justify-center">
+          <Button href={avoidHref} variant="secondary" class="!px-8 !py-4 !text-base !gap-3">
+            <VisData class="h-8 w-8 shrink-0" color="fill-current" />
+            Visualize this data on avoiding future impacts
+            <LinkArrow />
+          </Button>
+        </div>
       {/if}
-    {/each}
-    {#if avoidAvailable}
-      <div class="flex justify-center">
-        <Button href={avoidHref} variant="secondary" class="!px-8 !py-4 !text-base !gap-3">
-          <VisData class="h-8 w-8 shrink-0" color="fill-current" />
-          Visualize this data on avoiding future impacts
-          <LinkArrow />
-        </Button>
-      </div>
-    {/if}
     </div>
   </svelte:fragment>
 </PageLayout>

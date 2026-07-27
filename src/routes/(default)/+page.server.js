@@ -10,12 +10,12 @@ export const load = async ({ fetch }) => {
     geographies,
     catalog,
     caseStudies: caseStudies.map((study) => {
-      // CityUid is the lowercase slug; it matches a city geography's `geoId`, not
-      // its `uid` (the ixmp4 id). Keep uid=slug so /adaptation/<slug> links resolve.
-      const cityUid = study.attributes.CityUid;
-      const cityGeo = (geographies.cities ?? []).find((c) => c.geoId === cityUid);
+      // A case study's slug is its own id, not a geography's — but for the
+      // city-subject ones it doubles as a geoId, which is how the card gets a label.
+      const slug = study.attributes.Slug;
+      const cityGeo = (geographies.cities ?? []).find((c) => c.geoId === slug);
       return {
-        city: { uid: cityUid, label: cityGeo?.label ?? cityUid },
+        city: { uid: slug, label: cityGeo?.label ?? slug },
         abstract: study.attributes.Abstract,
         category: study.attributes.Topics?.data?.[0]?.attributes?.Title,
         image: study.attributes.CoverImage?.data?.attributes ?? null,
