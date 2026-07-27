@@ -1,0 +1,48 @@
+{
+  "kind": "singleType",
+  "collectionName": "landing_projects",
+  "info": {
+    "singularName": "landing-project",
+    "pluralName": "landing-projects",
+    "displayName": "Landing: About the project",
+    "description": "The \"Learn about the Climate Risk Dashboard project\" block on the landing page: a heading and its two cards."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "Title": {
+      "type": "text",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "Intro": {
+      "type": "component",
+      "repeatable": false,
+      "component": "landing.project-intro",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "Highlights": {
+      "type": "component",
+      "repeatable": false,
+      "component": "landing.project-highlights",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    }
+  }
+}

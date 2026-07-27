@@ -1,0 +1,20 @@
+{
+  "collectionName": "components_landing_project_intros",
+  "info": {
+    "displayName": "ProjectIntro",
+    "icon": "align-center",
+    "description": "The first card of the landing \"About the project\" block: a paragraph about the projects behind the platform, plus an optional link."
+  },
+  "options": {},
+  "attributes": {
+    "Text": {
+      "type": "richtext"
+    },
+    "LinkLabel": {
+      "type": "string"
+    },
+    "LinkUrl": {
+      "type": "string"
+    }
+  }
+}

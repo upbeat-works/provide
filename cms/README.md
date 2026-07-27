@@ -58,6 +58,29 @@ fly ssh console -a provide-cms -C \
   "/bin/sh -c 'cd /app && node scripts/fetch-snapshot.js && node scripts/seed.js'"
 ```
 
+### Content that started life in code
+
+The landing page's "Learn about the Climate Risk Dashboard project" block is the
+`landing-project` single type (a heading plus its two fixed cards, `Intro` and
+`Highlights`). It is not in any snapshot — it was hardcoded markup before it was
+content — so a database that predates it has no entry and the block simply
+doesn't render. Restore the shipped copy, and grant Public read, with:
+
+```bash
+node scripts/seed-landing-project.js          # skips locales that already have content
+node scripts/seed-landing-project.js --force  # reset back to the shipped copy
+```
+
+Run it with the dev server stopped (it boots Strapi programmatically). On the
+deployed instance, after a deploy has shipped the schema:
+
+```bash
+fly ssh console -a provide-cms -C \
+  "/bin/sh -c 'cd /app && node scripts/seed-landing-project.js'"
+```
+
+`seed.js` already runs it as one of its steps.
+
 ## Scripts
 
 - `npm run develop` — Strapi with autoReload.

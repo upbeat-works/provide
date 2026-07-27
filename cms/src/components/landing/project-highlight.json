@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_landing_project_highlight_items",
+  "info": {
+    "displayName": "ProjectHighlight",
+    "icon": "bars",
+    "description": "One titled highlight in the second card."
+  },
+  "options": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "text"
+    }
+  }
+}

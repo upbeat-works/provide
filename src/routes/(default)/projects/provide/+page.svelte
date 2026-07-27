@@ -7,7 +7,7 @@
   import { PATH_IMPACT, PATH_AVOID } from '$config';
 
   export let data;
-  $: ({ caseStudies } = data);
+  $: ({ caseStudies, projectSection } = data);
 
   const avoidCard = {
     path: `/${PATH_IMPACT}/${PATH_AVOID}`,
@@ -34,6 +34,6 @@
 <div class="bg-gold-50 border-t border-contour-weakest py-24">
   <div class="mx-auto max-w-7xl px-6">
     <SectionCaseStudies {caseStudies} />
-    <SectionProject />
+    <SectionProject content={projectSection} />
   </div>
 </div>
