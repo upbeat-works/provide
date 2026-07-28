@@ -1,6 +1,7 @@
 import { createPlatform } from '../platform';
 import { composeVariable, indicatorsFromVariables, FACET_DEFAULTS, BASELINE_SCENARIO } from '../conventions';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
+import { toCsv, type CsvCell } from '../csv';
 import type { Ixmp4Instance } from '../types';
 import { fetchCitationsByModel } from '../facets';
 
@@ -140,8 +141,37 @@ export function assembleEnsemble(input: AssembleEnsembleInput): EnsembleResponse
     description: '',
     model: input.model ?? '',
     source: input.source ?? '',
-    formats: [],
+    // The download menu offers whatever this lists; the route serves it from the
+    // same response via `?format=csv` (see ensembleToCsv).
+    formats: ['csv'],
   };
+}
+
+export interface CsvContext {
+  indicator: string;
+  geography: string;
+}
+
+/**
+ * The ensemble response as one row per scenario-threshold-year. The `today`
+ * baseline has no year (it is a present-day value per threshold), so it emits
+ * under the `Today` scenario with an empty year cell. Pure.
+ */
+export function ensembleToCsv(response: EnsembleResponse, context: CsvContext): string {
+  const headers = ['indicator', 'region', 'scenario', 'threshold', 'year', 'probability'];
+  const rows: CsvCell[][] = [];
+  const { indicator, geography } = context;
+  response.thresholds.forEach((threshold, t) => {
+    rows.push([indicator, geography, TODAY_SCENARIO, threshold, undefined, response.today[t]]);
+  });
+  for (const [scenario, byThreshold] of Object.entries(response.data)) {
+    byThreshold.forEach((series, t) => {
+      series.forEach((probability, y) => {
+        rows.push([indicator, geography, scenario, response.thresholds[t], response.years[y], probability]);
+      });
+    });
+  }
+  return toCsv(headers, rows);
 }
 
 /** Warming-level segment ("1.5 °C") → its numeric value. Non-numeric → NaN. */

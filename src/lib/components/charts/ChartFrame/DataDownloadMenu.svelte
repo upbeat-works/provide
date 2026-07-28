@@ -7,6 +7,11 @@
   export let params;
   export let options = [];
   export let endpoint;
+  // Which API serves this chart's data. Charts migrated to the Hono adapter pass
+  // VITE_API_URL (and `repeat` array params, which is what it reads); the ones
+  // still on the legacy Climate Analytics API keep the defaults.
+  export let base = import.meta.env.VITE_DATA_API_URL;
+  export let arrayFormat = 'indices';
 
   // Ignore params with no options (e.g. no scenarios selected yet) so we never
   // dereference an empty options list.
@@ -23,8 +28,8 @@
   );
 
   $: queryParameters = { ...params, ...$selectedParams };
-  $: query = stringify(queryParameters);
-  $: url = new URL(`${import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`);
+  $: query = stringify(queryParameters, { encodeValuesOnly: true, arrayFormat });
+  $: url = new URL(`${base}/${endpoint}/?${query}`);
 
   $: maxVersions = validOptions.reduce((memo, param) => param.options.length * memo, 1);
 </script>

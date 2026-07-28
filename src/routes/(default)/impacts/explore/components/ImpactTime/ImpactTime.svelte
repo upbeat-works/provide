@@ -47,7 +47,7 @@
     .domain(colorMarkers)
     .range(range(0, 1, 1 / colorMarkers.length));
 
-  $: process = ({ impactTimeData }, { scenarios, urlParams }) => {
+  $: process = ({ impactTimeData }, { scenarios, urlParams, indicator: { instance } = {} }) => {
     // Scenarios are coming from TEMPLATE_PROPS
     const MODEL = KEY_MODEL;
     const SOURCE = KEY_SOURCE;
@@ -109,9 +109,13 @@
 
     const dataDownloadOptions = [
       {
-        uid: 'scenario',
+        // `scenarios` (plural) because the download hits the same adapter
+        // endpoint as the chart, which reads repeated `scenarios=` params — one
+        // value is just a single-element list. Only scenarios that actually
+        // returned data are offered.
+        uid: URL_PATH_SCENARIOS,
         label: 'Scenario',
-        options: scenarios,
+        options: impactTime.map(({ uid, label }) => ({ uid, label })),
       },
       {
         uid: 'format',
@@ -122,6 +126,10 @@
         })),
       },
     ];
+
+    // The adapter needs the instance to know which ixmp4 platform to query, so
+    // the download URL carries it alongside the selection.
+    const dataDownloadParams = { ...urlParams, instance };
 
     const graphDownloadParams = {
       ...urlParams,
@@ -137,7 +145,7 @@
       hasSingleScenario,
       chartInfo,
       dataDownloadOptions,
-      dataDownloadParams: urlParams,
+      dataDownloadParams,
       graphDownloadParams,
     };
   };
@@ -163,6 +171,8 @@
       description={asyncProps.description}
       dataDownloadParams={asyncProps.dataDownloadParams}
       dataDownloadOptions={asyncProps.dataDownloadOptions}
+      dataDownloadBase={import.meta.env.VITE_API_URL}
+      dataDownloadArrayFormat="repeat"
       graphDownloadParams={asyncProps.graphDownloadParams}
       chartUid={END_IMPACT_TIME}
       chartInfo={asyncProps.chartInfo}

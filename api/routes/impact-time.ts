@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { instances } from '../instances';
-import { fetchImpactTime } from '../views/impact-time';
+import { fetchImpactTime, impactTimeToCsv } from '../views/impact-time';
+import { csvFilename, csvHeaders } from '../csv';
 
 const impactTime = new Hono<Env>();
 
@@ -35,6 +36,12 @@ impactTime.get('/', async (c) => {
       spatial: c.req.query('spatial'),
     },
   );
+
+  // The chart-frame download menu appends `format=` from the response's
+  // `formats`; anything else stays the default JSON the chart itself reads.
+  if (c.req.query('format') === 'csv') {
+    return c.text(impactTimeToCsv(data, { indicator, geography }), 200, csvHeaders(csvFilename('impact-time', indicator, geography)));
+  }
   return c.json(data);
 });
 

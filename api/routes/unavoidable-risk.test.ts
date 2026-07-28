@@ -88,3 +88,18 @@ describe('GET /api/unavoidable-risk', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('GET /api/unavoidable-risk?format=csv', () => {
+  test('serves the ensemble as a csv attachment', async () => {
+    const res = await api.request(`/api/unavoidable-risk${baseQuery}&format=csv`, {}, await createTestEnv());
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/csv');
+    expect(res.headers.get('content-disposition')).toContain('attachment; filename="unavoidable-risk_');
+    expect((await res.text()).split('\r\n')[0]).toBe('indicator,region,scenario,threshold,year,probability');
+  });
+
+  test('still serves json for any other format', async () => {
+    const res = await api.request(`/api/unavoidable-risk${baseQuery}`, {}, await createTestEnv());
+    expect(res.headers.get('content-type')).toContain('application/json');
+  });
+});
