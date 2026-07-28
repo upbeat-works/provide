@@ -6,6 +6,7 @@ import { createPlatforms } from '../platform';
 import { parseVariable, indicatorsFromVariables } from '../conventions';
 import { distinct, distinctCaseInsensitive, createTtlCache } from '../util';
 import { fetchScenarioTimeframes } from '../views/scenarios';
+import { fetchGmtSeriesAcross } from '../views/gmt';
 import { FACET_KEYS, fetchRunFacetData, resolveFacetSelection, citationsByIndicator, sectorLabel, type FacetFilters, type IndicatorAttrs } from '../facets';
 import { indicatorDescriptions } from '../descriptions';
 
@@ -64,7 +65,7 @@ async function buildCatalog(c: Context<Env>) {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
   const platforms = await createPlatforms(username, password);
 
-  const [instanceVariables, instanceRuns, facetData] = await Promise.all([
+  const [instanceVariables, instanceRuns, facetData, gmt] = await Promise.all([
     Promise.all(
       platforms.map(async ({ instance, platform }) => {
         // Docs are per-variable and keyed by variable id, so both lists are
@@ -84,6 +85,9 @@ async function buildCatalog(c: Context<Env>) {
     ),
     Promise.all(platforms.map(({ platform }) => platform.runs.list())),
     fetchRunFacetData(platforms),
+    // Three tabulates, and only on a cache miss — GMT is a property of every
+    // scenario, so it is assembled once here rather than per request.
+    fetchGmtSeriesAcross(platforms),
   ]);
 
   const variablesFlat = instanceVariables.flat();
@@ -149,17 +153,38 @@ async function buildCatalog(c: Context<Env>) {
   // `SSP5-3.4-OS`/`SSP5-3.4-Os` pair whose data is split across the two) collapse
   // to one canonical entry so the selector shows it once; the views match the
   // requested name case-insensitively to reach either casing's data.
-  const scenarioNames = distinctCaseInsensitive(instanceRuns.flat().map((run) => run.scenario.name));
+  //
+  // The GMT emulator additionally publishes long-term variants of each scenario
+  // ("… then Net Zero", "(Extended)") that reach 2300 but that no impact
+  // indicator covers. They would enter every scenario picker with nothing behind
+  // them, so the universe is the runs that carry impacts — i.e. everything the
+  // emulator is not the sole publisher of. Its model name comes from the data,
+  // not a constant.
+  const gmtModel = [...gmt.values()][0]?.model;
+  const impactRuns = instanceRuns.flat().filter((run) => !gmtModel || run.model.name !== gmtModel);
+  const scenarioNames = distinctCaseInsensitive(impactRuns.map((run) => run.scenario.name));
 
   // Each scenario's timeframe, derived from the data itself (max year, not
   // curation) — the methodology scenario list keys its table columns on it, and
   // the timeline charts get their x-axis grid from the same probe.
   const timeframes = await fetchScenarioTimeframes(platforms, indicatorFacets, scenarioNames);
-  const scenarios = scenarioNames.map((name) => ({
-    uid: name,
-    label: name,
-    ...(timeframes.get(name.toLowerCase()) ?? {}),
-  }));
+  const scenarios = scenarioNames.map((name) => {
+    // Global mean temperature is a property of the scenario, not a selectable
+    // indicator: the methodology timeline chart reads `gmt` and its table reads
+    // `characteristics` straight off the scenario entry.
+    const series = gmt.get(name.toLowerCase());
+    return {
+      uid: name,
+      label: name,
+      ...(timeframes.get(name.toLowerCase()) ?? {}),
+      ...(series
+        ? {
+            gmt: { data: series.data, yearStart: series.yearStart, yearStep: series.yearStep },
+            characteristics: series.characteristics,
+          }
+        : {}),
+    };
+  });
 
   // Sector/Project are faceted per indicator, not per run: sector is the curated
   // DB column, project is the ixmp4 instance. Sector is stored as a slug and

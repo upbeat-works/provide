@@ -1,5 +1,51 @@
-import { describe, test, expect } from 'bun:test';
-import { assembleImpactTime, zipBands, alignBands } from './impact-time';
+import { describe, test, expect, afterEach, spyOn } from 'bun:test';
+import { assembleImpactTime, zipBands, alignBands, fetchImpactTime } from './impact-time';
+import * as platformModule from '../platform';
+import { instances } from '../instances';
+
+describe('fetchImpactTime — which series it asks ixmp4 for', () => {
+  let spy: ReturnType<typeof spyOn<typeof platformModule, 'createPlatform'>>;
+  afterEach(() => spy?.mockRestore());
+
+  /** A platform that records every tabulate query and answers with one empty frame. */
+  function recordingPlatform(queries: Array<Record<string, never>>) {
+    const empty = { columns: [], values: [] };
+    return {
+      iamc: {
+        tabulate: async (query: Record<string, never>) => {
+          queries.push(query);
+          return empty;
+        },
+      },
+      meta: { tabulate: async () => ({ columnValues: () => [] }) },
+    };
+  }
+
+  test('reads global mean temperature from the World region, not a regional proxy', async () => {
+    const queries: Array<Record<string, never>> = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    spy = spyOn(platformModule, 'createPlatform').mockResolvedValue(recordingPlatform(queries) as any);
+
+    await fetchImpactTime(instances[0], { username: 'u', password: 'p' }, {
+      indicator: 'Mean Temperature',
+      geography: 'France',
+      scenarios: ['curpol'],
+    });
+
+    const asked = queries.map((q) => [q.region?.name, q.variable?.name] as [string, string]);
+    expect(asked).toContainEqual(['World', 'Global Mean Temperature|50th Percentile']);
+    expect(asked).toContainEqual(['World', 'Global Mean Temperature|10th Percentile']);
+    // The interim proxy — regional pre-industrial Mean Temperature — is gone.
+    expect(asked.map(([, name]) => name)).not.toContain(
+      'Mean Temperature|1850-1900 (Pre-industrial)|Annual|Area|50th Percentile',
+    );
+    // The indicator's own bands still come from its region on the 5/50/95 axis.
+    expect(asked).toContainEqual([
+      'France',
+      'Mean Temperature|2011-2020 (Present Day)|Annual|Area|5th Percentile',
+    ]);
+  });
+});
 
 describe('alignBands', () => {
   test('aligns percentiles to a union year axis; a year a percentile lacks becomes NaN, not a left-shift', () => {

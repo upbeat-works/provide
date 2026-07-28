@@ -4,6 +4,7 @@ import { caseInsensitiveLookup } from '../util';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
 import type { Ixmp4Instance } from '../types';
 import { fetchCitationsByModel } from '../facets';
+import { fetchGmtSeries, gmtBandsForYears } from './gmt';
 
 export interface ImpactTimeParams {
   indicator: string;
@@ -24,8 +25,9 @@ export interface ImpactTimeResponse {
   unit?: string;
   data: Record<string, [number, number, number][]>;
   // Per-scenario global-warming band ([min, mid, max] per year) used to colour
-  // the chart line. Interim: sourced from Mean Temperature (pre-industrial) at
-  // the chart's own region — regional, not global — until a World region exists.
+  // the chart line — the climate emulator's World trajectory (see views/gmt.ts),
+  // resampled onto this response's year axis. Empty for an instance that carries
+  // no emulator runs; the chart then draws its line uncoloured.
   gmt?: Record<string, [number, number, number][]>;
 }
 
@@ -108,16 +110,6 @@ interface VariableBase {
   spatial: string;
 }
 
-// GMT is the global-warming trajectory. Interim: reuse the chart's own region
-// (regional warming) since no World region exists yet; only the region changes
-// when one does.
-const GMT_BASE: VariableBase = {
-  indicator: 'Mean Temperature',
-  period: '1850-1900 (Pre-industrial)',
-  temporal: 'Annual',
-  spatial: 'Area',
-};
-
 interface FetchedBands {
   years: number[];
   p5: PercentileSeries;
@@ -191,9 +183,9 @@ async function fetchBands(
 /**
  * Default impact-time view for a selected indicator + geography: resolves the
  * three percentile variables via the naming convention, tabulates each from
- * ixmp4, and assembles the legacy band shape. Also bundles a per-scenario GMT
- * band (see GMT_BASE) so the chart can colour its line in the same response.
- * Period/temporal/spatial default to Present Day · Annual · Area.
+ * ixmp4, and assembles the legacy band shape. Also bundles the per-scenario
+ * global-warming band (views/gmt.ts) so the chart can colour its line in the
+ * same response. Period/temporal/spatial default to Present Day · Annual · Area.
  */
 export async function fetchImpactTime(
   instance: Ixmp4Instance,
@@ -208,9 +200,9 @@ export async function fetchImpactTime(
     spatial: params.spatial ?? DEFAULTS.spatial,
   };
 
-  const [indicatorBands, gmtBands, citations] = await Promise.all([
+  const [indicatorBands, gmtSeries, citations] = await Promise.all([
     fetchBands(platform, params.geography, base),
-    fetchBands(platform, params.geography, GMT_BASE),
+    fetchGmtSeries(platform),
     fetchCitationsByModel(platform),
   ]);
 
@@ -227,7 +219,10 @@ export async function fetchImpactTime(
     model: cited?.model ?? indicatorBands.model,
     source: cited?.source ?? '',
   });
-  response.gmt = zipBands(gmtBands.years, gmtBands.p5, gmtBands.p50, gmtBands.p95, params.scenarios);
+  // Real global warming (World region, the emulator's own 10/50/90 axis with
+  // band edges taken numerically), resampled onto the indicator's year axis —
+  // the two models need not publish the same year grid.
+  response.gmt = gmtBandsForYears(gmtSeries, indicatorBands.years, params.scenarios);
   // Natural-language unit straight from the ixmp4 data (e.g. "°C", "%").
   response.unit = indicatorBands.unit;
   return response;

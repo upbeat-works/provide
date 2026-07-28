@@ -19,6 +19,7 @@ describe('parseVariable', () => {
     expect(parseVariable('Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile')).toEqual({
       raw: 'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile',
       indicator: 'Mean Temperature',
+      kind: 'faceted',
       period: '2011-2020 (Present Day)',
       temporal: 'Annual',
       spatial: 'Area',
@@ -38,6 +39,20 @@ describe('parseVariable', () => {
     expect(p.indicator).toBe('Emissions');
     expect(p.value).toBeUndefined();
     expect(p.spatial).toBeUndefined();
+  });
+
+  test('reads the percentile off a two-segment global trajectory', () => {
+    const p = parseVariable('Global Mean Temperature|50th Percentile');
+    expect(p.kind).toBe('global');
+    expect(p.indicator).toBe('Global Mean Temperature');
+    expect(p.value).toEqual({ kind: 'percentile', raw: '50th Percentile', number: 50 });
+    expect(p.spatial).toBeUndefined();
+  });
+
+  test('marks the five-segment grammar as faceted', () => {
+    expect(parseVariable('Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile').kind).toBe(
+      'faceted',
+    );
   });
 });
 
@@ -94,5 +109,22 @@ describe('indicatorsFromVariables', () => {
     const mt = indicatorsFromVariables(names).find((i) => i.uid === 'Mean Temperature')!;
     expect(mt.percentiles).toEqual(['5th Percentile', '50th Percentile']);
     expect(mt.warmingLevels).toEqual(['1.5 °C', '10.0 °C']);
+  });
+
+  // Global trajectories carry no parameter axes, so they would otherwise enter the
+  // catalog as a selectable indicator with empty dropdowns and no data behind it.
+  test('drops global trajectories (GMT, Emissions) from the indicator list', () => {
+    expect(
+      indicatorsFromVariables([
+        'Global Mean Temperature|10th Percentile',
+        'Global Mean Temperature|50th Percentile',
+        'Emissions|CO2',
+      ]),
+    ).toEqual([]);
+  });
+
+  test('keeps the faceted indicators when global trajectories are mixed in', () => {
+    const out = indicatorsFromVariables([...names, 'Global Mean Temperature|50th Percentile']);
+    expect(out.map((i) => i.uid).sort()).toEqual(['Fire Season Length', 'Mean Temperature']);
   });
 });

@@ -14,6 +14,7 @@
   import { flatMap } from 'lodash-es';
   import ColorLegend from '$lib/components/charts/legends/ColorLegend.svelte';
   import StrokeLegend from './StrokeLegend.svelte';
+  import { colorForStep } from '$lib/charts/gmt-color.js';
 
   export let steps;
   export let data = [];
@@ -71,9 +72,12 @@
       return memo;
     }, []);
 
-    gmtSegments.forEach(({ values, step, scenario }) => {
-      const color = colorScales[i](step); // The step is used in the color scale
-      memo.push({ color, step, values: values.map((d) => ({ ...d, color })), scenario });
+    // Note: a segment's `scenario` is its LABEL, not the scenario object.
+    gmtSegments.forEach(({ values, step, scenario: label }) => {
+      // The step is used in the color scale; a scenario with no GMT trajectory
+      // has none, and falls back to its flat colour.
+      const color = colorForStep(colorScales[i], step, scenario.color);
+      memo.push({ color, step, values: values.map((d) => ({ ...d, color })), scenario: label });
     });
     return memo;
   }, []);
@@ -87,7 +91,7 @@
     return {
       ...scenario,
       uid: scenario.uid,
-      color: colorScales[i](entry.step),
+      color: colorForStep(colorScales[i], entry?.step, scenario.color),
       ...entry,
     };
   });
