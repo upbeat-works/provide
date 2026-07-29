@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iiasa.ac.at/schemas/place-feature.schema.json",
+  "title": "IIASA Place Feature properties",
+  "description": "Harmonised properties carried by every feature in any place layer (GeoJSON Feature.properties). Geometry stays in the GeoJSON geometry member; cross-frame links live in the separate relations table, not here.",
+  "type": "object",
+  "required": ["pid", "frame", "level", "code", "name", "source", "source_version"],
+  "properties": {
+    "pid": {
+      "type": "string",
+      "description": "Canonical place id. CURIE form prefix:frame.level.localid",
+      "pattern": "^[a-z][a-z0-9]*:[a-z_]+\\.[a-z0-9_]+\\.[A-Z0-9_-]+$",
+      "examples": ["place:adm.adm0.ZWE", "place:macro.r10.AFR", "place:hydro.hybas07.7070025330"]
+    },
+    "frame": {
+      "type": "string",
+      "enum": ["world", "macro", "adm", "marine", "hydro", "cryo", "urban"]
+    },
+    "level": {
+      "type": "string",
+      "description": "Level within the frame; must be a level defined for that frame in place-vocab.yaml",
+      "examples": ["globe", "r10", "adm0", "sub1", "eez", "hybas07", "rgi_o1", "city"]
+    },
+    "scheme": {
+      "type": ["string", "null"],
+      "description": "Source coding system used to mint code/localid",
+      "examples": ["ne_admin0", "eurostat_nuts", "geoboundaries_adm1", "marineregions_eez", "hydrobasins", "rgi7", "ghs_ucdb", "iamc_common"]
+    },
+    "code": {
+      "type": "string",
+      "description": "Source-native stable code (ISO_A3, NUTS_ID, shapeISO, MRGID, HYBAS_ID, RGI region number, UC id)"
+    },
+    "name": {"type": "string", "description": "Display name"},
+    "name_long": {"type": ["string", "null"]},
+    "i_region": {
+      "type": ["string", "null"],
+      "description": "Legacy IXMP4 join label, kept for back-compat (e.g. 'Africa (R10)', 'Zimbabwe', 'USA|Mississippi')"
+    },
+    "parent_pid": {
+      "type": ["string", "null"],
+      "description": "Intra-frame containment parent. Null at a frame root or for flat levels."
+    },
+    "path": {
+      "type": ["string", "null"],
+      "description": "Materialised containment path within the frame, '/'-joined frame.level.localid segments without prefix",
+      "examples": ["adm.continent.NA/adm.adm0.USA/adm.sub1.US-MS"]
+    },
+    "depth": {"type": ["integer", "null"], "minimum": 0},
+    "iso_a3": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"},
+    "iso_a2": {"type": ["string", "null"], "pattern": "^[A-Z]{2}$"},
+    "iso_n3": {"type": ["string", "null"], "pattern": "^[0-9]{3}$"},
+    "sovereign_iso_a3": {
+      "type": ["string", "null"],
+      "description": "For marine/eez features: ISO_A3 of the sovereign state"
+    },
+    "wikidata_qid": {"type": ["string", "null"], "pattern": "^Q[0-9]+$"},
+    "source": {"type": "string", "description": "Dataset name", "examples": ["Natural Earth", "Eurostat NUTS", "Marine Regions EEZ", "HydroSHEDS HydroBASINS", "RGI"]},
+    "source_version": {"type": "string", "examples": ["5.1.1", "2024", "v11", "v1.0", "7.0"]},
+    "valid_from": {"type": ["string", "null"], "format": "date"},
+    "valid_to": {"type": ["string", "null"], "format": "date"},
+    "disputed": {"type": "boolean", "default": false, "description": "True where boundary/sovereignty is contested or ISO code is -99"},
+    "area_km2": {"type": ["number", "null"], "minimum": 0},
+    "bbox": {
+      "type": ["array", "null"],
+      "items": {"type": "number"},
+      "minItems": 4,
+      "maxItems": 6,
+      "description": "GeoJSON bbox [minX, minY, maxX, maxY]"
+    }
+  },
+  "additionalProperties": true
+}

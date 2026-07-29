@@ -1,0 +1,131 @@
+# IIASA Place Ontology: controlled vocabularies
+# Version 0.1. British English. Closed vocabularies; no free text in `frame`,
+# `level`, `scheme` or relation `predicate` fields.
+
+prefix:
+  default: place          # CURIE prefix for a place id, e.g. place:adm.adm0.ZWE
+  org: iiasa              # optional org-scoped prefix, e.g. iiasa:adm.adm0.ZWE
+
+# ---------------------------------------------------------------------------
+# FRAMES: the top-level spatial dimension. Each frame is one way of dividing
+# (or sampling) the Earth. They coexist; they do not nest into each other.
+# ---------------------------------------------------------------------------
+frames:
+  world:
+    label: Global
+    kind: root
+    tessellation: trivial          # a single feature
+    explorer_label: Global
+  macro:
+    label: Macroeconomies
+    kind: aggregation              # unions of countries, not independent geometry
+    tessellation: partition_of_countries
+    explorer_label: Macroeconomies
+    authority: IAMC common-definitions (region/common.yaml)
+  adm:
+    label: Administrative units
+    kind: political
+    tessellation: partition_of_land
+    explorer_label: [Countries]    # adm0 surfaces as "Countries" in the explorer
+    authority: Natural Earth (adm0), Eurostat NUTS, geoBoundaries (adm1)
+  marine:
+    label: Maritime jurisdiction
+    kind: jurisdiction
+    tessellation: partition_of_ocean
+    explorer_label: Exclusive Economic Zones
+    authority: Marine Regions (VLIZ / Flanders Marine Institute)
+  hydro:
+    label: Drainage basins
+    kind: physiographic
+    tessellation: partition_of_land
+    explorer_label: River Basins
+    authority: HydroSHEDS HydroBASINS (Pfafstetter)
+  cryo:
+    label: Glacier regions
+    kind: physiographic
+    tessellation: partition_of_glacierised_area
+    explorer_label: Glacier Regions
+    authority: Randolph Glacier Inventory (RGI)
+  urban:
+    label: Cities
+    kind: discrete
+    tessellation: point_set         # discrete features, not a tessellation
+    explorer_label: Cities
+    authority: GHS Urban Centre Database (or Natural Earth populated places)
+
+# ---------------------------------------------------------------------------
+# LEVELS within each frame. `nests: true` means parent/child containment is
+# valid inside this frame (use parent_pid + path). `nests: false` means flat.
+# ---------------------------------------------------------------------------
+levels:
+  world:
+    - {level: globe, nests: false}
+  macro:                            # IAMC granularities; extensible (e.g. r12)
+    - {level: r5,  nests: false}
+    - {level: r9,  nests: false}
+    - {level: r10, nests: false}
+    - {level: r12, nests: false}    # MESSAGEix; add as needed
+  adm:
+    - {level: continent, nests: true}
+    - {level: adm0, nests: true}    # country
+    - {level: sub1, nests: true}    # NUTS1 / state / province
+    - {level: sub2, nests: true}    # NUTS2
+    - {level: sub3, nests: true}    # NUTS3
+  marine:
+    - {level: eez, nests: false}
+  hydro:                            # Pfafstetter level number, zero-padded
+    - {level: hybas01, nests: true}
+    - {level: hybas03, nests: true}
+    - {level: hybas05, nests: true}
+    - {level: hybas07, nests: true}
+    - {level: hybas09, nests: true}
+    - {level: hybas12, nests: true}
+    - {level: basin_major, nests: false}   # optional GRDC major-basin layer
+  cryo:
+    - {level: rgi_o1, nests: true}  # 19 first-order regions
+    - {level: rgi_o2, nests: true}  # second-order subregions
+  urban:
+    - {level: city, nests: false}
+
+# ---------------------------------------------------------------------------
+# SCHEMES: the source coding system used to mint `code` and `pid.localid`.
+# Carried as a feature property so two adm sub1 layers can coexist.
+# ---------------------------------------------------------------------------
+schemes:
+  adm:
+    - ne_admin0            # Natural Earth admin-0, code = ISO_A3
+    - eurostat_nuts        # NUTS_ID (prefix-nested)
+    - geoboundaries_adm1   # shapeISO, e.g. US-MS
+    - gadm                 # GID_n, if used later
+  marine:
+    - marineregions_eez    # code = MRGID
+  hydro:
+    - hydrobasins          # code = HYBAS_ID; PFAF_ID for nesting
+    - grdc_major
+  cryo:
+    - rgi6
+    - rgi7
+  urban:
+    - ghs_ucdb             # code = UC id
+    - ne_populated_places
+  macro:
+    - iamc_common
+
+# ---------------------------------------------------------------------------
+# RELATION PREDICATES. Edges live in a separate relations table, never as
+# feature properties. `weighted: true` predicates carry weight + weight_basis.
+# ---------------------------------------------------------------------------
+predicates:
+  contains:     {inverse: withinParent, weighted: false, note: "intra-frame containment (the spine and nested frames)"}
+  drainsTo:     {inverse: receives,      weighted: false, note: "hydro NEXT_DOWN; DAG within frame, not a strict tree"}
+  aggregates:   {inverse: memberOf,      weighted: false, note: "macro region <- member countries"}
+  eezOf:        {inverse: hasEEZ,        weighted: false, note: "EEZ <-> sovereign country; many-to-many for joint regimes"}
+  intersects:   {inverse: intersects,    weighted: true,  note: "basin/glacier <-> adm; carries area/pop share"}
+  locatedIn:    {inverse: contains,      weighted: false, note: "city -> adm unit by point-in-polygon"}
+  sameAs:       {inverse: sameAs,        weighted: false, note: "crosswalk to an external authority id (Wikidata, ISO, MRGID)"}
+
+weight_basis:
+  - area
+  - population
+  - gdp
+  - none
