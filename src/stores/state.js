@@ -102,11 +102,14 @@ CURRENT_GEOGRAPHY_UID.subscribe((value) => {
 // Countries tab this is the first country of the first continent group, matching
 // what the selector renders at the top; otherwise the first geography of the
 // first selectable type, by label.
+// This is the ONLY place that resets the geography: it can only run once the
+// geography list has actually loaded (`$types.length`), so a stored/deep-linked
+// id is never discarded just because the catalog hasn't arrived yet. It also
+// depends on the uid itself, so clearing the selection re-defaults it.
 if (browser) {
-  derived([SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES, GEOGRAPHY_INDEX], (v) => v).subscribe(
-    ([$types, $geographies, $index]) => {
+  derived([SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES, GEOGRAPHY_INDEX, CURRENT_GEOGRAPHY_UID], (v) => v).subscribe(
+    ([$types, $geographies, $index, uid]) => {
       if (!$types.length) return;
-      const uid = getStore(CURRENT_GEOGRAPHY_UID);
       const isValid = uid && $types.some(({ uid: type }) => ($geographies[type] ?? []).some((g) => g.uid === uid));
       if (isValid) return;
       const firstType = $types[0].uid;
@@ -122,40 +125,23 @@ if (browser) {
 }
 
 /**
- * Derived store that filters the disabled geography types
+ * The geography object behind CURRENT_GEOGRAPHY_UID, or undefined while the id
+ * is unset or the list hasn't loaded.
  * @type {Readable<Object|undefined>}
  */
-export const CURRENT_GEOGRAPHY = derived([CURRENT_GEOGRAPHY_UID, SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES], ([$uid, $selectableGeographyTypes, $geographies], set) => {
-  if (typeof $uid === 'undefined') {
-    set(undefined);
-  } else {
-    let geography;
-    // This loops over every selectable geography type and searches for the currently selected geography uid
-    // We use the `every` loop to quit if we found it
-    $selectableGeographyTypes.every(({ uid: type }) => {
-      // Get the list of geographies for this type
-      const list = $geographies[type];
-      if (typeof list === 'undefined') {
-        console.warn(`Geography type ${type} from meta does not match. Could not find any geographies.`);
-      }
-      // Check if the currently selected uid can be found in the
-      geography = (list ?? []).find(({ uid }) => uid === $uid);
-      if (geography) {
-        return false; // A geography was found so we quit the loop
-      }
-      return true; // Return true to continue the loop
-    });
-    // If the geography could not be found
-    if (typeof geography === 'undefined') {
-      console.warn(`Could not find any geography from uid ‘${$uid}’ given the current set of geography types.`);
-      if (typeof $uid !== 'undefined') {
-        // Set the geography uid to undefined to reset the selection
-        CURRENT_GEOGRAPHY_UID.set(undefined);
-      }
-    }
-    // Set the geography. This can also be undefined if no geography was found.
-    set(geography);
+// Pure lookup — deliberately side-effect free. It used to reset
+// CURRENT_GEOGRAPHY_UID when the id didn't resolve, but this store is first
+// subscribed during component init, before the page data (and therefore
+// GEOGRAPHIES) has reached the store: every stored or deep-linked geography was
+// wiped on load and replaced by the auto-selected default. Resetting an invalid
+// selection is the auto-select effect's job (above), which waits for the list.
+export const CURRENT_GEOGRAPHY = derived([CURRENT_GEOGRAPHY_UID, SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES], ([$uid, $selectableGeographyTypes, $geographies]) => {
+  if (typeof $uid === 'undefined') return undefined;
+  for (const { uid: type } of $selectableGeographyTypes) {
+    const geography = ($geographies[type] ?? []).find(({ uid }) => uid === $uid);
+    if (geography) return geography;
   }
+  return undefined;
 });
 
 export const CURRENT_GEOGRAPHY_LABEL = derived(CURRENT_GEOGRAPHY, ($geography) => {
@@ -194,19 +180,6 @@ export const CURRENT_GEOGRAPHY_TYPE = derived([CURRENT_GEOGRAPHY, SELECTABLE_GEO
     return undefined;
   }
   return geographyType;
-});
-
-/**
- * Derived store that lists the available geographies
- * @type {Readable<Object[]>}
- */
-export const AVAILABLE_GEOGOGRAPHIES = derived([GEOGRAPHIES, CURRENT_GEOGRAPHY_TYPE], ([$geographies, $currentGeographyType]) => {
-  const { uid } = $currentGeographyType;
-  const geographies = $geographies[uid];
-  if (typeof geographies === 'undefined') {
-    console.warn(`Could not find any geographies for type ${uid}.`);
-  }
-  return geographies ?? [];
 });
 
 /*
@@ -306,6 +279,14 @@ export const AVAILABLE_INDICATORS = derived(
 );
 
 export const CURRENT_INDICATOR_UID = writable(getLocalStorage(LOCALSTORE_INDICATOR, undefined));
+// Persisted like the geography: whatever the user picked, valid or not. Validity
+// is re-checked against availability on the next load — it must not be decided
+// while the async availability probe is still empty (see
+// IS_COMBINATION_AVAILABLE_INDICATOR), or the stored selection is lost on every
+// page load.
+CURRENT_INDICATOR_UID.subscribe((value) => {
+  setLocalStorage(LOCALSTORE_INDICATOR, value);
+});
 
 /**
  * Derived store that filters GEOGRAPHIES to only those ixmp4 has data for under
@@ -353,19 +334,14 @@ export const IS_EMPTY_INDICATOR = derived(CURRENT_INDICATOR_UID, ($uid) => {
 });
 
 export const IS_COMBINATION_AVAILABLE_INDICATOR = derived([CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS], ([$uid, $validIndicators]) => {
-  // This checks if the currently selected indicator is valid given the list of valid indicators
-  if (typeof $uid === 'undefined') {
-    setLocalStorage(LOCALSTORE_INDICATOR, undefined);
-    return false; // TODO: Check what to do here.
-  }
-  const isValidIndicator = $validIndicators.map(({ uid }) => uid).includes($uid);
-  if (isValidIndicator) {
-    // Only save to localstorage if valid indicator
-    setLocalStorage(LOCALSTORE_INDICATOR, $uid);
-  } else {
-    setLocalStorage(LOCALSTORE_INDICATOR, undefined);
-  }
-  return isValidIndicator;
+  if (!$uid) return false;
+  // `/indicators?region=` is async and AVAILABLE_INDICATORS starts empty, so an
+  // empty list means "not checked yet", not "nothing is available". Stay
+  // optimistic until it lands — mirrors isScenarioCombinationAvailable — instead
+  // of flashing “not available for this geography” and blanking the charts on
+  // every load.
+  if (!$validIndicators.length) return true;
+  return $validIndicators.some(({ uid }) => uid === $uid);
 });
 
 export const CURRENT_INDICATOR = derived([CURRENT_INDICATOR_UID, DICTIONARY_INDICATORS], ([$uid, $indicators]) => get($indicators, $uid));
@@ -422,7 +398,7 @@ export const CURRENT_INDICATOR_PARAMETERS = derived([CURRENT_INDICATOR, INDICATO
       uid: key,
       label: parameter?.label ?? key, // Use the key if no label is present
       options,
-      description: parameter.description,
+      description: parameter?.description,
     };
   });
 

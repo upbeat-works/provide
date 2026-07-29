@@ -16,6 +16,7 @@
   import { formatValue } from '$lib/utils/formatting';
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
   import ImpactTimeChart from './ImpactTimeChart.svelte';
+  import Message from '$lib/components/ui/Message.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { scaleThreshold } from 'd3-scale';
   import { range } from 'd3-array';
@@ -168,7 +169,16 @@
       chartInfo={asyncProps.chartInfo}
       templateProps={props}
     >
-      <ImpactTimeChart data={asyncProps.impactTime} unit={asyncProps.unit ?? props.indicator.unit} indicatorLabel={props.indicatorLabel} steps={colorSteps} />
+      {#if asyncProps.impactTime.length}
+        <ImpactTimeChart data={asyncProps.impactTime} unit={asyncProps.unit ?? props.indicator.unit} indicatorLabel={props.indicatorLabel} steps={colorSteps} />
+      {:else}
+        <!-- The response resolved but none of the selected scenarios had data for
+             this indicator/geography/parameter combination (see the filter in
+             `process`). Say so — rendering the chart with an empty series threw. -->
+        <Message headline="There is no data for your current selection">
+          <span class="text-contour-weaker">The selected {$CURRENT_SCENARIOS_UID.length > 1 ? 'scenarios have' : 'scenario has'} no data for this indicator and geography. Try another scenario or geography.</span>
+        </Message>
+      {/if}
     </ChartFrame>
     <LoadingPlaceholder slot="placeholder" />
   </LoadingWrapper>

@@ -130,7 +130,9 @@
           ticksHighlighted={ticksYHighlighted}
           unit={unitUID}
         />
-        {#if !isMultiLine}
+        <!-- `areaData` is data[0]; the single-scenario band only exists when
+             there is a scenario to draw. -->
+        {#if !isMultiLine && areaData}
           <AreaLayer data={areaData.values} color={areaData.color} />
         {/if}
         <MultipleLineLayer strokeWidth={4} animate={false} />
