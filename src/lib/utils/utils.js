@@ -36,7 +36,9 @@ export const formatObjArr = function (arr, key) {
   // We have to do an two extra steps because the formatToParts function does not allow object but requires strings
   // First, we map a string from each object
   // Second, we use the find function to bring back the object
-  const list = formatter.formatToParts(arr.map((d) => d[key]));
+  // Intl.ListFormat throws on a non-string ("Iterable yielded undefined"), so an
+  // entry still missing `key` is dropped rather than taking the caller down.
+  const list = formatter.formatToParts((arr ?? []).map((d) => d?.[key]).filter((value) => typeof value === 'string'));
   return list.map((obj) => {
     return {
       ...obj,

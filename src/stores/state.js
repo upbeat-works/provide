@@ -541,6 +541,13 @@ CURRENT_SCENARIOS_UID.subscribe((value) => {
 
 export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCENARIOS, THEME], ([$uids, $scenarios, $theme]) =>
   ($uids ?? []).map((uid, i) => ({
+    // Fall back to the raw uid when the catalog lookup misses — DICTIONARY_SCENARIOS
+    // is derived from `$page`, so it is still empty while components initialise
+    // (and stays empty for an unknown uid). Spreading `undefined` alone produced a
+    // label-less entry, and TEMPLATE_PROPS' Intl.ListFormat threw on it, which took
+    // the whole embed page — i.e. every downloaded graph — down with it.
+    uid,
+    label: uid,
     ...ciGet($scenarios, uid),
     color: $theme.color.category.base[i],
     colorInterpolator: piecewise(interpolateLab, [$theme.color.category.weakest[i], $theme.color.category.base[i], $theme.color.category.strongest[i]]),
@@ -689,9 +696,16 @@ export const IS_COMBINATION_AVAILABLE_SCENARIO = derived(
     isScenarioCombinationAvailable({ isAvoidPage: $isAvoidPage, selectable: $selectable, current: $current })
 );
 
+// The chart components gate their data fetch on this and then read
+// `$CURRENT_GEOGRAPHY.uid` / `$CURRENT_INDICATOR.uid` straight off the stores, so
+// it must not go true before both have actually resolved to an object. The
+// availability checks above only look at the *uids*; on the embed page — which
+// seeds the stores from the URL during init, before the catalog reaches `$page`
+// — that combination threw and blanked the whole page.
 export const IS_COMBINATION_AVAILABLE = derived(
-  [IS_COMBINATION_AVAILABLE_INDICATOR, IS_COMBINATION_AVAILABLE_SCENARIO],
-  ([$indicatorAvailable, $scenariosAvailable]) => $indicatorAvailable && $scenariosAvailable
+  [IS_COMBINATION_AVAILABLE_INDICATOR, IS_COMBINATION_AVAILABLE_SCENARIO, CURRENT_GEOGRAPHY, CURRENT_INDICATOR],
+  ([$indicatorAvailable, $scenariosAvailable, $geography, $indicator]) =>
+    Boolean($geography) && Boolean($indicator) && $indicatorAvailable && $scenariosAvailable
 );
 
 export const TEMPLATE_PROPS = derived(

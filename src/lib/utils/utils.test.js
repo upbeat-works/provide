@@ -1,5 +1,20 @@
 import { describe, test, expect } from 'bun:test';
-import { extractEndYearFromScenarios, ciKeyBy, ciGet, ciEquals, withScenarioTimeframe } from './utils.js';
+import { extractEndYearFromScenarios, ciKeyBy, ciGet, ciEquals, withScenarioTimeframe, formatReadableList } from './utils.js';
+
+describe('formatReadableList', () => {
+  test('reads the key off each entry', () => {
+    expect(formatReadableList([{ label: 'A' }, { label: 'B' }, { label: 'C' }], 'label')).toBe('A, B and C');
+  });
+
+  test('skips entries missing the key instead of throwing', () => {
+    // CURRENT_SCENARIOS can hold a not-yet-resolved scenario while the catalog
+    // loads; Intl.ListFormat throws on undefined, which used to blank the embed
+    // page (and so every downloaded graph).
+    expect(formatReadableList([{ label: 'A' }, { color: 'red' }, { label: 'B' }], 'label')).toBe('A and B');
+    expect(formatReadableList([{ color: 'red' }], 'label')).toBe('');
+    expect(formatReadableList([], 'label')).toBe('');
+  });
+});
 
 describe('withScenarioTimeframe', () => {
   test('grafts endYear from the selectable list, matched case-insensitively by uid', () => {
