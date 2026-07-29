@@ -9,7 +9,7 @@
     IS_COMBINATION_AVAILABLE_INDICATOR,
     IS_EMPTY_GEOGRAPHY,
   } from '$stores/state.js';
-  import { PATH_KEY_CONCEPTS, ANCHOR_EXPLAINER_SCENARIOS } from '$config';
+  import { PATH_DOCUMENTATION, PATH_KEY_CONCEPTS, ANCHOR_EXPLAINER_SCENARIOS } from '$config';
   import SelectionModal from '$lib/components/controls/components/SelectionModal.svelte';
   import SelectionPanel from '$lib/components/controls/components/SelectionPanel.svelte';
   import PillGroup from '$lib/components/ui/PillGroup.svelte';
@@ -81,7 +81,7 @@
           <span class="block text-xs uppercase tracking-widest text-theme-weaker mb-2">Pick a timeframe</span>
           <PillGroup bind:currentUid={currentTimeframe} options={$AVAILABLE_TIMEFRAMES} disabledMessage="No scenarios available for this indicator in this timeframe" />
         </div>
-        <Button href={`/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}>
+        <Button href={`/${PATH_DOCUMENTATION}/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}>
           Which scenario should I select?
           <LinkArrow />
         </Button>
