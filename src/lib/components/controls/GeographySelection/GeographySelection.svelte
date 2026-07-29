@@ -33,7 +33,14 @@
   let initialGeographyUid;
   $: snapshotOnOpen(modalOpen);
   function snapshotOnOpen(open) {
-    if (open) initialGeographyUid = $CURRENT_GEOGRAPHY_UID;
+    if (!open) return;
+    initialGeographyUid = $CURRENT_GEOGRAPHY_UID;
+    // Open on the tab that holds the current selection, so it is visible (and
+    // highlighted) rather than the user landing on Countries every time. Cities
+    // have no pill of their own — they live inside the country accordion — so
+    // they fall through to the default below.
+    const type = $CURRENT_GEOGRAPHY_TYPE?.uid;
+    if (type && pillTypes.some((t) => t.uid === type && !t.disabled)) currentFilterUid = type;
   }
   $: selectionChanged = modalOpen && $CURRENT_GEOGRAPHY_UID !== initialGeographyUid;
 
@@ -72,22 +79,13 @@
       },
     ]);
 
-  $: preserveSelectionAcrossTypes(selectableGeographies);
-
-  // When the user toggles the geography type pill, try to keep their selection
-  // pointing at the same place under the new type. Ids are globally unique and
-  // human-readable (e.g. `Liberia (EEZ)`), so an exact match is the right test;
-  // if nothing matches, clear the selection.
-  function preserveSelectionAcrossTypes(selectableGeographies) {
-    const currentGeography = $CURRENT_GEOGRAPHY;
-    if (!currentGeography || !selectableGeographies.length) return;
-    const match = selectableGeographies.find((g) => g.uid === currentGeography.uid);
-    if (match?.uid) {
-      CURRENT_GEOGRAPHY_UID.set(match.uid);
-    } else {
-      CURRENT_GEOGRAPHY_UID.set(undefined);
-    }
-  }
+  // The type pill is a browse filter, not a constraint on the selection: the
+  // Countries tab reaches cities/EEZs/river basins through the accordion, and
+  // the list is also re-filtered asynchronously in indicator-first mode. Nothing
+  // here clears CURRENT_GEOGRAPHY_UID — switching tabs used to wipe a perfectly
+  // valid selection (leaving the page stuck on “Select a geography first” with
+  // no default to fall back to). Resetting an invalid selection belongs to the
+  // auto-select effect in $stores/state.js.
 
 </script>
 

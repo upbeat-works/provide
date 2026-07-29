@@ -20,9 +20,21 @@ export interface ParsedValue {
   number: number;
 }
 
+/**
+ * Two variable shapes live in ixmp4:
+ *  - `faceted` — the 5-segment grammar above; these are the searchable catalog
+ *    indicators, the only ones with parameter axes.
+ *  - `global` — a facet-free trajectory of the whole planet: the 2-segment
+ *    `Indicator|Value` form (`Global Mean Temperature|50th Percentile`) and
+ *    `Emissions|CO2`. These are properties of a scenario, not selectable
+ *    indicators, so they never enter the catalog's indicator list.
+ */
+export type VariableKind = 'faceted' | 'global';
+
 export interface ParsedVariable {
   raw: string;
   indicator: string;
+  kind: VariableKind;
   period?: string;
   temporal?: string;
   spatial?: string;
@@ -64,6 +76,21 @@ export const REPRESENTATIVE_VALUE = '50th Percentile';
 // values become the unavoidable-risk `today` array). It is never a selectable
 // projection scenario, so the avoid view's availability probe excludes it.
 export const BASELINE_SCENARIO = 'Today';
+
+// Global mean temperature: the climate emulator's warming trajectory, published
+// as a 2-segment global variable at the `World` region (the only non-country
+// region in the instance). It is a property of a scenario, not an indicator.
+export const GMT_INDICATOR = 'Global Mean Temperature';
+export const GMT_REGION = 'World';
+// GMT publishes 10/50/90, not the 5/50/95 the indicator bands use — and in this
+// data the label order is NOT the value order (the "10th" series carries the
+// highest values), so callers must take band edges numerically. See views/gmt.ts.
+export const GMT_PERCENTILES = ['10th Percentile', '50th Percentile', '90th Percentile'] as const;
+
+/** The ixmp4 variable name for one GMT percentile — the 2-segment inverse of parseVariable. */
+export function composeGmtVariable(value: string): string {
+  return `${GMT_INDICATOR}|${value}`;
+}
 
 /**
  * A fully-faceted variable name for an indicator (representative value = the
@@ -115,6 +142,10 @@ export function indicatorsFromVariables(names: string[]): IndicatorFacets[] {
 
   for (const name of names) {
     const p = parseVariable(name);
+    // Global trajectories (GMT, Emissions) have no parameter axes, so they would
+    // land here as a selectable indicator with empty dropdowns and no data behind
+    // it. They surface per-scenario instead — see views/gmt.ts.
+    if (p.kind !== 'faceted') continue;
     let acc = byIndicator.get(p.indicator);
     if (!acc) {
       acc = {
@@ -143,14 +174,19 @@ export function indicatorsFromVariables(names: string[]): IndicatorFacets[] {
 
 export function parseVariable(name: string): ParsedVariable {
   const segments = name.split('|');
-  const parsed: ParsedVariable = { raw: name, indicator: segments[0] };
+  const parsed: ParsedVariable = { raw: name, indicator: segments[0], kind: 'global' };
   // Standard five-segment grammar: Indicator|Period|Temporal|Spatial|Value.
-  // Anything else (e.g. the `Emissions|CO2` trajectory) keeps only the indicator.
   if (segments.length === 5) {
+    parsed.kind = 'faceted';
     parsed.period = segments[1];
     parsed.temporal = segments[2];
     parsed.spatial = segments[3];
     parsed.value = parseValue(segments[4]);
+  } else if (segments.length === 2) {
+    // `Indicator|Value` — a global trajectory. The value axis is the same one the
+    // faceted grammar uses, so parseValue recovers the percentile here too;
+    // `Emissions|CO2` simply has no parseable value.
+    parsed.value = parseValue(segments[1]);
   }
   return parsed;
 }
