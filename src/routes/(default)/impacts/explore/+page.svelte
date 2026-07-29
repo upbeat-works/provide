@@ -14,7 +14,6 @@
     CURRENT_INDICATOR_OPTION_VALUES,
     IS_STATIC,
   } from '$stores/state';
-  import { GEOGRAPHIES } from '$stores/meta.js';
   import VisData from '$lib/components/icons/VisData.svelte';
   import { parse } from 'qs';
   import {
@@ -75,7 +74,12 @@
 
     const geo = params[URL_PATH_GEOGRAPHY];
     if (geo) {
-      const g = resolveGeo(geo, Object.values($GEOGRAPHIES).flat());
+      // Resolve against the loader payload, like the indicator/scenario params
+      // below — NOT the GEOGRAPHIES store. That store derives from `$page`,
+      // which is still empty at onMount on a cold load, so resolveGeo found
+      // nothing and every ?geography= link fell through to the default.
+      const { geographyTypes, ...geographiesByType } = data.geographies ?? {};
+      const g = resolveGeo(geo, Object.values(geographiesByType).flat());
       if (g) CURRENT_GEOGRAPHY_UID.set(g.uid);
     }
 
