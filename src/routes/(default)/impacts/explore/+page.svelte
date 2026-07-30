@@ -57,6 +57,11 @@
   // its geoId (== the avoid-native legacy city uid), plus the indicator only if
   // it maps to an avoid indicator (legacyUid). When the current geography isn't a
   // city, the button is disabled — avoid can't represent it.
+  // Deliberately no `scenarios`: avoid has no scenario selection (which scenarios
+  // avoid an impact level is its OUTPUT), and its loader funnels every param that
+  // isn't geography/indicator into AVOID_PARAMS, which is spread into every chart
+  // request — so a scenario param would be sent to the legacy API as junk.
+  // Both the sidebar link and the handoff button below share this href.
   $: avoidIsCity = $CURRENT_GEOGRAPHY?.geographyType === GEOGRAPHY_TYPE_CITY;
   $: avoidGeoId = avoidIsCity ? toLegacyGeoId($CURRENT_GEOGRAPHY) : undefined;
   $: avoidLegacyUid = toLegacyIndicatorUid($CURRENT_INDICATOR?.uid, data.catalog?.indicators ?? []);
@@ -179,7 +184,7 @@
       Learn more about the methodology
       <LinkArrow />
     </Button>
-    <Button class="mt-4 mr-6" href="/impacts/avoid" variant="secondary">
+    <Button class="mt-4 mr-6" href={avoidHref} variant="secondary">
       Learn more about how to avoid future impacts
       <LinkArrow />
     </Button>
