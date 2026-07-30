@@ -16,6 +16,7 @@
   import { formatValue } from '$lib/utils/formatting';
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
   import ImpactTimeChart from './ImpactTimeChart.svelte';
+  import Message from '$lib/components/ui/Message.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { scaleThreshold } from 'd3-scale';
   import { range } from 'd3-array';
@@ -47,7 +48,7 @@
     .domain(colorMarkers)
     .range(range(0, 1, 1 / colorMarkers.length));
 
-  $: process = ({ impactTimeData }, { scenarios, urlParams }) => {
+  $: process = ({ impactTimeData }, { scenarios, urlParams, indicator: { instance } = {} }) => {
     // Scenarios are coming from TEMPLATE_PROPS
     const MODEL = KEY_MODEL;
     const SOURCE = KEY_SOURCE;
@@ -109,9 +110,13 @@
 
     const dataDownloadOptions = [
       {
-        uid: 'scenario',
+        // `scenarios` (plural) because the download hits the same adapter
+        // endpoint as the chart, which reads repeated `scenarios=` params — one
+        // value is just a single-element list. Only scenarios that actually
+        // returned data are offered.
+        uid: URL_PATH_SCENARIOS,
         label: 'Scenario',
-        options: scenarios,
+        options: impactTime.map(({ uid, label }) => ({ uid, label })),
       },
       {
         uid: 'format',
@@ -122,6 +127,10 @@
         })),
       },
     ];
+
+    // The adapter needs the instance to know which ixmp4 platform to query, so
+    // the download URL carries it alongside the selection.
+    const dataDownloadParams = { ...urlParams, instance };
 
     const graphDownloadParams = {
       ...urlParams,
@@ -137,7 +146,7 @@
       hasSingleScenario,
       chartInfo,
       dataDownloadOptions,
-      dataDownloadParams: urlParams,
+      dataDownloadParams,
       graphDownloadParams,
     };
   };
@@ -163,12 +172,23 @@
       description={asyncProps.description}
       dataDownloadParams={asyncProps.dataDownloadParams}
       dataDownloadOptions={asyncProps.dataDownloadOptions}
+      dataDownloadBase={import.meta.env.VITE_API_URL}
+      dataDownloadArrayFormat="repeat"
       graphDownloadParams={asyncProps.graphDownloadParams}
       chartUid={END_IMPACT_TIME}
       chartInfo={asyncProps.chartInfo}
       templateProps={props}
     >
-      <ImpactTimeChart data={asyncProps.impactTime} unit={asyncProps.unit ?? props.indicator.unit} indicatorLabel={props.indicatorLabel} steps={colorSteps} />
+      {#if asyncProps.impactTime.length}
+        <ImpactTimeChart data={asyncProps.impactTime} unit={asyncProps.unit ?? props.indicator.unit} indicatorLabel={props.indicatorLabel} steps={colorSteps} />
+      {:else}
+        <!-- The response resolved but none of the selected scenarios had data for
+             this indicator/geography/parameter combination (see the filter in
+             `process`). Say so — rendering the chart with an empty series threw. -->
+        <Message headline="There is no data for your current selection">
+          <span class="text-contour-weaker">The selected {$CURRENT_SCENARIOS_UID.length > 1 ? 'scenarios have' : 'scenario has'} no data for this indicator and geography. Try another scenario or geography.</span>
+        </Message>
+      {/if}
     </ChartFrame>
     <LoadingPlaceholder slot="placeholder" />
   </LoadingWrapper>

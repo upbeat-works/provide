@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { instances } from '../instances';
-import { fetchEnsemble } from '../views/unavoidable-risk';
+import { fetchEnsemble, ensembleToCsv } from '../views/unavoidable-risk';
+import { csvFilename, csvHeaders } from '../csv';
 
 const unavoidableRisk = new Hono<Env>();
 
@@ -35,6 +36,12 @@ unavoidableRisk.get('/', async (c) => {
       spatial: c.req.query('spatial'),
     },
   );
+
+  // The chart-frame download menu appends `format=` from the response's
+  // `formats`; anything else stays the default JSON the chart itself reads.
+  if (c.req.query('format') === 'csv') {
+    return c.text(ensembleToCsv(data, { indicator, geography }), 200, csvHeaders(csvFilename('unavoidable-risk', indicator, geography)));
+  }
   return c.json(data);
 });
 

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { assembleEnsemble, pickDefaultThreshold, type ThresholdRows } from './unavoidable-risk';
+import { assembleEnsemble, ensembleToCsv, pickDefaultThreshold, type ThresholdRows } from './unavoidable-risk';
 
 // Two thresholds, given out of order so the test also proves ascending sorting.
 // Each threshold's wide rows carry every scenario (projected + the Today
@@ -145,5 +145,40 @@ describe('assembleEnsemble', () => {
     expect(out.years).toEqual([2020, 2030]);
     expect(out.data['SSP5-3.4-OS']).toEqual([[0.3, 0.7]]);
     expect(out.today).toEqual([0.2]);
+  });
+});
+
+describe('ensembleToCsv', () => {
+  const context = { indicator: 'Mean Temperature', geography: 'France' };
+
+  test('emits one row per scenario-threshold-year', () => {
+    const csv = ensembleToCsv(assembleEnsemble(base), context);
+    const lines = csv.split('\r\n');
+    expect(lines[0]).toBe('indicator,region,scenario,threshold,year,probability');
+    expect(lines).toContain('Mean Temperature,France,curpol,1.5,2020,0.3');
+    expect(lines).toContain('Mean Temperature,France,curpol,2,2030,0.5');
+  });
+
+  test('emits the today baseline once per threshold, with no year', () => {
+    const lines = ensembleToCsv(assembleEnsemble(base), context).split('\r\n');
+    expect(lines).toContain('Mean Temperature,France,Today,1.5,,0.2');
+    expect(lines).toContain('Mean Temperature,France,Today,2,,0.05');
+  });
+
+  test('leaves a missing probability blank rather than NaN', () => {
+    const out = assembleEnsemble({
+      ...base,
+      // curpol has no 2030 value at 1.5 °C, so that cell is NaN.
+      thresholdRows: [
+        { threshold: 1.5, rows: [{ scenario: 'curpol', '2020': 0.3 }] },
+        { threshold: 2.0, rows: [{ scenario: 'curpol', '2020': 0.1, '2030': 0.5 }] },
+      ],
+    });
+    const lines = ensembleToCsv(out, context).split('\r\n');
+    expect(lines).toContain('Mean Temperature,France,curpol,1.5,2030,');
+  });
+
+  test('advertises csv so the download menu offers it', () => {
+    expect(assembleEnsemble(base).formats).toEqual(['csv']);
   });
 });

@@ -77,3 +77,20 @@ describe('GET /api/impact-time', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('GET /api/impact-time?format=csv', () => {
+  test('serves the band as a csv attachment', async () => {
+    const res = await api.request(`/api/impact-time${baseQuery}&format=csv`, {}, await createTestEnv());
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/csv');
+    expect(res.headers.get('content-disposition')).toBe('attachment; filename="impact-time_Mean-Temperature_France.csv"');
+    const body = await res.text();
+    expect(body.split('\r\n')[0]).toBe('indicator,region,scenario,year,value,min,max,unit');
+    expect(body).toContain('Mean Temperature,France,Today,2020,1,0.9,1.1,°C');
+  });
+
+  test('still serves json for any other format', async () => {
+    const res = await api.request(`/api/impact-time${baseQuery}&format=json`, {}, await createTestEnv());
+    expect(res.headers.get('content-type')).toContain('application/json');
+  });
+});

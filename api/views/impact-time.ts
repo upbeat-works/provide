@@ -2,6 +2,7 @@ import { createPlatform } from '../platform';
 import { composeVariable, FACET_DEFAULTS } from '../conventions';
 import { caseInsensitiveLookup } from '../util';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
+import { toCsv, type CsvCell } from '../csv';
 import type { Ixmp4Instance } from '../types';
 import { fetchCitationsByModel } from '../facets';
 import { fetchGmtSeries, gmtBandsForYears } from './gmt';
@@ -97,9 +98,41 @@ export function assembleImpactTime(input: AssembleInput): ImpactTimeResponse {
     model: input.model ?? '',
     source: input.source ?? '',
     parameters: {},
-    formats: [],
+    // The download menu offers whatever this lists; the route serves it from
+    // the same response via `?format=csv` (see impactTimeToCsv).
+    formats: ['csv'],
     data,
   };
+}
+
+export interface CsvContext {
+  indicator: string;
+  geography: string;
+}
+
+/**
+ * The impact-time response as one row per scenario-year, mirroring what the
+ * chart plots: the 50th-percentile value with its 5th/95th band. Years are
+ * reconstructed from yearStart/yearStep. Pure.
+ */
+export function impactTimeToCsv(response: ImpactTimeResponse, context: CsvContext): string {
+  const headers = ['indicator', 'region', 'scenario', 'year', 'value', 'min', 'max', 'unit'];
+  const rows: CsvCell[][] = [];
+  for (const [scenario, band] of Object.entries(response.data)) {
+    band.forEach(([min, value, max], i) => {
+      rows.push([
+        context.indicator,
+        context.geography,
+        scenario,
+        response.yearStart + response.yearStep * i,
+        value,
+        min,
+        max,
+        response.unit,
+      ]);
+    });
+  }
+  return toCsv(headers, rows);
 }
 
 

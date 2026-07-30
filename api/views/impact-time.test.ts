@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach, spyOn } from 'bun:test';
-import { assembleImpactTime, zipBands, alignBands, fetchImpactTime } from './impact-time';
+import { assembleImpactTime, impactTimeToCsv, zipBands, alignBands, fetchImpactTime } from './impact-time';
 import * as platformModule from '../platform';
 import { instances } from '../instances';
 
@@ -139,5 +139,37 @@ describe('assembleImpactTime', () => {
     expect(out.title).toBe('Mean Temperature');
     expect(out.model).toBe('MESMER');
     expect(out.source).toBe('provide-internal');
+  });
+});
+
+describe('impactTimeToCsv', () => {
+  const context = { indicator: 'Mean Temperature', geography: 'France' };
+  const response = assembleImpactTime({
+    indicator: 'Mean Temperature',
+    years: [2020, 2025],
+    p5: { Today: [1, 2] },
+    p50: { Today: [2, 3] },
+    p95: { Today: [3, 4] },
+    scenarios: ['Today'],
+  });
+
+  test('emits one row per scenario-year with the band and its context', () => {
+    response.unit = '°C';
+    const lines = impactTimeToCsv(response, context).split('\r\n');
+    expect(lines[0]).toBe('indicator,region,scenario,year,value,min,max,unit');
+    expect(lines[1]).toBe('Mean Temperature,France,Today,2020,2,1,3,°C');
+    expect(lines[2]).toBe('Mean Temperature,France,Today,2025,3,2,4,°C');
+  });
+
+  test('reconstructs years from yearStart/yearStep', () => {
+    const years = impactTimeToCsv(response, context)
+      .split('\r\n')
+      .slice(1)
+      .map((line) => line.split(',')[3]);
+    expect(years).toEqual(['2020', '2025']);
+  });
+
+  test('advertises csv so the download menu offers it', () => {
+    expect(response.formats).toEqual(['csv']);
   });
 });

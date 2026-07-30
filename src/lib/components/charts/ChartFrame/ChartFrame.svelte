@@ -12,6 +12,10 @@
   export let description;
   export let dataDownloadParams = undefined;
   export let dataDownloadOptions = [];
+  // Charts fetching from the Hono adapter must download from it too — see
+  // DataDownloadMenu; omitted means the legacy Climate Analytics API.
+  export let dataDownloadBase = undefined;
+  export let dataDownloadArrayFormat = undefined;
   export let graphDownloadParams = undefined;
   export let graphDownloadSettings = {};
   export let chartUid;
@@ -42,7 +46,7 @@
     <figcaption class="flex justify-end items-center gap-4 mt-2 mb-2">
       <InfoButton label="About the data" items={chartInfo} />
       <DownloadGraphMenu embedUid={chartUid} {...graphDownloadSettings} graphParams={graphDownloadParams} />
-      <DataDownloadMenu endpoint={chartUid} options={dataDownloadOptions} params={dataDownloadParams} />
+      <DataDownloadMenu endpoint={chartUid} options={dataDownloadOptions} params={dataDownloadParams} base={dataDownloadBase} arrayFormat={dataDownloadArrayFormat} />
     </figcaption>
   {:else}
     <InfoList items={chartInfo} />

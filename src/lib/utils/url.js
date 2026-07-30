@@ -97,7 +97,15 @@ export function urlToState(currentUrl) {
       changeStoreToValue(store, param, { isIndicatorArray });
     }
   });
-  if (browser) goto(url.href, { replaceState: true, noScroll: true, keepFocus: true });
+  // Only navigate when a param was actually consumed. The caller is a reactive
+  // statement on `$page.url`, and `goto` replaces that with a NEW URL object on
+  // every call — so an unconditional goto re-triggered this function forever
+  // (measured: the embed renderer pegged at 100% CPU and never painted, which is
+  // what every downloaded graph screenshots). Once the params are stripped there
+  // is nothing left to strip, the href stops changing, and the cycle ends.
+  if (url.href !== String(currentUrl)) {
+    goto(url.href, { replaceState: true, noScroll: true, keepFocus: true });
+  }
 }
 
 export function buildURL(url, params = {}) {

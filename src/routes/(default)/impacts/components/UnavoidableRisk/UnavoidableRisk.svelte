@@ -72,7 +72,7 @@
       },
     });
 
-  $: process = ({ data }, { selectedScenarios, urlParams, allScenarios }) => {
+  $: process = ({ data }, { selectedScenarios, urlParams, allScenarios, indicator: { instance } = {} }) => {
     // This creates the list of thresholds
     const decimals = findDecimalsForDistinctValues(data.thresholds, $CURRENT_INDICATOR_UNIT_UID);
 
@@ -157,16 +157,25 @@
       {
         uid: 'format',
         label: 'Format',
-        options: (data.data.formats || ['csv']).map((uid) => ({
+        options: (data.formats?.length ? data.formats : ['csv']).map((uid) => ({
           label: uid,
           uid,
         })),
       },
     ];
 
-    const dataDownloadParams = { ...urlParams, threshold };
+    // The download hits the same adapter endpoint as the chart, so it needs the
+    // same request: the instance to pick the ixmp4 platform, and the full
+    // scenario set the chart plots. No `threshold` — the adapter always returns
+    // every threshold and the CSV carries it as a column.
+    const dataDownloadParams = {
+      ...urlParams,
+      instance,
+      [URL_PATH_SCENARIOS]: allScenarios.map((d) => d.uid),
+    };
     const graphDownloadParams = {
-      ...dataDownloadParams,
+      ...urlParams,
+      threshold,
       scenarios: selectedScenarios.map((d) => d.uid),
     };
 
@@ -234,6 +243,8 @@
       templateProps={props}
       dataDownloadParams={asyncProps.dataDownloadParams}
       dataDownloadOptions={asyncProps.dataDownloadOptions}
+      dataDownloadBase={import.meta.env.VITE_API_URL}
+      dataDownloadArrayFormat="repeat"
       graphDownloadParams={asyncProps.graphDownloadParams}
       chartUid={END_UN_AVOIDABLE_RISK}
       chartInfo={asyncProps.chartInfo}
