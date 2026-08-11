@@ -2,7 +2,13 @@
 // geography carrying a `parents` array) into the lookups the selector needs.
 // Kept framework-free so it is unit-testable under `bun test`.
 
-const CHILD_TYPE_ORDER = ['cities', 'river_basins', 'eez'];
+// Display order for the types a country can be drilled into. Anything not
+// listed still shows (appended alphabetically) — a new geography type must
+// never silently disappear from the tree.
+const CHILD_TYPE_ORDER = ['cities', 'macroeconomies', 'river_basins', 'glacier_regions', 'eez', 'northern_latitudes'];
+
+// Countries and continents are the tree's roots, never a country's children.
+const ROOT_TYPES = new Set(['continent', 'admin0']);
 
 /**
  * @param {Record<string, Array<{uid:string,label:string,geographyType:string,parents:string[]}>>} [geographies]
@@ -83,13 +89,7 @@ export function continentOf(index, uid) {
  * @returns {Array<{type:string,count:number}>}
  */
 export function childSummary(index, countryUid) {
-  const children = index.childrenByParent[countryUid] ?? {};
-  const summary = [];
-  for (const type of CHILD_TYPE_ORDER) {
-    const list = children[type];
-    if (list && list.length) summary.push({ type, count: list.length });
-  }
-  return summary;
+  return childGroups(index, countryUid).map(({ type, items }) => ({ type, count: items.length }));
 }
 
 /**
@@ -99,10 +99,25 @@ export function childSummary(index, countryUid) {
  */
 export function childGroups(index, countryUid) {
   const children = index.childrenByParent[countryUid] ?? {};
-  const groups = [];
-  for (const type of CHILD_TYPE_ORDER) {
-    const items = children[type];
-    if (items && items.length) groups.push({ type, items });
-  }
-  return groups;
+  const types = Object.keys(children).filter((type) => !ROOT_TYPES.has(type) && children[type]?.length);
+  types.sort((a, b) => rankOf(a) - rankOf(b) || a.localeCompare(b));
+  return types.map((type) => ({ type, items: children[type] }));
+}
+
+function rankOf(type) {
+  const rank = CHILD_TYPE_ORDER.indexOf(type);
+  return rank === -1 ? CHILD_TYPE_ORDER.length : rank;
+}
+
+/**
+ * A geography type's label without its parenthetical abbreviation
+ * ("River Basins (RB)" → "River Basins"). The abbreviation earns its space in
+ * the compact selection button, not in the tree or the map's summary tags.
+ * @param {string|undefined|null} label
+ * @returns {string}
+ */
+export function plainLabel(label) {
+  return String(label ?? '')
+    .replace(/\s*\([^()]*\)\s*$/, '')
+    .trim();
 }

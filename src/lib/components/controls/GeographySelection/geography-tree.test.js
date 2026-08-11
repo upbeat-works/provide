@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { buildIndex, childSummary, geoIdOf, parentCountriesOf, continentOf, childGroups } from './geography-tree.js';
+import { buildIndex, childSummary, geoIdOf, parentCountriesOf, continentOf, childGroups, plainLabel } from './geography-tree.js';
 
 const geographies = {
   continent: [{ uid: 'Africa', label: 'Africa', geographyType: 'continent', parents: [] }],
@@ -97,6 +97,32 @@ describe('childGroups', () => {
   });
   test('returns [] for a geography with no children', () => {
     expect(childGroups(index, 'Cairo')).toEqual([]);
+  });
+
+  test('never returns countries as children of their continent', () => {
+    expect(childGroups(index, 'Africa')).toEqual([]);
+  });
+
+  test('includes types outside the display order, sorted after the known ones', () => {
+    const withExtras = buildIndex({
+      ...geographies,
+      glacier_regions: [{ uid: 'Patagonia', label: 'Patagonia', geographyType: 'glacier_regions', parents: ['Egypt'] }],
+      zzz_new_type: [{ uid: 'Somewhere', label: 'Somewhere', geographyType: 'zzz_new_type', parents: ['Egypt'] }],
+    });
+    expect(childGroups(withExtras, 'Egypt').map((g) => g.type)).toEqual(['cities', 'river_basins', 'glacier_regions', 'zzz_new_type']);
+  });
+});
+
+describe('plainLabel', () => {
+  test('drops a trailing abbreviation', () => {
+    expect(plainLabel('River Basins (RB)')).toBe('River Basins');
+    expect(plainLabel('Exclusive Economic Zone (EEZ)')).toBe('Exclusive Economic Zone');
+  });
+  test('leaves a label without one untouched', () => {
+    expect(plainLabel('Cities')).toBe('Cities');
+  });
+  test('tolerates a missing label', () => {
+    expect(plainLabel(undefined)).toBe('');
   });
 });
 

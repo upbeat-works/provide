@@ -84,7 +84,7 @@
     </g>
     <g role="list">
       {#if hoveredFeature}
-        <path d={hoveredFeature.d} class="fill-contour-weak stroke-surface-base stroke-1" />
+        <path d={hoveredFeature.d} class="fill-contour-weaker stroke-surface-base stroke-1" />
       {/if}
     </g>
     <g role="list">
@@ -92,6 +92,9 @@
         <path d={selectedFeature.d} class="fill-theme-base stroke-surface-base stroke-1" />
       {/if}
     </g>
-    <path d={graticuleOutline} class="stroke-contour-weak stroke-1 fill-none linejoin-round" />
+    <!-- The sphere outline frames the projection. `contour-weak` is not a colour
+         token (only base/weaker/weakest exist), so this path was drawing with no
+         stroke at all and the map bled off into white. -->
+    <path d={graticuleOutline} class="stroke-theme-weaker stroke-1 fill-none linejoin-round" />
   </svg>
 </figure>
