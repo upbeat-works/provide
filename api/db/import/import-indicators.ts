@@ -1,13 +1,14 @@
 /**
- * Imports curated indicator enrichment (sector + legacy translation uid) from a
- * YAML into a SQLite seed file. Pure builders are exported for testing; the CLI
+ * Imports curated indicator enrichment from YAML into a SQL seed file. Pure
+ * builders are exported for testing; the CLI
  * tail writes the file.
  *
  * Usage: bun run api/db/import/import-indicators.ts [yamlPath] [outPath]
  *
  * Additive: only indicators that need a curated fact ixmp4 can't provide (a
- * sector tag, or a `legacyUid` bridge to the frozen legacy /meta) appear here.
- * A missing row leaves that indicator unchanged in /catalog.
+ * sector tag, a `legacyUid` bridge to the frozen legacy /meta, or display
+ * metadata) appear here. A missing row leaves that indicator unchanged in
+ * /catalog.
  */
 import { readFileSync } from 'node:fs';
 
@@ -15,6 +16,9 @@ export interface IndicatorRow {
   id: string;
   sector: string | null;
   legacyUid: string | null;
+  unit: string | null;
+  direction: number | null;
+  colorScale: string | null;
 }
 
 function esc(value: string | null | undefined): string {
@@ -22,7 +26,10 @@ function esc(value: string | null | undefined): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-/** Minimal YAML: a list of `- id:` blocks with optional `sector:`/`legacyUid:`. */
+function escNumber(value: number | null): string {
+  return value == null ? 'NULL' : String(value);
+}
+
 export function parseIndicatorsYaml(text: string): IndicatorRow[] {
   const rows: IndicatorRow[] = [];
   let cur: IndicatorRow | null = null;
@@ -34,12 +41,26 @@ export function parseIndicatorsYaml(text: string): IndicatorRow[] {
     const line = raw.replace(/\s+$/, '');
     if (line === '' || line.trimStart().startsWith('#')) continue;
     if (line.startsWith('- id:')) {
-      cur = { id: val(line) ?? '', sector: null, legacyUid: null };
+      cur = {
+        id: val(line) ?? '',
+        sector: null,
+        legacyUid: null,
+        unit: null,
+        direction: null,
+        colorScale: null,
+      };
       rows.push(cur);
     } else if (cur && line.trimStart().startsWith('sector:')) {
       cur.sector = val(line);
     } else if (cur && line.trimStart().startsWith('legacyUid:')) {
       cur.legacyUid = val(line);
+    } else if (cur && line.trimStart().startsWith('unit:')) {
+      cur.unit = val(line);
+    } else if (cur && line.trimStart().startsWith('direction:')) {
+      const direction = val(line);
+      cur.direction = direction == null ? null : Number(direction);
+    } else if (cur && line.trimStart().startsWith('colorScale:')) {
+      cur.colorScale = val(line);
     }
   }
   return rows;
@@ -58,7 +79,9 @@ export function buildIndicatorsSeedSql(rows: IndicatorRow[]): string {
   }
   const lines = ['-- Auto-generated PROVIDE indicator enrichment seed', '', 'DELETE FROM indicators;', ''];
   for (const r of rows) {
-    lines.push(`INSERT INTO indicators (id, sector, legacy_uid) VALUES (${esc(r.id)}, ${esc(r.sector)}, ${esc(r.legacyUid)});`);
+    lines.push(
+      `INSERT INTO indicators (id, sector, legacy_uid, unit, direction, color_scale) VALUES (${esc(r.id)}, ${esc(r.sector)}, ${esc(r.legacyUid)}, ${esc(r.unit)}, ${escNumber(r.direction)}, ${esc(r.colorScale)});`,
+    );
   }
   lines.push('');
   return lines.join('\n');

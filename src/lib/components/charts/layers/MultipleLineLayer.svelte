@@ -7,7 +7,14 @@
 
   const { data, xGet, yGet } = getContext('LayerCake');
 
-  $: path = line().x($xGet).y($yGet);
+  // Guard against NaN-padded values (a series shorter than the chart's year
+  // axis — see AreaLayer's note). Without `.defined()`, d3 embeds NaN in the
+  // path's `d` string; browsers render only up to the first bad coordinate
+  // and silently drop everything after it, not just the gap.
+  $: path = line()
+    .defined((d) => Number.isFinite($yGet(d)))
+    .x($xGet)
+    .y($yGet);
   $: curve && path.curve(curve);
 
   $: paths = $data.map(({ values, uid, color, strokeWidth: sw, opacity, isSelected, isHighlighted }) => ({

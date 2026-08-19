@@ -24,6 +24,7 @@ app.use('*', async (c, next) => {
     DB: db,
     IXMP4_USERNAME: process.env.IXMP4_USERNAME ?? '',
     IXMP4_PASSWORD: process.env.IXMP4_PASSWORD ?? '',
+    GEOSERVER_URL: process.env.GEOSERVER_URL,
   };
   await next();
 });

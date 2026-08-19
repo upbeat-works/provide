@@ -119,8 +119,7 @@ So fixing defect 1 alone changes nothing; the yaml has to be re-derived against 
 either way. The correct row for today's single indicator would be
 `id: Mean Temperature` / `legacyUid: terclim-mean-temperature`.
 
-There is **no scenario bridge at all** — no column, no yaml, no `resolveScenario`. The old→new
-scenario mapping exists only as prose in `docs/geoserver-data-requirements.md:57-71`.
+There is **no scenario bridge at all** — no column, no yaml, no `resolveScenario`.
 
 ## The content decision that no code choice avoids
 

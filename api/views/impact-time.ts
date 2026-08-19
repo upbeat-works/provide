@@ -157,14 +157,41 @@ interface FetchedBands {
  * three series for a scenario index by the SAME years in zipBands. A year a
  * scenario lacks (missing column or null cell) becomes NaN rather than shifting
  * later years left. Pure.
+ *
+ * ixmp4's tabulate returns a rectangular wide frame: every row (every
+ * scenario published for the variable, not just the ones requested) carries
+ * the SAME year columns, null-padded wherever that scenario lacks data — so
+ * "which columns exist on a requested row" is every column, always. The
+ * union has to be which years a REQUESTED scenario has a real (non-null)
+ * value for — the same rule assembleEnsemble already applies in
+ * unavoidable-risk.ts — so a base scenario that stops at 2100 doesn't have
+ * its axis inflated by an unrelated scenario that runs to 2300. `scenarios`
+ * is matched case-insensitively, matching the rest of the adapter. Omit it
+ * to keep the old union-of-everything behaviour (gmt.ts's fetchGmtSeries has
+ * no request-scoped scenario list to filter by).
  */
-export function alignBands(rowsByPct: Record<string, WideRow[]>): {
+export function alignBands(
+  rowsByPct: Record<string, WideRow[]>,
+  scenarios?: string[],
+): {
   years: number[];
   byPct: Record<string, PercentileSeries>;
 } {
+  const wanted = scenarios ? new Set(scenarios.map((s) => s.toLowerCase())) : undefined;
+  const included = (row: WideRow) => !wanted || wanted.has(row.scenario.toLowerCase());
+
   const yearSet = new Set<number>();
   for (const rows of Object.values(rowsByPct)) {
-    for (const row of rows) for (const y of yearColumns(row)) yearSet.add(y);
+    for (const row of rows) {
+      if (!included(row)) continue;
+      for (const y of yearColumns(row)) {
+        // Without a scenario filter, keep the original "any column counts"
+        // union — a null cell still marks the year as part of the shared
+        // axis (it becomes NaN below, not dropped). With a filter, only a
+        // REAL value on a requested row proves the year belongs on the axis.
+        if (!wanted || row[String(y)] != null) yearSet.add(y);
+      }
+    }
   }
   const years = [...yearSet].sort((a, b) => a - b);
   const byPct: Record<string, PercentileSeries> = {};
@@ -188,6 +215,7 @@ async function fetchBands(
   platform: any,
   region: string,
   base: VariableBase,
+  scenarios: string[],
 ): Promise<FetchedBands> {
   const dfs = await Promise.all(
     PERCENTILES.map((value) =>
@@ -209,7 +237,7 @@ async function fetchBands(
       if (!unit && typeof row.unit === 'string' && row.unit) unit = row.unit;
     }
   });
-  const { years, byPct } = alignBands(rowsByPct);
+  const { years, byPct } = alignBands(rowsByPct, scenarios);
   return { years, p5: byPct['5th Percentile'], p50: byPct['50th Percentile'], p95: byPct['95th Percentile'], model, unit };
 }
 
@@ -234,7 +262,7 @@ export async function fetchImpactTime(
   };
 
   const [indicatorBands, gmtSeries, citations] = await Promise.all([
-    fetchBands(platform, params.geography, base),
+    fetchBands(platform, params.geography, base, params.scenarios),
     fetchGmtSeries(platform),
     fetchCitationsByModel(platform),
   ]);

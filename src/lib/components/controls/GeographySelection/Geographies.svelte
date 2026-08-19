@@ -11,6 +11,8 @@
   export let hoveredItem;
   export let term = '';
   export let geographyType; // { uid, label, ... } of the active type pill
+  export let geographyIndex;
+  $: index = geographyIndex ?? $GEOGRAPHY_INDEX;
 
   const options = {
     includeScore: true,
@@ -79,7 +81,7 @@
   $: isCountryMode = geographyType?.uid === 'admin0';
 
   // Countries grouped by continent (ordered by continent label).
-  $: continentGroups = sortBy(Object.entries($GEOGRAPHY_INDEX.countriesByContinent), ['0']);
+  $: continentGroups = sortBy(Object.entries(index.countriesByContinent), ['0']);
 
   let box;
   $: term, box?.scrollTo({ top: 0 });
@@ -95,8 +97,8 @@
       {/if}
     {:else if isCountryMode}
       {#each continentGroups as [continentId, countries]}
-        <span class="mx-5 mb-1 block text-xs text-text-weaker uppercase tracking-wide border-b border-b-contour-weakest mt-4">{$GEOGRAPHY_INDEX.byId[continentId]?.label ?? continentId}</span>
-        <GeographyGroup group={countries} bind:hoveredItem asCountries={true} />
+        <span class="mx-5 mb-1 block text-xs text-text-weaker uppercase tracking-wide border-b border-b-contour-weakest mt-4">{index.byId[continentId]?.label ?? continentId}</span>
+        <GeographyGroup group={countries} {geographyIndex} bind:hoveredItem asCountries={true} />
       {/each}
     {:else if results.length}
       {#each groupedItems as [key, group]}

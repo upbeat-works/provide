@@ -7,7 +7,7 @@
  *
  *   Indicator | Period | Temporal | Spatial | Value
  *
- * with one special case, the emissions trajectory: `Emissions|CO2`.
+ * with one special case, the emissions trajectory: `Emissions|Kyoto Gases`.
  *
  * The Value segment is one of two axes, distinguished by suffix:
  *   - warming level: "1.5 °C"        (unit is always % — exceedance probability)
@@ -26,7 +26,7 @@ export interface ParsedValue {
  *    indicators, the only ones with parameter axes.
  *  - `global` — a facet-free trajectory of the whole planet: the 2-segment
  *    `Indicator|Value` form (`Global Mean Temperature|50th Percentile`) and
- *    `Emissions|CO2`. These are properties of a scenario, not selectable
+ *    `Emissions|Kyoto Gases`. These are properties of a scenario, not selectable
  *    indicators, so they never enter the catalog's indicator list.
  */
 export type VariableKind = 'faceted' | 'global';
@@ -72,6 +72,16 @@ export function composeVariable(parts: VariableParts): string {
 export const FACET_DEFAULTS = { period: '2011-2020 (Present Day)', temporal: 'Annual', spatial: 'Area' };
 export const REPRESENTATIVE_VALUE = '50th Percentile';
 
+// Fixed display/default order for the period ("reference baseline") facet.
+// ixmp4 returns variables in upload order, which is not a meaningful sort — and
+// the frontend picks an indicator's periods[0] as its default reference
+// selection (CURRENT_INDICATOR_PARAMETERS in src/stores/state.js). Left
+// unsorted, that default silently follows whichever baseline happened to be
+// uploaded first. Present day sorts first (it matches FACET_DEFAULTS.period,
+// the baseline the backend's own probes assume); a period not in this list
+// keeps its scan-order position after the known ones.
+export const PERIOD_ORDER = [FACET_DEFAULTS.period, 'Absolute Values (No Change)', '1850-1900 (Pre-industrial)'];
+
 // The present-day baseline is carried as its own run named "Today" (its year-2000
 // values become the unavoidable-risk `today` array). It is never a selectable
 // projection scenario, so the avoid view's availability probe excludes it.
@@ -86,6 +96,12 @@ export const GMT_REGION = 'World';
 // data the label order is NOT the value order (the "10th" series carries the
 // highest values), so callers must take band edges numerically. See views/gmt.ts.
 export const GMT_PERCENTILES = ['10th Percentile', '50th Percentile', '90th Percentile'] as const;
+
+// Global GHG emissions (CO2-equivalent basket): the other global-trajectory
+// output of the same climate emulator, published at the same `World` region
+// as GMT. Unlike GMT it carries no percentile siblings — a single
+// `Emissions|Kyoto Gases` series per scenario. See views/emissions.ts.
+export const EMISSIONS_VARIABLE = 'Emissions|Kyoto Gases';
 
 /** The ixmp4 variable name for one GMT percentile — the 2-segment inverse of parseVariable. */
 export function composeGmtVariable(value: string): string {
@@ -165,8 +181,14 @@ export function indicatorsFromVariables(names: string[]): IndicatorFacets[] {
   const sortedKeys = (m: Map<string, number>) =>
     [...m.entries()].sort((a, b) => a[1] - b[1]).map(([raw]) => raw);
 
+  const periodRank = (period: string) => {
+    const i = PERIOD_ORDER.indexOf(period);
+    return i === -1 ? PERIOD_ORDER.length : i;
+  };
+
   return [...byIndicator.values()].map(({ entry, warmingLevels, percentiles }) => ({
     ...entry,
+    periods: [...entry.periods].sort((a, b) => periodRank(a) - periodRank(b)),
     warmingLevels: sortedKeys(warmingLevels),
     percentiles: sortedKeys(percentiles),
   }));
@@ -185,7 +207,7 @@ export function parseVariable(name: string): ParsedVariable {
   } else if (segments.length === 2) {
     // `Indicator|Value` — a global trajectory. The value axis is the same one the
     // faceted grammar uses, so parseValue recovers the percentile here too;
-    // `Emissions|CO2` simply has no parseable value.
+    // `Emissions|Kyoto Gases` simply has no parseable value.
     parsed.value = parseValue(segments[1]);
   }
   return parsed;

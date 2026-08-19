@@ -3,10 +3,11 @@
 # your EXISTING host Postgres (Homebrew on :5432): `catalog` schema (API), `strapi`
 # schema (CMS).
 #
-#   nginx :8080  single entry ->  /api (API) · /cms (Strapi) · / (SvelteKit)
-#   web   :5173  vite dev server (also exposed directly, for HMR)
-#   api          internal, reached through nginx /api
-#   cms   :1337  internal for content (nginx /cms); admin also exposed on :1337
+#   nginx     :8080  single entry ->  /api (API) · /cms (Strapi) · / (SvelteKit)
+#   web       :5173  vite dev server (also exposed directly, for HMR)
+#   geoserver :8081  local WCS and admin interface
+#   api              internal, reached through nginx /api
+#   cms       :1337  internal for content (nginx /cms); admin also exposed on :1337
 #
 # Containers reach the host DB via host.docker.internal. Host role/db default to
 # rodrigo / provide; override with DB_USER / DB_NAME. Homebrew trust auth, no password.
@@ -40,7 +41,11 @@ services:
       DATABASE_USERNAME: ${DB_USER:-rodrigo}
       DATABASE_PASSWORD: ''
       DATABASE_SCHEMA: catalog
+      GEOSERVER_URL: http://geoserver:8080/geoserver
       PORT: 8080
+    depends_on:
+      geoserver-bootstrap:
+        condition: service_completed_successfully
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
@@ -91,6 +96,7 @@ services:
       # Browser: API is a relative path on the apex; CMS is its own subdomain.
       VITE_API_URL: /api
       VITE_CMS_URL: http://cms.localhost:8080
+      VITE_IMPACT_GEO_API_URL: /api
       # SSR (server-side loaders in the container) hit the services directly
       VITE_API_URL_INTERNAL: http://api:8080/api
       VITE_CMS_URL_INTERNAL: http://cms:1337
@@ -99,3 +105,40 @@ services:
       - /app/node_modules # keep the container's Linux-built node_modules
     ports:
       - '5173:5173' # vite HMR websocket connects here directly
+
+  geoserver:
+    build:
+      context: ./geoserver
+      args:
+        GEOSERVER_VERSION: 2.28.4
+    environment:
+      INSTALL_EXTENSIONS: 'true'
+      STABLE_EXTENSIONS: netcdf
+      SKIP_DEMO_DATA: 'true'
+    volumes:
+      - geoserver-data:/opt/geoserver_data
+      - ./geoserver/data:/opt/geoserver_import
+    ports:
+      - '8081:8080'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/geoserver/web/ >/dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  geoserver-bootstrap:
+    image: curlimages/curl:8.12.1
+    depends_on:
+      geoserver:
+        condition: service_healthy
+    environment:
+      GEOSERVER_URL: http://geoserver:8080/geoserver
+    volumes:
+      - ./geoserver/bootstrap.sh:/bootstrap.sh:ro
+      - ./geoserver/data:/opt/geoserver_import:ro
+    entrypoint: ['/bin/sh', '/bootstrap.sh']
+    restart: 'no'
+
+volumes:
+  geoserver-data:

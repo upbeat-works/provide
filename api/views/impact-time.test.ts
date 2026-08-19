@@ -65,6 +65,45 @@ describe('alignBands', () => {
     const { byPct } = alignBands({ '50th Percentile': [{ scenario: 'A', '2020': 1, '2025': null }] });
     expect(byPct['50th Percentile'].A[1]).toBeNaN();
   });
+
+  // ixmp4's tabulate returns a rectangular wide frame: every row (every
+  // scenario) carries the SAME year columns, null-padded wherever that
+  // scenario lacks data — a base scenario that stops at 2100 still has 2300
+  // as a column key, just null. So the union can't be "which columns exist on
+  // a requested row" (that's every column, always) — it has to be "which
+  // years a requested row has an actual value for", same rule
+  // assembleEnsemble already applies in unavoidable-risk.ts. An unrelated
+  // scenario that genuinely runs to 2300 must not inflate the axis for a
+  // request that only asked for the one that stops at 2100.
+  test('restricts the year union to years the requested scenarios have real values for', () => {
+    const rowsByPct = {
+      '50th Percentile': [
+        { scenario: 'Requested Scenario', '2020': 1, '2025': 2, '2300': null },
+        { scenario: 'Other Scenario', '2020': 9, '2025': 9, '2300': 9 },
+      ],
+    };
+    const { years } = alignBands(rowsByPct, ['Requested Scenario']);
+    expect(years).toEqual([2020, 2025]);
+  });
+
+  test('matches the scenario filter case-insensitively, like the rest of the adapter', () => {
+    const rowsByPct = {
+      '50th Percentile': [{ scenario: 'ssp5-3.4-Os', '2020': 1, '2025': 2 }],
+    };
+    const { years } = alignBands(rowsByPct, ['SSP5-3.4-OS']);
+    expect(years).toEqual([2020, 2025]);
+  });
+
+  test('with no scenario filter, keeps the old union-of-everything behaviour', () => {
+    const rowsByPct = {
+      '50th Percentile': [
+        { scenario: 'A', '2020': 1 },
+        { scenario: 'B', '2020': 1, '2300': 1 },
+      ],
+    };
+    const { years } = alignBands(rowsByPct);
+    expect(years).toEqual([2020, 2300]);
+  });
 });
 
 describe('zipBands', () => {

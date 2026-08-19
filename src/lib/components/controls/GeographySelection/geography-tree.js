@@ -6,16 +6,37 @@ const CHILD_TYPE_ORDER = ['cities', 'river_basins', 'eez'];
 
 /**
  * @param {Record<string, Array<{uid:string,label:string,geographyType:string,parents:string[]}>>} [geographies]
+ * @param {Set<string>|null} [allowedUids]
  * @returns {{ byId: Record<string, object>, childrenByParent: Record<string, Record<string, object[]>>, countriesByContinent: Record<string, object[]> }}
  */
-export function buildIndex(geographies) {
+export function buildIndex(geographies, allowedUids = null) {
   const all = Object.values(geographies ?? {}).flat();
 
+  const allById = {};
+  for (const geo of all) allById[geo.uid] = geo;
+
+  let includedUids = null;
+  if (allowedUids) {
+    includedUids = new Set(allowedUids);
+    const includeParents = (uid) => {
+      for (const parentUid of allById[uid]?.parents ?? []) {
+        if (includedUids.has(parentUid)) continue;
+        includedUids.add(parentUid);
+        includeParents(parentUid);
+      }
+    };
+    for (const uid of allowedUids) includeParents(uid);
+  }
+
+  const included = includedUids ? all.filter((geo) => includedUids.has(geo.uid)) : all;
+
   const byId = {};
-  for (const geo of all) byId[geo.uid] = geo;
+  for (const geo of included) {
+    byId[geo.uid] = allowedUids ? { ...geo, isSelectable: allowedUids.has(geo.uid) } : geo;
+  }
 
   const childrenByParent = {};
-  for (const geo of all) {
+  for (const geo of Object.values(byId)) {
     for (const parent of geo.parents ?? []) {
       (childrenByParent[parent] ??= {});
       (childrenByParent[parent][geo.geographyType] ??= []).push(geo);
@@ -24,7 +45,7 @@ export function buildIndex(geographies) {
 
   const byLabel = (a, b) => (a.label ?? '').localeCompare(b.label ?? '');
   const countriesByContinent = {};
-  for (const country of geographies?.admin0 ?? []) {
+  for (const country of Object.values(byId).filter((geo) => geo.geographyType === 'admin0')) {
     for (const parent of country.parents ?? []) {
       (countriesByContinent[parent] ??= []).push(country);
     }

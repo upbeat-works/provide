@@ -36,6 +36,30 @@ describe('buildIndex', () => {
   test('tolerates an empty / undefined input', () => {
     expect(buildIndex(undefined)).toEqual({ byId: {}, childrenByParent: {}, countriesByContinent: {} });
   });
+
+  test('prunes the browsing tree to allowed geographies and their navigation ancestors', () => {
+    const index = buildIndex(geographies, new Set(['Cairo']));
+
+    expect(Object.keys(index.byId).sort()).toEqual(['Africa', 'Cairo', 'Egypt']);
+    expect(index.countriesByContinent.Africa.map((country) => country.uid)).toEqual(['Egypt']);
+    expect(childGroups(index, 'Egypt')).toEqual([{ type: 'cities', items: [index.byId.Cairo] }]);
+  });
+
+  test('marks navigation-only ancestors as unavailable for direct selection', () => {
+    const index = buildIndex(geographies, new Set(['Cairo']));
+
+    expect(index.byId.Cairo.isSelectable).toBe(true);
+    expect(index.byId.Egypt.isSelectable).toBe(false);
+    expect(index.byId.Africa.isSelectable).toBe(false);
+  });
+
+  test('keeps every required parent for an allowed trans-boundary child', () => {
+    const index = buildIndex(geographies, new Set(['Nile']));
+
+    expect(index.countriesByContinent.Africa.map((country) => country.uid)).toEqual(['Egypt', 'Sudan']);
+    expect(childGroups(index, 'Egypt')[0].items.map((item) => item.uid)).toEqual(['Nile']);
+    expect(childGroups(index, 'Sudan')[0].items.map((item) => item.uid)).toEqual(['Nile']);
+  });
 });
 
 describe('geoIdOf', () => {

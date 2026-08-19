@@ -7,8 +7,9 @@ import { parseVariable, indicatorsFromVariables } from '../conventions';
 import { distinct, distinctCaseInsensitive, createTtlCache } from '../util';
 import { fetchScenarioTimeframes } from '../views/scenarios';
 import { fetchGmtSeriesAcross } from '../views/gmt';
+import { fetchEmissionsSeriesAcross } from '../views/emissions';
 import { FACET_KEYS, fetchRunFacetData, resolveFacetSelection, citationsByIndicator, sectorLabel, type FacetFilters, type IndicatorAttrs } from '../facets';
-import { indicatorDescriptions } from '../descriptions';
+import { indicatorDescriptions, unitFromDescription } from '../descriptions';
 
 const catalog = new Hono<Env>();
 
@@ -65,7 +66,7 @@ async function buildCatalog(c: Context<Env>) {
   const { IXMP4_USERNAME: username, IXMP4_PASSWORD: password } = c.env;
   const platforms = await createPlatforms(username, password);
 
-  const [instanceVariables, instanceRuns, facetData, gmt] = await Promise.all([
+  const [instanceVariables, instanceRuns, facetData, gmt, emissions] = await Promise.all([
     Promise.all(
       platforms.map(async ({ instance, platform }) => {
         // Docs are per-variable and keyed by variable id, so both lists are
@@ -88,12 +89,21 @@ async function buildCatalog(c: Context<Env>) {
     // Three tabulates, and only on a cache miss — GMT is a property of every
     // scenario, so it is assembled once here rather than per request.
     fetchGmtSeriesAcross(platforms),
+    // One tabulate, same reasoning — the emulator's other global trajectory.
+    fetchEmissionsSeriesAcross(platforms),
   ]);
 
   const variablesFlat = instanceVariables.flat();
   const descriptions = indicatorDescriptions(
     variablesFlat.map(({ name, description }) => ({ variable: name, description })),
   );
+  const units = new Map<string, string>();
+  for (const { name, description } of variablesFlat) {
+    const unit = unitFromDescription(description);
+    if (!unit) continue;
+    const { indicator } = parseVariable(name);
+    if (!units.has(indicator)) units.set(indicator, unit);
+  }
   const citations = citationsByIndicator(facetData.runIndicators, facetData.citations);
   const projectByIndicator = new Map<string, string | undefined>();
   for (const { name, project } of variablesFlat) {
@@ -112,21 +122,22 @@ async function buildCatalog(c: Context<Env>) {
   // Map the convention facets onto the parameter keys the selector UI expects.
   // Values are raw convention strings (their own label); the warming-level and
   // percentile axes are the chart's value dimension, not user dropdowns.
-  // Additive curated enrichment (sector + legacy translation uid) that ixmp4
-  // can't tag onto variables. Left-joined by indicator id; a missing row leaves
-  // the indicator unchanged.
+  // Additive curated enrichment that ixmp4 can't tag onto variables. Left-joined
+  // by indicator id; a missing row leaves the indicator unchanged.
   const enrichmentRows = await c.env.DB.select().from(schema.indicators);
   const enrichmentById = new Map(enrichmentRows.map((r) => [r.id, r]));
 
   const indicators = indicatorFacets.map((ind) => {
     const extra = enrichmentById.get(ind.uid);
     const cited = citations.get(ind.uid);
+    const unit = extra?.unit ?? units.get(ind.uid);
     return {
       ...ind,
       instance: instanceByIndicator.get(ind.uid),
       project: projectByIndicator.get(ind.uid),
       // Prose from the ixmp4 variable docs; Strapi may still override it.
       description: descriptions.get(ind.uid),
+      unit,
       models: cited?.models ?? [],
       sources: cited?.sources ?? [],
       parameters: {
@@ -134,7 +145,14 @@ async function buildCatalog(c: Context<Env>) {
         reference: ind.periods,
         spatial: ind.spatials,
       },
-      ...(extra ? { sector: extra.sector, legacyUid: extra.legacyUid } : {}),
+      ...(extra
+        ? {
+            sector: extra.sector,
+            legacyUid: extra.legacyUid,
+            direction: extra.direction ?? undefined,
+            colorScale: extra.colorScale ?? undefined,
+          }
+        : {}),
     };
   });
 
@@ -169,20 +187,23 @@ async function buildCatalog(c: Context<Env>) {
   // the timeline charts get their x-axis grid from the same probe.
   const timeframes = await fetchScenarioTimeframes(platforms, indicatorFacets, scenarioNames);
   const scenarios = scenarioNames.map((name) => {
-    // Global mean temperature is a property of the scenario, not a selectable
-    // indicator: the methodology timeline chart reads `gmt` and its table reads
-    // `characteristics` straight off the scenario entry.
-    const series = gmt.get(name.toLowerCase());
+    // GMT and global emissions are properties of the scenario, not selectable
+    // indicators: the methodology timeline charts read `gmt`/`emissions` and
+    // its table reads `characteristics` straight off the scenario entry.
+    const gmtSeries = gmt.get(name.toLowerCase());
+    const emissionsSeries = emissions.get(name.toLowerCase());
+    const characteristics = { ...gmtSeries?.characteristics, ...emissionsSeries?.characteristics };
     return {
       uid: name,
       label: name,
       ...(timeframes.get(name.toLowerCase()) ?? {}),
-      ...(series
-        ? {
-            gmt: { data: series.data, yearStart: series.yearStart, yearStep: series.yearStep },
-            characteristics: series.characteristics,
-          }
+      ...(gmtSeries
+        ? { gmt: { data: gmtSeries.data, yearStart: gmtSeries.yearStart, yearStep: gmtSeries.yearStep } }
         : {}),
+      ...(emissionsSeries
+        ? { emissions: { data: emissionsSeries.data, yearStart: emissionsSeries.yearStart, yearStep: emissionsSeries.yearStep } }
+        : {}),
+      ...(Object.keys(characteristics).length ? { characteristics } : {}),
     };
   });
 

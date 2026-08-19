@@ -93,6 +93,11 @@ describe('toLegacyScenarioUid', () => {
     expect(toLegacyScenarioUid('stabilisation at 1.5°C')).toBe('ref-1p5');
   });
 
+  test('maps the current IXMP4 overshoot and stabilisation names', () => {
+    expect(toLegacyScenarioUid('SSP5-3.4-Overshoot')).toBe('ssp534-over');
+    expect(toLegacyScenarioUid('Stabilisation at 1.5 °C')).toBe('ref-1p5');
+  });
+
   test('has no legacy twin for the Today baseline or an unknown name', () => {
     expect(toLegacyScenarioUid('Today')).toBeUndefined();
     expect(toLegacyScenarioUid('Invented Scenario')).toBeUndefined();

@@ -42,7 +42,9 @@ const LEGACY_SCENARIO_UIDS = {
   'Shifting Pathway': 'sp',
   'SSP1-1.9': 'ssp119',
   'SSP5-3.4-OS': 'ssp534-over',
+  'SSP5-3.4-Overshoot': 'ssp534-over',
   'Stabilisation At 1.5°C': 'ref-1p5',
+  'Stabilisation at 1.5 °C': 'ref-1p5',
 };
 
 // Convention parameter values → the legacy API's slugs, per dimension. Closed

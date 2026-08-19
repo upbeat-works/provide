@@ -35,7 +35,7 @@ describe('parseVariable', () => {
   });
 
   test('handles the Emissions special case (no spatial/value facets)', () => {
-    const p = parseVariable('Emissions|CO2');
+    const p = parseVariable('Emissions|Kyoto Gases');
     expect(p.indicator).toBe('Emissions');
     expect(p.value).toBeUndefined();
     expect(p.spatial).toBeUndefined();
@@ -118,7 +118,7 @@ describe('indicatorsFromVariables', () => {
       indicatorsFromVariables([
         'Global Mean Temperature|10th Percentile',
         'Global Mean Temperature|50th Percentile',
-        'Emissions|CO2',
+        'Emissions|Kyoto Gases',
       ]),
     ).toEqual([]);
   });
@@ -126,5 +126,32 @@ describe('indicatorsFromVariables', () => {
   test('keeps the faceted indicators when global trajectories are mixed in', () => {
     const out = indicatorsFromVariables([...names, 'Global Mean Temperature|50th Percentile']);
     expect(out.map((i) => i.uid).sort()).toEqual(['Fire Season Length', 'Mean Temperature']);
+  });
+
+  // ixmp4 returns variables in upload order, which is not a meaningful sort —
+  // and the frontend picks periods[0] as an indicator's default reference
+  // baseline (CURRENT_INDICATOR_PARAMETERS in src/stores/state.js). An
+  // indicator scanned pre-industrial-first must still default to present day.
+  test('orders periods by a fixed canonical order, regardless of scan order', () => {
+    const out = indicatorsFromVariables([
+      'Annual Maximum Temperature|1850-1900 (Pre-industrial)|Annual|Area|50th Percentile',
+      'Annual Maximum Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile',
+      'Annual Maximum Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile',
+    ]);
+    const amt = out.find((i) => i.uid === 'Annual Maximum Temperature')!;
+    expect(amt.periods).toEqual([
+      '2011-2020 (Present Day)',
+      'Absolute Values (No Change)',
+      '1850-1900 (Pre-industrial)',
+    ]);
+  });
+
+  test('keeps an unrecognised period after the canonical ones, in scan order', () => {
+    const out = indicatorsFromVariables([
+      'Fire Season Length|Some Future Period|Annual|Area|50th Percentile',
+      'Fire Season Length|1850-1900 (Pre-industrial)|Annual|Area|50th Percentile',
+    ]);
+    const fsl = out.find((i) => i.uid === 'Fire Season Length')!;
+    expect(fsl.periods).toEqual(['1850-1900 (Pre-industrial)', 'Some Future Period']);
   });
 });

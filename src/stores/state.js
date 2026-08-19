@@ -288,27 +288,21 @@ CURRENT_INDICATOR_UID.subscribe((value) => {
   setLocalStorage(LOCALSTORE_INDICATOR, value);
 });
 
-/**
- * Derived store that filters GEOGRAPHIES to only those ixmp4 has data for under
- * the currently selected indicator. Returns the same shape as `GEOGRAPHIES`
- * (object keyed by geography type uid). Fetches from
- * `${API_URL}/geographies?indicator=${uid}` and intersects ids with the local
- * `GEOGRAPHIES` so the per-type structure is preserved.
- * @type {Readable<Object>}
- */
+/** Availability status and local geography intersection for the selected indicator. */
 let availableGeographiesRequestId = 0;
-export const AVAILABLE_GEOGRAPHIES_FOR_INDICATOR = derived(
+export const GEOGRAPHY_AVAILABILITY = derived(
   [CURRENT_INDICATOR_UID, GEOGRAPHIES],
   ([$indicatorUid, $geographies], set) => {
     if (!$indicatorUid || !API_URL) {
-      set($geographies);
+      set({ status: 'ready', geographies: $geographies, allowedUids: null });
       return;
     }
     if (!browser) {
-      set({});
+      set({ status: 'loading', geographies: {}, allowedUids: null });
       return;
     }
     const requestId = ++availableGeographiesRequestId;
+    set({ status: 'loading', geographies: {}, allowedUids: null });
     fetch(`${API_URL}/geographies/?indicator=${encodeURIComponent($indicatorUid)}`)
       .then((r) => r.json())
       .then((rows) => {
@@ -318,22 +312,24 @@ export const AVAILABLE_GEOGRAPHIES_FOR_INDICATOR = derived(
         for (const [typeUid, list] of Object.entries($geographies)) {
           out[typeUid] = list.filter((g) => allowed.has(g.uid));
         }
-        set(out);
+        set({ status: 'ready', geographies: out, allowedUids: allowed });
       })
       .catch((e) => {
         if (requestId !== availableGeographiesRequestId) return;
         console.warn(`geographies?indicator=${$indicatorUid} failed:`, e);
-        set({});
+        set({ status: 'error', geographies: {}, allowedUids: null });
       });
   },
-  {},
+  { status: 'loading', geographies: {}, allowedUids: null },
 );
+
+export const AVAILABLE_GEOGRAPHIES_FOR_INDICATOR = derived(GEOGRAPHY_AVAILABILITY, ($availability) => $availability.geographies);
 
 export const IS_EMPTY_INDICATOR = derived(CURRENT_INDICATOR_UID, ($uid) => {
   return !Boolean($uid);
 });
 
-export const IS_COMBINATION_AVAILABLE_INDICATOR = derived([CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS], ([$uid, $validIndicators]) => {
+const IS_INDICATOR_AVAILABLE_FOR_GEOGRAPHY = derived([CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS], ([$uid, $validIndicators]) => {
   if (!$uid) return false;
   // `/indicators?region=` is async and AVAILABLE_INDICATORS starts empty, so an
   // empty list means "not checked yet", not "nothing is available". Stay
@@ -343,6 +339,17 @@ export const IS_COMBINATION_AVAILABLE_INDICATOR = derived([CURRENT_INDICATOR_UID
   if (!$validIndicators.length) return true;
   return $validIndicators.some(({ uid }) => uid === $uid);
 });
+
+export const IS_COMBINATION_AVAILABLE_INDICATOR = derived(
+  [SELECTION_MODE, IS_INDICATOR_AVAILABLE_FOR_GEOGRAPHY, CURRENT_GEOGRAPHY_UID, GEOGRAPHY_AVAILABILITY],
+  ([$mode, $indicatorAvailable, $geographyUid, $geographyAvailability]) => {
+    if (!$indicatorAvailable) return false;
+    if ($mode === 'geography') return $indicatorAvailable;
+    if (!$geographyUid) return false;
+    if ($geographyAvailability.status !== 'ready' || $geographyAvailability.allowedUids === null) return true;
+    return $geographyAvailability.allowedUids.has($geographyUid);
+  },
+);
 
 export const CURRENT_INDICATOR = derived([CURRENT_INDICATOR_UID, DICTIONARY_INDICATORS], ([$uid, $indicators]) => get($indicators, $uid));
 

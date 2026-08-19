@@ -76,6 +76,7 @@ describe('GET /api/impact-time', () => {
     const res = await api.request('/api/impact-time?indicator=x&geography=DEU&scenarios=curpol&instance=does-not-exist', {}, await createTestEnv());
     expect(res.status).toBe(404);
   });
+
 });
 
 describe('GET /api/impact-time?format=csv', () => {

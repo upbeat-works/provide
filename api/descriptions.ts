@@ -15,6 +15,11 @@ export function stripUnitSuffix(description: string): string {
   return description.replace(/\s*\[[^\]]*\]\s*$/, '');
 }
 
+export function unitFromDescription(description: string): string | undefined {
+  const unit = description.match(/\[([^\]]+)\]\s*$/)?.[1].trim();
+  return unit || undefined;
+}
+
 /** Collapse per-variable docs into one description per indicator. */
 export function indicatorDescriptions(
   rows: Array<{ variable: string; description: string }>,

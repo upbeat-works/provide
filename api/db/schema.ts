@@ -34,6 +34,9 @@ export const indicators = pgTable('indicators', {
   id: text('id').primaryKey(),
   sector: text('sector'),
   legacyUid: text('legacy_uid'),
+  unit: text('unit'),
+  direction: integer('direction'),
+  colorScale: text('color_scale'),
 });
 
 // Single source of truth for the geography hierarchy. Many-to-many so a

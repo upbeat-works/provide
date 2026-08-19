@@ -7,10 +7,12 @@
 
   export let country; // { uid, label, emoji, icon }
   export let hoveredItem;
+  export let geographyIndex;
 
   let expanded = false;
 
-  $: groups = childGroups($GEOGRAPHY_INDEX, country.uid);
+  $: index = geographyIndex ?? $GEOGRAPHY_INDEX;
+  $: groups = childGroups(index, country.uid);
   $: childCount = groups.reduce((n, g) => n + g.items.length, 0);
   $: typeLabel = (uid) => $GEOGRAPHY_TYPES.find((t) => t.uid === uid)?.label ?? uid;
 
@@ -31,16 +33,31 @@
 <div>
   <div class="relative flex items-center">
     <div class="grow min-w-0">
-      <RadioGroupOption
-        value={country.uid}
-        let:checked
-        class="block focus:bg-surface-weaker focus:outline-none"
-        on:click={() => {
-          if (childCount) expanded = true;
-        }}
-      >
-        <InteractiveListItem icon={country.icon ?? country.emoji} label={country.label} uid={country.uid} selected={checked} bind:hovered={hoveredItem} />
-      </RadioGroupOption>
+      {#if country.isSelectable !== false}
+        <RadioGroupOption
+          value={country.uid}
+          let:checked
+          class="block focus:bg-surface-weaker focus:outline-none"
+          on:click={() => {
+            if (childCount) expanded = true;
+          }}
+        >
+          <InteractiveListItem icon={country.icon ?? country.emoji} label={country.label} uid={country.uid} selected={checked} bind:hovered={hoveredItem} />
+        </RadioGroupOption>
+      {:else}
+        <button
+          type="button"
+          class="w-full text-left text-sm py-1 px-5 pr-16 hover:bg-surface-weaker focus:bg-surface-weaker focus:outline-none whitespace-nowrap flex cursor-pointer gap-1"
+          on:click={toggle}
+          on:focus={() => (hoveredItem = country.uid)}
+          on:mouseover={() => (hoveredItem = country.uid)}
+          on:mouseleave={() => (hoveredItem = null)}
+          on:blur={() => (hoveredItem = null)}
+          title={country.label}
+        >
+          <span class="truncate">{country.label}</span>
+        </button>
+      {/if}
     </div>
     {#if childCount}
       <button

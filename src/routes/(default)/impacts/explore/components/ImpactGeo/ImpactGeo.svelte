@@ -13,15 +13,12 @@
     IS_COMBINATION_AVAILABLE,
   } from '$src/stores/state';
   import {
-    URL_PATH_SCENARIO,
-    URL_PATH_YEAR,
     URL_PATH_INDICATOR,
     IMPACT_GEO_DISPLAY_OPTIONS,
     END_GEO_SHAPE,
     END_IMPACT_GEO,
     URL_PATH_GEOGRAPHY_TYPE,
     URL_PATH_GEOGRAPHY,
-    URL_PATH_SCENARIOS,
     IMPACT_GEO_KEY_DIFFERENCE,
     IMPACT_GEO_KEY_SIDE_BY_SIDE,
     DEFAULT_IMPACT_GEO_YEAR,
@@ -41,9 +38,14 @@
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { formatValue } from '$lib/utils/formatting';
   import { isObject, isString, has } from 'lodash-es';
+  import { buildImpactGeoRequestConfigs, resolveImpactGeoYear } from './impact-geo-state.js';
 
   export let tagline;
-  export let year = undefined;
+  export let year = resolveImpactGeoYear({
+    currentYear: undefined,
+    availableYears: [],
+    defaultYear: DEFAULT_IMPACT_GEO_YEAR,
+  });
   export let displayOption = IMPACT_GEO_KEY_SIDE_BY_SIDE;
   export let showSatellite = false;
   export let showSatelliteOption = true;
@@ -52,6 +54,7 @@
 
   let IMPACT_GEO_DATA = writable([]);
   let GEO_SHAPE_DATA = writable({});
+  const impactGeoApiBase = import.meta.env.VITE_IMPACT_GEO_API_URL || import.meta.env.VITE_DATA_API_URL;
 
   // `AVAILABLE_IMPACT_GEO_YEARS` reads `selectableYears` off the indicator, which
   // was legacy curation the convention catalog doesn't carry — so it is empty and
@@ -78,34 +81,24 @@
   $: latchYears($IMPACT_GEO_DATA);
 
   $: yearOptions = $AVAILABLE_IMPACT_GEO_YEARS.length ? $AVAILABLE_IMPACT_GEO_YEARS : latchedYears;
-  $: defaultYear = yearOptions.includes(DEFAULT_IMPACT_GEO_YEAR) ? DEFAULT_IMPACT_GEO_YEAR : yearOptions[0];
-
-  // Only reset once options exist — clearing `year` mid-request would change the
-  // request that produces the options.
   $: if (yearOptions.length && !yearOptions.includes(year)) {
-    year = defaultYear;
+    year = resolveImpactGeoYear({
+      currentYear: year,
+      availableYears: yearOptions,
+      defaultYear: DEFAULT_IMPACT_GEO_YEAR,
+    });
   }
 
-  // The gridded maps and their outlines are the one part of explore still served
-  // by the legacy Climate Analytics API (ixmp4 carries region-aggregated
-  // timeseries, not grids), so every id crossing into them has to be translated
-  // out of the convention id space: geographies bridge on geoId, indicators on
-  // the curated legacyUid, scenarios and parameter values on the tables in
-  // `$lib/catalog/translate.js`.
+  // GeoServer grid requests use convention-native ids. The outline and legacy
+  // download endpoint still require their legacy equivalents.
   $: legacyGeography = toLegacyGeoId($CURRENT_GEOGRAPHY);
   $: legacyIndicator = $CURRENT_INDICATOR?.legacyUid;
   $: legacyOptions = toLegacyParameterValues($CURRENT_INDICATOR_OPTION_VALUES);
-  // Keep each selected scenario paired with its legacy uid rather than mapping to
-  // a bare list: one request goes out per pair and `process` reads the responses
-  // back positionally, so dropping an unmappable scenario silently would shift
-  // every later map onto the wrong scenario's colour and label.
-  $: scenarioPairs = $CURRENT_SCENARIOS.map((scenario) => ({ scenario, legacyUid: toLegacyScenarioUid(scenario.uid) })).filter(({ legacyUid }) => legacyUid);
-  $: legacyScenarios = scenarioPairs.map(({ legacyUid }) => legacyUid);
-  // Only a selection that translates whole can be requested. An indicator with
-  // no legacy twin (most of the convention catalog) or a scenario that never
-  // existed there would otherwise fire a request the legacy API answers with a
-  // 520, so the section reports itself unavailable instead.
-  $: hasLegacyEquivalent = Boolean(legacyGeography && legacyIndicator && legacyScenarios.length);
+  $: mapScenarios = $CURRENT_SCENARIOS;
+  $: legacyScenarioPairs = mapScenarios
+    .map((scenario) => ({ scenario, legacyUid: toLegacyScenarioUid(scenario.uid) }))
+    .filter(({ legacyUid }) => legacyUid);
+  $: hasMapContext = Boolean(legacyGeography && $CURRENT_INDICATOR?.uid && mapScenarios.length);
 
   // The legacy-space twin of DOWNLOAD_URL_PARAMS, for the requests and the data
   // download that still go to the legacy API.
@@ -116,18 +109,16 @@
     ...legacyOptions,
   };
 
-  $: if ($IS_COMBINATION_AVAILABLE && hasLegacyEquivalent) {
+  $: if ($IS_COMBINATION_AVAILABLE && hasMapContext) {
     fetchData(
       IMPACT_GEO_DATA,
-      legacyScenarios.map((scenario) => ({
+      buildImpactGeoRequestConfigs({
+        base: impactGeoApiBase,
         endpoint: END_IMPACT_GEO,
-        params: {
-          ...legacyUrlParams,
-          [URL_PATH_SCENARIO]: scenario,
-          [URL_PATH_SCENARIOS]: legacyScenarios,
-          [URL_PATH_YEAR]: year,
-        },
-      }))
+        selection: $DOWNLOAD_URL_PARAMS,
+        scenarios: mapScenarios,
+        year,
+      })
     );
 
     fetchData(GEO_SHAPE_DATA, {
@@ -140,11 +131,7 @@
     });
   }
 
-  // `scenarios` here is the mapped subset, positionally aligned with the
-  // responses — not the raw selection (see scenarioPairs). `urlParams` is the
-  // legacy-shaped selection, because this chart's data download hits the legacy
-  // API too.
-  $: process = ({ data, shape }, { scenarios, legacyScenarios, indicator, urlParams, legacyUrlParams, geography, legacyGeography: geoId }) => {
+  $: process = ({ data, shape }, { scenarios, legacyScenarioPairs, indicator, urlParams, legacyUrlParams, geography, legacyGeography: geoId }) => {
     isProcessing = true;
     const showDifference = data.length === 2 && displayOption === IMPACT_GEO_KEY_DIFFERENCE;
     const isMultipMap = data.length > 1 && !showDifference;
@@ -205,7 +192,7 @@
         // The download is a legacy-API request, so the value has to be the
         // legacy scenario uid — only the label stays the convention one.
         label: 'Scenario',
-        options: scenarios.map(({ label }, i) => ({ uid: legacyScenarios[i], label })),
+        options: legacyScenarioPairs.map(({ scenario: { label }, legacyUid }) => ({ uid: legacyUid, label })),
       },
       {
         uid: 'resolution',
@@ -263,17 +250,15 @@
   };
 </script>
 
-{#if $IS_COMBINATION_AVAILABLE && hasLegacyEquivalent}
+{#if $IS_COMBINATION_AVAILABLE && hasMapContext}
   <LoadingWrapper
     let:asyncProps
     let:props
     asyncProps={{ data: $IMPACT_GEO_DATA, shape: $GEO_SHAPE_DATA }}
     props={{
       ...$TEMPLATE_PROPS,
-      // The mapped subset, aligned with the responses — overrides the full
-      // selection TEMPLATE_PROPS carries.
-      scenarios: scenarioPairs.map(({ scenario }) => scenario),
-      legacyScenarios,
+      scenarios: mapScenarios,
+      legacyScenarioPairs,
       year,
       urlParams: $DOWNLOAD_URL_PARAMS,
       legacyUrlParams,
@@ -317,8 +302,7 @@
 {:else if $IS_COMBINATION_AVAILABLE}
   <Message headline="Maps are not available for this selection">
     <span class="text-contour-weaker">
-      The gridded maps come from the legacy dataset, which doesn’t cover {$CURRENT_INDICATOR?.label ?? 'this indicator'}
-      {#if legacyIndicator && !legacyScenarios.length}for the selected scenarios{/if}. The other charts on this page are unaffected.
+      No map outline is available for {$CURRENT_GEOGRAPHY?.label ?? 'this geography'}. The other charts on this page are unaffected.
     </span>
   </Message>
 {/if}

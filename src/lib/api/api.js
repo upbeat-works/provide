@@ -1,7 +1,7 @@
 import { STATUS_FAILED, STATUS_LOADING, STATUS_SUCCESS } from '$src/config';
-import qs from 'qs';
 import { forEach, reduce } from 'lodash-es';
 import { browser } from '$app/environment';
+import { buildDataUrl } from './url.js';
 
 /*
  * These functions are intended to dynamically load data from the client upon user interaction
@@ -60,11 +60,8 @@ const fetchMultiple = (store, configs) => {
   // Create object/array of url string used to retrieve data either from cache or api
   const urls = reduce(
     configs,
-    (acc, { endpoint, params }, keyOrIndex) => {
-      const query = qs.stringify(params, {
-        encodeValuesOnly: true,
-      });
-      const url = `${import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`;
+    (acc, config, keyOrIndex) => {
+      const url = buildDataUrl({ ...config, fallbackBase: import.meta.env.VITE_DATA_API_URL });
       acc[keyOrIndex] = url;
       return acc;
     },
@@ -126,13 +123,7 @@ const fetchSingle = (store, { endpoint, params, base, arrayFormat }) => {
   // console.log(`Fetching single ${endpoint}`, get(store), { id });
   // The Hono adapter reads repeated array params (`scenarios=a&scenarios=b`);
   // the legacy API uses qs's default indices format. Callers pick via arrayFormat.
-  const query = qs.stringify(params, {
-    encodeValuesOnly: true,
-    arrayFormat: arrayFormat ?? 'indices',
-  });
-  // `base` lets a caller target the new Hono adapter (VITE_API_URL); defaults to
-  // the legacy Climate Analytics API for endpoints not yet migrated.
-  const url = `${base ?? import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`;
+  const url = buildDataUrl({ endpoint, params, base, fallbackBase: import.meta.env.VITE_DATA_API_URL, arrayFormat });
   const cached = cache[url];
 
   if (cached) {

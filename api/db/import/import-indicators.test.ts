@@ -4,15 +4,32 @@ import { parseIndicatorsYaml, buildIndicatorsSeedSql } from './import-indicators
 const YAML = `- id: Mean daily temperature
   sector: urban-climate
   legacyUid: urbclim-T2M-mean
+  unit: degrees-celsius
+  direction: -1
+  colorScale: default
 - id: Glacier area
   sector: glacier
 `;
 
 describe('import-indicators', () => {
-  test('parses id, sector and optional legacyUid', () => {
+  test('parses curated indicator metadata', () => {
     expect(parseIndicatorsYaml(YAML)).toEqual([
-      { id: 'Mean daily temperature', sector: 'urban-climate', legacyUid: 'urbclim-T2M-mean' },
-      { id: 'Glacier area', sector: 'glacier', legacyUid: null },
+      {
+        id: 'Mean daily temperature',
+        sector: 'urban-climate',
+        legacyUid: 'urbclim-T2M-mean',
+        unit: 'degrees-celsius',
+        direction: -1,
+        colorScale: 'default',
+      },
+      {
+        id: 'Glacier area',
+        sector: 'glacier',
+        legacyUid: null,
+        unit: null,
+        direction: null,
+        colorScale: null,
+      },
     ]);
   });
 
@@ -20,10 +37,10 @@ describe('import-indicators', () => {
     const sql = buildIndicatorsSeedSql(parseIndicatorsYaml(YAML));
     expect(sql).toContain('DELETE FROM indicators;');
     expect(sql).toContain(
-      "INSERT INTO indicators (id, sector, legacy_uid) VALUES ('Mean daily temperature', 'urban-climate', 'urbclim-T2M-mean');",
+      "INSERT INTO indicators (id, sector, legacy_uid, unit, direction, color_scale) VALUES ('Mean daily temperature', 'urban-climate', 'urbclim-T2M-mean', 'degrees-celsius', -1, 'default');",
     );
     expect(sql).toContain(
-      "INSERT INTO indicators (id, sector, legacy_uid) VALUES ('Glacier area', 'glacier', NULL);",
+      "INSERT INTO indicators (id, sector, legacy_uid, unit, direction, color_scale) VALUES ('Glacier area', 'glacier', NULL, NULL, NULL, NULL);",
     );
   });
 

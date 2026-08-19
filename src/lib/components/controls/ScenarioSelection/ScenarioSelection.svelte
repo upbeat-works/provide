@@ -8,6 +8,7 @@
     IS_COMBINATION_AVAILABLE_SCENARIO,
     IS_COMBINATION_AVAILABLE_INDICATOR,
     IS_EMPTY_GEOGRAPHY,
+    SELECTION_MODE,
   } from '$stores/state.js';
   import { PATH_KEY_CONCEPTS, ANCHOR_EXPLAINER_SCENARIOS } from '$config';
   import SelectionModal from '$lib/components/controls/components/SelectionModal.svelte';
@@ -57,7 +58,7 @@
       return 'Select an indicator first';
     }
     if (!$isAvailableIndicator) {
-      return 'Select a valid indicator first';
+      return $SELECTION_MODE === 'indicator' ? 'Select a valid geography first' : 'Select a valid indicator first';
     }
     return undefined;
   });

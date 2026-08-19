@@ -193,4 +193,5 @@ describe('GET /api/geographies', () => {
     const json = (await res.json()) as Array<unknown>;
     expect(json).toEqual([]);
   });
+
 });

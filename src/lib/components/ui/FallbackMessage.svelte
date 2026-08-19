@@ -9,11 +9,14 @@
     IS_EMPTY_SELECTION,
     IS_EMPTY_SCENARIO,
     IS_EMPTY_GEOGRAPHY,
+    SELECTION_MODE,
+    IS_AVOID_PAGE,
   } from '$stores/state';
   import { IS_INVALID_AVOID_PARAMETERS } from '$stores/avoid.js';
 
+  $: unavailableSelection = !$IS_AVOID_PAGE && $SELECTION_MODE === 'indicator' ? 'geography' : 'indicator';
   $: unavailableItems = [
-    [$IS_COMBINATION_AVAILABLE_INDICATOR, 'indicator'],
+    [$IS_COMBINATION_AVAILABLE_INDICATOR, unavailableSelection],
     [$IS_COMBINATION_AVAILABLE_SCENARIO, $CURRENT_SCENARIOS.length > 1 ? 'scenario(s)' : 'scenario'],
   ]
     .filter(([isAvailable]) => !isAvailable)
@@ -37,8 +40,8 @@
     </Message>
   {/if}
 {:else if !$IS_COMBINATION_AVAILABLE_INDICATOR}
-  <Message headline="Select a valid indicator first">
-    <span>Select an valid indicator from the dropdown at the top of this page.</span>
+  <Message headline={`Select a valid ${unavailableSelection} first`}>
+    <span>Select a valid {unavailableSelection} from the dropdown at the top of this page.</span>
   </Message>
 {:else if !$IS_COMBINATION_AVAILABLE}
   <Message headline="There is no data for your current selection">

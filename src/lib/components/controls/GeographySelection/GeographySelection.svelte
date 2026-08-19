@@ -1,11 +1,11 @@
 <script>
   import Geographies from './Geographies.svelte';
-  import { CURRENT_GEOGRAPHY_LABEL, AVAILABLE_GEOGRAPHY_TYPES, IS_EMPTY_GEOGRAPHY, CURRENT_GEOGRAPHY_UID, CURRENT_GEOGRAPHY, CURRENT_GEOGRAPHY_TYPE, SELECTION_MODE, AVAILABLE_GEOGRAPHIES_FOR_INDICATOR } from '$stores/state.js';
+  import { CURRENT_GEOGRAPHY_LABEL, AVAILABLE_GEOGRAPHY_TYPES, IS_EMPTY_GEOGRAPHY, CURRENT_GEOGRAPHY_UID, CURRENT_GEOGRAPHY, CURRENT_GEOGRAPHY_TYPE, SELECTION_MODE, AVAILABLE_GEOGRAPHIES_FOR_INDICATOR, GEOGRAPHY_AVAILABILITY, IS_COMBINATION_AVAILABLE_INDICATOR } from '$stores/state.js';
   import { END_GEO_SHAPE } from '$src/config.js';
   import { writable } from 'svelte/store';
   import { fetchData } from '$lib/api/api';
   import { GEOGRAPHIES, GEOGRAPHY_INDEX } from '$stores/meta.js';
-  import { geoIdOf } from './geography-tree.js';
+  import { buildIndex, geoIdOf } from './geography-tree.js';
   import SelectionModal from '../components/SelectionModal.svelte';
   import SelectionPanel from '../components/SelectionPanel.svelte';
   import PillGroup from '$lib/components/ui/PillGroup.svelte';
@@ -58,7 +58,10 @@
   }
 
   // In indicator-first mode, use geographies filtered by the selected indicator; otherwise show all
-  $: geographiesSource = $SELECTION_MODE === 'indicator' ? $AVAILABLE_GEOGRAPHIES_FOR_INDICATOR : $GEOGRAPHIES;
+  $: geographiesSource = $SELECTION_MODE === 'indicator' && $GEOGRAPHY_AVAILABILITY.status !== 'error' ? $AVAILABLE_GEOGRAPHIES_FOR_INDICATOR : $GEOGRAPHIES;
+  $: geographyIndex = $SELECTION_MODE === 'indicator' && $GEOGRAPHY_AVAILABILITY.status === 'ready' && $GEOGRAPHY_AVAILABILITY.allowedUids
+    ? buildIndex($GEOGRAPHIES, $GEOGRAPHY_AVAILABILITY.allowedUids)
+    : $GEOGRAPHY_INDEX;
 
   // currentFilterUid gets updated by the ControlPanel component
   $: selectableGeographies = geographiesSource[currentFilterUid] ?? [];
@@ -94,6 +97,7 @@
   category={$CURRENT_GEOGRAPHY_TYPE?.labelSingular}
   buttonLabel={$CURRENT_GEOGRAPHY_LABEL}
   placeholder={$IS_EMPTY_GEOGRAPHY ? 'Select a geography' : undefined}
+  warning={$SELECTION_MODE === 'indicator' && $GEOGRAPHY_AVAILABILITY.status === 'ready' && !$IS_EMPTY_GEOGRAPHY && !$IS_COMBINATION_AVAILABLE_INDICATOR ? 'Selected geography is not available for this indicator' : undefined}
   panelClass="max-w-6xl"
   bind:isOpen={modalOpen}
 >
@@ -103,7 +107,7 @@
       <PillGroup bind:currentUid={currentFilterUid} options={pillTypes} allowWrap={true} />
     </svelte:fragment>
     <svelte:fragment slot="sidebar">
-      <Geographies items={selectableGeographies} {term} bind:hoveredItem geographyType={geographyTypes.find(({ uid }) => uid === currentFilterUid)} bind:currentUid={$CURRENT_GEOGRAPHY_UID} />
+      <Geographies items={selectableGeographies} {term} {geographyIndex} bind:hoveredItem geographyType={geographyTypes.find(({ uid }) => uid === currentFilterUid)} bind:currentUid={$CURRENT_GEOGRAPHY_UID} />
     </svelte:fragment>
     <svelte:fragment slot="content">
       <div class="px-3 pb-3 w-full flex flex-col min-h-0">

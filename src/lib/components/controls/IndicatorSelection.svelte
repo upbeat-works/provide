@@ -63,7 +63,7 @@
 <SelectionModal
   {label}
   buttonLabel={$CURRENT_INDICATOR?.label}
-  warning={!$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
+  warning={$SELECTION_MODE === 'geography' && !$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
   disabled={$DISABLED}
   placeholder={$IS_EMPTY_INDICATOR ? 'Select an indicator' : undefined}
   bind:isOpen={modalOpen}

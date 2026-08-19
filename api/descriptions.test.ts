@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { stripUnitSuffix, indicatorDescriptions } from './descriptions';
+import { stripUnitSuffix, unitFromDescription, indicatorDescriptions } from './descriptions';
 
 const PROSE =
   "Temperature of the air near the Earth's surface, averaged over the time scale of interest. Changes in this indicator are expressed in degrees Celsius (°C).";
@@ -24,6 +24,18 @@ describe('stripUnitSuffix', () => {
 
   test('strips the last marker only, keeping earlier bracketed text', () => {
     expect(stripUnitSuffix('Index [WMO] value. [%]')).toBe('Index [WMO] value.');
+  });
+});
+
+describe('unitFromDescription', () => {
+  test('reads the machine-appended unit marker', () => {
+    expect(unitFromDescription(`${PROSE} [°C]`)).toBe('°C');
+    expect(unitFromDescription('Annual total. [days/year]')).toBe('days/year');
+  });
+
+  test('returns no unit when the marker is absent or empty', () => {
+    expect(unitFromDescription(PROSE)).toBeUndefined();
+    expect(unitFromDescription('Description. []')).toBeUndefined();
   });
 });
 

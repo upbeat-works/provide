@@ -5,6 +5,8 @@ import { __resetCatalogCache } from './catalog';
 import { schema } from '../db';
 import * as gmtView from '../views/gmt';
 import type { GmtByScenario, GmtSeries } from '../views/gmt';
+import * as emissionsView from '../views/emissions';
+import type { EmissionsByScenario, EmissionsSeries } from '../views/emissions';
 import { createTestEnv, listEnvelope, server, tabulateEnvelope, testInstance } from '../test-helpers';
 
 // The GMT emulator's model name, as it appears on both its runs and its rows.
@@ -20,14 +22,31 @@ const gmtStub = (scenario: string): GmtSeries => ({
   model: GMT_MODEL,
 });
 
+const emissionsStub = (scenario: string): EmissionsSeries => ({
+  data: [40],
+  yearStart: 2020,
+  yearStep: 5,
+  yearEnd: 2020,
+  characteristics: {},
+  scenario,
+  model: GMT_MODEL,
+});
+
 let gmtSpy: ReturnType<typeof spyOn<typeof gmtView, 'fetchGmtSeriesAcross'>> | undefined;
 function useGmt(series: GmtByScenario) {
   gmtSpy = spyOn(gmtView, 'fetchGmtSeriesAcross').mockResolvedValue(series);
 }
 
+let emissionsSpy: ReturnType<typeof spyOn<typeof emissionsView, 'fetchEmissionsSeriesAcross'>> | undefined;
+function useEmissions(series: EmissionsByScenario) {
+  emissionsSpy = spyOn(emissionsView, 'fetchEmissionsSeriesAcross').mockResolvedValue(series);
+}
+
 afterEach(() => {
   gmtSpy?.mockRestore();
   gmtSpy = undefined;
+  emissionsSpy?.mockRestore();
+  emissionsSpy = undefined;
 });
 
 function useFixtureHandlers() {
@@ -164,6 +183,67 @@ describe('GET /api/catalog', () => {
     expect(scenarios[0]).not.toHaveProperty('characteristics');
   });
 
+  test('attaches the global emissions trajectory to a scenario', async () => {
+    useFixtureHandlers();
+    useEmissions(
+      new Map([
+        [
+          'curpol',
+          {
+            data: [40, 38],
+            yearStart: 2020,
+            yearStep: 5,
+            yearEnd: 2025,
+            characteristics: { emissions2050: 25.4, emissions2100: 2.1 },
+            scenario: 'curpol',
+            model: GMT_MODEL,
+          },
+        ],
+      ]),
+    );
+    __resetCatalogCache();
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
+    const { scenarios } = (await res.json()) as {
+      scenarios: Array<{ uid: string; emissions?: { data: number[]; yearStart: number; yearStep: number }; characteristics?: Record<string, unknown> }>;
+    };
+    const curpol = scenarios.find((s) => s.uid === 'curpol')!;
+    expect(curpol.emissions).toEqual({ data: [40, 38], yearStart: 2020, yearStep: 5 });
+    expect(curpol.characteristics).toEqual({ emissions2050: 25.4, emissions2100: 2.1 });
+  });
+
+  test('leaves a scenario without emissions untouched', async () => {
+    useFixtureHandlers();
+    useEmissions(new Map());
+    __resetCatalogCache();
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
+    const { scenarios } = (await res.json()) as { scenarios: Array<Record<string, unknown>> };
+    expect(scenarios[0]).not.toHaveProperty('emissions');
+  });
+
+  test('merges GMT and emissions characteristics onto the same scenario entry', async () => {
+    useFixtureHandlers();
+    useGmt(
+      new Map([
+        ['curpol', { ...gmtStub('curpol'), characteristics: { gmtPeak: [3.6, 2100] as [number, number], gmt2100: 3.6 } }],
+      ]),
+    );
+    useEmissions(
+      new Map([
+        ['curpol', { ...emissionsStub('curpol'), characteristics: { emissions2050: 25.4, emissions2100: 2.1 } }],
+      ]),
+    );
+    __resetCatalogCache();
+    const res = await api.request('/api/catalog', {}, await createTestEnv());
+    const { scenarios } = (await res.json()) as { scenarios: Array<{ uid: string; characteristics?: Record<string, unknown> }> };
+    const curpol = scenarios.find((s) => s.uid === 'curpol')!;
+    expect(curpol.characteristics).toEqual({
+      gmtPeak: [3.6, 2100],
+      gmt2100: 3.6,
+      emissions2050: 25.4,
+      emissions2100: 2.1,
+    });
+  });
+
   // The climate emulator publishes long-term scenario variants ("… then Net Zero",
   // "(Extended)") that no impact indicator covers — they must not reach the pickers.
   test('excludes scenarios that only the GMT emulator publishes', async () => {
@@ -256,7 +336,7 @@ describe('GET /api/catalog', () => {
     expect(runScans).toBeGreaterThan(0);
   });
 
-  test('left-joins sector and legacyUid from the indicators table (additive)', async () => {
+  test('left-joins curated metadata from the indicators table (additive)', async () => {
     server.use(
       http.patch(`${testInstance.url}/iamc/variables/`, () =>
         HttpResponse.json(
@@ -274,19 +354,34 @@ describe('GET /api/catalog', () => {
       id: 'Mean Temperature',
       sector: 'terrestrial-climate',
       legacyUid: 'terclim-mean-temperature',
+      unit: 'degrees-celsius',
+      direction: -1,
+      colorScale: 'default',
     });
 
     const res = await api.request('/api/catalog', {}, env);
     const { indicators } = (await res.json()) as {
-      indicators: Array<{ uid: string; sector?: string | null; legacyUid?: string | null }>;
+      indicators: Array<{
+        uid: string;
+        sector?: string | null;
+        legacyUid?: string | null;
+        unit?: string | null;
+        direction?: number | null;
+        colorScale?: string | null;
+      }>;
     };
     const mean = indicators.find((i) => i.uid === 'Mean Temperature');
     expect(mean?.sector).toBe('terrestrial-climate');
     expect(mean?.legacyUid).toBe('terclim-mean-temperature');
-    // No row → unchanged (additive; no sector/legacyUid).
+    expect(mean?.unit).toBe('degrees-celsius');
+    expect(mean?.direction).toBe(-1);
+    expect(mean?.colorScale).toBe('default');
     const glacier = indicators.find((i) => i.uid === 'Glacier area');
     expect(glacier?.sector ?? null).toBeNull();
     expect(glacier?.legacyUid ?? null).toBeNull();
+    expect(glacier?.unit ?? null).toBeNull();
+    expect(glacier?.direction ?? null).toBeNull();
+    expect(glacier?.colorScale ?? null).toBeNull();
   });
 });
 
@@ -384,8 +479,12 @@ describe('GET /api/catalog indicator detail', () => {
     );
     __resetCatalogCache();
     const res = await api.request('/api/catalog', {}, await createTestEnv());
-    const { indicators } = (await res.json()) as { indicators: Array<{ uid: string; description?: string }> };
-    expect(indicators.find((i) => i.uid === 'Mean Temperature')?.description).toBe(PROSE);
+    const { indicators } = (await res.json()) as {
+      indicators: Array<{ uid: string; description?: string; unit?: string }>;
+    };
+    const meanTemperature = indicators.find((i) => i.uid === 'Mean Temperature');
+    expect(meanTemperature?.description).toBe(PROSE);
+    expect(meanTemperature?.unit).toBe('°C');
   });
 
   test('attaches models/sources from run meta and the project from the instance', async () => {

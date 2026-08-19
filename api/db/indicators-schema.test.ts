@@ -9,21 +9,38 @@ beforeEach(async () => {
 });
 
 describe('indicators enrichment table', () => {
-  test('stores id, sector and legacyUid', async () => {
+  test('stores curated indicator metadata', async () => {
     await env.DB.insert(schema.indicators).values({
       id: 'Mean daily temperature',
       sector: 'urban-climate',
       legacyUid: 'urbclim-T2M-mean',
+      unit: 'degrees-celsius',
+      direction: -1,
+      colorScale: 'default',
     });
     const rows = await env.DB.select().from(schema.indicators);
     expect(rows).toEqual([
-      { id: 'Mean daily temperature', sector: 'urban-climate', legacyUid: 'urbclim-T2M-mean' },
+      {
+        id: 'Mean daily temperature',
+        sector: 'urban-climate',
+        legacyUid: 'urbclim-T2M-mean',
+        unit: 'degrees-celsius',
+        direction: -1,
+        colorScale: 'default',
+      },
     ]);
   });
 
-  test('sector and legacyUid are optional (additive)', async () => {
+  test('curated fields are optional (additive)', async () => {
     await env.DB.insert(schema.indicators).values({ id: 'Glacier area' });
     const [row] = await env.DB.select().from(schema.indicators);
-    expect(row).toEqual({ id: 'Glacier area', sector: null, legacyUid: null });
+    expect(row).toEqual({
+      id: 'Glacier area',
+      sector: null,
+      legacyUid: null,
+      unit: null,
+      direction: null,
+      colorScale: null,
+    });
   });
 });
