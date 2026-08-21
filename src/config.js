@@ -15,6 +15,15 @@ export const PATH_AVOID = 'avoid';
 export const PATH_EXPLORE = 'explore';
 export const PATH_KEY_CONCEPTS = 'key-terms';
 export const PATH_ADAPTATION = 'case-studies';
+export const PATH_TOOLS = 'tools';
+export const PATH_EU_SCOREBOARD = 'eu-scoreboard';
+
+// EU scoreboard (SPARCCLE) purple, shared by the page hero and the header theme
+// so the two can't drift. Literal class strings — Tailwind scans src/**/*.js,
+// but only for classes it can see spelled out.
+export const CLASS_SCOREBOARD_BG = 'bg-[#5A0F6B]';
+export const CLASS_SCOREBOARD_TEXT = 'text-[#5A0F6B]';
+export const CLASS_SCOREBOARD_BORDER = 'border-[#A66FB5]';
 
 // These will also be used for page titles
 export const LABEL_DOCUMENTATION = 'Methodology';
@@ -27,6 +36,7 @@ export const LABEL_AVOID_IMPACTS = 'Avoiding future impacts';
 export const LABEL_TOOLS = 'Tools';
 export const LABEL_AVOID_IMPACTS_NAV = 'Avoid future impacts';
 export const LABEL_ADAPTATION = 'Case Studies';
+export const LABEL_EU_SCOREBOARD = 'EU Scoreboard';
 
 export const LABEL_SCENARIOS_INTRO = 'Scenarios';
 export const LABEL_SCENARIOS_TIMEFRAMES = 'Timeframes';
