@@ -5,7 +5,7 @@
   // mapbox context like the layer components do. Mapbox's own
   // NavigationControl is a vertical 29px pair that fights its stylesheet to
   // restyle, so this draws the buttons directly.
-  export let position = 'top-4 right-4';
+  export let position = 'top-4 right-6';
 
   const { map } = getContext('mapbox');
 </script>
