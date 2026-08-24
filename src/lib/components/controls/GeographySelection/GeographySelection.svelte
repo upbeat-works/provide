@@ -1,11 +1,20 @@
 <script>
   import Geographies from './Geographies.svelte';
-  import { CURRENT_GEOGRAPHY_LABEL, AVAILABLE_GEOGRAPHY_TYPES, IS_EMPTY_GEOGRAPHY, CURRENT_GEOGRAPHY_UID, CURRENT_GEOGRAPHY, CURRENT_GEOGRAPHY_TYPE, SELECTION_MODE, AVAILABLE_GEOGRAPHIES_FOR_INDICATOR } from '$stores/state.js';
+  import {
+    CURRENT_GEOGRAPHY_LABEL,
+    AVAILABLE_GEOGRAPHY_TYPES,
+    IS_EMPTY_GEOGRAPHY,
+    CURRENT_GEOGRAPHY_UID,
+    CURRENT_GEOGRAPHY,
+    CURRENT_GEOGRAPHY_TYPE,
+    SELECTION_MODE,
+    AVAILABLE_GEOGRAPHIES_FOR_INDICATOR,
+  } from '$stores/state.js';
   import { END_GEO_SHAPE } from '$src/config.js';
   import { writable } from 'svelte/store';
   import { fetchData } from '$lib/api/api';
   import { GEOGRAPHIES, GEOGRAPHY_INDEX } from '$stores/meta.js';
-  import { geoIdOf } from './geography-tree.js';
+  import { geoIdOf, plainLabel } from './geography-tree.js';
   import SelectionModal from '../components/SelectionModal.svelte';
   import SelectionPanel from '../components/SelectionPanel.svelte';
   import PillGroup from '$lib/components/ui/PillGroup.svelte';
@@ -20,7 +29,9 @@
   // Cities are only reachable by drilling into a country, so they are excluded
   // from the top-level type pills (matches the inline-accordion interaction).
   const COUNTRY_SCOPED_TYPES = ['cities'];
-  $: pillTypes = geographyTypes.filter((t) => !COUNTRY_SCOPED_TYPES.includes(t.uid));
+  // The parenthetical abbreviation ("River Basins (RB)") earns its space in the
+  // collapsed selection button, not in a row of browse filters.
+  $: pillTypes = geographyTypes.filter((t) => !COUNTRY_SCOPED_TYPES.includes(t.uid)).map((t) => ({ ...t, label: plainLabel(t.label) }));
 
   // The dialog never closes automatically on selection — the user closes it
   // explicitly. Selecting a country expands its accordion to drill into children,
@@ -86,7 +97,6 @@
   // valid selection (leaving the page stuck on “Select a geography first” with
   // no default to fall back to). Resetting an invalid selection belongs to the
   // auto-select effect in $stores/state.js.
-
 </script>
 
 <SelectionModal
