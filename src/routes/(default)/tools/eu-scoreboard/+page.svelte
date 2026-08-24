@@ -24,8 +24,7 @@
   title="EU Scoreboard"
   description="Explore how different scenarios change climate risk across European countries and regions. See where impacts are most likely to exceed key thresholds, and compare outcomes over time to identify hotspots and more resilient pathways."
 >
-  <!-- TODO: swap for the SPARCCLE lockup once the asset lands in static/img. -->
-  <span slot="brand" class="text-sm font-semibold tracking-widest text-white/80 uppercase">Sparccle</span>
+  <img slot="brand" src="/img/sparccle-logo-white.svg" alt="SPARCCLE" class="h-8 w-auto" />
 
   <svelte:fragment slot="filters">
     {#each filters as { label, value }}
