@@ -4,13 +4,24 @@
   import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
+  import Compare from '$lib/components/icons/Compare.svelte';
+  import Link from '$lib/components/icons/Link.svelte';
   import Placeholder from './components/Placeholder.svelte';
   import ChartPlaceholder from './components/ChartPlaceholder.svelte';
   import TimelineStrip from './components/TimelineStrip.svelte';
+  import LinkSection from '../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
+  import { findCaseStudy } from '$lib/catalog/case-study-link.js';
+
+  export let data;
 
   // Structure-only page: every control and chart below is a placeholder. There
   // are no scoreboard endpoints yet, so nothing reads from a store or a loader
   // — the point here is the layout (ScoreboardLayout / ScoreboardSection).
+  // Stands in for the selected geography until the scoreboard has a selection;
+  // findCaseStudy falls back to the default study when nothing covers it.
+  const placeholderGeography = { label: 'Austria', uid: 'austria' };
+  $: caseStudy = findCaseStudy(data.caseStudies, placeholderGeography);
+
   const filters = [
     { label: 'Geography', value: 'Austria' },
     { label: 'Hazard/Sector', value: 'Heat Stress' },
@@ -33,8 +44,14 @@
   </svelte:fragment>
 
   <svelte:fragment slot="actions">
-    <Button variant="ghost">Compare</Button>
-    <Button variant="ghost">Share</Button>
+    <Button variant="outline" size="sm">
+      <Compare class="h-4 w-4" />
+      Compare
+    </Button>
+    <Button variant="outline" size="sm">
+      <Link class="h-3.5 w-3.5" />
+      Share
+    </Button>
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
@@ -75,7 +92,7 @@
     <LinkArrow />
   </Button>
 
-  <!-- TODO: replace with the real case-study card (see LinkSection on explore)
-       once the scoreboard knows which geography is selected. -->
-  <Placeholder slot="footer" label="Using the data / case study card" height="h-[260px]" />
+  <div slot="footer">
+    <LinkSection geography={placeholderGeography} {caseStudy} />
+  </div>
 </ScoreboardLayout>

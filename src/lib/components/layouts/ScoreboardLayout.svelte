@@ -1,5 +1,5 @@
 <script>
-  import HeroGrain from '$lib/components/ui/HeroGrain.svelte';
+  import PageHero from '$lib/components/layouts/PageHero.svelte';
   import { CLASS_SCOREBOARD_BG } from '$config';
 
   // Page shell for the EU scoreboard: hero -> sticky control bar -> full-bleed
@@ -13,27 +13,14 @@
   // design token yet — swap CLASS_SCOREBOARD_BG for a `bg-theme-*` token once
   // the scoreboard palette lands in color-tokens-light.json.
   export let heroClass = CLASS_SCOREBOARD_BG;
-  export let grainId = 'scoreboard-hero-grain';
 
   // Exposed so sticky content inside the sections can clear the control bar.
   export let barHeight = 0;
 </script>
 
-<div class={`relative overflow-hidden ${heroClass}`}>
-  <HeroGrain id={grainId} />
-  <div class="relative mx-auto max-w-6xl px-6 pt-10 pb-12 sm:pt-14 sm:pb-16">
-    {#if $$slots.brand}
-      <div class="mb-6"><slot name="brand" /></div>
-    {/if}
-    {#if label}
-      <p class="text-xs uppercase tracking-widest font-bold text-white/70 mb-3">{label}</p>
-    {/if}
-    <h1 class="text-4xl sm:text-5xl font-normal text-white max-w-2xl">{title}</h1>
-    {#if description}
-      <p class="text-base text-white/80 mt-4 max-w-xl leading-relaxed">{description}</p>
-    {/if}
-  </div>
-</div>
+<PageHero className={heroClass} {label} {title} {description}>
+  <slot name="brand" slot="label" />
+</PageHero>
 
 {#if $$slots.filters || $$slots.actions}
   <div bind:clientHeight={barHeight} class="sticky top-0 z-40 bg-white border-b border-contour-weakest">
