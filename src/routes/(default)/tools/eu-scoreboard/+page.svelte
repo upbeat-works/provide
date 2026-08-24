@@ -6,7 +6,7 @@
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import Compare from '$lib/components/icons/Compare.svelte';
   import Link from '$lib/components/icons/Link.svelte';
-  import Placeholder from './components/Placeholder.svelte';
+  import ScoreboardMap from './components/ScoreboardMap.svelte';
   import ChartPlaceholder from './components/ChartPlaceholder.svelte';
   import TimelineStrip from './components/TimelineStrip.svelte';
   import LinkSection from '../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
@@ -55,7 +55,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
-    <Placeholder label="Map" height="h-[420px]" class="!rounded-none !border-x-0" />
+    <ScoreboardMap />
   </svelte:fragment>
 
   <svelte:fragment slot="timeline">
