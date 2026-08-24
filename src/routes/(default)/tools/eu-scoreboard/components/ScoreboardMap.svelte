@@ -1,5 +1,6 @@
 <script>
   import MapProvider from '$lib/components/maps/MapboxMap/MapProvider.svelte';
+  import ZoomControl from '$lib/components/maps/MapboxMap/ZoomControl.svelte';
 
   // The scoreboard's map band. Basemap only for now — no data layers, since
   // there are no scoreboard endpoints yet. Layers (choropleth, outline) slot
@@ -10,7 +11,8 @@
 </script>
 
 <div class="{height} w-full">
-  <MapProvider {bounds} navigation fitBoundsExtent={40}>
+  <MapProvider {bounds} fitBoundsExtent={40}>
+    <ZoomControl />
     <slot />
   </MapProvider>
 </div>

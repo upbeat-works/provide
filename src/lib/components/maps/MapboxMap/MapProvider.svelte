@@ -23,9 +23,6 @@
   export let fitBoundsExtent = 20;
   export let paint = [];
   export let hideLogo = false;
-  // Opt-in mapbox zoom control, top-right. Off by default so the existing
-  // maps (explore, study locations) keep their bare canvas.
-  export let navigation = false;
 
   const theme = getContext('theme');
 
@@ -46,7 +43,6 @@
   $: $map && mapReady && $map.setStyle(_style);
 
   let node;
-  let navigationControl;
   onMount(() => {
     $map = new mapboxgl.Map({
       accessToken: import.meta.env.VITE_MAPBOX_ACCESS_TOKEN,
@@ -101,11 +97,6 @@
 
   $: if ($ready) {
     ['scrollZoom', 'boxZoom', 'dragRotate', 'dragPan', 'keyboard', 'doubleClickZoom', 'touchZoomRotate'].map((handler) => (interactive ? $map[handler].enable() : $map[handler].disable()));
-  }
-
-  $: if ($ready && navigation && !navigationControl) {
-    navigationControl = new mapboxgl.NavigationControl({ showCompass: false });
-    $map.addControl(navigationControl, 'top-right');
   }
 
   $: if ($ready && paint) {
