@@ -3,38 +3,127 @@
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
   import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import CopyLink from '$lib/components/ui/CopyLink.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import Compare from '$lib/components/icons/Compare.svelte';
-  import Link from '$lib/components/icons/Link.svelte';
   import ScoreboardMap from '../components/ScoreboardMap.svelte';
+  import MapLegendPanel from '../components/MapLegendPanel.svelte';
+  import SectionIndex from '../components/SectionIndex.svelte';
   import ChartPlaceholder from '../components/ChartPlaceholder.svelte';
-  import TimelineStrip from '../components/TimelineStrip.svelte';
   import LinkSection from '../../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
+  import { PATH_ADAPTATION, PATH_DOCUMENTATION } from '$config';
 
   export let data;
 
-  // Structure-only view: every control and chart below is a placeholder. There
-  // are no scoreboard endpoints yet, so nothing reads from a store or a loader
-  // — the point here is the layout (ScoreboardLayout / ScoreboardSection).
+  // Structure-only view: the controls, the map layers and every chart below are
+  // placeholders — there are no scoreboard endpoints yet, so what's real here
+  // is the layout it will be poured into.
+  const scope = 'Europe';
+  const hazard = 'Heat Stress';
+  const indicator = 'Annual maximum temperature';
+
+  // Whole of Europe, matching the ranking view's frame.
+  const europeBounds = [-24, 34, 42, 68];
+
+  // Sequential ramp for a single indicator, where the ranking view's map runs a
+  // diverging risk scale. Palette oranges, low to high.
+  const indicatorScale = ['#FBEADB', '#F2C192', '#E9974A', '#8C5B2C'];
+  const indicatorScaleLabels = ['Very low', 'Low', 'Med', 'High'];
+
   // Stands in for the selected geography until the scoreboard has a selection;
   // findCaseStudy falls back to the default study when nothing covers it.
-  const placeholderGeography = { label: 'Austria', uid: 'austria' };
+  const placeholderGeography = { label: 'Lisbon', uid: 'lisbon' };
   $: caseStudy = findCaseStudy(data.caseStudies, placeholderGeography);
 
   const filters = [
-    { label: 'Geography', value: 'Austria' },
-    { label: 'Hazard/Sector', value: 'Heat Stress' },
-    { label: 'Indicator', value: 'Annual max temp' },
-    { label: 'Scenario', value: '2020 climate policies' },
+    { label: 'Geography', value: 'All countries' },
+    { label: 'Indicator', value: indicator },
+    { label: 'Scenario', value: '2020 climate policies', colors: ['#51A6D3'] },
     { label: 'Year', value: '2025' },
   ];
+
+  // One entry per chart. `short` is what the index calls it — the headings name
+  // the model behind the chart, which is too long for the index column.
+  const scenarioLegend = ['SSP5 uncertainty band', 'SSP5-8.5 (high)', 'SSP2-4.5 (mid)', 'SSP1-2.6 (low)'];
+  const countryLegend = ['Spain', 'Greece', 'Italy', 'Portugal', 'France'];
+
+  const charts = [
+    {
+      slug: 'annual-mean-temperature',
+      short: 'Mean temperature',
+      title: 'Annual mean temperature (MESMER)',
+      description: 'How the yearly average temperature moves under each pathway, with the spread across the ensemble shown as a band around the high scenario.',
+      label: 'Scenario trajectories over time',
+      legend: scenarioLegend,
+    },
+    {
+      slug: 'annual-maximum-temperature',
+      short: 'Maximum temperature',
+      title: 'Annual maximum temperature (MESMER)',
+      description: 'The hottest day of the year, which drives heat stress thresholds far more directly than the annual mean does.',
+      label: 'Scenario trajectories over time',
+      legend: scenarioLegend,
+    },
+    {
+      slug: 'population-exposed',
+      short: 'Population exposed',
+      title: 'Population exposed to extreme temperature values (CLIMADA)',
+      description: 'How many people live where extreme temperatures are reached, broken down by region and stacked from the lowest pathway upwards.',
+      label: 'Stacked bar chart by region',
+      legend: ['Base – SSP1-2.6', 'up to SSP2-4.5', 'up to SSP5-8.5'],
+      height: 'h-[420px]',
+      caseStudy: true,
+    },
+    {
+      slug: 'lifetime-exposure',
+      short: 'Lifetime exposure',
+      title: 'Lifetime exposure to heatwaves',
+      description: 'The number of heatwaves a person born today can expect to live through, under each pathway.',
+      label: 'Scenario trajectories over time',
+      legend: scenarioLegend,
+      caseStudy: true,
+    },
+    {
+      slug: 'heat-related-facilities',
+      short: 'Heat-related facilities',
+      title: 'Heat-related facilities (CLIMADA)',
+      description: 'Exposure of health and care facilities to heat, compared across countries rather than across scenarios.',
+      label: 'Multi-country trajectories',
+      legend: countryLegend,
+      caseStudy: true,
+    },
+    {
+      slug: 'economic-damages',
+      short: 'Economic damages',
+      title: 'Heatwaves — economic damages',
+      description: 'Modelled annual damages attributable to heatwaves, compared across countries.',
+      label: 'Multi-country trajectories',
+      legend: countryLegend,
+      caseStudy: true,
+    },
+    {
+      slug: 'adaptation-investments',
+      short: 'Adaptation investments',
+      title: 'Heat-adaptation investments (CLIMADA)',
+      description: 'Where today’s heat stress meets the adaptation investment a country is projected to need, with each bubble sized by the population exposed.',
+      label: 'Bubble chart: heat stress against investment',
+      legend: ['Low current risk', 'Medium current risk', 'High current risk', 'Dot size = population exposed'],
+      height: 'h-[460px]',
+      caseStudy: true,
+    },
+  ];
+
+  const sections = charts.map(({ slug, short }) => ({ slug, title: short }));
+
+  let contentRef;
+  let activeSlug;
 </script>
 
 <ScoreboardLayout>
   <svelte:fragment slot="filters">
-    {#each filters as { label, value }}
-      <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
+    {#each filters as { label, value, colors }}
+      <SelectionButton {label} buttonLabel={value} {colors} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
     {/each}
   </svelte:fragment>
 
@@ -43,51 +132,51 @@
       <Compare class="h-4 w-4" />
       Compare
     </Button>
-    <Button variant="outline" size="sm">
-      <Link class="h-3.5 w-3.5" />
-      Share
-    </Button>
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
-    <ScoreboardMap />
+    <ScoreboardMap bounds={europeBounds} height="h-[560px]" />
+
+    <!-- Overlays sit on the layout's relative visual band; the inner max-w-7xl
+         keeps the panel on the same left edge as the content below. -->
+    <div class="pointer-events-none absolute inset-0 mx-auto max-w-7xl px-6">
+      <div class="pointer-events-auto absolute bottom-6 left-6">
+        <MapLegendPanel title={scope} subtitle={indicator} scale={indicatorScale} labels={indicatorScaleLabels} />
+      </div>
+    </div>
+    <div class="absolute inset-x-0 bottom-6 flex justify-center">
+      <Button href="#{charts[0].slug}">
+        View {hazard} charts
+        <LinkArrow />
+      </Button>
+    </div>
   </svelte:fragment>
 
-  <svelte:fragment slot="timeline">
-    <TimelineStrip />
+  <svelte:fragment slot="sidebar">
+    <SectionIndex {sections} {contentRef} bind:activeSlug />
+    <div class="mt-8 flex flex-col items-start gap-5">
+      <CopyLink />
+      <Button href="/{PATH_DOCUMENTATION}" variant="secondary" class="w-full justify-between text-left">
+        Learn more about the methodology
+        <LinkArrow />
+      </Button>
+    </div>
   </svelte:fragment>
 
-  <ScoreboardSection
-    slug="baseline-comparison"
-    title="How does 2025 compare to a historical baseline?"
-    description="Showing observed historical values alongside the projected 2025 figure tells you whether you're already in anomalous territory or still within past variability."
-  >
-    <ChartPlaceholder label="Stacked bar chart by region" legend={['Base – SSP1-2.6', 'up to SSP2-4.5', 'up to SSP5-8.5']} height="h-[360px]" />
-  </ScoreboardSection>
+  <div bind:this={contentRef}>
+    {#each charts as chart}
+      <ScoreboardSection eyebrow={scope} slug={chart.slug} title={chart.title} description={chart.description} accent={activeSlug === chart.slug}>
+        {#if chart.caseStudy && caseStudy}
+          <a class="text-sm font-bold text-theme-base" href="/{PATH_ADAPTATION}/{caseStudy.slug}">
+            See {placeholderGeography.label} case study <span class="font-normal">→</span>
+          </a>
+        {/if}
+        <ChartPlaceholder label={chart.label} legend={chart.legend} height={chart.height ?? 'h-[360px]'} />
+      </ScoreboardSection>
+    {/each}
+  </div>
 
-  <ScoreboardSection
-    slug="scenario-trajectories"
-    title="How does 2025 compare to a historical baseline?"
-    description="Showing observed historical values alongside the projected 2025 figure tells you whether you're already in anomalous territory or still within past variability."
-  >
-    <ChartPlaceholder label="Scenario trajectories over time" legend={['SSP5 uncertainty band', 'SSP5-8.5 (high)', 'SSP2-4.5 (mid)', 'SSP1-2.6 (low)']} height="h-[360px]" />
-  </ScoreboardSection>
-
-  <ScoreboardSection
-    slug="exceedance-probability"
-    title="Exceedance probability by scenario"
-    description="For a given temperature threshold, this chart shows the probability that Austria's annual maximum temperature will exceed it in the selected year under each scenario. The vertical lines mark planning-relevant thresholds — for example health system stress at 35°C or infrastructure design limits at 38°C. Reading across at any threshold immediately shows how much scenario choice changes the risk of crossing it."
-    divider={false}
-  >
-    <ChartPlaceholder label="Exceedance probability curves" legend={['SSP5-8.5 (high)', 'SSP2-4.5 (mid)', 'SSP1-2.6 (low)', 'Design thresholds']} height="h-[360px]" />
-  </ScoreboardSection>
-
-  <Button slot="footer-aside" href="/methodology" variant="secondary">
-    Learn more about the methodology
-    <LinkArrow />
-  </Button>
-
-  <div slot="footer">
+  <div class="pb-16">
     <LinkSection geography={placeholderGeography} {caseStudy} />
   </div>
 </ScoreboardLayout>

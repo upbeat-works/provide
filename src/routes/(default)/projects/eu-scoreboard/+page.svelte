@@ -133,7 +133,6 @@
 
   <div bind:this={contentRef}>
     <ScoreboardSection
-      variant="stacked"
       eyebrow="Scoreboard"
       slug="what-the-scoreboard-shows"
       title="What the scoreboard shows"
@@ -142,7 +141,6 @@
     />
 
     <ScoreboardSection
-      variant="stacked"
       eyebrow="Method"
       slug="how-the-score-is-built"
       title="How the score is built"
@@ -156,7 +154,6 @@
     </ScoreboardSection>
 
     <ScoreboardSection
-      variant="stacked"
       eyebrow="Pathways"
       slug="scenarios-explained"
       title="Scenarios explained"
@@ -175,7 +172,6 @@
     </ScoreboardSection>
 
     <ScoreboardSection
-      variant="stacked"
       eyebrow="Indicators"
       slug="indicators"
       title="{hazard} indicators for Europe and individual countries"

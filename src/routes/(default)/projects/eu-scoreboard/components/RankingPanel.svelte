@@ -1,5 +1,6 @@
 <script>
   import Chevron from '$lib/components/icons/Chevron.svelte';
+  import RiskLegend from './RiskLegend.svelte';
 
   // The ranking card floating over the map: legend for the choropleth, the sort
   // it is ranked by, and the leaderboard itself. Placeholder data for now —
@@ -34,12 +35,7 @@
     <div class="flex flex-col gap-4 px-5 pb-4 pt-3">
       <div class="flex flex-col gap-1.5">
         <p class="text-sm font-semibold">{hazard}</p>
-        <div class="h-1.5 w-full rounded-sm" style="background: linear-gradient(to right, {scale.join(', ')})" />
-        <div class="flex justify-between text-[11px] text-text-weaker">
-          {#each scaleLabels as scaleLabel}
-            <span>{scaleLabel}</span>
-          {/each}
-        </div>
+        <RiskLegend {scale} labels={scaleLabels} />
       </div>
 
       <button type="button" class="flex items-center gap-1 self-start text-sm font-semibold text-theme-base">
