@@ -1,57 +1,43 @@
 <script>
   import { GEOGRAPHY_INDEX, GEOGRAPHY_TYPES } from '$stores/meta.js';
   import { CURRENT_GEOGRAPHY_UID } from '$stores/state.js';
-  import { parentCountriesOf, continentOf, childSummary } from './geography-tree.js';
+  import { parentCountriesOf, continentOf, childSummary, plainLabel } from './geography-tree.js';
 
   export let geography; // selected geography object or undefined
 
-  $: type = geography ? $GEOGRAPHY_TYPES.find((t) => t.uid === geography.geographyType) : null;
-  $: isCountry = geography?.geographyType === 'admin0';
-  $: icon = geography ? (geography.icon ?? geography.emoji) : null;
-  $: continent = geography ? continentOf($GEOGRAPHY_INDEX, geography.uid) : null;
-  $: parentCountries = geography && !isCountry ? parentCountriesOf($GEOGRAPHY_INDEX, geography.uid) : [];
-  $: breakdown = isCountry
-    ? childSummary($GEOGRAPHY_INDEX, geography.uid).map(({ type: t, count }) => {
-        const def = $GEOGRAPHY_TYPES.find((x) => x.uid === t);
-        const noun = count === 1 ? (def?.labelSingular ?? def?.label ?? t) : (def?.label ?? t);
-        return { type: t, count, label: `${count} ${noun}` };
-      })
-    : [];
+  // One line under the map: what is selected, and what it contains (a country's
+  // children) or what contains it (the country a city/basin/EEZ belongs to).
+  // Tags that name another geography select it; counts are read-only.
+  $: tags = tagsFor(geography, $GEOGRAPHY_INDEX, $GEOGRAPHY_TYPES);
+
+  function tagsFor(geography, index, types) {
+    if (!geography) return [];
+    if (geography.geographyType !== 'admin0') {
+      return parentCountriesOf(index, geography.uid).map((c) => ({ label: c.label, uid: c.uid }));
+    }
+    const counts = childSummary(index, geography.uid).map(({ type, count }) => {
+      const def = types.find((x) => x.uid === type);
+      const noun = count === 1 ? (def?.labelSingular ?? def?.label ?? type) : (def?.label ?? type);
+      return { label: `${count} ${plainLabel(noun)}` };
+    });
+    if (counts.length) return counts;
+    // A country with nothing to drill into still says where it sits.
+    const continent = continentOf(index, geography.uid);
+    return continent ? [{ label: continent.label }] : [];
+  }
 </script>
 
-{#if geography}
-  <div class="mt-3 rounded-lg border border-contour-weakest p-3 text-sm">
-    <div class="flex items-center gap-2">
-      {#if icon}<i class="not-italic font-emoji font-normal" aria-hidden role="presentation">{icon}</i>{/if}
-      <span class="font-bold text-theme-base truncate">{geography.label}</span>
-      {#if type}<span class="rounded-full bg-surface-weaker px-2 py-0.5 text-xs text-text-weaker">{type.labelSingular ?? type.label}</span>{/if}
-    </div>
-
-    {#if isCountry && continent}
-      <p class="mt-1 text-xs text-text-weaker">{continent.label}</p>
-    {/if}
-
-    {#if !isCountry && parentCountries.length === 1}
-      <p class="mt-2 text-xs text-text-weaker">Country: <span class="text-theme-base">{parentCountries[0].label}</span></p>
-    {/if}
-
-    {#if !isCountry && parentCountries.length > 1}
-      <div class="mt-2">
-        <span class="text-xs uppercase tracking-wide text-text-weaker">Also linked to</span>
-        <div class="mt-1 flex flex-wrap gap-1">
-          {#each parentCountries as c}
-            <button type="button" class="rounded-md bg-surface-weaker px-2 py-1 text-xs text-theme-base hover:bg-surface-weak" on:click={() => CURRENT_GEOGRAPHY_UID.set(c.uid)}>{c.label}</button>
-          {/each}
-        </div>
-      </div>
-    {/if}
-
-    {#if breakdown.length}
-      <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-        {#each breakdown as tag}
-          <span class="rounded-full border border-contour-weak px-2 py-0.5 text-theme-base">{tag.label}</span>
-        {/each}
-      </div>
-    {/if}
+{#if geography && tags.length}
+  <div class="mt-3 flex flex-wrap items-center justify-center gap-2 px-2">
+    <span class="text-xs font-medium uppercase tracking-wider text-text-weaker">{geography.label}:</span>
+    {#each tags as tag}
+      {#if tag.uid}
+        <button type="button" class="rounded-full bg-theme-50 px-3 py-1 text-xs text-theme-700 transition-colors hover:bg-theme-100" on:click={() => CURRENT_GEOGRAPHY_UID.set(tag.uid)}
+          >{tag.label}</button
+        >
+      {:else}
+        <span class="rounded-full bg-theme-50 px-3 py-1 text-xs text-theme-700">{tag.label}</span>
+      {/if}
+    {/each}
   </div>
 {/if}
