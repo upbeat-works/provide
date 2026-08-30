@@ -1,26 +1,14 @@
 <script>
-  import PageHero from '$lib/components/layouts/PageHero.svelte';
-  import { CLASS_SCOREBOARD_BG } from '$config';
-
-  // Page shell for the EU scoreboard: hero -> sticky control bar -> full-bleed
-  // visual (map + timeline) -> stacked split-column sections -> footer band.
-  // Unlike PageLayout there is no sidebar; the section titles live in the left
-  // column of each section (see ScoreboardSection).
-  export let title;
-  export let description = undefined;
-  export let label = undefined;
-  // SPARCCLE purple, shared with the header theme (see Header.svelte). Not a
-  // design token yet — swap CLASS_SCOREBOARD_BG for a `bg-theme-*` token once
-  // the scoreboard palette lands in color-tokens-light.json.
-  export let heroClass = CLASS_SCOREBOARD_BG;
+  // Page shell for a scoreboard view, below the hero — the hero and the view
+  // tabs belong to the route layout, shared by both views. Order here is
+  // sticky control bar -> full-bleed visual (map + optional timeline) ->
+  // content. Content comes in two shapes: with a `sidebar` slot it is an index
+  // column beside an article column (the ranking view), without one it is a
+  // single stacked column (the indicators view).
 
   // Exposed so sticky content inside the sections can clear the control bar.
   export let barHeight = 0;
 </script>
-
-<PageHero className={heroClass} {label} {title} {description}>
-  <slot name="brand" slot="label" />
-</PageHero>
 
 {#if $$slots.filters || $$slots.actions}
   <div bind:clientHeight={barHeight} class="sticky top-0 z-40 bg-white border-b border-contour-weakest">
@@ -49,9 +37,20 @@
   </div>
 {/if}
 
-<div class="mx-auto max-w-7xl px-6">
-  <slot />
-</div>
+{#if $$slots.sidebar}
+  <div class="mx-auto max-w-7xl px-6 grid grid-cols-1 md:grid-cols-[minmax(0,15rem)_1fr] gap-8 md:gap-16">
+    <div class="py-10 md:sticky h-fit" style="top: {barHeight}px">
+      <slot name="sidebar" />
+    </div>
+    <div class="min-w-0">
+      <slot />
+    </div>
+  </div>
+{:else}
+  <div class="mx-auto max-w-7xl px-6">
+    <slot />
+  </div>
+{/if}
 
 {#if $$slots.footer || $$slots['footer-aside']}
   <div class="mx-auto max-w-7xl px-6 pb-16">

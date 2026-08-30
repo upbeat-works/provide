@@ -6,15 +6,15 @@
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import Compare from '$lib/components/icons/Compare.svelte';
   import Link from '$lib/components/icons/Link.svelte';
-  import ScoreboardMap from './components/ScoreboardMap.svelte';
-  import ChartPlaceholder from './components/ChartPlaceholder.svelte';
-  import TimelineStrip from './components/TimelineStrip.svelte';
-  import LinkSection from '../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
+  import ScoreboardMap from '../components/ScoreboardMap.svelte';
+  import ChartPlaceholder from '../components/ChartPlaceholder.svelte';
+  import TimelineStrip from '../components/TimelineStrip.svelte';
+  import LinkSection from '../../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
 
   export let data;
 
-  // Structure-only page: every control and chart below is a placeholder. There
+  // Structure-only view: every control and chart below is a placeholder. There
   // are no scoreboard endpoints yet, so nothing reads from a store or a loader
   // — the point here is the layout (ScoreboardLayout / ScoreboardSection).
   // Stands in for the selected geography until the scoreboard has a selection;
@@ -31,12 +31,7 @@
   ];
 </script>
 
-<ScoreboardLayout
-  title="EU Scoreboard"
-  description="Explore how different scenarios change climate risk across European countries and regions. See where impacts are most likely to exceed key thresholds, and compare outcomes over time to identify hotspots and more resilient pathways."
->
-  <img slot="brand" src="/img/sparccle-logo-white.svg" alt="SPARCCLE" class="h-8 w-auto" />
-
+<ScoreboardLayout>
   <svelte:fragment slot="filters">
     {#each filters as { label, value }}
       <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />

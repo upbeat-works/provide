@@ -14,9 +14,9 @@
     LABEL_ADAPTATION,
     LABEL_TOOLS,
     LABEL_AVOID_IMPACTS_NAV,
-    PATH_TOOLS,
+    PATH_PROJECTS,
+    PATH_PROVIDE,
     PATH_EU_SCOREBOARD,
-    LABEL_EU_SCOREBOARD,
     CLASS_SCOREBOARD_BG,
     CLASS_SCOREBOARD_TEXT,
     CLASS_SCOREBOARD_BORDER,
@@ -40,8 +40,8 @@
 
   function getHeaderTheme(pathname = '') {
     if (pathname.startsWith(`/${PATH_IMPACT}/${PATH_AVOID}`)) return HEADER_THEME_TOOL;
-    if (pathname.startsWith('/projects/provide')) return HEADER_THEME_TOOL;
-    if (pathname.startsWith(`/${PATH_TOOLS}/${PATH_EU_SCOREBOARD}`)) return HEADER_THEME_SCOREBOARD;
+    if (pathname.startsWith(`/${PATH_PROJECTS}/${PATH_PROVIDE}`)) return HEADER_THEME_TOOL;
+    if (pathname.startsWith(`/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}`)) return HEADER_THEME_SCOREBOARD;
     return HEADER_THEME_DEFAULT;
   }
 
@@ -56,7 +56,6 @@
       label: LABEL_TOOLS,
       submenu: [
         { href: `/${PATH_IMPACT}/${PATH_AVOID}`, label: LABEL_AVOID_IMPACTS_NAV },
-        { href: `/${PATH_TOOLS}/${PATH_EU_SCOREBOARD}`, label: LABEL_EU_SCOREBOARD },
       ],
     },
     { href: `/${PATH_ADAPTATION}`, label: LABEL_ADAPTATION },
