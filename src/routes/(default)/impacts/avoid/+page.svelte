@@ -2,37 +2,51 @@
   import ThresholdLevels from './components/ThresholdLevels/ThresholdLevels.svelte';
   import StudyLocations from './components/StudyLocations/StudyLocations.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, IS_STATIC, CURRENT_GEOGRAPHY } from '$stores/state';
+  import { IS_STATIC } from '$stores/state';
+  import { AVOID_IS_EMPTY, AVOID_IS_AVAILABLE, AVOID_GEOGRAPHY, AVOID_CITY_UID, AVOID_INDICATOR_UID, AVOID_PARAMS } from '$stores/avoid-catalog.js';
   import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import SelectionCertaintyLevels from './components/Selection/CertaintyLevels/CertaintyLevels.svelte';
   import SelectionStudyLocations from './components/Selection/StudyLocations/StudyLocations.svelte';
   import { writable } from 'svelte/store';
   import PageHero from '$lib/components/layouts/PageHero.svelte';
-  import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
-  import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
   import Reference from './components/Reference/Reference.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
-  import { onDestroy } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { createScrollSpy } from '$lib/utils/scrollSpy';
-  import ShareLink from '../components/ShareLink/ShareLink.svelte';
+  import AvoidShareLink from './components/AvoidShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import LinkSection from '../explore/components/ImpactGeo/LinkSection.svelte';
-  import { GEOGRAPHIES } from '$stores/meta.js';
-  import { GEOGRAPHY_TYPE_CITY } from '$config';
-  import IndicatorFilters from '../explore/components/IndicatorFilters.svelte';
+  import { findCaseStudy } from '$lib/catalog/case-study-link.js';
+  import AvoidParameterSelection from './components/Selection/AvoidParameterSelection.svelte';
+  import AvoidParamFilters from './components/Selection/AvoidParamFilters.svelte';
+  import { page } from '$app/stores';
 
   export let data;
 
-  $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
+  // Deep-link handoff (explore -> avoid): the incoming ids are already in the
+  // avoid-native legacy space (geoId, legacyUid), so we just apply them. Param
+  // defaulting/reconciliation is handled by the AVOID_INDICATOR subscription in
+  // the store module (which fires as soon as the indicator resolves).
+  onMount(() => {
+    const url = $page.url;
+    const geo = url.searchParams.get('geography');
+    const ind = url.searchParams.get('indicator');
+    if (geo) AVOID_CITY_UID.set(geo);
+    if (ind) AVOID_INDICATOR_UID.set(ind);
+    if (geo || ind) {
+      const next = {};
+      for (const [k, v] of url.searchParams) {
+        if (k !== 'geography' && k !== 'indicator') next[k] = v;
+      }
+      if (Object.keys(next).length) AVOID_PARAMS.update((p) => ({ ...p, ...next }));
+    }
+  });
 
-  $: caseStudyGeography = $CURRENT_GEOGRAPHY?.adaptationCaseStudy
-    ? $GEOGRAPHIES[GEOGRAPHY_TYPE_CITY]?.find((d) => d.uid === $CURRENT_GEOGRAPHY.adaptationCaseStudy) ?? null
-    : null;
-  $: caseStudy = caseStudyGeography
-    ? (data.caseStudies?.find((d) => d.cityUid === caseStudyGeography.uid) ?? null)
-    : null;
+  $: isValidSelection = !$AVOID_IS_EMPTY && $AVOID_IS_AVAILABLE && !$IS_EMPTY_LEVEL_OF_IMPACT && !$IS_EMPTY_LIKELIHOOD_LEVEL;
+
+  $: caseStudy = findCaseStudy(data.caseStudies, $AVOID_GEOGRAPHY);
 
   let THRESHOLD_LEVELS_DATA = writable({});
 
@@ -64,38 +78,40 @@
     spy?.destroy();
     spy = createScrollSpy(contentEl, {
       getItems: () => sections.map((s) => (s.slug && !s.disabled ? document.getElementById(s.slug) : null)),
-      onActive: (i) => { activeIndex = i; },
+      onActive: (i) => {
+        activeIndex = i;
+      },
     });
   }
 
-  function handleNavClick(i) { spy?.click(i); }
+  function handleNavClick(i) {
+    spy?.click(i);
+  }
 
   onDestroy(() => spy?.destroy());
 </script>
 
 <PageLayout>
   <svelte:fragment slot="hero">
-    <PageHero className="bg-[#14364D]" title="Avoiding future impacts" description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid.">
+    <PageHero
+      className="bg-[#14364D]"
+      title="Avoiding future impacts"
+      description="Explore which scenarios minimise the risk from certain impacts in cities and their rural surroundings. Understand the likelihood of exceeding the impact levels you would like to avoid."
+    >
       <img slot="label" src="/img/provide-logo-white.png" alt="provide" class="h-6" />
     </PageHero>
-
-    <div class="bg-slate-50 pt-8">
-      <div class="mx-auto max-w-7xl px-6">
-        <ModeSelectionTabs />
-      </div>
-    </div>
     <hr class="border-t border-contour-weakest" />
   </svelte:fragment>
 
   <svelte:fragment slot="nav">
-    <ParameterSelection />
+    <AvoidParameterSelection />
     <div class="border-b border-contour-weakest" />
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
     <SimpleNav {sections} {activeIndex} onNavClick={handleNavClick} />
     <hr class="my-4 border-contour-weakest mr-6" />
-    <ShareLink />
+    <AvoidShareLink />
     <Button class="mt-4 mr-6" href="/methodology" variant="secondary">
       Learn more about the methodology
       <LinkArrow />
@@ -106,21 +122,21 @@
     <Reference />
     <SelectionCertaintyLevels />
     <SelectionStudyLocations />
-    <IndicatorFilters />
+    <AvoidParamFilters />
   </svelte:fragment>
 
   <svelte:fragment slot="content">
     <div bind:this={contentEl}>
-    {#each sections as section, i}
-      {#if !section.disabled}
-        <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest last:border-none">
-          <svelte:component this={section.component} {...section.props} />
-        </section>
+      {#each sections as section, i}
+        {#if !section.disabled}
+          <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest last:border-none">
+            <svelte:component this={section.component} {...section.props} />
+          </section>
+        {/if}
+      {/each}
+      {#if !$IS_STATIC && $AVOID_GEOGRAPHY}
+        <LinkSection geography={$AVOID_GEOGRAPHY} {caseStudy} />
       {/if}
-    {/each}
-    {#if !$IS_STATIC && $CURRENT_GEOGRAPHY}
-      <LinkSection geography={$CURRENT_GEOGRAPHY} {caseStudy} />
-    {/if}
     </div>
   </svelte:fragment>
 </PageLayout>

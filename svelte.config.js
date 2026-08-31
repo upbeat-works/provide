@@ -1,11 +1,7 @@
 import { preprocessMeltUI } from '@melt-ui/pp';
 import sequence from 'svelte-sequential-preprocessor';
 import preprocess from 'svelte-preprocess';
-import adapterNetlify from '@sveltejs/adapter-netlify';
-import adapterStatic from '@sveltejs/adapter-static';
-const isStatic = process.env.BUILD_ENV === 'static';
-const adapter = isStatic ? adapterStatic : adapterNetlify;
-console.log(`Using ${isStatic ? 'static' : 'netlify'} adapter.`);
+import adapter from '@sveltejs/adapter-node';
 /** @type {import('@sveltejs/kit').Config}*/
 const config = {
   kit: {
@@ -21,37 +17,11 @@ const config = {
       $workers: 'src/lib/workers',
       $formatting: 'src/lib/utils/formatting.js',
     },
+    // Server-side rendering via a standalone Node server (`node build`), served
+    // behind the nginx reverse proxy. No prerendering — pages render on demand.
     adapter: adapter(),
     version: {
       name: process.env.npm_package_version,
-    },
-    prerender: {
-      handleMissingId: 'warn',
-      // Fail the build for our own broken routes (referrer is unset for our explicit `entries`
-      // below), but only warn when the broken link was discovered while crawling - e.g. a stale
-      // URL inside CMS-authored markdown content, which we don't fully control.
-      handleHttpError: ({ path, referrer, message }) => {
-        if (!referrer) {
-          throw new Error(message);
-        }
-        console.warn(`${message} (linked from ${referrer})`);
-      },
-      entries: [
-        '/',
-        '/about',
-        '/case-studies',
-        '/keyconcepts',
-        '/contact',
-        '/impacts/avoid',
-        '/impacts/explore',
-        '/issues',
-        '/methodology/key-terms',
-        '/methodology',
-        '/embed/impact-time',
-        '/embed/impact-geo',
-        '/embed/unavoidable-risk',
-        '/projects/provide',
-      ],
     },
   },
   preprocess: sequence([

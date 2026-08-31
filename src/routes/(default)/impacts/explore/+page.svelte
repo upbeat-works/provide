@@ -3,10 +3,31 @@
   import ImpactGeo from './components/ImpactGeo/ImpactGeo.svelte';
   import UnAvoidableRisk from '../components/UnavoidableRisk/UnavoidableRisk.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, CURRENT_GEOGRAPHY, IS_STATIC } from '$stores/state';
-  import { GEOGRAPHIES } from '$stores/meta.js';
+  import {
+    IS_COMBINATION_AVAILABLE,
+    IS_EMPTY_SELECTION,
+    CURRENT_GEOGRAPHY,
+    CURRENT_INDICATOR,
+    CURRENT_GEOGRAPHY_UID,
+    CURRENT_INDICATOR_UID,
+    CURRENT_SCENARIOS_UID,
+    CURRENT_INDICATOR_OPTION_VALUES,
+    IS_STATIC,
+  } from '$stores/state';
   import VisData from '$lib/components/icons/VisData.svelte';
-  import { PATH_AVOID, GEOGRAPHY_TYPE_CITY } from '$config';
+  import { parse } from 'qs';
+  import {
+    PATH_AVOID,
+    GEOGRAPHY_TYPE_CITY,
+    URL_PATH_GEOGRAPHY,
+    URL_PATH_INDICATOR,
+    URL_PATH_SCENARIOS,
+    URL_PATH_TIME,
+    URL_PATH_REFERENCE,
+    URL_PATH_SPATIAL,
+    URL_PATH_FREQUENCY,
+    URL_PATH_INDICATOR_VALUE,
+  } from '$config';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
@@ -14,8 +35,11 @@
   import PageHero from '$lib/components/layouts/PageHero.svelte';
   import PageLayout from '$lib/components/layouts/PageLayout.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { page } from '$app/stores';
   import { createScrollSpy } from '$lib/utils/scrollSpy';
+  import { toLegacyGeoId, toLegacyIndicatorUid, resolveGeo, resolveIndicator, resolveScenarioUids } from '$lib/catalog/translate.js';
+  import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import ShareLink from '../components/ShareLink/ShareLink.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
@@ -25,12 +49,58 @@
 
   $: isValidSelection = !$IS_EMPTY_SELECTION && $IS_COMBINATION_AVAILABLE;
 
-  $: caseStudyGeography = $CURRENT_GEOGRAPHY?.adaptationCaseStudy
-    ? $GEOGRAPHIES[GEOGRAPHY_TYPE_CITY]?.find((d) => d.uid === $CURRENT_GEOGRAPHY.adaptationCaseStudy) ?? null
-    : null;
-  $: caseStudy = caseStudyGeography
-    ? (data.caseStudies?.find((d) => d.cityUid === caseStudyGeography.uid) ?? null)
-    : null;
+  // Explore -> avoid handoff. Explore owns the translation: a city selection with
+  // avoid data (an indicator carrying a legacyUid) becomes an avoid-native
+  // (geoId, legacyUid) deep-link; otherwise fall back to the generic avoid page
+  // (avoid is cities-only, so non-city selections can't carry over).
+  // Avoiding future impacts is cities-only, so the handoff needs a city; carry
+  // its geoId (== the avoid-native legacy city uid), plus the indicator only if
+  // it maps to an avoid indicator (legacyUid). When the current geography isn't a
+  // city, the button is disabled — avoid can't represent it.
+  $: avoidIsCity = $CURRENT_GEOGRAPHY?.geographyType === GEOGRAPHY_TYPE_CITY;
+  $: avoidGeoId = avoidIsCity ? toLegacyGeoId($CURRENT_GEOGRAPHY) : undefined;
+  $: avoidLegacyUid = toLegacyIndicatorUid($CURRENT_INDICATOR?.uid, data.catalog?.indicators ?? []);
+  $: avoidAvailable = isValidSelection && !!avoidGeoId;
+  $: avoidHref = avoidAvailable
+    ? `/impacts/${PATH_AVOID}?geography=${encodeURIComponent(avoidGeoId)}${avoidLegacyUid ? `&indicator=${encodeURIComponent(avoidLegacyUid)}` : ''}`
+    : `/impacts/${PATH_AVOID}`;
+
+  // Inbound deep links (avoid -> explore, key-terms -> explore, a shared URL):
+  // seed every store the link can carry. Geography/indicator params may be in
+  // either id space, so they go through the resolvers. Parsed with qs because
+  // `scenarios` arrives as `scenarios[0]=…`.
+  onMount(() => {
+    const params = parse($page.url.search.replace(/^\?/, ''));
+
+    const geo = params[URL_PATH_GEOGRAPHY];
+    if (geo) {
+      // Resolve against the loader payload, like the indicator/scenario params
+      // below — NOT the GEOGRAPHIES store. That store derives from `$page`,
+      // which is still empty at onMount on a cold load, so resolveGeo found
+      // nothing and every ?geography= link fell through to the default.
+      const { geographyTypes, ...geographiesByType } = data.geographies ?? {};
+      const g = resolveGeo(geo, Object.values(geographiesByType).flat());
+      if (g) CURRENT_GEOGRAPHY_UID.set(g.uid);
+    }
+
+    const ind = params[URL_PATH_INDICATOR];
+    if (ind) {
+      const i = resolveIndicator(ind, data.catalog?.indicators ?? []);
+      if (i) CURRENT_INDICATOR_UID.set(i.uid);
+    }
+
+    const scenarios = resolveScenarioUids(params[URL_PATH_SCENARIOS], data.catalog?.scenarios ?? []);
+    if (scenarios.length) CURRENT_SCENARIOS_UID.set(scenarios);
+
+    // Parameter options are raw convention values; the selectors validate them
+    // against the current indicator, so an unknown one falls back on its own.
+    const options = Object.fromEntries(
+      [URL_PATH_TIME, URL_PATH_REFERENCE, URL_PATH_SPATIAL, URL_PATH_FREQUENCY, URL_PATH_INDICATOR_VALUE].filter((key) => params[key] != null).map((key) => [key, params[key]])
+    );
+    if (Object.keys(options).length) CURRENT_INDICATOR_OPTION_VALUES.update((prev) => ({ ...prev, ...options }));
+  });
+
+  $: caseStudy = findCaseStudy(data.caseStudies, $CURRENT_GEOGRAPHY);
 
   $: sections = [
     {
@@ -68,18 +138,26 @@
     spy?.destroy();
     spy = createScrollSpy(contentEl, {
       getItems: () => sections.map((s) => (s.slug && !s.disabled ? document.getElementById(s.slug) : null)),
-      onActive: (i) => { activeIndex = i; },
+      onActive: (i) => {
+        activeIndex = i;
+      },
     });
   }
 
-  function handleNavClick(i) { spy?.click(i); }
+  function handleNavClick(i) {
+    spy?.click(i);
+  }
 
   onDestroy(() => spy?.destroy());
 </script>
 
 <PageLayout>
   <svelte:fragment slot="hero">
-    <PageHero label="EXPLORER" title="Future impacts" description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided." />
+    <PageHero
+      label="EXPLORER"
+      title="Future impacts"
+      description="Explore how different levels of climate action will lead to different climate impacts for countries, cities, and more. See where risk escalates and under what conditions impacts could be avoided."
+    />
     <div class="bg-slate-50 pt-8">
       <div class="mx-auto max-w-7xl px-6">
         <ModeSelectionTabs />
@@ -114,27 +192,27 @@
 
   <svelte:fragment slot="content">
     <div bind:this={contentEl}>
-    {#each sections as section, i}
-      {#if !section.disabled}
-        <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-contour-weakest border-b last:border-none">
-          <svelte:component this={section.component} {...section.props} />
-        </section>
-        {#if section.slug === 'impact-geo' && !$IS_STATIC && $CURRENT_GEOGRAPHY}
-          <div class="mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest">
-            <LinkSection geography={$CURRENT_GEOGRAPHY} {caseStudy} />
-          </div>
+      {#each sections as section, i}
+        {#if !section.disabled}
+          <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-contour-weakest border-b last:border-none">
+            <svelte:component this={section.component} {...section.props} />
+          </section>
+          {#if section.slug === 'impact-geo' && !$IS_STATIC && $CURRENT_GEOGRAPHY}
+            <div class="mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest">
+              <LinkSection geography={$CURRENT_GEOGRAPHY} {caseStudy} />
+            </div>
+          {/if}
         {/if}
+      {/each}
+      {#if avoidAvailable}
+        <div class="flex justify-center">
+          <Button href={avoidHref} variant="secondary" class="!px-8 !py-4 !text-base !gap-3">
+            <VisData class="h-8 w-8 shrink-0" color="fill-current" />
+            Visualize this data on avoiding future impacts
+            <LinkArrow />
+          </Button>
+        </div>
       {/if}
-    {/each}
-    {#if isValidSelection}
-      <div class="flex justify-center">
-        <Button href="/impacts/{PATH_AVOID}" variant="secondary" class="!px-8 !py-4 !text-base !gap-3">
-          <VisData class="h-8 w-8 shrink-0" color="fill-current" />
-          Visualize this data on avoiding future impacts
-          <LinkArrow />
-        </Button>
-      </div>
-    {/if}
     </div>
   </svelte:fragment>
 </PageLayout>

@@ -124,8 +124,14 @@
 
   // Get the values for each key and create color scales for each.
   $: tableColumns = (COLUMNS[selectedTimeframe] ?? []).map(([label, tooltip, key, formatting = (d) => d, get = (d) => d]) => {
-    const values = scenariosListed.map((s) => get(s[KEY_CHARACTERISTICS][key]));
-    const domain = extent(values);
+    // ixmp4 carries no scenario characteristics yet, so a cell may be absent —
+    // render the row without it rather than taking the whole table down.
+    const values = scenariosListed
+      .map((s) => s[KEY_CHARACTERISTICS]?.[key])
+      .filter((raw) => raw != null)
+      .map(get);
+    // No values means no cell will use the scale, but chroma still needs a domain.
+    const domain = values.length ? extent(values) : [0, 1];
     const scale = chroma.scale(['#fffbeb', '#fcd34d']).domain(domain).mode('lch');
     return {
       key,
@@ -146,12 +152,14 @@
     const hasBorderBottom = i !== scenariosListed.length - 1;
     const borderColorLeft = isSelected ? $THEME.color.category.base[scenarioSelectedIndex] : 'transparent';
     const values = tableColumns.map(({ key, scale, formatting, get }) => {
-      const label = formatting(scenario[KEY_CHARACTERISTICS][key]);
-      const value = get(scenario[KEY_CHARACTERISTICS][key]);
+      const raw = scenario[KEY_CHARACTERISTICS]?.[key];
+      // The cell markup already renders an em-dash for a null value.
+      if (raw == null) return { label: '', value: null, bg: 'transparent', useBlackFont: true };
+      const value = get(raw);
       const bg = value !== null ? scale(value).hex() : 'transparent';
       const useBlackFont = value !== null ? hasBlackMoreContrast(bg) : true;
       return {
-        label,
+        label: formatting(raw),
         value,
         bg,
         useBlackFont,
@@ -159,8 +167,8 @@
     });
     const order = Object.fromEntries(
       tableColumns.map(({ key, get }) => {
-        const value = get(scenario[KEY_CHARACTERISTICS][key]);
-        return [key, value];
+        const raw = scenario[KEY_CHARACTERISTICS]?.[key];
+        return [key, raw == null ? null : get(raw)];
       })
     );
     return {

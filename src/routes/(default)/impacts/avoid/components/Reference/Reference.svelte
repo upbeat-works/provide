@@ -1,5 +1,5 @@
 <script>
-  import { CURRENT_INDICATOR_OPTION_VALUES, IS_EMPTY_GEOGRAPHY, CURRENT_GEOGRAPHY, CURRENT_INDICATOR, TEMPLATE_PROPS, IS_COMBINATION_AVAILABLE_INDICATOR, IS_EMPTY_INDICATOR } from '$stores/state.js';
+  import { AVOID_INDICATOR, AVOID_GEOGRAPHY, AVOID_PARAMS, AVOID_TEMPLATE_PROPS, AVOID_IS_EMPTY, AVOID_IS_AVAILABLE } from '$stores/avoid-catalog.js';
   import { SELECTED_STUDY_LOCATION, REFERENCE_PROCESSED, LEVEL_OF_IMPACT } from '$stores/avoid.js';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
@@ -25,15 +25,14 @@
     modifiers: [{ name: 'offset', options: { offset: [0, 10] } }],
   };
 
-  $: !$IS_EMPTY_GEOGRAPHY &&
-    !$IS_EMPTY_INDICATOR &&
-    $IS_COMBINATION_AVAILABLE_INDICATOR &&
+  $: !$AVOID_IS_EMPTY &&
+    $AVOID_IS_AVAILABLE &&
     fetchData(store, {
       endpoint: END_AVOIDING_REFERENCE,
       params: {
-        [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY.uid,
-        [URL_PATH_INDICATOR]: $CURRENT_INDICATOR.uid,
-        ...$CURRENT_INDICATOR_OPTION_VALUES,
+        [URL_PATH_GEOGRAPHY]: $AVOID_GEOGRAPHY.uid,
+        [URL_PATH_INDICATOR]: $AVOID_INDICATOR.uid,
+        ...$AVOID_PARAMS,
         [URL_PATH_STUDY_LOCATION]: $SELECTED_STUDY_LOCATION,
       },
     });
@@ -82,7 +81,7 @@
 
   $: $store?.data && process({ data: $store });
 
-  $: ({ unit } = $CURRENT_INDICATOR ?? {});
+  $: ({ unit } = $AVOID_INDICATOR ?? {});
   $: ({ decimals } = $REFERENCE_PROCESSED ?? {});
   $: triggerValue = $REFERENCE_PROCESSED
     ? `${formatValue($LEVEL_OF_IMPACT, unit?.uid, { decimals })}${formatUnit(unit)}`
@@ -99,12 +98,12 @@
   </PopoverButton>
 
   <PopoverPanel use={[[popperContent, popperOptions]]} class="bg-surface-base shadow-md z-50 rounded border-contour-weakest border p-4 w-72">
-    {#if !$IS_EMPTY_GEOGRAPHY && !$IS_EMPTY_INDICATOR && $IS_COMBINATION_AVAILABLE_INDICATOR}
+    {#if !$AVOID_IS_EMPTY && $AVOID_IS_AVAILABLE}
       <LoadingWrapper
         {process}
         let:asyncProps={{ data }}
         asyncProps={{ data: $store }}
-        props={{ ...$TEMPLATE_PROPS }}
+        props={{ ...$AVOID_TEMPLATE_PROPS }}
         warningSizeSmall={true}
         warningBackground={false}
       >

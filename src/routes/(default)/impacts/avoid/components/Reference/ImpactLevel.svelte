@@ -8,7 +8,7 @@
 
 <script>
   import { LEVEL_OF_IMPACT } from '$stores/avoid.js';
-  import { CURRENT_INDICATOR } from '$stores/state.js';
+  import { AVOID_INDICATOR } from '$stores/avoid-catalog.js';
   import { formatUnit, formatValue } from '$lib/utils/formatting';
   import { scaleLinear } from 'd3-scale';
   import { createSlider, melt } from '@melt-ui/svelte';
@@ -21,7 +21,7 @@
 
   export let data;
 
-  $: ({ unit } = $CURRENT_INDICATOR);
+  $: ({ unit } = $AVOID_INDICATOR ?? {});
 
   // The step size of the slider
   $: ({ step, min, max, totalMin, totalMax, defaultValue, offset, decimals } = data);

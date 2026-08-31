@@ -2,7 +2,6 @@
   import { MAX_NUMBER_SELECTABLE_SCENARIOS, PATH_EXPLORE, PATH_IMPACT } from '$config';
   import Arrow from '$lib/components/icons/Arrow.svelte';
   import { buildURL } from '$utils/url.js';
-  import { page } from '$app/stores';
 
   export let selectedScenarios = [];
 
@@ -20,7 +19,7 @@
   class:text-theme-weaker={isDisabled}
   class:pointer-events-none={isDisabled}
   class="bg-surface-weaker md:col-start-2 hover:bg-surface-weakest transition-color flex gap-x-3 justify-center items-center text-theme-base px-6 py-5 text-center rounded-sm inline"
-  href={isDisabled ? undefined : `${$page.url.origin}/${PATH_EXPLORE}/${PATH_IMPACT}${query}`}
+  href={isDisabled ? undefined : `/${PATH_IMPACT}/${PATH_EXPLORE}${query}`}
 >
   {#if noScenarioSelected}
     Select scenarios to view them in the explorer

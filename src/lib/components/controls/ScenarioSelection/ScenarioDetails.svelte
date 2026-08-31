@@ -12,13 +12,16 @@
     2300: [0, 4],
   }[currentFilterUid] ?? [1, 3];
 
+  // GMT (scenario[MEAN_TEMPERATURE_UID]) is curated/global data we don't have for
+  // convention scenarios yet — tolerate its absence instead of crashing.
   $: chartData = scenarios.map((scenario) => {
-    const values = scenario[MEAN_TEMPERATURE_UID];
+    const values = scenario[MEAN_TEMPERATURE_UID] ?? [];
     return {
       ...scenario,
       values: scenario.isHighlighted ? values : values.map(({ year, value }) => ({ year, value })),
     };
   });
+  $: hasGmt = chartData.some((d) => d.values.length);
 </script>
 
 <h3 class="text-lg mb-2 font-bold">{scenario.label}</h3>
@@ -34,7 +37,7 @@
   {/if}
 </dl>
 
-{#if scenario[KEY_SCENARIO_YEAR_DESCRIPTION].length}
+{#if scenario[KEY_SCENARIO_YEAR_DESCRIPTION]?.length}
   <dl class="text-sm flex gap-3 py-4 border-t border-contour-weaker">
     {#each scenario[KEY_SCENARIO_YEAR_DESCRIPTION] as { year, description }}
       {#if year <= scenario.endYear}
@@ -51,6 +54,7 @@
   </dl>
 {/if}
 
+{#if hasGmt}
 <div class="border-t border-contour-weaker py-4">
   <p class="text-sm mb-2 font-bold">Global mean temperature in °C</p>
   <figure>
@@ -69,3 +73,4 @@
     </figcaption>
   </figure>
 </div>
+{/if}

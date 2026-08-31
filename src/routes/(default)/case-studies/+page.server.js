@@ -1,7 +1,9 @@
 import { loadFromStrapi } from '$utils/apis.js';
 
 export const load = async ({ fetch, parent }) => {
-  const { meta } = await parent();
+  const { geographies, catalog } = await parent();
+  const cities = geographies.cities ?? [];
+  const scenarios = catalog.scenarios ?? [];
   const caseStudies = await loadFromStrapi(
     'case-study-dynamics',
     fetch,
@@ -11,7 +13,8 @@ export const load = async ({ fetch, parent }) => {
   return {
     caseStudies: caseStudies.map((study) => {
       const attrs = study.attributes;
-      const city = meta.cities.find((d) => d.uid === attrs.CityUid) || { uid: attrs.CityUid, label: attrs.CityUid };
+      const cityGeo = cities.find((c) => c.geoId === attrs.Slug);
+      const city = { uid: attrs.Slug, label: cityGeo?.label ?? attrs.Slug };
       const topics = (attrs.Topics?.data ?? []).map((d) => ({ id: d.id, ...d.attributes }));
       return {
         city,

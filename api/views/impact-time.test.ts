@@ -1,0 +1,175 @@
+import { describe, test, expect, afterEach, spyOn } from 'bun:test';
+import { assembleImpactTime, impactTimeToCsv, zipBands, alignBands, fetchImpactTime } from './impact-time';
+import * as platformModule from '../platform';
+import { instances } from '../instances';
+
+describe('fetchImpactTime — which series it asks ixmp4 for', () => {
+  let spy: ReturnType<typeof spyOn<typeof platformModule, 'createPlatform'>>;
+  afterEach(() => spy?.mockRestore());
+
+  /** A platform that records every tabulate query and answers with one empty frame. */
+  function recordingPlatform(queries: Array<Record<string, never>>) {
+    const empty = { columns: [], values: [] };
+    return {
+      iamc: {
+        tabulate: async (query: Record<string, never>) => {
+          queries.push(query);
+          return empty;
+        },
+      },
+      meta: { tabulate: async () => ({ columnValues: () => [] }) },
+    };
+  }
+
+  test('reads global mean temperature from the World region, not a regional proxy', async () => {
+    const queries: Array<Record<string, never>> = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    spy = spyOn(platformModule, 'createPlatform').mockResolvedValue(recordingPlatform(queries) as any);
+
+    await fetchImpactTime(instances[0], { username: 'u', password: 'p' }, {
+      indicator: 'Mean Temperature',
+      geography: 'France',
+      scenarios: ['curpol'],
+    });
+
+    const asked = queries.map((q) => [q.region?.name, q.variable?.name] as [string, string]);
+    expect(asked).toContainEqual(['World', 'Global Mean Temperature|50th Percentile']);
+    expect(asked).toContainEqual(['World', 'Global Mean Temperature|10th Percentile']);
+    // The interim proxy — regional pre-industrial Mean Temperature — is gone.
+    expect(asked.map(([, name]) => name)).not.toContain(
+      'Mean Temperature|1850-1900 (Pre-industrial)|Annual|Area|50th Percentile',
+    );
+    // The indicator's own bands still come from its region on the 5/50/95 axis.
+    expect(asked).toContainEqual([
+      'France',
+      'Mean Temperature|2011-2020 (Present Day)|Annual|Area|5th Percentile',
+    ]);
+  });
+});
+
+describe('alignBands', () => {
+  test('aligns percentiles to a union year axis; a year a percentile lacks becomes NaN, not a left-shift', () => {
+    const rowsByPct = {
+      '5th Percentile': [{ scenario: 'A', '2020': 1, '2025': 2 }], // stops at 2025
+      '50th Percentile': [{ scenario: 'A', '2020': 3, '2025': 4, '2030': 5 }], // has 2030
+    };
+    const { years, byPct } = alignBands(rowsByPct);
+    expect(years).toEqual([2020, 2025, 2030]);
+    expect(byPct['50th Percentile'].A).toEqual([3, 4, 5]);
+    expect(byPct['5th Percentile'].A[0]).toBe(1);
+    expect(byPct['5th Percentile'].A[1]).toBe(2);
+    expect(byPct['5th Percentile'].A[2]).toBeNaN(); // 2030 absent in p5 → NaN at the right index
+  });
+
+  test('treats null cells as missing (NaN), not 0', () => {
+    const { byPct } = alignBands({ '50th Percentile': [{ scenario: 'A', '2020': 1, '2025': null }] });
+    expect(byPct['50th Percentile'].A[1]).toBeNaN();
+  });
+});
+
+describe('zipBands', () => {
+  test('zips per-scenario percentile series into [min, mid, max] per year', () => {
+    expect(zipBands([2020, 2025], { A: [1, 2] }, { A: [2, 3] }, { A: [3, 4] }, ['A'])).toEqual({
+      A: [
+        [1, 2, 3],
+        [2, 3, 4],
+      ],
+    });
+  });
+
+  test('drops scenarios missing any of the three bands', () => {
+    expect(zipBands([2020], { A: [1] }, { A: [2] }, {}, ['A'])).toEqual({});
+  });
+
+  test('matches requested scenarios to data keys case-insensitively, keyed by the requested name', () => {
+    // The overshoot percentile data lives under the lowercase `SSP5-3.4-Os` run,
+    // but the selection sends the canonical `SSP5-3.4-OS`. It must still resolve,
+    // and the output must key by the requested name so the frontend finds it.
+    const series = { 'SSP5-3.4-Os': [0.1, 0.2] };
+    const bands = zipBands([2020, 2050], series, series, series, ['SSP5-3.4-OS']);
+    expect(Object.keys(bands)).toEqual(['SSP5-3.4-OS']);
+    expect(bands['SSP5-3.4-OS']).toEqual([
+      [0.1, 0.1, 0.1],
+      [0.2, 0.2, 0.2],
+    ]);
+  });
+});
+
+describe('assembleImpactTime', () => {
+  const base = {
+    indicator: 'Mean Temperature',
+    years: [2020, 2025, 2030],
+    p5: { Today: [1, 2, 3] },
+    p50: { Today: [2, 3, 4] },
+    p95: { Today: [3, 4, 5] },
+    scenarios: ['Today'],
+    model: 'MESMER',
+    source: 'provide-internal',
+  };
+
+  test('derives the year axis from the year list', () => {
+    const out = assembleImpactTime(base);
+    expect(out.yearStart).toBe(2020);
+    expect(out.yearStep).toBe(5);
+  });
+
+  test('zips percentiles into a per-year [min, value, max] band per scenario', () => {
+    const out = assembleImpactTime(base);
+    expect(out.data.Today).toEqual([
+      [1, 2, 3],
+      [2, 3, 4],
+      [3, 4, 5],
+    ]);
+  });
+
+  test('only includes requested scenarios that have data', () => {
+    const out = assembleImpactTime({
+      ...base,
+      p5: { Today: [1], 'High Renewables': [9] },
+      p50: { Today: [2], 'High Renewables': [9] },
+      p95: { Today: [3], 'High Renewables': [9] },
+      years: [2020],
+      scenarios: ['Today', 'Missing Scenario'],
+    });
+    expect(Object.keys(out.data)).toEqual(['Today']);
+  });
+
+  test('carries the indicator as title and the run model/source through', () => {
+    const out = assembleImpactTime(base);
+    expect(out.title).toBe('Mean Temperature');
+    expect(out.model).toBe('MESMER');
+    expect(out.source).toBe('provide-internal');
+  });
+});
+
+describe('impactTimeToCsv', () => {
+  const context = { indicator: 'Mean Temperature', geography: 'France' };
+  const response = assembleImpactTime({
+    indicator: 'Mean Temperature',
+    years: [2020, 2025],
+    p5: { Today: [1, 2] },
+    p50: { Today: [2, 3] },
+    p95: { Today: [3, 4] },
+    scenarios: ['Today'],
+  });
+
+  test('emits one row per scenario-year with the band and its context', () => {
+    response.unit = '°C';
+    const lines = impactTimeToCsv(response, context).split('\r\n');
+    expect(lines[0]).toBe('indicator,region,scenario,year,value,min,max,unit');
+    expect(lines[1]).toBe('Mean Temperature,France,Today,2020,2,1,3,°C');
+    expect(lines[2]).toBe('Mean Temperature,France,Today,2025,3,2,4,°C');
+  });
+
+  test('reconstructs years from yearStart/yearStep', () => {
+    const years = impactTimeToCsv(response, context)
+      .split('\r\n')
+      .slice(1)
+      .map((line) => line.split(',')[3]);
+    expect(years).toEqual(['2020', '2025']);
+  });
+
+  test('advertises csv so the download menu offers it', () => {
+    expect(response.formats).toEqual(['csv']);
+  });
+});

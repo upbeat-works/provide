@@ -1,11 +1,11 @@
 module.exports = ({ env }) => {
-  // New uploads are served from R2's public domain; existing content still
-  // references res.cloudinary.com. Allow both in the CSP so the admin media
-  // library can preview them. R2_PUBLIC_URL is unset locally (local provider),
-  // in which case only Cloudinary is allowed.
-  const publicUrl = env('R2_PUBLIC_URL');
-  const r2Host = publicUrl ? new URL(publicUrl).host : null;
-  const assetHosts = ['res.cloudinary.com', ...(r2Host ? [r2Host] : [])];
+  // New uploads are served from the object store's public domain; existing
+  // content still references res.cloudinary.com. Allow both in the CSP so the
+  // admin media library can preview them. S3_PUBLIC_URL is unset locally (local
+  // provider), in which case only Cloudinary is allowed.
+  const publicUrl = env('S3_PUBLIC_URL');
+  const mediaHost = publicUrl ? new URL(publicUrl).host : null;
+  const assetHosts = ['res.cloudinary.com', ...(mediaHost ? [mediaHost] : [])];
 
   return [
     'strapi::errors',

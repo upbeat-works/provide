@@ -1,13 +1,5 @@
 <script>
-  import {
-    CURRENT_INDICATOR_LABEL,
-    CURRENT_INDICATOR,
-    CURRENT_GEOGRAPHY,
-    TEMPLATE_PROPS,
-    CURRENT_INDICATOR_OPTION_VALUES,
-    IS_COMBINATION_AVAILABLE_INDICATOR,
-    IS_EMPTY_INDICATOR,
-  } from '$stores/state.js';
+  import { AVOID_INDICATOR, AVOID_GEOGRAPHY, AVOID_PARAMS, AVOID_TEMPLATE_PROPS, AVOID_IS_EMPTY, AVOID_IS_AVAILABLE } from '$stores/avoid-catalog.js';
   import { STUDY_LOCATIONS } from '$stores/meta.js';
   import { LEVEL_OF_IMPACT, SELECTED_LIKELIHOOD_LEVEL_LABEL, SELECTED_LIKELIHOOD_LEVEL, SELECTED_STUDY_LOCATION } from '$stores/avoid.js';
   import { END_AVOIDING_IMPACTS, URL_PATH_LEVEL_OF_IMPACT, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_CERTAINTY_LEVEL } from '$config';
@@ -22,18 +14,18 @@
   export let store;
   export let tagline;
 
-  $: ({ labelWithinSentence } = $CURRENT_INDICATOR_LABEL);
+  $: labelWithinSentence = $AVOID_INDICATOR?.labelWithinSentence ?? $AVOID_INDICATOR?.label;
 
-  $: !$IS_EMPTY_INDICATOR &&
-    $IS_COMBINATION_AVAILABLE_INDICATOR &&
+  $: !$AVOID_IS_EMPTY &&
+    $AVOID_IS_AVAILABLE &&
     fetchData(store, {
       endpoint: END_AVOIDING_IMPACTS,
       params: {
-        [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY.uid,
-        [URL_PATH_INDICATOR]: $CURRENT_INDICATOR.uid,
+        [URL_PATH_GEOGRAPHY]: $AVOID_GEOGRAPHY.uid,
+        [URL_PATH_INDICATOR]: $AVOID_INDICATOR.uid,
         [URL_PATH_LEVEL_OF_IMPACT]: $LEVEL_OF_IMPACT,
         [URL_PATH_CERTAINTY_LEVEL]: $SELECTED_LIKELIHOOD_LEVEL,
-        ...$CURRENT_INDICATOR_OPTION_VALUES,
+        ...$AVOID_PARAMS,
       },
     });
 
@@ -59,7 +51,7 @@
     return {
       studyLocations,
       title: 'How does this vary across the urban environment?',
-      description: `For the average over the urban area as well as 6 locations indicated on the map, the table provides the levels to which the world should aim to limit Global Mean Temperature (GMT) so that the probability to exceed the selected level of impact (${formatValue($LEVEL_OF_IMPACT, $CURRENT_INDICATOR.unit.uid, { matchDecimals: true })} ${labelWithinSentence}) doesn’t go over ${$SELECTED_LIKELIHOOD_LEVEL_LABEL}, as well as the years at which this would happen in the three considered emissions scenarios.`,
+      description: `For the average over the urban area as well as 6 locations indicated on the map, the table provides the levels to which the world should aim to limit Global Mean Temperature (GMT) so that the probability to exceed the selected level of impact (${formatValue($LEVEL_OF_IMPACT, $AVOID_INDICATOR?.unit?.uid, { matchDecimals: true })} ${labelWithinSentence}) doesn’t go over ${$SELECTED_LIKELIHOOD_LEVEL_LABEL}, as well as the years at which this would happen in the three considered emissions scenarios.`,
     };
   };
 </script>
@@ -72,7 +64,7 @@
     thresholdLevelsData: $store,
   }}
   props={{
-    ...$TEMPLATE_PROPS,
+    ...$AVOID_TEMPLATE_PROPS,
   }}
 >
   <ChartFrame title={asyncProps.title} {tagline} description={asyncProps.description} chartUid={END_AVOIDING_IMPACTS} templateProps={props} hasDownload={false}>

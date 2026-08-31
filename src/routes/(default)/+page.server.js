@@ -1,8 +1,8 @@
-import { loadFromStrapi, loadMetaData } from '$utils/apis.js';
+import { loadFromStrapi, loadGeographies, loadCatalog } from '$utils/apis.js';
 import { toProjectSection } from '$lib/content/landing-project.js';
 
 export const load = async ({ fetch }) => {
-  const meta = await loadMetaData(fetch);
+  const [geographies, catalog] = await Promise.all([loadGeographies(fetch), loadCatalog(fetch)]);
   const [caseStudies, projectSection] = await Promise.all([
     loadFromStrapi('case-study-dynamics', fetch, ['populate[CoverImage]=*', 'populate[Topics]=*'].join('&')),
     // The "About the project" block is editorial content (Strapi single type
@@ -16,12 +16,22 @@ export const load = async ({ fetch }) => {
   ]);
 
   return {
+    // The landing page hosts a functional quick-start selector (SectionExplore),
+    // so it needs the geography + catalog slices the stores read.
+    geographies,
+    catalog,
     projectSection: toProjectSection(projectSection),
-    caseStudies: caseStudies.map((study) => ({
-      city: meta.cities.find((d) => d.uid === study.attributes.CityUid) || { uid: 'nassau', label: 'Nassau' },
-      abstract: study.attributes.Abstract,
-      category: study.attributes.Topics?.data?.[0]?.attributes?.Title,
-      image: study.attributes.CoverImage?.data?.attributes ?? null,
-    })),
+    caseStudies: caseStudies.map((study) => {
+      // A case study's slug is its own id, not a geography's — but for the
+      // city-subject ones it doubles as a geoId, which is how the card gets a label.
+      const slug = study.attributes.Slug;
+      const cityGeo = (geographies.cities ?? []).find((c) => c.geoId === slug);
+      return {
+        city: { uid: slug, label: cityGeo?.label ?? slug },
+        abstract: study.attributes.Abstract,
+        category: study.attributes.Topics?.data?.[0]?.attributes?.Title,
+        image: study.attributes.CoverImage?.data?.attributes ?? null,
+      };
+    }),
   };
 };

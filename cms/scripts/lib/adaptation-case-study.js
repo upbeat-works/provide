@@ -62,7 +62,7 @@ function buildAdaptationCaseStudy(source, opts = {}) {
   const section = (Title, Text) => ({ __component: 'section.section', Title, Text });
 
   return {
-    CityUid: slug,
+    Slug: slug,
     Title: title,
     Abstract: a.Description,
     PublicationDate: (a.updatedAt ?? '').slice(0, 10) || null,

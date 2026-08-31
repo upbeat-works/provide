@@ -1,0 +1,37 @@
+# Production image for the Hono/Bun API (server.ts): migrates the `catalog`
+# schema at boot, then serves on :8080 behind the nginx reverse proxy.
+# Build context is the repo root:
+#   docker build -f docker/Dockerfile.api -t provide-api .
+
+FROM oven/bun:1 AS base
+WORKDIR /app
+
+FROM base AS deps
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+FROM base AS runtime
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json bun.lock ./
+COPY server.ts ./
+COPY api ./api
+
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# --- Database (Postgres) — discrete fields (user & password as separate secrets)
+ENV DATABASE_HOST=
+ENV DATABASE_PORT=5432
+ENV DATABASE_NAME=provide
+ENV DATABASE_USERNAME=
+ENV DATABASE_PASSWORD=
+ENV DATABASE_SSL=false
+# The API's tables live in this schema (connection search_path):
+ENV DATABASE_SCHEMA=catalog
+
+# --- ixmp4 platform credentials (required) ------------------------------------
+ENV IXMP4_USERNAME=
+ENV IXMP4_PASSWORD=
+
+EXPOSE 8080
+CMD ["bun", "run", "server.ts"]

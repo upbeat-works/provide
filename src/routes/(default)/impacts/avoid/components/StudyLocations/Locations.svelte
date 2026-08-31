@@ -1,5 +1,5 @@
 <script>
-  import { SCENARIOS } from '$stores/meta.js';
+  import { AVOID_SCENARIOS } from '$stores/avoid-catalog.js';
   import { SCENARIOS_IN_AVOIDING_IMPACTS } from '$config';
   import { SELECTED_LIKELIHOOD_LEVEL_LABEL } from '$stores/avoid.js';
   import tooltip from '$lib/utils/tooltip';
@@ -10,7 +10,7 @@
   export let studyLocations;
 
   $: scenarios = SCENARIOS_IN_AVOIDING_IMPACTS.map((uid, i) => {
-    const label = $SCENARIOS.find(({ uid: id }) => uid === id)?.label ?? uid;
+    const label = $AVOID_SCENARIOS.find(({ uid: id }) => uid === id)?.label ?? uid;
     return {
       uid,
       label,
