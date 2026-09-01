@@ -1,10 +1,11 @@
 <script>
   import ScoreboardLayout from '$lib/components/layouts/ScoreboardLayout.svelte';
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
-  import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
-  import GeographyFilter from '../components/GeographyFilter.svelte';
-  import { GEOGRAPHIES, SCENARIOS } from '$stores/meta.js';
+  import FilterSelect from '../components/FilterSelect.svelte';
+  import IndicatorSelection from '$lib/components/controls/IndicatorSelection.svelte';
+  import { CURRENT_INDICATOR } from '$stores/state.js';
+  import { GEOGRAPHIES, INDICATORS, SCENARIOS } from '$stores/meta.js';
   import { sortBy } from 'lodash-es';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
@@ -17,6 +18,7 @@
   import LinkSection from '../../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
   import { legendOf } from '../components/choropleth.js';
   import { coveredGeoIds, INDICATOR_CLASSES, indicatorValues } from '../components/scores.js';
+  import { DEFAULT_YEAR, YEARS } from '../components/filters.js';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import { PATH_ADAPTATION, PATH_DOCUMENTATION } from '$config';
 
@@ -26,7 +28,10 @@
   // placeholders — there are no scoreboard endpoints yet, so what's real here
   // is the layout it will be poured into.
   const hazard = 'Heat Stress';
-  const indicator = 'Annual maximum temperature';
+  // What the map's placeholder values stand for, until the scoreboard has its
+  // own data: the legend names the selected indicator once there is one.
+  const placeholderIndicator = 'Annual maximum temperature';
+  $: indicator = $CURRENT_INDICATOR?.label ?? placeholderIndicator;
 
   // Whole of Europe, matching the ranking view's frame.
   const europeBounds = [-24, 34, 42, 68];
@@ -41,6 +46,7 @@
   );
 
   let geography;
+  let year = DEFAULT_YEAR;
   // Everything that names what is on screen follows the selection: the section
   // eyebrows, the map's legend card, and the country the map outlines.
   $: scope = geography?.label ?? 'Europe';
@@ -136,10 +142,12 @@
   <!-- Geography and Scenario are the real controls; Indicator and Year are still
        placeholders, waiting on the scoreboard's own endpoints. -->
   <svelte:fragment slot="filters">
-    <GeographyFilter options={countries} bind:selected={geography} />
-    <SelectionButton label="Indicator" buttonLabel={indicator} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
+    <FilterSelect label="Geography" options={countries} bind:selected={geography} allLabel="All available countries" buttonAllLabel="All countries" placeholder="Search geography" />
+    <!-- The scoreboard scopes itself by its own geography, so the modal offers
+         the whole indicator catalog rather than explore's per-region list. -->
+    <IndicatorSelection indicators={$INDICATORS} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
     <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
-    <SelectionButton label="Year" buttonLabel="2025" wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
+    <FilterSelect label="Year" options={YEARS} bind:selected={year} />
   </svelte:fragment>
 
   <svelte:fragment slot="actions">

@@ -41,10 +41,12 @@
 
   $: buttonLabel = hasScenarioSelected ? (multipleScenariosSelected ? `${$CURRENT_SCENARIOS.length} scenarios selected` : $CURRENT_SCENARIOS[0].label) : undefined;
 
+  // Whether the caller brought its own list — and with it, its own availability.
+  $: owned = Boolean(scenarios);
   $: source = scenarios ?? $AVAILABLE_SCENARIOS;
 
   // Timeframe pills follow whichever list is in play.
-  $: timeframes = scenarios ? extractEndYearFromScenarios(source, source.filter((s) => !s.disabled)) : $AVAILABLE_TIMEFRAMES;
+  $: timeframes = owned ? extractEndYearFromScenarios(source, source.filter((s) => !s.disabled)) : $AVAILABLE_TIMEFRAMES;
 
   $: options = source.map((scenario) => {
     const current = $CURRENT_SCENARIOS.find((s) => s.uid === scenario.uid);
@@ -87,7 +89,7 @@
     return undefined;
   });
 
-  $: gate = disabled ?? (scenarios ? undefined : $DISABLED);
+  $: gate = disabled ?? (owned ? undefined : $DISABLED);
 </script>
 
 <SelectionModal
@@ -96,7 +98,9 @@
   colors={hasScenarioSelected ? $CURRENT_SCENARIOS.map((s) => s.color) : undefined}
   {labelClass}
   {buttonClass}
-  warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `No data for ${multipleScenariosSelected ? 'these scenarios' : 'this scenario'} here — pick another` : undefined}
+  warning={!owned && !$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO
+    ? `No data for ${multipleScenariosSelected ? 'these scenarios' : 'this scenario'} here — pick another`
+    : undefined}
   placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
   disabled={gate}
   panelClass="max-w-4xl"

@@ -11,6 +11,8 @@
   import ScoreboardMap from './components/ScoreboardMap.svelte';
   import RankingPanel from './components/RankingPanel.svelte';
   import SectionIndex from './components/SectionIndex.svelte';
+  import FilterSelect from './components/FilterSelect.svelte';
+  import { DEFAULT_YEAR, YEARS } from './components/filters.js';
   import { RISK_CLASSES, riskRanking, riskValues } from './components/scores.js';
   import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS } from '$config';
 
@@ -23,6 +25,8 @@
 
   // Whole of Europe, unlike the indicators view which frames a single country.
   const europeBounds = [-24, 34, 42, 68];
+
+  let year = DEFAULT_YEAR;
 
   // The leaderboard is the top of the same table the map is coloured from, so a
   // dark country on the map is a country at the top of this list.
@@ -88,7 +92,7 @@
          it offers the whole scenario universe, and one scenario at a time —
          every view here is tied to a single pathway. -->
     <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
-    <SelectionButton label="Year" buttonLabel="2025" wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
+    <FilterSelect label="Year" options={YEARS} bind:selected={year} />
   </svelte:fragment>
 
   <svelte:fragment slot="actions">
