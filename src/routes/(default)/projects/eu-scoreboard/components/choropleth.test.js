@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { classOf, colorFor, countryFillColor, scoredCountryFilter, legendOf, COUNTRY_CODE } from './choropleth.js';
+import { classOf, colorFor, countryBounds, countryFillColor, countryFilter, scoredCountryFilter, legendOf, COUNTRY_CODE } from './choropleth.js';
 import { RISK_CLASSES, riskRanking, riskValues } from './scores.js';
 
 describe('classOf', () => {
@@ -49,6 +49,27 @@ describe('scoredCountryFilter', () => {
   test('covers every country the fill colours', () => {
     const [, , codes] = scoredCountryFilter(riskValues, RISK_CLASSES);
     expect(codes[2][1]).toHaveLength(riskValues.length + 1); // Kosovo contributes both spellings
+  });
+});
+
+describe('countryFilter', () => {
+  const box = (uid, x) => ({
+    type: 'Feature',
+    properties: { uid },
+    geometry: { type: 'Polygon', coordinates: [[[x, 0], [x + 1, 0], [x + 1, 2], [x, 2], [x, 0]]] },
+  });
+  const shapes = { type: 'FeatureCollection', features: [box('ESP', 4), box('KOS', 9)] };
+
+  test('matches nothing when nothing is passed, so a layer can be switched off', () => {
+    const [, , codes] = countryFilter([]);
+    expect(codes).toEqual(['in', COUNTRY_CODE, ['literal', []]]);
+  });
+
+  test('measures a country for framing, and knows nothing of one it has no shape for', () => {
+    expect(countryBounds(shapes, 'ESP')).toEqual([4, 0, 5, 2]);
+    expect(countryBounds(shapes, 'KOS')).toEqual([9, 0, 10, 2]); // matched by its alias too
+    expect(countryBounds(shapes, 'MAR')).toBeUndefined();
+    expect(countryBounds(undefined, 'ESP')).toBeUndefined();
   });
 });
 

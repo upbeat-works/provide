@@ -24,11 +24,6 @@
   // Whole of Europe, unlike the indicators view which frames a single country.
   const europeBounds = [-24, 34, 42, 68];
 
-  // Scenario is the one real control — it opens explore's scenario modal — so
-  // the placeholders around it are listed as what comes before and after it.
-  const filtersBefore = [{ label: 'Hazard/Sector', value: hazard }];
-  const filtersAfter = [{ label: 'Year', value: '2025' }];
-
   // The leaderboard is the top of the same table the map is coloured from, so a
   // dark country on the map is a country at the top of this list.
   const ranking = riskRanking.slice(0, 5).map((entry) => ({ ...entry, href: indicatorsHref }));
@@ -88,16 +83,12 @@
 
 <ScoreboardLayout>
   <svelte:fragment slot="filters">
-    {#each filtersBefore as { label, value }}
-      <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
-    {/each}
+    <SelectionButton label="Hazard/Sector" buttonLabel={hazard} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
     <!-- The scoreboard has no indicator selection to scope availability by, so
          it offers the whole scenario universe, and one scenario at a time —
          every view here is tied to a single pathway. -->
     <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
-    {#each filtersAfter as { label, value }}
-      <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
-    {/each}
+    <SelectionButton label="Year" buttonLabel="2025" wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
   </svelte:fragment>
 
   <svelte:fragment slot="actions">

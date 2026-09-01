@@ -4,7 +4,7 @@
 
 <script>
   import { getContext, onDestroy } from 'svelte';
-  import { countryFillColor, scoredCountryFilter, WORLDVIEW_FILTER } from './choropleth.js';
+  import { countryFillColor, countryFilter, scoredCountryFilter, WORLDVIEW_FILTER } from './choropleth.js';
 
   // A country choropleth drawn straight from Mapbox's `country-boundaries-v1`
   // tileset: vector tiles at the basemap's own resolution, so borders and
@@ -14,6 +14,9 @@
   export let values = [];
   export let classes = [];
   export let fillOpacity = 0.8;
+  // Geo id of the country the view is scoped to, outlined so the selection is
+  // visible on a map that is otherwise all one choropleth.
+  export let highlight = undefined;
 
   const { map } = getContext('mapbox');
   const theme = getContext('theme');
@@ -21,6 +24,7 @@
   const sourceId = `country-boundaries-${instance}`;
   const fillLayerId = `country-choropleth-fill-${instance}`;
   const lineLayerId = `country-choropleth-line-${instance}`;
+  const highlightLayerId = `country-choropleth-highlight-${instance}`;
   instance++;
 
   // Under the basemap's labels, over its land and water, so place names stay
@@ -82,6 +86,25 @@
     );
   }
 
+  // Over the choropleth's own borders, still under the labels.
+  if (!$map.getLayer(highlightLayerId)) {
+    $map.addLayer(
+      {
+        id: highlightLayerId,
+        type: 'line',
+        source: sourceId,
+        'source-layer': 'country_boundaries',
+        filter: countryFilter(highlight ? [highlight] : []),
+        layout: { 'line-join': 'round' },
+        paint: {
+          'line-color': $theme.color.contour.base,
+          'line-width': 2,
+        },
+      },
+      before
+    );
+  }
+
   haloLabels();
 
   // Repaint rather than rebuild when the selection changes: the geometry is the
@@ -91,8 +114,13 @@
     $map.setFilter(lineLayerId, scoredCountryFilter(values, classes));
   }
 
+  $: if ($map.getLayer(highlightLayerId)) {
+    $map.setFilter(highlightLayerId, countryFilter(highlight ? [highlight] : []));
+  }
+
   onDestroy(() => {
     try {
+      $map.getLayer(highlightLayerId) && $map.removeLayer(highlightLayerId);
       $map.getLayer(lineLayerId) && $map.removeLayer(lineLayerId);
       $map.getLayer(fillLayerId) && $map.removeLayer(fillLayerId);
       $map.getSource(sourceId) && $map.removeSource(sourceId);

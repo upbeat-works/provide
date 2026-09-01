@@ -74,5 +74,8 @@ const EUROPE = [
 export const riskValues = EUROPE.map(({ uid, label, score }) => ({ uid, label, value: score }));
 export const indicatorValues = EUROPE.map(({ uid, label, maxTemp }) => ({ uid, label, value: maxTemp }));
 
+// What the scoreboard has values for — the countries its filters may offer.
+export const coveredGeoIds = EUROPE.map(({ uid }) => uid);
+
 // The leaderboard is the same data the map is coloured from, ranked.
 export const riskRanking = [...riskValues].sort((a, b) => b.value - a.value).map((entry, i) => ({ rank: i + 1, ...entry }));

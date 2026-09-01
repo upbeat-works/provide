@@ -1,3 +1,5 @@
+import bbox from '@turf/bbox';
+
 // The scoreboard's maps are step choropleths, not continuous ramps: a country
 // is placed in one of a handful of classes so the map reads the same way the
 // legend beside it does. A class is `{ min, label, color }` and a scale is those
@@ -21,6 +23,15 @@ const CODE_ALIASES = {
 
 const codesFor = (uid) => CODE_ALIASES[uid] ?? [uid];
 
+// The tiles carry no geometry we can measure, so framing a country needs the
+// geo-shape outlines. Returns [minLng, minLat, maxLng, maxLat], or undefined
+// when the shapes have no such country.
+export function countryBounds(shape, uid) {
+  const codes = codesFor(uid);
+  const feature = (shape?.features ?? []).find((f) => codes.includes(f.properties?.uid));
+  return feature ? bbox(feature) : undefined;
+}
+
 // The class a value falls in: the last one whose `min` it reaches.
 export function classOf(value, classes = []) {
   if (!Number.isFinite(value)) return undefined;
@@ -40,11 +51,16 @@ export function countryFillColor(values = [], classes = []) {
   return cases.length ? ['match', COUNTRY_CODE, ...cases, 'transparent'] : 'transparent';
 }
 
+// A layer filter matching exactly the given countries (by geo id), one feature
+// each. An empty list matches nothing, which is how a layer is switched off.
+export function countryFilter(uids = []) {
+  return ['all', WORLDVIEW_FILTER, ['in', COUNTRY_CODE, ['literal', uids.flatMap(codesFor)]]];
+}
+
 // Borders are drawn for the scored countries only, so the choropleth reads as
 // one shape rather than as a world political map.
 export function scoredCountryFilter(values = [], classes = []) {
-  const codes = values.flatMap((entry) => (colorFor(entry.value, classes) ? codesFor(entry.uid) : []));
-  return ['all', WORLDVIEW_FILTER, ['in', COUNTRY_CODE, ['literal', codes]]];
+  return countryFilter(values.flatMap((entry) => (colorFor(entry.value, classes) ? [entry.uid] : [])));
 }
 
 // The legend's ramp and its tick labels, drawn low to high unless the panel

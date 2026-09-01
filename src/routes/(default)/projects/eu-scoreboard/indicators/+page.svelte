@@ -3,7 +3,9 @@
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
   import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
-  import { SCENARIOS } from '$stores/meta.js';
+  import GeographyFilter from '../components/GeographyFilter.svelte';
+  import { GEOGRAPHIES, SCENARIOS } from '$stores/meta.js';
+  import { sortBy } from 'lodash-es';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
@@ -14,7 +16,7 @@
   import ChartPlaceholder from '../components/ChartPlaceholder.svelte';
   import LinkSection from '../../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
   import { legendOf } from '../components/choropleth.js';
-  import { INDICATOR_CLASSES, indicatorValues } from '../components/scores.js';
+  import { coveredGeoIds, INDICATOR_CLASSES, indicatorValues } from '../components/scores.js';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import { PATH_ADAPTATION, PATH_DOCUMENTATION } from '$config';
 
@@ -23,12 +25,25 @@
   // Structure-only view: the controls, the map layers and every chart below are
   // placeholders — there are no scoreboard endpoints yet, so what's real here
   // is the layout it will be poured into.
-  const scope = 'Europe';
   const hazard = 'Heat Stress';
   const indicator = 'Annual maximum temperature';
 
   // Whole of Europe, matching the ranking view's frame.
   const europeBounds = [-24, 34, 42, 68];
+
+  // The country list is the real geography catalog, narrowed to the countries
+  // the scoreboard has values for — offering one the map cannot colour would be
+  // a promise the view can't keep. `geography` undefined means all of them.
+  const covered = new Set(coveredGeoIds);
+  $: countries = sortBy(
+    ($GEOGRAPHIES.admin0 ?? []).filter(({ geoId }) => covered.has(geoId)),
+    'label',
+  );
+
+  let geography;
+  // Everything that names what is on screen follows the selection: the section
+  // eyebrows, the map's legend card, and the country the map outlines.
+  $: scope = geography?.label ?? 'Europe';
 
   // Sequential ramp for a single indicator, where the ranking view's map runs a
   // diverging risk scale. Palette oranges, low to high — the map's own classes,
@@ -39,14 +54,6 @@
   // findCaseStudy falls back to the default study when nothing covers it.
   const placeholderGeography = { label: 'Lisbon', uid: 'lisbon' };
   $: caseStudy = findCaseStudy(data.caseStudies, placeholderGeography);
-
-  // Scenario is the one real control — it opens explore's scenario modal — so
-  // the placeholders around it are listed as what comes before and after it.
-  const filtersBefore = [
-    { label: 'Geography', value: 'All countries' },
-    { label: 'Indicator', value: indicator },
-  ];
-  const filtersAfter = [{ label: 'Year', value: '2025' }];
 
   // One entry per chart. `short` is what the index calls it — the headings name
   // the model behind the chart, which is too long for the index column.
@@ -126,14 +133,13 @@
 </script>
 
 <ScoreboardLayout>
+  <!-- Geography and Scenario are the real controls; Indicator and Year are still
+       placeholders, waiting on the scoreboard's own endpoints. -->
   <svelte:fragment slot="filters">
-    {#each filtersBefore as { label, value }}
-      <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
-    {/each}
+    <GeographyFilter options={countries} bind:selected={geography} />
+    <SelectionButton label="Indicator" buttonLabel={indicator} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
     <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
-    {#each filtersAfter as { label, value }}
-      <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
-    {/each}
+    <SelectionButton label="Year" buttonLabel="2025" wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
   </svelte:fragment>
 
   <svelte:fragment slot="actions">
@@ -144,7 +150,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
-    <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={indicatorValues} classes={INDICATOR_CLASSES} />
+    <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={indicatorValues} classes={INDICATOR_CLASSES} highlight={geography?.geoId} />
 
     <!-- Overlays sit on the layout's relative visual band; the inner max-w-7xl
          keeps the panel on the same left edge as the content below. -->

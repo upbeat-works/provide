@@ -1,7 +1,11 @@
 <script>
+  import { writable } from 'svelte/store';
   import MapProvider from '$lib/components/maps/MapboxMap/MapProvider.svelte';
   import ZoomControl from '$lib/components/maps/MapboxMap/ZoomControl.svelte';
   import CountryChoropleth from './CountryChoropleth.svelte';
+  import { countryBounds } from './choropleth.js';
+  import { fetchData } from '$lib/api/api';
+  import { END_GEO_SHAPE, STATUS_SUCCESS } from '$config';
 
   // The scoreboard's map band: a country choropleth over the basemap. Both views
   // use it — the ranking view colours countries by their composite score, the
@@ -12,12 +16,30 @@
   // `[{ uid, label, value }]`, keyed on the country's alpha-3 geo id (`ITA`).
   export let values = [];
   export let classes = [];
+  // Geo id of the country the view is scoped to, if any. The map outlines it and
+  // frames it; with none, it frames `bounds` — the whole coverage.
+  export let highlight = undefined;
+
+  // Framing needs geometry, and the choropleth's vector tiles carry none we can
+  // measure, so the country outlines come from geo-shape — fetched the first
+  // time a country is picked (and cached, shared with the geography modal), so
+  // the default Europe-wide view never pays for them.
+  const GEO_SHAPE_DATA = writable({});
+  let requested = false;
+  $: if (highlight && !requested) {
+    requested = true;
+    fetchData(GEO_SHAPE_DATA, { endpoint: END_GEO_SHAPE, params: { 'geography-type': 'admin0' } });
+  }
+
+  $: shape = $GEO_SHAPE_DATA.status === STATUS_SUCCESS ? $GEO_SHAPE_DATA.data?.data : undefined;
+  // Falls back to the full frame while the shapes are still in flight.
+  $: frame = (highlight && shape && countryBounds(shape, highlight)) || bounds;
 </script>
 
 <div class="{height} w-full">
-  <MapProvider {bounds} fitBoundsExtent={40}>
+  <MapProvider bounds={frame} fitBoundsExtent={40}>
     <ZoomControl />
-    <CountryChoropleth {values} {classes} />
+    <CountryChoropleth {values} {classes} {highlight} />
     <slot />
   </MapProvider>
 </div>
