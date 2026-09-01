@@ -4,20 +4,20 @@
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
   import FilterSelect from '../components/FilterSelect.svelte';
   import IndicatorSelection from '$lib/components/controls/IndicatorSelection.svelte';
-  import { CURRENT_INDICATOR } from '$stores/state.js';
+  import { CURRENT_INDICATOR, CURRENT_SCENARIOS } from '$stores/state.js';
   import { GEOGRAPHIES, INDICATORS, SCENARIOS } from '$stores/meta.js';
   import { sortBy } from 'lodash-es';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
-  import Compare from '$lib/components/icons/Compare.svelte';
+  import CompareMenu from '../components/CompareMenu.svelte';
   import ScoreboardMap from '../components/ScoreboardMap.svelte';
   import MapLegendPanel from '../components/MapLegendPanel.svelte';
   import SectionIndex from '../components/SectionIndex.svelte';
   import ChartPlaceholder from '../components/ChartPlaceholder.svelte';
   import LinkSection from '../../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
   import { legendOf } from '../components/choropleth.js';
-  import { coveredGeoIds, INDICATOR_CLASSES, indicatorValues } from '../components/scores.js';
+  import { coveredGeoIds, INDICATOR_CLASSES, indicatorValuesFor } from '../components/scores.js';
   import { DEFAULT_YEAR, YEARS } from '../components/filters.js';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import { PATH_ADAPTATION, PATH_DOCUMENTATION } from '$config';
@@ -47,9 +47,66 @@
 
   let geography;
   let year = DEFAULT_YEAR;
+  $: scenario = $CURRENT_SCENARIOS[0];
+
+  // A comparison lifts one dimension out of the filter bar and gives each map
+  // its own selector for it; everything else stays shared.
+  const dimensions = [
+    { uid: 'scenario', label: 'Scenario' },
+    { uid: 'year', label: 'Year' },
+    { uid: 'geography', label: 'Geography' },
+  ];
+  let compareBy;
+  // The compared dimension's value per map. Two entries; only read while
+  // comparing.
+  let sides = [];
+
+  const optionsFor = (uid) => ({ scenario: $SCENARIOS, year: YEARS, geography: countries })[uid] ?? [];
+  const valueFor = (uid) => ({ scenario, year, geography })[uid];
+
+  // Entering a comparison, or switching which dimension it compares, seeds the
+  // two maps: the left keeps what the filter bar had, the right takes the next
+  // option along — so a comparison never opens as the same map twice. Depends
+  // on `compareBy` alone, so choosing a value afterwards doesn't reseed it.
+  $: seedSides(compareBy?.uid);
+  function seedSides(uid) {
+    if (!uid) return;
+    const options = optionsFor(uid);
+    const current = valueFor(uid);
+    // -1 (no current value, i.e. all countries) lands on the first option.
+    const index = options.findIndex(({ uid: option }) => option === current?.uid);
+    sides = [current, options[(index + 1) % options.length]];
+  }
+
+  // What each map draws: the shared selection, with the compared dimension
+  // taken from that side. One view when not comparing.
+  $: views = (compareBy ? sides : [null]).map((value) => {
+    const view = { geography, year, scenario };
+    if (compareBy) view[compareBy.uid] = value;
+    return view;
+  });
+
+  // The legend card names the whole selection so two maps say what makes them
+  // different, with the compared part picked out.
+  const legendParts = (view, compared) => [
+    { label: view.geography?.label ?? 'All countries', accent: compared === 'geography' },
+    { label: view.scenario?.label ?? 'No scenario', accent: compared === 'scenario' },
+    { label: String(view.year?.label ?? ''), accent: compared === 'year' },
+  ];
+
+  // The geography selector needs its search and its "everything" row wherever it
+  // is shown; the others are plain lists.
+  $: compareSelectProps =
+    compareBy?.uid === 'geography'
+      ? { allLabel: 'All available countries', buttonAllLabel: 'All countries', placeholder: 'Search geography' }
+      : {};
+
   // Everything that names what is on screen follows the selection: the section
   // eyebrows, the map's legend card, and the country the map outlines.
-  $: scope = geography?.label ?? 'Europe';
+  $: scope =
+    compareBy?.uid === 'geography'
+      ? views.map(({ geography: g }) => g?.label ?? 'All countries').join(' vs ')
+      : (geography?.label ?? 'Europe');
 
   // Sequential ramp for a single indicator, where the ranking view's map runs a
   // diverging risk scale. Palette oranges, low to high — the map's own classes,
@@ -142,37 +199,74 @@
   <!-- Geography and Scenario are the real controls; Indicator and Year are still
        placeholders, waiting on the scoreboard's own endpoints. -->
   <svelte:fragment slot="filters">
-    <FilterSelect label="Geography" options={countries} bind:selected={geography} allLabel="All available countries" buttonAllLabel="All countries" placeholder="Search geography" />
+    {#if compareBy?.uid !== 'geography'}
+      <FilterSelect label="Geography" options={countries} bind:selected={geography} allLabel="All available countries" buttonAllLabel="All countries" placeholder="Search geography" />
+    {/if}
     <!-- The scoreboard scopes itself by its own geography, so the modal offers
          the whole indicator catalog rather than explore's per-region list. -->
     <IndicatorSelection indicators={$INDICATORS} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
-    <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
-    <FilterSelect label="Year" options={YEARS} bind:selected={year} />
+    {#if compareBy?.uid !== 'scenario'}
+      <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
+    {/if}
+    {#if compareBy?.uid !== 'year'}
+      <FilterSelect label="Year" options={YEARS} bind:selected={year} />
+    {/if}
   </svelte:fragment>
 
   <svelte:fragment slot="actions">
-    <Button variant="outline" size="sm">
-      <Compare class="h-4 w-4" />
-      Compare
-    </Button>
+    <CompareMenu {dimensions} bind:selected={compareBy} />
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
-    <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={indicatorValues} classes={INDICATOR_CLASSES} highlight={geography?.geoId} />
+    <!-- Keyed on the number of maps: a mapbox instance does not re-fit when its
+         container is resized under it, so splitting the band has to build the
+         maps afresh rather than squeeze the existing one into half the width. -->
+    {#key views.length}
+      <div class="flex" class:gap-px={compareBy}>
+        {#each views as view, i (i)}
+          <div class="relative min-w-0 flex-1">
+            <ScoreboardMap
+              bounds={europeBounds}
+              height="h-[560px]"
+              values={indicatorValuesFor({ scenario: view.scenario?.uid, year: view.year?.uid })}
+              classes={INDICATOR_CLASSES}
+              highlight={view.geography?.geoId}
+            />
 
-    <!-- Overlays sit on the layout's relative visual band; the inner max-w-7xl
-         keeps the panel on the same left edge as the content below. -->
-    <div class="pointer-events-none absolute inset-0 mx-auto max-w-7xl px-6">
-      <div class="pointer-events-auto absolute bottom-6 left-6">
-        <MapLegendPanel title={scope} subtitle={indicator} scale={indicatorScale} labels={indicatorScaleLabels} />
+            <!-- Overlays sit on the map they belong to. With one map the inner
+                 max-w-7xl keeps the card on the same left edge as the content
+                 below; side by side, each card belongs to its own half. -->
+            <div class="pointer-events-none absolute inset-0 {compareBy ? '' : 'mx-auto max-w-7xl px-6'}">
+              {#if compareBy}
+                <div class="pointer-events-auto absolute left-6 top-6">
+                  <FilterSelect
+                    label={compareBy.label}
+                    options={optionsFor(compareBy.uid)}
+                    bind:selected={sides[i]}
+                    labelClass="sr-only"
+                    wrapperClass="min-w-[12rem]"
+                    buttonClass="rounded border border-contour-weakest bg-surface-base px-3 py-2 text-sm shadow-sm"
+                    {...compareSelectProps}
+                  />
+                </div>
+              {/if}
+              <div class="pointer-events-auto absolute bottom-6 left-6">
+                <MapLegendPanel parts={legendParts(view, compareBy?.uid)} subtitle={indicator} scale={indicatorScale} labels={indicatorScaleLabels} />
+              </div>
+            </div>
+          </div>
+        {/each}
       </div>
-    </div>
-    <div class="absolute inset-x-0 bottom-6 flex justify-center">
-      <Button href="#{charts[0].slug}">
-        View {hazard} charts
-        <LinkArrow />
-      </Button>
-    </div>
+    {/key}
+
+    {#if !compareBy}
+      <div class="absolute inset-x-0 bottom-6 flex justify-center">
+        <Button href="#{charts[0].slug}">
+          View {hazard} charts
+          <LinkArrow />
+        </Button>
+      </div>
+    {/if}
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">

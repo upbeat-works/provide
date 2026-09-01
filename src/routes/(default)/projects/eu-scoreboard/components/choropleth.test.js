@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { classOf, colorFor, countryBounds, countryFillColor, countryFilter, scoredCountryFilter, legendOf, COUNTRY_CODE } from './choropleth.js';
-import { RISK_CLASSES, riskRanking, riskValues } from './scores.js';
+import { indicatorValuesFor, RISK_CLASSES, riskRanking, riskValues } from './scores.js';
 
 describe('classOf', () => {
   test('picks the last class the value reaches', () => {
@@ -70,6 +70,23 @@ describe('countryFilter', () => {
     expect(countryBounds(shapes, 'KOS')).toEqual([9, 0, 10, 2]); // matched by its alias too
     expect(countryBounds(shapes, 'MAR')).toBeUndefined();
     expect(countryBounds(undefined, 'ESP')).toBeUndefined();
+  });
+});
+
+describe('indicatorValuesFor', () => {
+  const valueOf = (values, uid) => values.find((entry) => entry.uid === uid).value;
+
+  test('gives a comparison two sides that differ', () => {
+    const policies = indicatorValuesFor({ scenario: '2020 Climate Policies', year: 2025 });
+    const targets = indicatorValuesFor({ scenario: '2020 Climate Targets', year: 2025 });
+    expect(valueOf(policies, 'ESP')).not.toBe(valueOf(targets, 'ESP'));
+    expect(indicatorValuesFor({ year: 2025 })).not.toEqual(indicatorValuesFor({ year: 2026 }));
+  });
+
+  test('is deterministic, and covers the same countries as the base values', () => {
+    const once = indicatorValuesFor({ scenario: 'SSP1-1.9', year: 2018 });
+    expect(once).toEqual(indicatorValuesFor({ scenario: 'SSP1-1.9', year: 2018 }));
+    expect(once.map((entry) => entry.uid)).toEqual(riskValues.map((entry) => entry.uid));
   });
 });
 

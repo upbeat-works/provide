@@ -74,6 +74,18 @@ const EUROPE = [
 export const riskValues = EUROPE.map(({ uid, label, score }) => ({ uid, label, value: score }));
 export const indicatorValues = EUROPE.map(({ uid, label, maxTemp }) => ({ uid, label, value: maxTemp }));
 
+// A comparison puts two views of the same indicator side by side, but there is
+// only one set of placeholder values, so both sides would draw the identical
+// map. This nudges them apart by a fixed amount per scenario and per year —
+// enough to tell the two sides apart, and no kind of model: it goes when the
+// endpoints land and each view fetches its own values.
+export function indicatorValuesFor({ scenario, year } = {}) {
+  const perScenario = scenario ? ([...String(scenario)].reduce((h, c) => h + c.charCodeAt(0), 0) % 7) - 3 : 0;
+  const perYear = (Number(year ?? 2025) - 2025) * 0.2;
+  const offset = perScenario + perYear;
+  return offset ? indicatorValues.map((entry) => ({ ...entry, value: Math.round((entry.value + offset) * 10) / 10 })) : indicatorValues;
+}
+
 // What the scoreboard has values for — the countries its filters may offer.
 export const coveredGeoIds = EUROPE.map(({ uid }) => uid);
 

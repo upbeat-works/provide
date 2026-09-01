@@ -21,6 +21,9 @@
   export let placeholder = undefined;
   export let wrapperClass = 'min-w-[10rem]';
   export let buttonClass = 'mt-1 text-sm';
+  // `sr-only` for the selectors that sit on the map, where the surrounding
+  // legend already says what is being chosen.
+  export let labelClass = '';
 
   const [popperRef, popperContent] = createPopperActions();
   const popperOptions = {
@@ -47,7 +50,7 @@
   <!-- `as="div"` so the trigger can be the same SelectionButton the filter bar's
        other controls are, rather than a second button inside a button. -->
   <PopoverButton as="div" use={[popperRef]} let:open class="cursor-pointer">
-    <SelectionButton {label} buttonLabel={selected?.label ?? buttonAllLabel} {buttonClass} {open} />
+    <SelectionButton {label} buttonLabel={selected?.label ?? buttonAllLabel} {buttonClass} {labelClass} {open} />
   </PopoverButton>
 
   <PopoverPanel use={[[popperContent, popperOptions]]} let:close class="z-50 {placeholder ? 'w-[20rem]' : 'w-[14rem]'} max-w-[90vw] rounded border border-contour-weakest bg-surface-base shadow-md">
