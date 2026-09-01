@@ -1,6 +1,8 @@
 <script>
   import Chevron from '$lib/components/icons/Chevron.svelte';
   import RiskLegend from './RiskLegend.svelte';
+  import { legendOf } from './choropleth.js';
+  import { RISK_CLASSES } from './scores.js';
 
   // The ranking card floating over the map: legend for the choropleth, the sort
   // it is ranked by, and the leaderboard itself. Placeholder data for now —
@@ -9,10 +11,12 @@
   export let hazard;
   export let sort = 'Highest risk countries';
   export let entries = [];
-  // High -> very low, matching the map's choropleth. Palette literals rather
-  // than tokens: the scoreboard's risk scale isn't in color-tokens-light.json.
-  export let scale = ['#5A0F6B', '#C91C1C', '#E9974A', '#EEBF5E'];
-  export let scaleLabels = ['High', 'Medium', 'Low', 'Very Low'];
+  // The map's own classes, read High -> very low so the ramp runs the same way
+  // as the leaderboard under it. Same source as the choropleth, so the two
+  // cannot drift apart.
+  const legend = legendOf(RISK_CLASSES, { highestFirst: true });
+  export let scale = legend.scale;
+  export let scaleLabels = legend.labels;
 
   let open = true;
 </script>

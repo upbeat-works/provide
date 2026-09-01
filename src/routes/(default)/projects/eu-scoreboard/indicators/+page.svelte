@@ -11,6 +11,8 @@
   import SectionIndex from '../components/SectionIndex.svelte';
   import ChartPlaceholder from '../components/ChartPlaceholder.svelte';
   import LinkSection from '../../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
+  import { legendOf } from '../components/choropleth.js';
+  import { INDICATOR_CLASSES, indicatorValues } from '../components/scores.js';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import { PATH_ADAPTATION, PATH_DOCUMENTATION } from '$config';
 
@@ -27,9 +29,9 @@
   const europeBounds = [-24, 34, 42, 68];
 
   // Sequential ramp for a single indicator, where the ranking view's map runs a
-  // diverging risk scale. Palette oranges, low to high.
-  const indicatorScale = ['#FBEADB', '#F2C192', '#E9974A', '#8C5B2C'];
-  const indicatorScaleLabels = ['Very low', 'Low', 'Med', 'High'];
+  // diverging risk scale. Palette oranges, low to high — the map's own classes,
+  // so the legend can't drift from what is drawn.
+  const { scale: indicatorScale, labels: indicatorScaleLabels } = legendOf(INDICATOR_CLASSES);
 
   // Stands in for the selected geography until the scoreboard has a selection;
   // findCaseStudy falls back to the default study when nothing covers it.
@@ -135,7 +137,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
-    <ScoreboardMap bounds={europeBounds} height="h-[560px]" />
+    <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={indicatorValues} classes={INDICATOR_CLASSES} />
 
     <!-- Overlays sit on the layout's relative visual band; the inner max-w-7xl
          keeps the panel on the same left edge as the content below. -->

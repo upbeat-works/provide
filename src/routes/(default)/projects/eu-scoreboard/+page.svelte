@@ -9,11 +9,13 @@
   import ScoreboardMap from './components/ScoreboardMap.svelte';
   import RankingPanel from './components/RankingPanel.svelte';
   import SectionIndex from './components/SectionIndex.svelte';
+  import { RISK_CLASSES, riskRanking, riskValues } from './components/scores.js';
   import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS } from '$config';
 
   // Scoreboard ranking view. Structure-only: there are no scoreboard endpoints
-  // yet, so the controls, the map layers and the ranking below are placeholders
-  // — what's real here is the layout and the explainer copy.
+  // yet, so the controls and the scores are placeholders — what's real here is
+  // the layout, the explainer copy, and the choropleth those scores are drawn
+  // into.
   const indicatorsHref = `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators`;
   const hazard = 'Heat Stress';
 
@@ -26,13 +28,9 @@
     { label: 'Year', value: '2025' },
   ];
 
-  const ranking = [
-    { rank: 1, label: 'Italy', value: 88 },
-    { rank: 2, label: 'Spain', value: 87 },
-    { rank: 3, label: 'France', value: 82 },
-    { rank: 4, label: 'Czechia', value: 76 },
-    { rank: 5, label: 'United Kingdom', value: 74 },
-  ].map((entry) => ({ ...entry, href: indicatorsHref }));
+  // The leaderboard is the top of the same table the map is coloured from, so a
+  // dark country on the map is a country at the top of this list.
+  const ranking = riskRanking.slice(0, 5).map((entry) => ({ ...entry, href: indicatorsHref }));
 
   // The index reads differently from the headings — the last section's heading
   // names the hazard, the index just promises more data — so it's written out
@@ -102,7 +100,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
-    <ScoreboardMap bounds={europeBounds} height="h-[560px]" />
+    <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={riskValues} classes={RISK_CLASSES} />
 
     <!-- Overlays sit on the layout's relative visual band; the inner max-w-7xl
          keeps the panel on the same left edge as the content below, and it is
