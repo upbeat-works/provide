@@ -65,8 +65,14 @@
   const optionsFor = (uid) => ({ scenario: $SCENARIOS, year: YEARS, geography: countries })[uid] ?? [];
   const valueFor = (uid) => ({ scenario, year, geography })[uid];
 
-  // Depends on `compareBy` alone, so choosing a value afterwards doesn't reseed.
-  $: sides = compareBy ? seedComparison(optionsFor(compareBy.uid), valueFor(compareBy.uid)) : sides;
+  // Seed only when the compared dimension changes. `sides` must not be read
+  // here: this statement would then depend on it, and choosing a value on a map
+  // would re-seed the pair straight back to what it opened with.
+  let seededFor;
+  $: if (compareBy?.uid !== seededFor) {
+    seededFor = compareBy?.uid;
+    sides = compareBy ? seedComparison(optionsFor(compareBy.uid), valueFor(compareBy.uid)) : [];
+  }
 
   $: views = comparisonViews(compareBy?.uid, sides, { geography, year, scenario });
 
