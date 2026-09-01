@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { classOf, colorFor, countryBounds, countryFillColor, countryFilter, scoredCountryFilter, legendOf, COUNTRY_CODE } from './choropleth.js';
-import { indicatorValuesFor, RISK_CLASSES, riskRanking, riskValues } from './scores.js';
+import { indicatorValuesFor, RISK_CLASSES, riskRankingFor, riskValues } from './scores.js';
 
 describe('classOf', () => {
   test('picks the last class the value reaches', () => {
@@ -83,6 +83,21 @@ describe('indicatorValuesFor', () => {
     expect(indicatorValuesFor({ year: 2025 })).not.toEqual(indicatorValuesFor({ year: 2026 }));
   });
 
+  test('reads the selection whether it arrives as an id or as an option object', () => {
+    // The pages hold the selection as { uid, label }; passing that must not
+    // collapse every scenario onto the same nudge.
+    const asObjects = indicatorValuesFor({ scenario: { uid: 'SSP1-1.9' }, year: { uid: 2030 } });
+    expect(asObjects).toEqual(indicatorValuesFor({ scenario: 'SSP1-1.9', year: 2030 }));
+  });
+
+  test('keeps every pair of scenarios apart, not just most of them', () => {
+    // A weak hash collides, and two scenarios that collide hand a comparison
+    // two identical maps.
+    const uids = ['2020 Climate Policies', '2020 Climate Targets', 'SSP1-1.9', 'SSP5-3.4-Overshoot', 'Low Demand', 'High Renewables', 'Shifting Pathway'];
+    const drawn = uids.map((scenario) => JSON.stringify(indicatorValuesFor({ scenario, year: 2025 })));
+    expect(new Set(drawn).size).toBe(uids.length);
+  });
+
   test('is deterministic, and covers the same countries as the base values', () => {
     const once = indicatorValuesFor({ scenario: 'SSP1-1.9', year: 2018 });
     expect(once).toEqual(indicatorValuesFor({ scenario: 'SSP1-1.9', year: 2018 }));
@@ -98,10 +113,19 @@ describe('legendOf', () => {
   });
 });
 
-describe('riskRanking', () => {
+describe('riskRankingFor', () => {
   test('ranks the same values the map is coloured from, highest first', () => {
-    expect(riskRanking).toHaveLength(riskValues.length);
-    expect(riskRanking[0]).toMatchObject({ rank: 1 });
-    expect(riskRanking.map((e) => e.value)).toEqual([...riskValues.map((e) => e.value)].sort((a, b) => b - a));
+    const ranking = riskRankingFor();
+    expect(ranking).toHaveLength(riskValues.length);
+    expect(ranking[0]).toMatchObject({ rank: 1 });
+    expect(ranking.map((e) => e.value)).toEqual([...riskValues.map((e) => e.value)].sort((a, b) => b - a));
+  });
+
+  test('reorders under a comparison, so two rankings side by side differ', () => {
+    const a = riskRankingFor({ scenario: '2020 Climate Policies' });
+    const b = riskRankingFor({ scenario: '2020 Climate Targets' });
+    expect(a.map((e) => e.uid)).not.toEqual(b.map((e) => e.uid));
+    // Scores stay whole, and on their own scale however far they are nudged.
+    expect(b.every(({ value }) => value >= 0 && value <= 100 && Number.isInteger(value))).toBe(true);
   });
 });

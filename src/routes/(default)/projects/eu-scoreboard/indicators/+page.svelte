@@ -19,6 +19,7 @@
   import { legendOf } from '../components/choropleth.js';
   import { coveredGeoIds, INDICATOR_CLASSES, indicatorValuesFor } from '../components/scores.js';
   import { DEFAULT_YEAR, YEARS } from '../components/filters.js';
+  import { comparisonViews, seedComparison } from '../components/comparison.js';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import { PATH_ADAPTATION, PATH_DOCUMENTATION } from '$config';
 
@@ -64,27 +65,10 @@
   const optionsFor = (uid) => ({ scenario: $SCENARIOS, year: YEARS, geography: countries })[uid] ?? [];
   const valueFor = (uid) => ({ scenario, year, geography })[uid];
 
-  // Entering a comparison, or switching which dimension it compares, seeds the
-  // two maps: the left keeps what the filter bar had, the right takes the next
-  // option along — so a comparison never opens as the same map twice. Depends
-  // on `compareBy` alone, so choosing a value afterwards doesn't reseed it.
-  $: seedSides(compareBy?.uid);
-  function seedSides(uid) {
-    if (!uid) return;
-    const options = optionsFor(uid);
-    const current = valueFor(uid);
-    // -1 (no current value, i.e. all countries) lands on the first option.
-    const index = options.findIndex(({ uid: option }) => option === current?.uid);
-    sides = [current, options[(index + 1) % options.length]];
-  }
+  // Depends on `compareBy` alone, so choosing a value afterwards doesn't reseed.
+  $: sides = compareBy ? seedComparison(optionsFor(compareBy.uid), valueFor(compareBy.uid)) : sides;
 
-  // What each map draws: the shared selection, with the compared dimension
-  // taken from that side. One view when not comparing.
-  $: views = (compareBy ? sides : [null]).map((value) => {
-    const view = { geography, year, scenario };
-    if (compareBy) view[compareBy.uid] = value;
-    return view;
-  });
+  $: views = comparisonViews(compareBy?.uid, sides, { geography, year, scenario });
 
   // The legend card names the whole selection so two maps say what makes them
   // different, with the compared part picked out.
@@ -228,7 +212,7 @@
             <ScoreboardMap
               bounds={europeBounds}
               height="h-[560px]"
-              values={indicatorValuesFor({ scenario: view.scenario?.uid, year: view.year?.uid })}
+              values={indicatorValuesFor(view)}
               classes={INDICATOR_CLASSES}
               highlight={view.geography?.geoId}
             />

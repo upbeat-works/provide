@@ -4,16 +4,18 @@
   import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
   import { SCENARIOS } from '$stores/meta.js';
+  import { CURRENT_SCENARIOS } from '$stores/state.js';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
-  import Compare from '$lib/components/icons/Compare.svelte';
+  import CompareMenu from './components/CompareMenu.svelte';
   import ScoreboardMap from './components/ScoreboardMap.svelte';
   import RankingPanel from './components/RankingPanel.svelte';
   import SectionIndex from './components/SectionIndex.svelte';
   import FilterSelect from './components/FilterSelect.svelte';
   import { DEFAULT_YEAR, YEARS } from './components/filters.js';
-  import { RISK_CLASSES, riskRanking, riskValues } from './components/scores.js';
+  import { RISK_CLASSES, riskRankingFor, riskValuesFor } from './components/scores.js';
+  import { comparisonViews, seedComparison } from './components/comparison.js';
   import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS } from '$config';
 
   // Scoreboard ranking view. Structure-only: there are no scoreboard endpoints
@@ -27,10 +29,36 @@
   const europeBounds = [-24, 34, 42, 68];
 
   let year = DEFAULT_YEAR;
+  $: scenario = $CURRENT_SCENARIOS[0];
+
+  // The ranking is Europe-wide by definition, so there is no geography to
+  // compare — only the two dimensions the bar actually offers a list for.
+  const dimensions = [
+    { uid: 'scenario', label: 'Scenario' },
+    { uid: 'year', label: 'Year' },
+  ];
+  let compareBy;
+  // The compared dimension's value per map; only read while comparing.
+  let sides = [];
+
+  const optionsFor = (uid) => ({ scenario: $SCENARIOS, year: YEARS })[uid] ?? [];
+  const valueFor = (uid) => ({ scenario, year })[uid];
+
+  // Depends on `compareBy` alone, so choosing a value afterwards doesn't reseed.
+  $: sides = compareBy ? seedComparison(optionsFor(compareBy.uid), valueFor(compareBy.uid)) : sides;
+
+  $: views = comparisonViews(compareBy?.uid, sides, { scenario, year });
+
+  // Each card names its selection, with the compared part picked out — that is
+  // what tells two rankings side by side apart.
+  const cardParts = (view, compared) => [
+    { label: view.scenario?.label ?? 'No scenario', accent: compared === 'scenario' },
+    { label: String(view.year?.label ?? ''), accent: compared === 'year' },
+  ];
 
   // The leaderboard is the top of the same table the map is coloured from, so a
   // dark country on the map is a country at the top of this list.
-  const ranking = riskRanking.slice(0, 5).map((entry) => ({ ...entry, href: indicatorsHref }));
+  const rankingFor = (view) => riskRankingFor(view).slice(0, 5).map((entry) => ({ ...entry, href: indicatorsHref }));
 
   // The index reads differently from the headings — the last section's heading
   // names the hazard, the index just promises more data — so it's written out
@@ -91,34 +119,63 @@
     <!-- The scoreboard has no indicator selection to scope availability by, so
          it offers the whole scenario universe, and one scenario at a time —
          every view here is tied to a single pathway. -->
-    <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
-    <FilterSelect label="Year" options={YEARS} bind:selected={year} />
+    {#if compareBy?.uid !== 'scenario'}
+      <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
+    {/if}
+    {#if compareBy?.uid !== 'year'}
+      <FilterSelect label="Year" options={YEARS} bind:selected={year} />
+    {/if}
   </svelte:fragment>
 
   <svelte:fragment slot="actions">
-    <Button variant="outline" size="sm">
-      <Compare class="h-4 w-4" />
-      Compare
-    </Button>
+    <CompareMenu {dimensions} bind:selected={compareBy} />
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
-    <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={riskValues} classes={RISK_CLASSES} />
+    <!-- Keyed on the number of maps: a mapbox instance does not re-fit when its
+         container is resized under it, so splitting the band has to build the
+         maps afresh rather than squeeze the existing one into half the width. -->
+    {#key views.length}
+      <div class="flex" class:gap-px={compareBy}>
+        {#each views as view, i (i)}
+          <div class="relative min-w-0 flex-1">
+            <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={riskValuesFor(view)} classes={RISK_CLASSES} />
 
-    <!-- Overlays sit on the layout's relative visual band; the inner max-w-7xl
-         keeps the panel on the same left edge as the content below, and it is
-         anchored to the foot of the map so it grows upwards as rows are added. -->
-    <div class="pointer-events-none absolute inset-0 mx-auto max-w-7xl px-6">
-      <div class="pointer-events-auto absolute bottom-6 left-6">
-        <RankingPanel {hazard} entries={ranking} />
+            <!-- Overlays sit on the map they belong to. With one map the inner
+                 max-w-7xl keeps the panel on the same left edge as the content
+                 below; side by side, each panel belongs to its own half. Both
+                 are anchored to the foot of the map so they grow upwards as
+                 rows are added. -->
+            <div class="pointer-events-none absolute inset-0 {compareBy ? '' : 'mx-auto max-w-7xl px-6'}">
+              {#if compareBy}
+                <div class="pointer-events-auto absolute left-6 top-6">
+                  <FilterSelect
+                    label={compareBy.label}
+                    options={optionsFor(compareBy.uid)}
+                    bind:selected={sides[i]}
+                    labelClass="sr-only"
+                    wrapperClass="min-w-[12rem]"
+                    buttonClass="rounded border border-contour-weakest bg-surface-base px-3 py-2 text-sm shadow-sm"
+                  />
+                </div>
+              {/if}
+              <div class="pointer-events-auto absolute bottom-6 left-6">
+                <RankingPanel parts={cardParts(view, compareBy?.uid)} {hazard} entries={rankingFor(view)} />
+              </div>
+            </div>
+          </div>
+        {/each}
       </div>
-    </div>
-    <div class="absolute inset-x-0 bottom-6 flex justify-center">
-      <Button href="#{sections[0].slug}">
-        How to read this scoreboard
-        <span class="inline-flex rotate-90"><LinkArrow /></span>
-      </Button>
-    </div>
+    {/key}
+
+    {#if !compareBy}
+      <div class="absolute inset-x-0 bottom-6 flex justify-center">
+        <Button href="#{sections[0].slug}">
+          How to read this scoreboard
+          <span class="inline-flex rotate-90"><LinkArrow /></span>
+        </Button>
+      </div>
+    {/if}
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">

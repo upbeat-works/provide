@@ -7,7 +7,9 @@
   // The ranking card floating over the map: legend for the choropleth, the sort
   // it is ranked by, and the leaderboard itself. Placeholder data for now —
   // there are no scoreboard endpoints, so the rows come from the page.
-  export let title = 'EU Scoreboard';
+  // The heading names the selection (scenario · year) so that two cards side by
+  // side say what makes them different; `accent` marks the part being compared.
+  export let parts = [];
   export let hazard;
   export let sort = 'Highest risk countries';
   export let entries = [];
@@ -23,7 +25,11 @@
 
 <div class="w-[19rem] max-w-full rounded bg-white shadow-lg">
   <div class="flex items-start justify-between gap-4 px-5 pt-4" class:pb-4={!open}>
-    <h2 class="text-lg leading-tight text-theme-base">{title}</h2>
+    <h2 class="text-lg leading-tight text-theme-base">
+      {#each parts as { label, accent }, i}
+        {#if i > 0}<span class="mx-1 text-text-weaker">·</span>{/if}<span class:font-semibold={accent} class:text-theme-stronger={accent}>{label}</span>
+      {/each}
+    </h2>
     <button
       type="button"
       aria-expanded={open}

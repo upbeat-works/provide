@@ -74,20 +74,55 @@ const EUROPE = [
 export const riskValues = EUROPE.map(({ uid, label, score }) => ({ uid, label, value: score }));
 export const indicatorValues = EUROPE.map(({ uid, label, maxTemp }) => ({ uid, label, value: maxTemp }));
 
-// A comparison puts two views of the same indicator side by side, but there is
-// only one set of placeholder values, so both sides would draw the identical
-// map. This nudges them apart by a fixed amount per scenario and per year —
-// enough to tell the two sides apart, and no kind of model: it goes when the
-// endpoints land and each view fetches its own values.
-export function indicatorValuesFor({ scenario, year } = {}) {
-  const perScenario = scenario ? ([...String(scenario)].reduce((h, c) => h + c.charCodeAt(0), 0) % 7) - 3 : 0;
-  const perYear = (Number(year ?? 2025) - 2025) * 0.2;
-  const offset = perScenario + perYear;
-  return offset ? indicatorValues.map((entry) => ({ ...entry, value: Math.round((entry.value + offset) * 10) / 10 })) : indicatorValues;
+// A comparison puts two views of the same thing side by side, but there is only
+// one set of placeholder values, so both sides would draw the identical map.
+// This nudges them apart by a fixed amount per scenario and per year — enough to
+// tell the two sides apart, and no kind of model: it goes when the endpoints
+// land and each view fetches its own values.
+// Callers hold the selection as option objects ({ uid, label }); the nudge only
+// needs something stable to seed on.
+const idOf = (value) => (value && typeof value === 'object' ? value.uid : value);
+// FNV-1a with a final avalanche. A linear hash (a sum, or h*31+c) is not enough
+// here: the country is mixed in after the scenario, so with a linear hash two
+// scenarios whose hashes agree modulo the bucket count agree for *every*
+// country, and the comparison draws the identical map on both sides — the one
+// thing this exists to prevent. The xor-multiply breaks that.
+function hash(seed) {
+  let h = 2166136261;
+  for (const character of String(seed)) {
+    h = Math.imul(h ^ character.charCodeAt(0), 16777619) >>> 0;
+  }
+  h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
+  return (h ^ (h >>> 13)) >>> 0;
 }
+
+// Seeded per country as well as per scenario, so a comparison reorders the
+// ranking and recolours the map rather than shifting every country by the same
+// amount — which would have drawn two near-identical sides.
+function offsetFor(view, uid) {
+  const scenario = idOf(view?.scenario);
+  const perScenario = scenario ? (hash(`${scenario}|${uid}`) % 61) / 10 - 3 : 0;
+  return perScenario + (Number(idOf(view?.year) ?? 2025) - 2025) * 0.2;
+}
+
+function shift(values, view, { min = -Infinity, max = Infinity, decimals = 1 } = {}) {
+  const step = 10 ** decimals;
+  return values.map((entry) => {
+    const offset = offsetFor(view, entry.uid);
+    if (!offset) return entry;
+    return { ...entry, value: Math.round(Math.min(max, Math.max(min, entry.value + offset)) * step) / step };
+  });
+}
+
+export const indicatorValuesFor = (view) => shift(indicatorValues, view);
+
+// Scores stay on their 0–100 scale however far a comparison nudges them.
+export const riskValuesFor = (view) => shift(riskValues, view, { min: 0, max: 100, decimals: 0 });
+
+// The leaderboard is the same data the map is coloured from, ranked — so
+// comparing two scenarios reorders the ranking as well as recolouring the map.
+export const riskRankingFor = (view) =>
+  [...riskValuesFor(view)].sort((a, b) => b.value - a.value).map((entry, i) => ({ rank: i + 1, ...entry }));
 
 // What the scoreboard has values for — the countries its filters may offer.
 export const coveredGeoIds = EUROPE.map(({ uid }) => uid);
-
-// The leaderboard is the same data the map is coloured from, ranked.
-export const riskRanking = [...riskValues].sort((a, b) => b.value - a.value).map((entry, i) => ({ rank: i + 1, ...entry }));
