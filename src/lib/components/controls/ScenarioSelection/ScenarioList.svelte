@@ -10,8 +10,13 @@
   export let hoveredScenarioUid;
   export let highlightedScenarioUid;
   export let currentFilterUid;
+  // Explore compares scenarios, so it picks several. A view tied to one scenario
+  // (the scoreboard) picks exactly one, and the list reads as radios.
+  export let multiple = true;
 
-  $: maxNumberOfScenariosSelected = $CURRENT_SCENARIOS_UID.length === MAX_NUMBER_SELECTABLE_SCENARIOS;
+  $: maxNumberOfScenariosSelected = multiple && $CURRENT_SCENARIOS_UID.length === MAX_NUMBER_SELECTABLE_SCENARIOS;
+
+  const select = (uid) => (multiple ? CURRENT_SCENARIOS_UID.toggle(uid, currentFilterUid) : CURRENT_SCENARIOS_UID.set([uid]));
 
   const textScenarioNotAvailable = 'This scenario is not available for the selected indicator';
   const textMaxNumberOfScenarios = `You can not select more than ${MAX_NUMBER_SELECTABLE_SCENARIOS} scenarios.`
@@ -67,11 +72,12 @@
       <CheckboxInput
         class="aria-disabled:cursor-not-allowed aria-disabled:border-red-500"
         style="accent-color: {scenario.color ?? 'transparent'}"
+        type={multiple ? 'checkbox' : 'radio'}
         name="scenarios"
         disabled={isDisabled}
         value={uid}
         checked={isSelected}
-        on:change={() => CURRENT_SCENARIOS_UID.toggle(uid, currentFilterUid)}
+        on:change={() => select(uid)}
         on:focus={() => (hoveredScenarioUid = scenario)}
       />
       <span

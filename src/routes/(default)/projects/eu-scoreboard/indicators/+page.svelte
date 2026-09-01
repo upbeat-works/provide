@@ -2,6 +2,8 @@
   import ScoreboardLayout from '$lib/components/layouts/ScoreboardLayout.svelte';
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
   import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
+  import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
+  import { SCENARIOS } from '$stores/meta.js';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
@@ -38,12 +40,13 @@
   const placeholderGeography = { label: 'Lisbon', uid: 'lisbon' };
   $: caseStudy = findCaseStudy(data.caseStudies, placeholderGeography);
 
-  const filters = [
+  // Scenario is the one real control — it opens explore's scenario modal — so
+  // the placeholders around it are listed as what comes before and after it.
+  const filtersBefore = [
     { label: 'Geography', value: 'All countries' },
     { label: 'Indicator', value: indicator },
-    { label: 'Scenario', value: '2020 climate policies', colors: ['#51A6D3'] },
-    { label: 'Year', value: '2025' },
   ];
+  const filtersAfter = [{ label: 'Year', value: '2025' }];
 
   // One entry per chart. `short` is what the index calls it — the headings name
   // the model behind the chart, which is too long for the index column.
@@ -124,8 +127,12 @@
 
 <ScoreboardLayout>
   <svelte:fragment slot="filters">
-    {#each filters as { label, value, colors }}
-      <SelectionButton {label} buttonLabel={value} {colors} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
+    {#each filtersBefore as { label, value }}
+      <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
+    {/each}
+    <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
+    {#each filtersAfter as { label, value }}
+      <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
     {/each}
   </svelte:fragment>
 

@@ -2,6 +2,8 @@
   import ScoreboardLayout from '$lib/components/layouts/ScoreboardLayout.svelte';
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
   import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
+  import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
+  import { SCENARIOS } from '$stores/meta.js';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
@@ -22,11 +24,10 @@
   // Whole of Europe, unlike the indicators view which frames a single country.
   const europeBounds = [-24, 34, 42, 68];
 
-  const filters = [
-    { label: 'Hazard/Sector', value: hazard },
-    { label: 'Scenario', value: '2020 climate policies', colors: ['#51A6D3'] },
-    { label: 'Year', value: '2025' },
-  ];
+  // Scenario is the one real control — it opens explore's scenario modal — so
+  // the placeholders around it are listed as what comes before and after it.
+  const filtersBefore = [{ label: 'Hazard/Sector', value: hazard }];
+  const filtersAfter = [{ label: 'Year', value: '2025' }];
 
   // The leaderboard is the top of the same table the map is coloured from, so a
   // dark country on the map is a country at the top of this list.
@@ -87,8 +88,15 @@
 
 <ScoreboardLayout>
   <svelte:fragment slot="filters">
-    {#each filters as { label, value, colors }}
-      <SelectionButton {label} buttonLabel={value} {colors} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
+    {#each filtersBefore as { label, value }}
+      <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
+    {/each}
+    <!-- The scoreboard has no indicator selection to scope availability by, so
+         it offers the whole scenario universe, and one scenario at a time —
+         every view here is tied to a single pathway. -->
+    <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
+    {#each filtersAfter as { label, value }}
+      <SelectionButton {label} buttonLabel={value} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
     {/each}
   </svelte:fragment>
 
