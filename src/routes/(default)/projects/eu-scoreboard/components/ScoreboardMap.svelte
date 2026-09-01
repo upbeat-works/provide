@@ -19,6 +19,9 @@
   // Geo id of the country the view is scoped to, if any. The map outlines it and
   // frames it; with none, it frames `bounds` — the whole coverage.
   export let highlight = undefined;
+  // Keeps the fitted shape off the edges of the band. A fixed inset rather than
+  // a fraction of the width, so a map narrowed by a comparison keeps it.
+  export let padding = 48;
 
   // Framing needs geometry, and the choropleth's vector tiles carry none we can
   // measure, so the country outlines come from geo-shape — fetched the first
@@ -37,7 +40,7 @@
 </script>
 
 <div class="{height} w-full">
-  <MapProvider bounds={frame} fitBoundsExtent={40}>
+  <MapProvider bounds={frame} fitBoundsOptions={{ padding }}>
     <ZoomControl />
     <CountryChoropleth {values} {classes} {highlight} />
     <slot />

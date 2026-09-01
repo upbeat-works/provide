@@ -105,6 +105,14 @@
     );
   }
 
+  // The basemap is a city-first style: it carries country names but hides them,
+  // so a map of countries labelled only with cities is what you get. A
+  // choropleth of countries needs the country names.
+  function showCountryLabels() {
+    if ($map.getLayer('country-label')) $map.setLayoutProperty('country-label', 'visibility', 'visible');
+  }
+
+  showCountryLabels();
   haloLabels();
 
   // Repaint rather than rebuild when the selection changes: the geometry is the
