@@ -15,7 +15,7 @@
     <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(8,32,45,0.85)_0%,rgba(8,32,45,0.55)_25%,rgba(8,32,45,0)_50%)]" />
   {/if}
   <HeroGrain id="page-hero-grain" />
-  <div class="relative mx-auto max-w-6xl px-2 sm:px-6 {tabItems ? 'pb-14 sm:pb-20' : 'pb-20 sm:pb-28'} pt-10 sm:pt-20">
+  <div class="relative mx-auto max-w-6xl px-2 sm:px-6 {tabItems || $$slots.default ? 'pb-14 sm:pb-20' : 'pb-20 sm:pb-28'} pt-10 sm:pt-20">
     {#if $$slots.label}
       <div class="mb-3"><slot name="label" /></div>
     {:else if label}
@@ -24,6 +24,9 @@
     <h1 class="text-4xl sm:text-5xl font-normal text-white max-w-2xl">{title}</h1>
     {#if description}
       <p class="text-lg text-sky-100 mt-4 max-w-xl">{description}</p>
+    {/if}
+    {#if $$slots.default}
+      <div class="mt-8"><slot /></div>
     {/if}
   </div>
   {#if tabItems}
