@@ -1,0 +1,23 @@
+# Production image for the Strapi CMS, serving on :1337.
+# Build context: the repository's cms/ directory.
+
+# ---- build: compile the admin panel ----
+FROM registry.iiasa.ac.at/scse-library/climate-risk-dashboard-node:latest AS build
+WORKDIR /app
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
+COPY . .
+ENV NODE_ENV=production
+RUN yarn build
+
+# ---- runtime ----
+FROM registry.iiasa.ac.at/scse-library/climate-risk-dashboard-node:latest AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=1337
+
+COPY --from=build /app ./
+RUN mkdir -p public/uploads
+EXPOSE 1337
+CMD ["yarn", "start"]
