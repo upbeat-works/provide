@@ -11,6 +11,20 @@
   import { indicatorTags } from '$lib/catalog/indicator-tags.js';
 
   export let label = 'Indicator';
+  // Explore narrows the list to what has data for the current geography, and
+  // gates itself on a geography being chosen. A view that scopes itself
+  // differently (the scoreboard, whose geography is its own) passes the list it
+  // wants offered, and owns the gating and availability warning that go with it.
+  export let indicators = undefined;
+  export let disabled = undefined;
+  // The control also lives in a page's filter bar, which sets its metrics.
+  export let wrapperClass = undefined;
+  export let labelClass = 'mb-2';
+  export let buttonClass = 'border-theme-base/20 border rounded-sm p-3';
+
+  // Whether the caller brought its own list — and with it, its own gating.
+  $: owned = Boolean(indicators);
+  $: available = indicators ?? $AVAILABLE_INDICATORS;
 
   let modalOpen = false;
   $: if ($CURRENT_INDICATOR_UID) modalOpen = false;
@@ -23,7 +37,7 @@
 
   // Sectors are no longer a convention facet, so the list shows all indicators
   // available for the geography (search narrows them).
-  $: availableItems = $AVAILABLE_INDICATORS;
+  $: availableItems = available;
 
   $: fuse = new Fuse(availableItems, { includeScore: true, keys: ['label', 'uid'], includeMatches: true });
   $: hasSearchTerm = String(term).trim().length > 0;
@@ -44,13 +58,13 @@
         }
         return { ...item, label };
       });
-  $: current = $AVAILABLE_INDICATORS.find((d) => d.uid === $CURRENT_INDICATOR_UID);
+  $: current = available.find((d) => d.uid === $CURRENT_INDICATOR_UID);
   // Keep showing the last hovered item so the detail panel doesn't flicker
   // (appear/disappear) as the pointer crosses the gap between rows — InteractiveListItem
   // clears `hoveredItem` on mouseleave, which would otherwise blank the panel.
   let lastHovered = null;
   $: if (hoveredItem) lastHovered = hoveredItem;
-  $: detailsItem = $AVAILABLE_INDICATORS.find((d) => d.uid === (hoveredItem ?? lastHovered)) || current;
+  $: detailsItem = available.find((d) => d.uid === (hoveredItem ?? lastHovered)) || current;
 
   const DISABLED = derived([IS_EMPTY_GEOGRAPHY, SELECTION_MODE], ([$isEmptyGeography, $mode]) => {
     if ($mode === 'geography' && $isEmptyGeography) {
@@ -63,9 +77,12 @@
 <SelectionModal
   {label}
   buttonLabel={$CURRENT_INDICATOR?.label}
-  warning={!$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
-  disabled={$DISABLED}
+  warning={!owned && !$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
+  disabled={disabled ?? (owned ? undefined : $DISABLED)}
   placeholder={$IS_EMPTY_INDICATOR ? 'Select an indicator' : undefined}
+  {wrapperClass}
+  {labelClass}
+  {buttonClass}
   bind:isOpen={modalOpen}
 >
   <SelectionPanel>

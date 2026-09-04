@@ -18,7 +18,20 @@
   import ScenarioDetails from './ScenarioDetails.svelte';
   import ScenarioList from './ScenarioList.svelte';
   import { derived } from 'svelte/store';
-  import { onMount } from 'svelte';
+  import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
+
+  // By default the picker offers what ixmp4 has for the current indicator +
+  // geography, and gates itself on that selection existing. A view with no
+  // indicator selection to gate on (the scoreboard) passes its own scenario
+  // universe instead, and owns the gating that comes with it.
+  export let scenarios = undefined;
+  export let disabled = undefined;
+  // Explore compares scenarios; a view tied to one scenario passes false.
+  export let multiple = true;
+  // The control lives in a page's filter bar, so the bar sets its metrics.
+  export let wrapperClass = undefined;
+  export let labelClass = 'mb-0 p-0 text-text-stronger uppercase text-xs leading-tight';
+  export let buttonClass = 'text-sm p-0';
 
   let hoveredScenarioUid;
   let currentTimeframe;
@@ -28,7 +41,14 @@
 
   $: buttonLabel = hasScenarioSelected ? (multipleScenariosSelected ? `${$CURRENT_SCENARIOS.length} scenarios selected` : $CURRENT_SCENARIOS[0].label) : undefined;
 
-  $: scenarios = $AVAILABLE_SCENARIOS.map((scenario) => {
+  // Whether the caller brought its own list — and with it, its own availability.
+  $: owned = Boolean(scenarios);
+  $: source = scenarios ?? $AVAILABLE_SCENARIOS;
+
+  // Timeframe pills follow whichever list is in play.
+  $: timeframes = owned ? extractEndYearFromScenarios(source, source.filter((s) => !s.disabled)) : $AVAILABLE_TIMEFRAMES;
+
+  $: options = source.map((scenario) => {
     const current = $CURRENT_SCENARIOS.find((s) => s.uid === scenario.uid);
     const currentIndex = $CURRENT_SCENARIOS.indexOf(current);
     return {
@@ -39,16 +59,23 @@
     };
   });
 
-  onMount(() => {
-    const current = scenarios.find((s) => ($CURRENT_SCENARIOS_UID ?? []).includes(s.uid));
-    currentTimeframe = current?.endYear ?? $AVAILABLE_TIMEFRAMES.find((t) => !t.disabled)?.uid;
-  });
+  // Open on the timeframe holding the current selection. The list lands after
+  // mount — page data on hydration, the availability fetch after that — so this
+  // picks the first time there is something to pick from rather than at mount,
+  // where it found an empty list and left the pills with nothing selected (and
+  // so every timeframe's scenarios in one list).
+  $: if (currentTimeframe === undefined && timeframes.length) {
+    const current = options.find((s) => ($CURRENT_SCENARIOS_UID ?? []).includes(s.uid));
+    currentTimeframe = current?.endYear ?? timeframes.find((t) => !t.disabled)?.uid;
+  }
 
-  $: availableScenarios = currentTimeframe ? scenarios.filter((s) => s.endYear === currentTimeframe) : scenarios;
-  $: chartScenarios = scenarios.filter((s) => s.endYear === currentTimeframe);
+  $: availableScenarios = currentTimeframe ? options.filter((s) => s.endYear === currentTimeframe) : options;
+  $: chartScenarios = options.filter((s) => s.endYear === currentTimeframe);
 
-  $: renderedScenario = scenarios.find((s) => s.isHighlighted && s.endYear === currentTimeframe);
+  $: renderedScenario = options.find((s) => s.isHighlighted && s.endYear === currentTimeframe);
 
+  // The built-in gate names the selection behind the default list, so it applies
+  // only when the caller did not bring a list (and a gate) of its own.
   const DISABLED = derived([IS_EMPTY_GEOGRAPHY, IS_EMPTY_INDICATOR, IS_COMBINATION_AVAILABLE_INDICATOR], ([$isEmptyGeography, $isEmptyIndicator, $isAvailableIndicator]) => {
     if ($isEmptyGeography) {
       return 'Select a geography first';
@@ -61,25 +88,30 @@
     }
     return undefined;
   });
+
+  $: gate = disabled ?? (owned ? undefined : $DISABLED);
 </script>
 
 <SelectionModal
   label="Scenario"
   {buttonLabel}
   colors={hasScenarioSelected ? $CURRENT_SCENARIOS.map((s) => s.color) : undefined}
-  labelClass="mb-0 p-0 text-text-stronger uppercase text-xs leading-tight"
-  buttonClass="text-sm p-0"
-  warning={!$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO ? `No data for ${multipleScenariosSelected ? 'these scenarios' : 'this scenario'} here — pick another` : undefined}
+  {labelClass}
+  {buttonClass}
+  warning={!owned && !$IS_EMPTY_INDICATOR && hasScenarioSelected && !$IS_COMBINATION_AVAILABLE_SCENARIO
+    ? `No data for ${multipleScenariosSelected ? 'these scenarios' : 'this scenario'} here — pick another`
+    : undefined}
   placeholder={!hasScenarioSelected ? 'Select one or more scenarios' : undefined}
-  disabled={$DISABLED}
+  disabled={gate}
   panelClass="max-w-4xl"
+  {wrapperClass}
 >
   <SelectionPanel>
     <svelte:fragment slot="header">
       <div class="flex items-center justify-between">
         <div>
           <span class="block text-xs uppercase tracking-widest text-theme-weaker mb-2">Pick a timeframe</span>
-          <PillGroup bind:currentUid={currentTimeframe} options={$AVAILABLE_TIMEFRAMES} disabledMessage="No scenarios available for this indicator in this timeframe" />
+          <PillGroup bind:currentUid={currentTimeframe} options={timeframes} disabledMessage="No scenarios available for this indicator in this timeframe" />
         </div>
         <Button href={`/${PATH_KEY_CONCEPTS}#${ANCHOR_EXPLAINER_SCENARIOS}`}>
           Which scenario should I select?
@@ -90,7 +122,7 @@
     <svelte:fragment slot="sidebar">
       {#key currentTimeframe}
         <fieldset class="flex flex-col min-w-min py-2">
-          <ScenarioList highlightedScenarioUid={renderedScenario?.uid} bind:hoveredScenarioUid scenarios={availableScenarios} currentFilterUid={currentTimeframe} />
+          <ScenarioList highlightedScenarioUid={renderedScenario?.uid} bind:hoveredScenarioUid scenarios={availableScenarios} currentFilterUid={currentTimeframe} {multiple} />
         </fieldset>
       {/key}
     </svelte:fragment>

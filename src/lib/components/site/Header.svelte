@@ -14,6 +14,12 @@
     LABEL_ADAPTATION,
     LABEL_TOOLS,
     LABEL_AVOID_IMPACTS_NAV,
+    PATH_PROJECTS,
+    PATH_PROVIDE,
+    PATH_EU_SCOREBOARD,
+    CLASS_SCOREBOARD_BG,
+    CLASS_SCOREBOARD_TEXT,
+    CLASS_SCOREBOARD_BORDER,
   } from '$config';
   import NavLink from '$lib/components/navigation/NavLink.svelte';
   import NavDropdown from '$lib/components/navigation/NavDropdown.svelte';
@@ -27,12 +33,15 @@
   // `menuText` matches the nav background colour so the Tools dropdown options
   // (on a white panel) are tinted to the current page's theme. Dashed border uses
   // petrol-400 (#6FA5BA) per the design; the tool pages (avoid, provide) share one theme.
+  // The EU scoreboard carries SPARCCLE purple instead, so the nav meets its hero.
   const HEADER_THEME_DEFAULT = { bg: 'bg-sky-700', border: 'border-petrol-400', menuText: 'text-sky-700' };
   const HEADER_THEME_TOOL = { bg: 'bg-[#1C4157]', border: 'border-petrol-400', menuText: 'text-[#1C4157]' };
+  const HEADER_THEME_SCOREBOARD = { bg: CLASS_SCOREBOARD_BG, border: CLASS_SCOREBOARD_BORDER, menuText: CLASS_SCOREBOARD_TEXT };
 
   function getHeaderTheme(pathname = '') {
     if (pathname.startsWith(`/${PATH_IMPACT}/${PATH_AVOID}`)) return HEADER_THEME_TOOL;
-    if (pathname.startsWith('/projects/provide')) return HEADER_THEME_TOOL;
+    if (pathname.startsWith(`/${PATH_PROJECTS}/${PATH_PROVIDE}`)) return HEADER_THEME_TOOL;
+    if (pathname.startsWith(`/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}`)) return HEADER_THEME_SCOREBOARD;
     return HEADER_THEME_DEFAULT;
   }
 
@@ -45,7 +54,9 @@
     { href: `/${PATH_IMPACT}/${PATH_EXPLORE}`, label: LABEL_EXPLORE },
     {
       label: LABEL_TOOLS,
-      submenu: [{ href: `/${PATH_IMPACT}/${PATH_AVOID}`, label: LABEL_AVOID_IMPACTS_NAV }],
+      submenu: [
+        { href: `/${PATH_IMPACT}/${PATH_AVOID}`, label: LABEL_AVOID_IMPACTS_NAV },
+      ],
     },
     { href: `/${PATH_ADAPTATION}`, label: LABEL_ADAPTATION },
     { href: `/${PATH_DOCUMENTATION}`, label: LABEL_DOCUMENTATION },
@@ -62,11 +73,7 @@
         {#if submenu}
           <NavDropdown {label} items={submenu} textClass={theme.menuText} />
         {:else}
-          <NavLink
-            activeClass="text-white font-medium"
-            class="text-white hover:text-sky-100 text-[14px] font-semibold leading-[150%] transition-colors"
-            {href}>{label}</NavLink
-          >
+          <NavLink activeClass="text-white font-medium" class="text-white hover:text-sky-100 text-[14px] font-semibold leading-[150%] transition-colors" {href}>{label}</NavLink>
         {/if}
       {/each}
     </ul>
