@@ -55,7 +55,7 @@
   $: graphUrl = buildGraphURL(embedUid, graphQuery);
 
   function buildScreenshotUrl(format, width, processingIntensity, graphUrl) {
-    if (!(graphUrl || graphUrl.hasOwnProperty('href'))) {
+    if (!graphUrl?.href) {
       console.warn(`Screenshot build URL is not defined. Graph download will not be available.`);
       return null;
     }

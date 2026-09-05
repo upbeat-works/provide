@@ -13,6 +13,8 @@ const MIGRATION_SQL = migrationStatements();
 
 // A single admin connection used only to CREATE/DROP the per-test schemas.
 let adminPool: Pool | null = null;
+let staleCleanup: Promise<void> | undefined;
+
 function admin(): Pool {
   if (!adminPool) adminPool = new Pool(pgBaseConfig());
   return adminPool;
@@ -37,6 +39,8 @@ function uniqueSchemaName(): string {
  * SQLite). The schema + connection are torn down by `teardownTestEnvs()`.
  */
 export async function createTestEnv(): Promise<Env['Bindings']> {
+  staleCleanup ??= dropStaleTestSchemas();
+  await staleCleanup;
   const name = uniqueSchemaName();
   await admin().query(`CREATE SCHEMA "${name}"`);
   const client = new Client({ ...pgBaseConfig(), options: `-c search_path=${name}` });
@@ -76,6 +80,7 @@ export async function closeTestDb(): Promise<void> {
     await adminPool.end();
     adminPool = null;
   }
+  staleCleanup = undefined;
 }
 
 /**

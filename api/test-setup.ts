@@ -1,11 +1,10 @@
 import { beforeAll, afterEach, afterAll } from 'bun:test';
-import { server, teardownTestEnvs, dropStaleTestSchemas, closeTestDb } from './test-helpers';
+import { server, teardownTestEnvs, closeTestDb } from './test-helpers';
 import { __resetPlatformCache, __resetPlatformClock } from './platform';
 import { __resetCatalogCache } from './routes/catalog';
 
 beforeAll(async () => {
   server.listen({ onUnhandledRequest: 'error' });
-  await dropStaleTestSchemas();
 });
 afterEach(async () => {
   server.resetHandlers();
