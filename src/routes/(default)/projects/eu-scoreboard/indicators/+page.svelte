@@ -14,12 +14,12 @@
   import ScoreboardMap from '../components/ScoreboardMap.svelte';
   import MapLegendPanel from '../components/MapLegendPanel.svelte';
   import SectionIndex from '../components/SectionIndex.svelte';
-  import ChartPlaceholder from '../components/ChartPlaceholder.svelte';
   import LinkSection from '../../../impacts/explore/components/ImpactGeo/LinkSection.svelte';
   import { legendOf } from '../components/choropleth.js';
   import { coveredGeoIds, INDICATOR_CLASSES, indicatorValuesFor } from '../components/scores.js';
   import { DEFAULT_YEAR, YEARS } from '../components/filters.js';
   import { comparisonViews, seedComparison } from '../components/comparison.js';
+  import { charts, dataParamsFor, graphParamsFor, DOWNLOAD_ENDPOINT, EMBED_UID } from '../components/charts/catalog.js';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
   import { PATH_ADAPTATION, PATH_DOCUMENTATION } from '$config';
 
@@ -108,76 +108,9 @@
   const placeholderGeography = { label: 'Lisbon', uid: 'lisbon' };
   $: caseStudy = findCaseStudy(data.caseStudies, placeholderGeography);
 
-  // One entry per chart. `short` is what the index calls it — the headings name
-  // the model behind the chart, which is too long for the index column.
-  const scenarioLegend = ['SSP5 uncertainty band', 'SSP5-8.5 (high)', 'SSP2-4.5 (mid)', 'SSP1-2.6 (low)'];
-  const countryLegend = ['Spain', 'Greece', 'Italy', 'Portugal', 'France'];
-
-  const charts = [
-    {
-      slug: 'annual-mean-temperature',
-      short: 'Mean temperature',
-      title: 'Annual mean temperature (MESMER)',
-      description: 'How the yearly average temperature moves under each pathway, with the spread across the ensemble shown as a band around the high scenario.',
-      label: 'Scenario trajectories over time',
-      legend: scenarioLegend,
-    },
-    {
-      slug: 'annual-maximum-temperature',
-      short: 'Maximum temperature',
-      title: 'Annual maximum temperature (MESMER)',
-      description: 'The hottest day of the year, which drives heat stress thresholds far more directly than the annual mean does.',
-      label: 'Scenario trajectories over time',
-      legend: scenarioLegend,
-    },
-    {
-      slug: 'population-exposed',
-      short: 'Population exposed',
-      title: 'Population exposed to extreme temperature values (CLIMADA)',
-      description: 'How many people live where extreme temperatures are reached, broken down by region and stacked from the lowest pathway upwards.',
-      label: 'Stacked bar chart by region',
-      legend: ['Base – SSP1-2.6', 'up to SSP2-4.5', 'up to SSP5-8.5'],
-      height: 'h-[420px]',
-      caseStudy: true,
-    },
-    {
-      slug: 'lifetime-exposure',
-      short: 'Lifetime exposure',
-      title: 'Lifetime exposure to heatwaves',
-      description: 'The number of heatwaves a person born today can expect to live through, under each pathway.',
-      label: 'Scenario trajectories over time',
-      legend: scenarioLegend,
-      caseStudy: true,
-    },
-    {
-      slug: 'heat-related-facilities',
-      short: 'Heat-related facilities',
-      title: 'Heat-related facilities (CLIMADA)',
-      description: 'Exposure of health and care facilities to heat, compared across countries rather than across scenarios.',
-      label: 'Multi-country trajectories',
-      legend: countryLegend,
-      caseStudy: true,
-    },
-    {
-      slug: 'economic-damages',
-      short: 'Economic damages',
-      title: 'Heatwaves — economic damages',
-      description: 'Modelled annual damages attributable to heatwaves, compared across countries.',
-      label: 'Multi-country trajectories',
-      legend: countryLegend,
-      caseStudy: true,
-    },
-    {
-      slug: 'adaptation-investments',
-      short: 'Adaptation investments',
-      title: 'Heat-adaptation investments (CLIMADA)',
-      description: 'Where today’s heat stress meets the adaptation investment a country is projected to need, with each bubble sized by the population exposed.',
-      label: 'Bubble chart: heat stress against investment',
-      legend: ['Low current risk', 'Medium current risk', 'High current risk', 'Dot size = population exposed'],
-      height: 'h-[460px]',
-      caseStudy: true,
-    },
-  ];
+  // The charts themselves live in the catalog beside their components, so the
+  // embed route can draw the same chart the graph download was asked for.
+  // The series are placeholders (see `series.js`); the charts around them are not.
 
   const sections = charts.map(({ slug, short }) => ({ slug, title: short }));
 
@@ -278,7 +211,19 @@
             See {placeholderGeography.label} case study <span class="font-normal">→</span>
           </a>
         {/if}
-        <ChartPlaceholder label={chart.label} legend={chart.legend} height={chart.height ?? 'h-[360px]'} />
+        <!-- The caption row is explore's: the chart's own info, a graph
+             download that screenshots this chart's embed, and a data download
+             carrying the current selection. -->
+        <svelte:component
+          this={chart.component}
+          {...chart.props}
+          chartInfo={chart.info}
+          chartUid={EMBED_UID}
+          graphDownloadParams={graphParamsFor(chart)}
+          dataDownloadEndpoint={DOWNLOAD_ENDPOINT}
+          dataDownloadOptions={chart.downloadOptions}
+          dataDownloadParams={dataParamsFor(chart, { geography, scenario, year })}
+        />
       </ScoreboardSection>
     {/each}
   </div>
