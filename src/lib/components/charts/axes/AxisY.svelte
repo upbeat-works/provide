@@ -18,13 +18,18 @@
   export let orientation = 1; // 1 for left hand axis extending to right, -1 if other way around
   export let textAnchor = 'start';
   export let unit = 'default';
+  // Overrides the unit formatting for one axis, the way AxisX takes a
+  // formatter. A band scale's ticks are its own labels and are never formatted.
+  export let formatTick = undefined;
 
   $: xPos = x ?? orientation === 1 ? 0 : $width;
   $: yPos = y;
   $: labelTextAnchor = textAnchor || orientation === 1 ? 'end' : 'start';
 
-  $: tickVals = Array.isArray(ticks) ? ticks : $yScale.ticks(ticks);
-  $: tickLabels = formatRange(tickVals, unit);
+  $: isBandwidth = typeof $yScale.bandwidth === 'function';
+
+  $: tickVals = Array.isArray(ticks) ? ticks : isBandwidth ? $yScale.domain() : $yScale.ticks(ticks);
+  $: tickLabels = formatTick ? tickVals.map(formatTick) : isBandwidth ? tickVals : formatRange(tickVals, unit).values;
 </script>
 
 {#if axisLabel}
@@ -32,7 +37,7 @@
 {/if}
 <g transform={`translate(${xPos}, ${yPos})`}>
   {#each tickVals as tick, i}
-    <g transform="translate(0, {$yScale(tick)})">
+    <g transform="translate(0, {$yScale(tick) + (isBandwidth ? $yScale.bandwidth() / 2 : 0)})">
       {#if showTickLines !== false}
         <line
           class={`stroke-contour-weakest stroke-dasharray-2-3`}
@@ -43,8 +48,8 @@
       {/if}
       {#if showTickLabels}
         <text x={labelX * -orientation} class="fill-contour-weak text-xs" dominant-baseline="middle" style="text-anchor: {labelTextAnchor};">
-          {tickLabels.values[i]}
-          <title>{tickLabels.values[i]}</title>
+          {tickLabels[i]}
+          <title>{tickLabels[i]}</title>
         </text>
       {/if}
     </g>

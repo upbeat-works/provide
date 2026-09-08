@@ -4,6 +4,8 @@
   import ImpactTime from '$routes/(default)/impacts/explore/components/ImpactTime/ImpactTime.svelte';
   import ImpactGeo from '$routes/(default)/impacts/explore/components/ImpactGeo/ImpactGeo.svelte';
   import UnavoidableRisk from '$routes/(default)/impacts/components/UnavoidableRisk/UnavoidableRisk.svelte';
+  import ChartEmbed from '$routes/(default)/projects/eu-scoreboard/components/charts/ChartEmbed.svelte';
+  import { EMBED_UID } from '$routes/(default)/projects/eu-scoreboard/components/charts/catalog.js';
   import { IS_STATIC } from '$stores/state';
   import Logo from '$lib/components/site/Logo.svelte';
 
@@ -11,6 +13,8 @@
     'impact-time': ImpactTime,
     'impact-geo': ImpactGeo,
     'unavoidable-risk': UnavoidableRisk,
+    // The scoreboard's charts share one embed; `?chart=<slug>` says which.
+    [EMBED_UID]: ChartEmbed,
   };
 
   $: urlToState($page.url);

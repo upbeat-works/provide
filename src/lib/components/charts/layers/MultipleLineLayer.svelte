@@ -10,10 +10,13 @@
   $: path = line().x($xGet).y($yGet);
   $: curve && path.curve(curve);
 
-  $: paths = $data.map(({ values, uid, color, strokeWidth: sw, opacity, isSelected, isHighlighted }) => ({
+  // `dash` is an SVG stroke-dasharray, set per series where the lines have to
+  // be told apart without relying on colour alone.
+  $: paths = $data.map(({ values, uid, color, strokeWidth: sw, dash, opacity, isSelected, isHighlighted }) => ({
     d: path(values),
     uid,
     color,
+    dash,
     strokeWidth: sw || strokeWidth,
     opacity,
     isSelected,
@@ -25,27 +28,27 @@
 </script>
 
 <g>
-  {#each pathsNotSelected as { d, color, strokeWidth, opacity }}
-    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke={color} style:stroke-width={strokeWidth - 1} style:opacity={opacity || 1} />
+  {#each pathsNotSelected as { d, color, strokeWidth, dash, opacity }}
+    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke={color} style:stroke-width={strokeWidth - 1} style:stroke-dasharray={dash} style:opacity={opacity || 1} />
   {/each}
 </g>
 <g>
-  {#each pathsSelected as { d, strokeWidth }}
-    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke="#fff" style:stroke-width={strokeWidth + 2} style:opacity={1} />
+  {#each pathsSelected as { d, strokeWidth, dash }}
+    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke="#fff" style:stroke-width={strokeWidth + 2} style:stroke-dasharray={dash} style:opacity={1} />
   {/each}
 </g>
 <g>
-  {#each pathsSelected as { d, color, strokeWidth }}
-    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke={color} style:stroke-width={strokeWidth} style:opacity={1} />
+  {#each pathsSelected as { d, color, strokeWidth, dash }}
+    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke={color} style:stroke-width={strokeWidth} style:stroke-dasharray={dash} style:opacity={1} />
   {/each}
 </g>
 <g>
-  {#each pathsHighlighted as { d, strokeWidth }}
-    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke="#fff" style:stroke-width={strokeWidth + 4} style:opacity={1} />
+  {#each pathsHighlighted as { d, strokeWidth, dash }}
+    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke="#fff" style:stroke-width={strokeWidth + 4} style:stroke-dasharray={dash} style:opacity={1} />
   {/each}
 </g>
 <g>
-  {#each pathsHighlighted as { d, color, strokeWidth }}
-    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke={color} style:stroke-width={strokeWidth + 0.5} style:opacity={1} />
+  {#each pathsHighlighted as { d, color, strokeWidth, dash }}
+    <path class={`path-line fill-none linejoin-round linecap-round`} {d} style:stroke={color} style:stroke-width={strokeWidth + 0.5} style:stroke-dasharray={dash} style:opacity={1} />
   {/each}
 </g>

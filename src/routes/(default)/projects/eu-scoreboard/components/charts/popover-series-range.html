@@ -1,0 +1,8 @@
+<!-- The band's row, rendered on its own and interpolated into popover-series.html
+     as `rangeRow`: only a banded series has one, and these template settings
+     have no usable conditional — an evaluate block is swallowed by the
+     interpolate pattern. Anything in this file, comments included, is compiled. -->
+<div class="w-full font-normal border-t border-contour-weakest flex justify-between gap-2 items-center pt-2 mt-1 text-contour-weak text-sm">
+  <span class="leading-tight">{{rangeLabel}}</span>
+  <span>{{range}}</span>
+</div>
