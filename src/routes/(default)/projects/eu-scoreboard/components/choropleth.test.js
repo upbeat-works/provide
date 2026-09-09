@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { classOf, colorFor, countryBounds, countryFillColor, countryFilter, scoredCountryFilter, legendOf, COUNTRY_CODE } from './choropleth.js';
+import { classOf, colorFor, countryBounds, countryFillColor, countryFilter, scoredCountryFilter, legendOf, uidForCode, COUNTRY_CODE } from './choropleth.js';
 import { indicatorValuesFor, RISK_CLASSES, riskRankingFor, riskValues } from './scores.js';
 
 describe('classOf', () => {
@@ -15,6 +15,22 @@ describe('classOf', () => {
     expect(classOf(null, RISK_CLASSES)).toBeUndefined();
     expect(classOf(NaN, RISK_CLASSES)).toBeUndefined();
     expect(colorFor(undefined, RISK_CLASSES)).toBeUndefined();
+  });
+});
+
+describe('uidForCode', () => {
+  test('reads a clicked feature back to the geo id the scoreboard keys on', () => {
+    expect(uidForCode('ITA', ['ESP', 'ITA'])).toBe('ITA');
+    // Kosovo ships under both spellings; either has to find the same country.
+    expect(uidForCode('XKX', ['KOS'])).toBe('KOS');
+    expect(uidForCode('KOS', ['KOS'])).toBe('KOS');
+  });
+
+  test('has no country for a code outside the coverage', () => {
+    // Clicking Morocco is a click on the basemap, not on a scoreboard country.
+    expect(uidForCode('MAR', ['ESP', 'ITA'])).toBeUndefined();
+    expect(uidForCode(undefined, ['ESP'])).toBeUndefined();
+    expect(uidForCode('ITA', [])).toBeUndefined();
   });
 });
 
@@ -56,7 +72,18 @@ describe('countryFilter', () => {
   const box = (uid, x) => ({
     type: 'Feature',
     properties: { uid },
-    geometry: { type: 'Polygon', coordinates: [[[x, 0], [x + 1, 0], [x + 1, 2], [x, 2], [x, 0]]] },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [x, 0],
+          [x + 1, 0],
+          [x + 1, 2],
+          [x, 2],
+          [x, 0],
+        ],
+      ],
+    },
   });
   const shapes = { type: 'FeatureCollection', features: [box('ESP', 4), box('KOS', 9)] };
 

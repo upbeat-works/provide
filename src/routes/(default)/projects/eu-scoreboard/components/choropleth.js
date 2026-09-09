@@ -10,7 +10,8 @@ import bbox from '@turf/bbox';
 // coastlines and borders go blocky next to the basemap under them, while the
 // tileset is vector tiles at the basemap's own resolution. The join is on its
 // alpha-3 code, which is the scoreboard's geo id.
-export const COUNTRY_CODE = ['get', 'iso_3166_1_alpha_3'];
+export const COUNTRY_CODE_PROPERTY = 'iso_3166_1_alpha_3';
+export const COUNTRY_CODE = ['get', COUNTRY_CODE_PROPERTY];
 
 // One country per feature. Without this every disputed border ships a variant
 // per worldview and they stack on top of each other.
@@ -49,6 +50,14 @@ export function countryFillColor(values = [], classes = []) {
     return color ? [codesFor(entry.uid), color] : [];
   });
   return cases.length ? ['match', COUNTRY_CODE, ...cases, 'transparent'] : 'transparent';
+}
+
+// The reverse of `codesFor`: the geo id behind a code the tileset put on a
+// clicked feature. Only the countries offered are searched, so a click on
+// something the scoreboard has no value for resolves to nothing rather than to
+// a country the view cannot open.
+export function uidForCode(code, uids = []) {
+  return uids.find((uid) => codesFor(uid).includes(code));
 }
 
 // A layer filter matching exactly the given countries (by geo id), one feature
