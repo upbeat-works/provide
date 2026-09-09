@@ -22,6 +22,8 @@
   // Keeps the fitted shape off the edges of the band. A fixed inset rather than
   // a fraction of the width, so a map narrowed by a comparison keeps it.
   export let padding = 48;
+  // Set where `select` is handled — clicking a scored country then opens it.
+  export let selectable = false;
 
   // Framing needs geometry, and the choropleth's vector tiles carry none we can
   // measure, so the country outlines come from geo-shape — fetched the first
@@ -42,7 +44,7 @@
 <div class="{height} w-full">
   <MapProvider bounds={frame} fitBoundsOptions={{ padding }}>
     <ZoomControl />
-    <CountryChoropleth {values} {classes} {highlight} />
+    <CountryChoropleth {values} {classes} {highlight} {selectable} on:select />
     <slot />
   </MapProvider>
 </div>

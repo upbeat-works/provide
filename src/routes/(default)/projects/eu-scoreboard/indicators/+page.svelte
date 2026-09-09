@@ -21,7 +21,10 @@
   import { comparisonViews, seedComparison } from '../components/comparison.js';
   import { charts, dataParamsFor, graphParamsFor, DOWNLOAD_ENDPOINT, EMBED_UID } from '../components/charts/catalog.js';
   import { findCaseStudy } from '$lib/catalog/case-study-link.js';
-  import { PATH_ADAPTATION, PATH_DOCUMENTATION } from '$config';
+  import { browser } from '$app/environment';
+  import { page } from '$app/stores';
+  import { replaceState } from '$app/navigation';
+  import { PATH_ADAPTATION, PATH_DOCUMENTATION, URL_PATH_GEOGRAPHY } from '$config';
 
   export let data;
 
@@ -49,6 +52,39 @@
   let geography;
   let year = DEFAULT_YEAR;
   $: scenario = $CURRENT_SCENARIOS[0];
+
+  // The country lives in the URL, so a link from the ranking view (or from this
+  // view's own map) opens already scoped to it, and "Copy link to these
+  // results" carries the selection. Read once the catalog is in — the geo id in
+  // the link has to be resolved against the country list.
+  let readUrl = false;
+  $: if (!readUrl && countries.length) {
+    readUrl = true;
+    const geoId = $page.url.searchParams.get(URL_PATH_GEOGRAPHY);
+    if (geoId) geography = countries.find((country) => country.geoId === geoId);
+  }
+
+  // Written back with replaceState rather than goto: this is the same view with
+  // a different country, so it should neither re-run the page's load nor leave
+  // a history entry per dropdown click.
+  $: if (readUrl && browser) writeUrl(geography);
+
+  function writeUrl(selected) {
+    const url = new URL($page.url);
+    if (selected?.geoId) url.searchParams.set(URL_PATH_GEOGRAPHY, selected.geoId);
+    else url.searchParams.delete(URL_PATH_GEOGRAPHY);
+    if (url.href !== $page.url.href) replaceState(url, $page.state);
+  }
+
+  // A country on the map is the same choice as the one in the filter bar —
+  // except while comparing geographies, where each map is choosing for its own
+  // side.
+  function selectFromMap(geoId, side) {
+    const match = countries.find((country) => country.geoId === geoId);
+    if (!match) return;
+    if (compareBy?.uid === 'geography') sides[side] = match;
+    else geography = match;
+  }
 
   // A comparison lifts one dimension out of the filter bar and gives each map
   // its own selector for it; everything else stays shared.
@@ -154,6 +190,8 @@
               values={indicatorValuesFor(view)}
               classes={INDICATOR_CLASSES}
               highlight={view.geography?.geoId}
+              selectable={true}
+              on:select={({ detail }) => selectFromMap(detail.uid, i)}
             />
 
             <!-- Overlays sit on the map they belong to. With one map the inner

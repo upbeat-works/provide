@@ -16,7 +16,8 @@
   import { DEFAULT_YEAR, YEARS } from './components/filters.js';
   import { RISK_CLASSES, riskRankingFor, riskValuesFor } from './components/scores.js';
   import { comparisonViews, seedComparison } from './components/comparison.js';
-  import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS } from '$config';
+  import { goto } from '$app/navigation';
+  import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS, URL_PATH_GEOGRAPHY } from '$config';
 
   // Scoreboard ranking view. Structure-only: there are no scoreboard endpoints
   // yet, so the controls and the scores are placeholders — what's real here is
@@ -62,9 +63,16 @@
     { label: String(view.year?.label ?? ''), accent: compared === 'year' },
   ];
 
+  // Both ways into a country lead to the same place: the indicators view,
+  // already scoped to it. The geo id is what that view reads back.
+  const countryHref = (uid) => `${indicatorsHref}?${URL_PATH_GEOGRAPHY}=${encodeURIComponent(uid)}`;
+
   // The leaderboard is the top of the same table the map is coloured from, so a
   // dark country on the map is a country at the top of this list.
-  const rankingFor = (view) => riskRankingFor(view).slice(0, 5).map((entry) => ({ ...entry, href: indicatorsHref }));
+  const rankingFor = (view) =>
+    riskRankingFor(view)
+      .slice(0, 5)
+      .map((entry) => ({ ...entry, href: countryHref(entry.uid) }));
 
   // The index reads differently from the headings — the last section's heading
   // names the hazard, the index just promises more data — so it's written out
@@ -145,7 +153,16 @@
       <div class="flex" class:gap-px={compareBy}>
         {#each views as view, i (i)}
           <div class="relative min-w-0 flex-1">
-            <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={riskValuesFor(view)} classes={RISK_CLASSES} />
+            <!-- Clicking a country is the map's version of clicking its row in
+                 the ranking beside it, so both open the same view. -->
+            <ScoreboardMap
+              bounds={europeBounds}
+              height="h-[560px]"
+              values={riskValuesFor(view)}
+              classes={RISK_CLASSES}
+              selectable={true}
+              on:select={({ detail }) => goto(countryHref(detail.uid))}
+            />
 
             <!-- Overlays sit on the map they belong to. With one map the inner
                  max-w-7xl keeps the panel on the same left edge as the content

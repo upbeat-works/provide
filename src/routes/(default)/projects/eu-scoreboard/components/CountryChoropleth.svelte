@@ -3,8 +3,8 @@
 </script>
 
 <script>
-  import { getContext, onDestroy } from 'svelte';
-  import { countryFillColor, countryFilter, scoredCountryFilter, WORLDVIEW_FILTER } from './choropleth.js';
+  import { createEventDispatcher, getContext, onDestroy } from 'svelte';
+  import { colorFor, countryFillColor, countryFilter, scoredCountryFilter, uidForCode, COUNTRY_CODE_PROPERTY, WORLDVIEW_FILTER } from './choropleth.js';
 
   // A country choropleth drawn straight from Mapbox's `country-boundaries-v1`
   // tileset: vector tiles at the basemap's own resolution, so borders and
@@ -17,9 +17,14 @@
   // Geo id of the country the view is scoped to, outlined so the selection is
   // visible on a map that is otherwise all one choropleth.
   export let highlight = undefined;
+  // Whether a country can be clicked. Only set it where the `select` event is
+  // acted on: it is what puts the pointer cursor on the map, and a cursor that
+  // promises a click nothing handles is worse than no cursor at all.
+  export let selectable = false;
 
   const { map } = getContext('mapbox');
   const theme = getContext('theme');
+  const dispatch = createEventDispatcher();
 
   const sourceId = `country-boundaries-${instance}`;
   const fillLayerId = `country-choropleth-fill-${instance}`;
@@ -115,6 +120,45 @@
   showCountryLabels();
   haloLabels();
 
+  // Only the countries this map has a colour for can be opened — the rest of the
+  // world is basemap the scoreboard says nothing about. Read from the values
+  // rather than from a separate list so the clickable countries are exactly the
+  // painted ones.
+  $: scoredUids = values.flatMap((entry) => (colorFor(entry.value, classes) ? [entry.uid] : []));
+
+  const codeOf = (feature) => feature?.properties?.[COUNTRY_CODE_PROPERTY];
+
+  function handleClick({ features }) {
+    const uid = uidForCode(codeOf(features?.[0]), scoredUids);
+    if (uid) dispatch('select', { uid });
+  }
+
+  // The fill layer covers every country, so the cursor has to follow what is
+  // actually scored rather than the layer as a whole.
+  function handleMove({ features }) {
+    const uid = uidForCode(codeOf(features?.[0]), scoredUids);
+    $map.getCanvas().style.cursor = uid ? 'pointer' : '';
+  }
+
+  function clearCursor() {
+    $map.getCanvas().style.cursor = '';
+  }
+
+  $: if ($map.getLayer(fillLayerId)) {
+    // Re-attached rather than guarded inside the handlers, so a map that is not
+    // selectable carries no listeners at all.
+    $map.off('click', fillLayerId, handleClick);
+    $map.off('mousemove', fillLayerId, handleMove);
+    $map.off('mouseleave', fillLayerId, clearCursor);
+    if (selectable) {
+      $map.on('click', fillLayerId, handleClick);
+      $map.on('mousemove', fillLayerId, handleMove);
+      $map.on('mouseleave', fillLayerId, clearCursor);
+    } else {
+      clearCursor();
+    }
+  }
+
   // Repaint rather than rebuild when the selection changes: the geometry is the
   // same tiles, only the colour each country takes is different.
   $: if ($map.getLayer(fillLayerId)) {
@@ -128,6 +172,10 @@
 
   onDestroy(() => {
     try {
+      $map.off('click', fillLayerId, handleClick);
+      $map.off('mousemove', fillLayerId, handleMove);
+      $map.off('mouseleave', fillLayerId, clearCursor);
+      clearCursor();
       $map.getLayer(highlightLayerId) && $map.removeLayer(highlightLayerId);
       $map.getLayer(lineLayerId) && $map.removeLayer(lineLayerId);
       $map.getLayer(fillLayerId) && $map.removeLayer(fillLayerId);
