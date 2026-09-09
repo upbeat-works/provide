@@ -97,5 +97,11 @@ services:
     volumes:
       - .:/app
       - /app/node_modules # keep the container's Linux-built node_modules
+      # `svelte-kit sync` output must match the kit that reads it. The container
+      # installs from package-lock.json (kit 2.5.0); the host installs from
+      # bun.lock (kit 2.70.1). Shared, whichever ran sync last wins — and host
+      # 2.70.1 emits `import { browser } from '$app/env'`, a module 2.5.0 has no
+      # runtime file for, so every SSR page load 500s. Give each its own.
+      - /app/.svelte-kit
     ports:
       - '5173:5173' # vite HMR websocket connects here directly
