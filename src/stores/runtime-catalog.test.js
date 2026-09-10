@@ -862,7 +862,7 @@ describe('runtime catalog selection', () => {
     await Promise.all([availability, details]);
 
     expect(get(catalog.selection)).toMatchObject({
-      parameters: {},
+      parameters: { time: 'Annual' },
       scenarios: ['High Renewables'],
     });
     expect(get(catalog.percentileAvailability)).toEqual({ status: 'idle' });
@@ -1059,4 +1059,27 @@ describe('reconcileConfirmedSelection', () => {
     expect(reconcileConfirmedSelection({ current: 'DEU', allowed: [] })).toBeUndefined();
     expect(reconcileConfirmedSelection({ current: ['A', 'B'], allowed: ['B', 'C'] })).toEqual(['B']);
   });
+});
+
+test.each([
+  { current: undefined, options: ['1850-1900 (Pre-industrial)', '2011-2020 (Present Day)'], expected: '2011-2020 (Present Day)' },
+  { current: '1850-1900 (Pre-industrial)', options: ['1850-1900 (Pre-industrial)', '2011-2020 (Present Day)'], expected: '1850-1900 (Pre-industrial)' },
+  { current: undefined, options: ['Alternative baseline'], expected: 'Alternative baseline' },
+])('resolves reference $current to $expected when indicator details load', async ({ current, options, expected }) => {
+  server.use(
+    http.get(`${APP_URL}/indicator-details/Heat`, () =>
+      HttpResponse.json({
+        id: 'Heat',
+        instance: 'provide-internal',
+        parameters: [{ id: 'reference', options: options.map((id) => ({ id })) }],
+      })
+    )
+  );
+  const catalog = createCatalog();
+  catalog.selectIndicator(indicator('Heat'));
+  catalog.selectParameters({ reference: current, unused: 'Remove' });
+
+  await catalog.loadIndicatorDetails();
+
+  expect(get(catalog.selection).parameters).toEqual({ reference: expected });
 });

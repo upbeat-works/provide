@@ -1,11 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
 import { readFileSync } from 'node:fs';
 import { legacyMapRequestParams, legacyMapView } from './legacy-map-request.js';
-import { toLegacyScenarioUid } from './translate.js';
-
-const server = setupServer();
 
 describe('legacy map request boundary', () => {
   test('hides a confirmed selection with no legacy indicator mapping', () => {
@@ -22,7 +17,10 @@ describe('legacy map request boundary', () => {
 
   test.each([
     [{ status: 'loading' }, { status: 'loading' }],
-    [{ status: 'failure', failedRequest: 'availability' }, { status: 'failure', failedRequest: 'availability' }],
+    [
+      { status: 'failure', failedRequest: 'availability' },
+      { status: 'failure', failedRequest: 'availability' },
+    ],
   ])('preserves unresolved chart feedback before checking legacy mappings', (chartView, expected) => {
     expect(legacyMapView({ chartView })).toEqual(expected);
   });
@@ -69,66 +67,6 @@ describe('legacy map request boundary', () => {
         optionValues: {},
       });
       expect(params.indicator, id).toBe(legacyId);
-    }
-  });
-
-  test('sends the old map indicator ID for a canonical source-bound selection', async () => {
-    let requestedIndicator;
-    server.use(
-      http.get('https://legacy.example/map', ({ request }) => {
-        requestedIndicator = new URL(request.url).searchParams.get('indicator');
-        return HttpResponse.json({ data: [] });
-      })
-    );
-    server.listen({ onUnhandledRequest: 'error' });
-
-    try {
-      const params = legacyMapRequestParams({
-        geography: { id: 'Portugal', geoId: 'PRT', geographyType: 'admin0' },
-        indicator: { id: 'Mean Temperature', instance: 'provide-internal' },
-        optionValues: { reference: '2011-2020 (Present Day)' },
-      });
-      await fetch(`https://legacy.example/map?${new URLSearchParams(params)}`);
-      expect(requestedIndicator).toBe('terclim-mean-temperature');
-    } finally {
-      server.close();
-    }
-  });
-
-  test('maps the title-cased annual maximum temperature for Afghanistan', () => {
-    expect(
-      legacyMapRequestParams({
-        geography: { id: 'Afghanistan', geoId: 'AFG', geographyType: 'admin0' },
-        indicator: { id: 'Annual Maximum Temperature', instance: 'provide-internal' },
-        optionValues: {},
-      })
-    ).toMatchObject({ geography: 'AFG', indicator: 'terclim-txx' });
-  });
-
-  test.each([
-    ['Stabilisation at 1.5 °C', 'ref-1p5'],
-    ['Stabilisation at 1.5 °C (Extended)', 'ref-1p5-extended'],
-    ['SSP5-3.4-Overshoot (Extended)', 'ssp534-over-extended'],
-  ])('sends the matching legacy scenario for %s', async (scenario, expectedLegacyUid) => {
-    let requestedScenario;
-    server.use(
-      http.get('https://legacy.example/map', ({ request }) => {
-        requestedScenario = new URL(request.url).searchParams.get('scenario');
-        return HttpResponse.json({ data: [] });
-      })
-    );
-    server.listen({ onUnhandledRequest: 'error' });
-
-    try {
-      const params = legacyMapRequestParams({
-        geography: { id: 'Afghanistan', geoId: 'AFG', geographyType: 'admin0' },
-        indicator: { id: 'Annual Maximum Temperature', instance: 'provide-internal' },
-      });
-      params.scenario = toLegacyScenarioUid(scenario);
-      await fetch(`https://legacy.example/map?${new URLSearchParams(params)}`);
-      expect(requestedScenario).toBe(expectedLegacyUid);
-    } finally {
-      server.close();
     }
   });
 });

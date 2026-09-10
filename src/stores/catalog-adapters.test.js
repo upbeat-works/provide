@@ -26,7 +26,7 @@ import {
 const selectedIndicator = { id: 'Heat', instance: 'primary' };
 
 describe('catalog consumer adapters', () => {
-  test.each(['idle', 'loading', 'failure'])('keeps pending parameter values during %s details', (status) => {
+  test.each(['idle', 'loading', 'failure'])('offers no parameter controls during %s details', (status) => {
     const result = parameterAdapter({
       selection: {
         indicator: selectedIndicator,
@@ -36,10 +36,10 @@ describe('catalog consumer adapters', () => {
       definitions: [],
     });
 
-    expect(result).toEqual({ parameters: [], nextValues: null, removedKeys: [] });
+    expect(result).toEqual([]);
   });
 
-  test('applies defaults and cleanup only for details from the selected indicator instance', () => {
+  test('offers labelled parameter controls only for the selected indicator instance', () => {
     const selection = {
       indicator: selectedIndicator,
       parameters: { time: 'Seasonal', old: 'Remove', reference: 'Historic' },
@@ -64,7 +64,7 @@ describe('catalog consumer adapters', () => {
       definitions,
     });
 
-    expect(mismatched).toEqual({ parameters: [], nextValues: null, removedKeys: [] });
+    expect(mismatched).toEqual([]);
 
     const result = parameterAdapter({
       selection,
@@ -88,82 +88,17 @@ describe('catalog consumer adapters', () => {
       definitions,
     });
 
-    expect(result).toEqual({
-      parameters: [
-        {
-          uid: 'time',
-          label: 'Time',
-          options: [
-            { uid: 'Annual', label: 'Annual label' },
-            { uid: 'Seasonal', label: 'Seasonal label' },
-          ],
-          description: undefined,
-        },
-      ],
-      nextValues: { time: 'Seasonal' },
-      removedKeys: ['old'],
-    });
-  });
-
-  test('defaults reference to Present Day when it is available', () => {
-    const result = parameterAdapter({
-      selection: { indicator: selectedIndicator, parameters: {} },
-      request: {
-        status: 'success',
-        data: {
-          id: 'Heat',
-          instance: 'primary',
-          parameters: [
-            {
-              id: 'reference',
-              options: [{ id: '1850-1900 (Pre-industrial)' }, { id: '2011-2020 (Present Day)' }],
-            },
-          ],
-        },
+    expect(result).toEqual([
+      {
+        uid: 'time',
+        label: 'Time',
+        options: [
+          { uid: 'Annual', label: 'Annual label' },
+          { uid: 'Seasonal', label: 'Seasonal label' },
+        ],
+        description: undefined,
       },
-      definitions: [],
-    });
-
-    expect(result.nextValues.reference).toBe('2011-2020 (Present Day)');
-  });
-
-  test('keeps a valid selected reference instead of applying the default', () => {
-    const result = parameterAdapter({
-      selection: { indicator: selectedIndicator, parameters: { reference: '1850-1900 (Pre-industrial)' } },
-      request: {
-        status: 'success',
-        data: {
-          id: 'Heat',
-          instance: 'primary',
-          parameters: [
-            {
-              id: 'reference',
-              options: [{ id: '1850-1900 (Pre-industrial)' }, { id: '2011-2020 (Present Day)' }],
-            },
-          ],
-        },
-      },
-      definitions: [],
-    });
-
-    expect(result.nextValues.reference).toBe('1850-1900 (Pre-industrial)');
-  });
-
-  test('uses the first reference when Present Day is unavailable', () => {
-    const result = parameterAdapter({
-      selection: { indicator: selectedIndicator, parameters: {} },
-      request: {
-        status: 'success',
-        data: {
-          id: 'Heat',
-          instance: 'primary',
-          parameters: [{ id: 'reference', options: [{ id: 'Alternative baseline' }] }],
-        },
-      },
-      definitions: [],
-    });
-
-    expect(result.nextValues.reference).toBe('Alternative baseline');
+    ]);
   });
 
   test('adapts scenario availability to the timeframe field used by charts', () => {

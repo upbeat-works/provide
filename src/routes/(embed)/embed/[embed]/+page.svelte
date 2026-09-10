@@ -8,7 +8,7 @@
   import UnavoidableRisk from '$routes/(default)/impacts/components/UnavoidableRisk/UnavoidableRisk.svelte';
   import ChartEmbed from '$routes/(default)/projects/eu-scoreboard/components/charts/ChartEmbed.svelte';
   import { EMBED_UID } from '$routes/(default)/projects/eu-scoreboard/components/charts/catalog.js';
-  import { IS_STATIC, RUNTIME_CATALOG_SELECTION } from '$stores/state';
+  import { IS_STATIC, RUNTIME_CATALOG_SELECTION, SELECTION_MODE, FACET_FILTERS } from '$stores/state';
   import { catalogFlow } from '$stores/catalog-flow.js';
   import { loadEmbedRuntime } from './embed-runtime.js';
   import Logo from '$lib/components/site/Logo.svelte';
@@ -37,7 +37,7 @@
     const key = JSON.stringify(selection);
     if (key === loadedSelection) return;
     loadedSelection = key;
-    void loadEmbedRuntime(catalogFlow);
+    void loadEmbedRuntime(catalogFlow, { mode: $SELECTION_MODE, filters: $FACET_FILTERS });
   }
 
   function generateUrl() {

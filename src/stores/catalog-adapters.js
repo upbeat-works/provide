@@ -1,14 +1,5 @@
 import { activeFacetGroupCount } from './facet-selection.js';
 
-const PRESENT_DAY_REFERENCE = '2011-2020 (Present Day)';
-
-function defaultParameterValue(parameter) {
-  if (parameter.uid === 'reference' && parameter.options.some(({ uid }) => uid === PRESENT_DAY_REFERENCE)) {
-    return PRESENT_DAY_REFERENCE;
-  }
-  return parameter.options[0]?.uid;
-}
-
 export function indicatorIdentityKey(indicator) {
   if (!indicator) return undefined;
   return `${indicator.instance}\u0000${indicator.id}`;
@@ -37,13 +28,13 @@ export function scenariosForTimeframe({ selectedScenarios = [], allScenarios = [
 export function parameterAdapter({ selection, request, definitions }) {
   const selected = selection.indicator;
   if (!selected || request.status !== 'success') {
-    return { parameters: [], nextValues: null, removedKeys: [] };
+    return [];
   }
   const detail = request.data;
   if (detail.id !== selected.id || detail.instance !== selected.instance) {
-    return { parameters: [], nextValues: null, removedKeys: [] };
+    return [];
   }
-  const parameters = (detail.parameters ?? []).map((parameter) => {
+  return (detail.parameters ?? []).map((parameter) => {
     const definition = definitions.find(({ uid }) => uid === parameter.id);
     return {
       uid: parameter.id,
@@ -55,24 +46,6 @@ export function parameterAdapter({ selection, request, definitions }) {
       description: definition?.description,
     };
   });
-  const detailParameters = new Map((detail.parameters ?? []).map((parameter) => [parameter.id, parameter]));
-  const nextValues = Object.fromEntries(parameters.map((parameter) => [parameter.uid, defaultParameterValue(parameter)]).filter(([, value]) => value !== undefined));
-  const removedKeys = [];
-  for (const [key, value] of Object.entries(selection.parameters ?? {})) {
-    const detailParameter = detailParameters.get(key);
-    if (detailParameter?.options.some((option) => option.id === value)) {
-      nextValues[key] = value;
-      continue;
-    }
-    const definition = definitions.find(({ uid }) => uid === key);
-    if (definition?.options?.some(({ uid }) => uid === value)) continue;
-    removedKeys.push(key);
-  }
-  return {
-    parameters,
-    nextValues,
-    removedKeys,
-  };
 }
 
 export function indicatorFilterInput({ mode, geography, filters }) {

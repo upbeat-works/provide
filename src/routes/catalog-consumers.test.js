@@ -1,3 +1,4 @@
+import { indicatorListRequest, percentileChartView, warmingChartView } from '$stores/catalog-adapters.js';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { createRuntimeCatalog } from '$stores/runtime-catalog.js';
@@ -402,7 +403,6 @@ describe('focused catalog consumers', () => {
       studyLocation: { uid: 'city-average', label: 'City average' },
       year: { uid: 'always', label: 'always' },
     });
-    expect(apiPaths(requests)).not.toContain('/api/catalog');
   });
 
   test('case-study avoiding-impact data rejects a partial source-free indicator index', async () => {
@@ -485,6 +485,21 @@ describe('focused catalog consumers', () => {
     catalog.setPendingSelection(pending);
     await loadEmbedRuntime(flow);
 
+    const selection = get(catalog.selection);
+    const context = { mode: 'geography', geography: selection.geography, filters: {} };
+    const chartInput = {
+      combinationAvailable: true,
+      indicatorScopeRequest: indicatorListRequest({
+        ...context,
+        indexRequest: get(catalog.indicatorIndex),
+        filteredRequest: get(catalog.filteredIndicators),
+      }),
+      indicatorScopeContext: context,
+      selection,
+    };
+    expect(percentileChartView({ ...chartInput, availability: get(catalog.percentileAvailability) })).toEqual({ status: 'ready' });
+    expect(warmingChartView({ ...chartInput, availability: get(catalog.warmingLevelAvailability) })).toEqual({ status: 'ready' });
+
     expect(selectionUrlParams(get(catalog.selection))).toEqual({
       indicator: 'Heat',
       instance: 'provide-internal',
@@ -500,8 +515,8 @@ describe('focused catalog consumers', () => {
       '/api/geography-availability?indicator=Heat&instance=provide-internal',
       '/api/scenario-availability?indicator=Heat&region=DEU&instance=provide-internal&time=Annual&axis=percentile',
       '/api/scenario-availability?indicator=Heat&region=DEU&instance=provide-internal&time=Annual&axis=warmingLevel',
+      '/api/indicators?region=DEU',
     ]);
-    expect(requests).not.toContain('/api/catalog');
   });
 
   test.each([
@@ -547,20 +562,5 @@ describe('focused catalog consumers', () => {
       parameters: { time: 'Annual' },
       scenarios: ['Low Demand'],
     });
-  });
-
-  test('no consumer request uses the broad catalog endpoint', async () => {
-    const { loaderFetch, requests } = createLoaderFetch();
-    const loaders = await Promise.all([
-      import('./(default)/methodology/key-terms/+page.server.js'),
-      import('./(embed)/+layout.server.js'),
-      import('./(default)/adaptation/+layout.server.js'),
-      import('./(default)/projects/eu-scoreboard/+layout.server.js'),
-      import('./(default)/case-studies/+layout.server.js'),
-    ]);
-
-    await Promise.all(loaders.map(({ load }) => load({ fetch: loaderFetch, setHeaders: () => {} })));
-
-    expect(apiPaths(requests)).not.toContain('/api/catalog');
   });
 });

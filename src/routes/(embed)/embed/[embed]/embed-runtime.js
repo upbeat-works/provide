@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 
-export async function loadEmbedRuntime(flow) {
+export async function loadEmbedRuntime(flow, { mode = 'geography', filters = {} } = {}) {
   await Promise.all([flow.catalog.loadIndicatorIndex(), flow.catalog.loadGeographyIndex()]);
   const indexRequest = get(flow.catalog.indicatorIndex);
   const indicator = get(flow.catalog.selection).indicator;
@@ -10,4 +10,5 @@ export async function loadEmbedRuntime(flow) {
   const confirmed = (indexRequest.data.indicators ?? []).some(({ id, instance }) => id === indicator.id && instance === indicator.instance);
   if (!confirmed) return;
   await flow.chooseIndicator(indicator);
+  await flow.syncIndicatorScope({ mode, filters, geography: get(flow.catalog.selection).geography });
 }

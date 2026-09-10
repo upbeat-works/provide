@@ -129,6 +129,67 @@ function useSelectionHandlers(requests) {
 }
 
 describe('catalog page flow', () => {
+  test('keeps the indicator when a removed filter finishes, and checks that filter again when reapplied', async () => {
+    let finish;
+    const catalog = createRuntimeCatalog({
+      fetch: () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    });
+    const flow = createCatalogFlow(catalog);
+    catalog.selectIndicator(indicator());
+    const context = { mode: 'indicator' };
+    const filters = { Sector: ['Water'] };
+
+    const loading = flow.applyFilters(filters, context);
+    await flow.applyFilters({}, context);
+    finish(Response.json({ indicators: [], failedInstances: [] }));
+    await loading;
+
+    expect(get(catalog.selection).indicator).toEqual({ id: 'Heat', instance: 'provide-external' });
+
+    const reapplied = flow.applyFilters(filters, context);
+    finish(Response.json({ indicators: [], failedInstances: [] }));
+    await reapplied;
+    expect(get(catalog.selection).indicator).toBeUndefined();
+  });
+
+  test('retries details with valid parameter defaults and reloads chart availability', async () => {
+    const requests = [];
+    useSelectionHandlers(requests);
+    const { catalog, flow } = createFlow();
+    let failed = true;
+    server.use(
+      http.get(`${APP_URL}/indicator-details/Heat`, () => {
+        if (failed) return HttpResponse.json({}, { status: 503 });
+        return HttpResponse.json(indicatorDetails());
+      })
+    );
+    catalog.setPendingSelection({
+      indicator: 'Heat',
+      instance: 'provide-external',
+      geography: 'DEU',
+      parameters: { time: 'Unavailable' },
+      scenarios: ['Low'],
+    });
+    await flow.chooseIndicator(indicator());
+    expect(get(catalog.indicatorDetails).status).toBe('failure');
+
+    failed = false;
+    await flow.retryIndicatorDetails();
+
+    expect(get(catalog.selection).parameters).toEqual({ time: 'Annual' });
+    for (const availability of [catalog.percentileAvailability, catalog.warmingLevelAvailability]) {
+      expect(get(availability)).toMatchObject({
+        status: 'success',
+        data: { context: { parameters: { time: 'Annual' } } },
+      });
+    }
+    expect(requests.some((request) => request.includes('time=Annual') && request.includes('axis=percentile'))).toBe(true);
+    expect(requests.some((request) => request.includes('time=Annual') && request.includes('axis=warmingLevel'))).toBe(true);
+  });
+
   test('landing and Explore server loads request editorial data without a catalog scan', async () => {
     vi.stubEnv('SSR', true);
     vi.stubEnv('VITE_API_URL', API_URL);
@@ -204,7 +265,7 @@ describe('catalog page flow', () => {
     expect(get(catalog.selection)).toEqual({
       indicator: { id: 'Heat', instance: 'provide-external' },
       geography: 'DEU',
-      parameters: {},
+      parameters: { time: 'Annual' },
       scenarios: ['Low'],
     });
     expect(get(catalog.indicatorDetails)).toMatchObject({ status: 'success', data: { description: 'Useful detail' } });

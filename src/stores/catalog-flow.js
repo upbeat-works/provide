@@ -51,7 +51,12 @@ export function createCatalogFlow(catalog) {
 
   async function syncIndicatorScope(context) {
     const input = indicatorFilterInput(context);
-    if (!input) return;
+    if (!input) {
+      activeIndicatorScopeKey = undefined;
+      activeIndicatorScopeRequest = undefined;
+      catalog.clearFilteredIndicators();
+      return;
+    }
     const key = indicatorFilterKey(input);
     if (key === activeIndicatorScopeKey) return activeIndicatorScopeRequest;
     activeIndicatorScopeKey = key;
@@ -66,6 +71,7 @@ export function createCatalogFlow(catalog) {
 
   async function retryIndicatorDetails() {
     await catalog.loadIndicatorDetails();
+    await loadScenarioAvailability();
   }
 
   async function retryPercentileAvailability() {

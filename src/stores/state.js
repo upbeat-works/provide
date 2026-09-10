@@ -17,7 +17,16 @@ import { FACETS_INITIAL, GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAM
 import { activeFacetGroupCount } from './facet-selection.js';
 import { parseStoredScenarios, graftScenarioAvailability } from './scenario-selection.js';
 import { runtimeCatalog } from './runtime-catalog.js';
-import { filteredIndicatorIds, indicatorFilterInput, indicatorListRequest, indicatorSelectionAvailable, parameterAdapter, percentileChartView, scenarioAvailabilityRows, warmingChartView } from './catalog-adapters.js';
+import {
+  filteredIndicatorIds,
+  indicatorFilterInput,
+  indicatorListRequest,
+  indicatorSelectionAvailable,
+  parameterAdapter,
+  percentileChartView,
+  scenarioAvailabilityRows,
+  warmingChartView,
+} from './catalog-adapters.js';
 
 export const RUNTIME_CATALOG_SELECTION = runtimeCatalog.selection;
 export const PENDING_CATALOG_SELECTION = runtimeCatalog.pendingSelection;
@@ -316,15 +325,10 @@ export const CURRENT_INDICATOR_UNIT_UID = derived(CURRENT_INDICATOR_UNIT, ($unit
 const LOCALSTORE_PARAMETER_PREFIX = `${LOCALSTORE_PARAMETERS}-`;
 
 function getAllLocalStorageForParameters() {
-  // This gets all values in the local storage and then filters out the one relevant for the parameters
   const list = getAllLocalStorage().filter(([key]) => key.startsWith(LOCALSTORE_PARAMETER_PREFIX));
-  // This loops over the values, extracts the actual key and the value.
-  // This allows false entries to be made, but we clean them up later when we have a the list of possible values from INDICATOR_PARAMETERS
-  return Object.fromEntries(list.map(([key, value]) => [key.replace(LOCALSTORE_PARAMETER_PREFIX, ''), value]));
+  return Object.fromEntries(list.map(([key, value]) => [key.slice(LOCALSTORE_PARAMETER_PREFIX.length), value]));
 }
 
-// Key value store of currently selected parameters
-// The initial lookup in the localstorage might get too many parameters as we can only filter out irrelevant parameters when we know the indicator
 const initialIndicatorOptions = getAllLocalStorageForParameters();
 runtimeCatalog.selectParameters(initialIndicatorOptions);
 const currentIndicatorOptionValuesStore = writable(initialIndicatorOptions);
@@ -335,32 +339,24 @@ runtimeCatalog.selection.subscribe((selection) => {
   currentIndicatorOptionValuesStore.set(selection.parameters);
   parametersFromRuntime = false;
 });
-currentIndicatorOptionValuesStore.subscribe((obj) => {
-  // This loops over the parameter object …
-  Object.entries(obj).forEach(([key, value]) => {
-    // and stores all values with a prefix in the local storage
+let storedParameterValues = initialIndicatorOptions;
+currentIndicatorOptionValuesStore.subscribe((values) => {
+  for (const key of Object.keys(storedParameterValues)) {
+    if (!(key in values)) setLocalStorage(`${LOCALSTORE_PARAMETER_PREFIX}${key}`, undefined);
+  }
+  for (const [key, value] of Object.entries(values)) {
     setLocalStorage(`${LOCALSTORE_PARAMETER_PREFIX}${key}`, value);
-  });
-  if (!parametersFromRuntime && !_.isEqual(getStore(runtimeCatalog.selection).parameters, obj)) {
-    runtimeCatalog.selectParameters(obj);
+  }
+  storedParameterValues = values;
+  if (!parametersFromRuntime && !_.isEqual(getStore(runtimeCatalog.selection).parameters, values)) {
+    runtimeCatalog.selectParameters(values);
   }
 });
 export const CURRENT_INDICATOR_OPTION_VALUES = currentIndicatorOptionValuesStore;
 
-// Array of available parameters for currently selected indicator
-// This list is based on the current indicator and the generally available parameters
 export const CURRENT_INDICATOR_PARAMETERS = derived(
   [RUNTIME_CATALOG_SELECTION, INDICATOR_DETAILS_REQUEST, INDICATOR_PARAMETERS],
-  ([$selection, $request, $definitions]) => {
-    const result = parameterAdapter({ selection: $selection, request: $request, definitions: $definitions });
-    if (result.nextValues && !_.isEqual(result.nextValues, $selection.parameters)) {
-      CURRENT_INDICATOR_OPTION_VALUES.set(result.nextValues);
-    }
-    for (const key of result.removedKeys) {
-      setLocalStorage(`${LOCALSTORE_PARAMETER_PREFIX}${key}`, undefined);
-    }
-    return result.parameters;
-  },
+  ([$selection, $request, $definitions]) => parameterAdapter({ selection: $selection, request: $request, definitions: $definitions }),
   []
 );
 
@@ -582,7 +578,17 @@ export const WARMING_CHART_VIEW = derived(
 );
 
 export const MAP_CHART_VIEW = derived(
-  [IS_COMBINATION_AVAILABLE, PERCENTILE_SCENARIO_AVAILABILITY_REQUEST, ACTIVE_INDICATOR_SCOPE_REQUEST, ACTIVE_INDICATOR_SCOPE_CONTEXT, RUNTIME_CATALOG_SELECTION, CURRENT_GEOGRAPHY, CURRENT_INDICATOR, CURRENT_SCENARIOS, CURRENT_INDICATOR_OPTION_VALUES],
+  [
+    IS_COMBINATION_AVAILABLE,
+    PERCENTILE_SCENARIO_AVAILABILITY_REQUEST,
+    ACTIVE_INDICATOR_SCOPE_REQUEST,
+    ACTIVE_INDICATOR_SCOPE_CONTEXT,
+    RUNTIME_CATALOG_SELECTION,
+    CURRENT_GEOGRAPHY,
+    CURRENT_INDICATOR,
+    CURRENT_SCENARIOS,
+    CURRENT_INDICATOR_OPTION_VALUES,
+  ],
   ([$combinationAvailable, $availability, $indicatorScopeRequest, $indicatorScopeContext, $selection, $geography, $indicator, $scenarios, $optionValues]) =>
     legacyMapView({
       chartView: percentileChartView({

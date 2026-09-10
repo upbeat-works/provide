@@ -114,14 +114,19 @@ function filteredIndicatorResult(response, input) {
   };
 }
 
-function validParameters(current, details) {
-  const parameters = new Map((details.parameters ?? []).map((parameter) => [parameter.id, parameter]));
-  return Object.fromEntries(
-    Object.entries(current).filter(([key, value]) => {
-      const parameter = parameters.get(key);
-      return parameter?.options?.some((option) => option.id === value);
-    })
-  );
+function resolveParameters(current, details) {
+  const values = {};
+  for (const parameter of details.parameters ?? []) {
+    const options = parameter.options ?? [];
+    const selected = options.find((option) => option.id === current[parameter.id]);
+    let fallback = options[0];
+    if (parameter.id === 'reference') {
+      fallback = options.find((option) => option.id === '2011-2020 (Present Day)') ?? fallback;
+    }
+    const value = selected ?? fallback;
+    if (value) values[parameter.id] = value.id;
+  }
+  return values;
 }
 
 export function reconcileConfirmedSelection({ current, allowed }) {
@@ -295,6 +300,12 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
     if (geographyIndex.status === 'success') applyGeographyIndex(geographyIndex.data);
   }
 
+  function clearFilteredIndicators() {
+    if (currentFilteredIndicatorInput === undefined) return;
+    currentFilteredIndicatorInput = undefined;
+    filteredIndicatorsRequest.clear();
+  }
+
   async function loadFilteredIndicators({ region, filters } = {}) {
     const input = {
       region,
@@ -387,7 +398,7 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
     if (state.status !== 'success' || !sameIndicator(current.indicator, input)) return;
     if (!sameIndicator(state.data, input)) return;
 
-    const parameters = validParameters(current.parameters, state.data);
+    const parameters = resolveParameters(current.parameters, state.data);
     if (!sameParameters(parameters, current.parameters)) {
       selectParameters(parameters);
       return;
@@ -478,6 +489,7 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
     selectScenarios,
     loadIndicatorIndex,
     loadFilteredIndicators,
+    clearFilteredIndicators,
     loadFilterGroups,
     loadGeographyIndex,
     loadGeographyAvailability,
