@@ -1,30 +1,36 @@
 import { formatReadableList } from '$lib/utils/utils.js';
-import {
-  DEFAULT_FORMAT_UID,
-  GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS,
-  LOCALSTORE_PARAMETERS,
-  PATH_AVOID,
-  URL_PATH_TIME,
-  URL_PATH_REFERENCE,
-  URL_PATH_FREQUENCY,
-  URL_PATH_SPATIAL,
-  URL_PATH_INDICATOR_VALUE,
-  DEFAULT_IMPACT_GEO_YEAR,
-} from '$config';
+import { DEFAULT_FORMAT_UID, GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS, LOCALSTORE_PARAMETERS, PATH_AVOID, DEFAULT_IMPACT_GEO_YEAR } from '$config';
 import THEME from '$styles/theme-store.js';
 import { interpolateLab, piecewise } from 'd3-interpolate';
-import _, { get, keyBy, map, reduce } from 'lodash-es';
+import _, { get, keyBy, reduce } from 'lodash-es';
 import { derived, get as getStore, writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { getLocalStorage, setLocalStorage, getAllLocalStorage } from './utils.js';
 import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
 import { ciKeyBy, ciGet } from '$lib/utils/case-insensitive.js';
 import { extractEndYear, extractStartYear } from '$utils/meta.js';
+import { selectionUrlParams } from '$lib/catalog/selection-url.js';
+import { legacyMapView } from '$lib/catalog/legacy-map-request.js';
 
-import { DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_INDICATOR, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
-import { FACETS_INITIAL, GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_INDICATORS, DICTIONARY_SCENARIOS, GEOGRAPHIES, GEOGRAPHY_INDEX, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
-import { facetQuery, activeFacetGroupCount } from './facet-selection.js';
-import { resolveScenarioSelection, isScenarioCombinationAvailable, parseStoredScenarios, graftScenarioAvailability } from './scenario-selection.js';
+import { DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
+import { FACETS_INITIAL, GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_SCENARIOS, GEOGRAPHIES, GEOGRAPHY_INDEX, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
+import { activeFacetGroupCount } from './facet-selection.js';
+import { parseStoredScenarios, graftScenarioAvailability } from './scenario-selection.js';
+import { runtimeCatalog } from './runtime-catalog.js';
+import { filteredIndicatorIds, indicatorFilterInput, indicatorListRequest, indicatorSelectionAvailable, parameterAdapter, percentileChartView, scenarioAvailabilityRows, warmingChartView } from './catalog-adapters.js';
+
+export const RUNTIME_CATALOG_SELECTION = runtimeCatalog.selection;
+export const PENDING_CATALOG_SELECTION = runtimeCatalog.pendingSelection;
+export const SELECTED_INDICATOR_INSTANCE = runtimeCatalog.selectedInstance;
+export const INDICATOR_INDEX_REQUEST = runtimeCatalog.indicatorIndex;
+export const FILTER_GROUPS_REQUEST = runtimeCatalog.filterGroups;
+export const FILTERED_INDICATORS_REQUEST = runtimeCatalog.filteredIndicators;
+export const GEOGRAPHY_INDEX_REQUEST = runtimeCatalog.geographyIndex;
+export const GEOGRAPHY_AVAILABILITY_REQUEST = runtimeCatalog.geographyAvailability;
+export const INDICATOR_DETAILS_REQUEST = runtimeCatalog.indicatorDetails;
+export const PERCENTILE_SCENARIO_AVAILABILITY_REQUEST = runtimeCatalog.percentileAvailability;
+export const WARMING_LEVEL_SCENARIO_AVAILABILITY_REQUEST = runtimeCatalog.warmingLevelAvailability;
+export const SCENARIO_DETAILS_REQUEST = runtimeCatalog.scenarioDetails;
 
 // Optional CSS class(es) to override the header background, set per-page
 export const HEADER_CLASS = writable('');
@@ -66,8 +72,12 @@ export const AVAILABLE_GEOGRAPHY_TYPES = derived([GEOGRAPHY_TYPES, IS_AVOID_PAGE
       // Check if the type is present in the list of allowed types
       disabledByMode = !GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS.includes(t.uid);
     }
-    // The tooltip is different if the type is disabled by the endpoint of specifically by this mode (avoid)
-    const tooltip = disabledByEndpoint ? 'Geography type is not available' : disabledByMode ? 'Switch to the Future impacts mode to see impact projections for this geography type' : undefined;
+    let tooltip;
+    if (disabledByEndpoint) {
+      tooltip = 'Geography type is not available';
+    } else if (disabledByMode) {
+      tooltip = 'Switch to the Future impacts mode to see impact projections for this geography type';
+    }
     return {
       ...t,
       disabled: disabledByEndpoint ? true : disabledByMode,
@@ -87,41 +97,49 @@ export const SELECTABLE_GEOGRAPHY_TYPES = derived(AVAILABLE_GEOGRAPHY_TYPES, ($t
 /**
  * Writable store that holds the uid of the currently selected geography.
  * Initialised from localStorage only — there is no hardcoded default geography;
- * the first geography in the list is auto-selected once the catalog loads (see
- * the effect below).
+ * the first geography in the list is auto-selected once the geography index
+ * loads.
  * @type {Writable<string|undefined>}
  */
-export const CURRENT_GEOGRAPHY_UID = writable(getLocalStorage(LOCALSTORE_GEOGRAPHY, undefined));
-// Listen to the store to update the localstorage on change.
-CURRENT_GEOGRAPHY_UID.subscribe((value) => {
-  setLocalStorage(LOCALSTORE_GEOGRAPHY, value);
+const initialGeography = getLocalStorage(LOCALSTORE_GEOGRAPHY, undefined);
+if (initialGeography) runtimeCatalog.selectGeography(initialGeography);
+const currentGeographyUidStore = writable(getStore(runtimeCatalog.selection).geography);
+let geographyFromRuntime = false;
+runtimeCatalog.selection.subscribe((selection) => {
+  if (getStore(currentGeographyUidStore) === selection.geography) return;
+  geographyFromRuntime = true;
+  currentGeographyUidStore.set(selection.geography);
+  geographyFromRuntime = false;
 });
+currentGeographyUidStore.subscribe((value) => {
+  setLocalStorage(LOCALSTORE_GEOGRAPHY, value);
+  if (!geographyFromRuntime && getStore(runtimeCatalog.selection).geography !== value) {
+    runtimeCatalog.selectGeography(value);
+  }
+});
+export const CURRENT_GEOGRAPHY_UID = currentGeographyUidStore;
 
 // Auto-select a default geography — the first one in the list — whenever none is
 // valid (no localStorage value, or a stored id that no longer exists). For the
 // Countries tab this is the first country of the first continent group, matching
 // what the selector renders at the top; otherwise the first geography of the
 // first selectable type, by label.
-// This is the ONLY place that resets the geography: it can only run once the
-// geography list has actually loaded (`$types.length`), so a stored/deep-linked
-// id is never discarded just because the catalog hasn't arrived yet. It also
-// depends on the uid itself, so clearing the selection re-defaults it.
+// This effect waits for a non-empty geography index, so loading cannot clear a
+// stored or pending choice.
 if (browser) {
-  derived([SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES, GEOGRAPHY_INDEX, CURRENT_GEOGRAPHY_UID], (v) => v).subscribe(
-    ([$types, $geographies, $index, uid]) => {
-      if (!$types.length) return;
-      const isValid = uid && $types.some(({ uid: type }) => ($geographies[type] ?? []).some((g) => g.uid === uid));
-      if (isValid) return;
-      const firstType = $types[0].uid;
-      let first;
-      if (firstType === 'admin0') {
-        const groups = _.sortBy(Object.entries($index.countriesByContinent ?? {}), '0');
-        first = groups[0]?.[1]?.[0];
-      }
-      first ??= _.sortBy($geographies[firstType] ?? [], 'label')[0];
-      if (first) CURRENT_GEOGRAPHY_UID.set(first.uid);
-    },
-  );
+  derived([SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES, GEOGRAPHY_INDEX, CURRENT_GEOGRAPHY_UID], (v) => v).subscribe(([$types, $geographies, $index, uid]) => {
+    if (!$types.length) return;
+    const isValid = uid && $types.some(({ uid: type }) => ($geographies[type] ?? []).some((g) => g.uid === uid));
+    if (isValid) return;
+    const firstType = $types[0].uid;
+    let first;
+    if (firstType === 'admin0') {
+      const groups = _.sortBy(Object.entries($index.countriesByContinent ?? {}), '0');
+      first = groups[0]?.[1]?.[0];
+    }
+    first ??= _.sortBy($geographies[firstType] ?? [], 'label')[0];
+    if (first) CURRENT_GEOGRAPHY_UID.set(first.uid);
+  });
 }
 
 /**
@@ -129,19 +147,15 @@ if (browser) {
  * is unset or the list hasn't loaded.
  * @type {Readable<Object|undefined>}
  */
-// Pure lookup — deliberately side-effect free. It used to reset
-// CURRENT_GEOGRAPHY_UID when the id didn't resolve, but this store is first
-// subscribed during component init, before the page data (and therefore
-// GEOGRAPHIES) has reached the store: every stored or deep-linked geography was
-// wiped on load and replaced by the auto-selected default. Resetting an invalid
-// selection is the auto-select effect's job (above), which waits for the list.
+// This lookup stays pure because the geography list may still be loading.
+// The auto-select effect validates the stored choice after the list arrives.
 export const CURRENT_GEOGRAPHY = derived([CURRENT_GEOGRAPHY_UID, SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES], ([$uid, $selectableGeographyTypes, $geographies]) => {
   if (typeof $uid === 'undefined') return undefined;
   for (const { uid: type } of $selectableGeographyTypes) {
     const geography = ($geographies[type] ?? []).find(({ uid }) => uid === $uid);
     if (geography) return geography;
   }
-  return undefined;
+  return { uid: $uid, label: $uid };
 });
 
 export const CURRENT_GEOGRAPHY_LABEL = derived(CURRENT_GEOGRAPHY, ($geography) => {
@@ -152,8 +166,8 @@ export const CURRENT_GEOGRAPHY_LABEL = derived(CURRENT_GEOGRAPHY, ($geography) =
  * Derived store that checks if a geography is selected
  * @type {Readable<Boolean>}
  */
-export const IS_EMPTY_GEOGRAPHY = derived(CURRENT_GEOGRAPHY, ($geography) => {
-  return !Boolean($geography);
+export const IS_EMPTY_GEOGRAPHY = derived(CURRENT_GEOGRAPHY_UID, ($uid) => {
+  return !Boolean($uid);
 });
 
 /**
@@ -186,165 +200,114 @@ export const CURRENT_GEOGRAPHY_TYPE = derived([CURRENT_GEOGRAPHY, SELECTABLE_GEO
  * INDICATOR STATE
  */
 
-// New Hono adapter base URL. If unset, the per-region / per-indicator filters
-// degrade to a no-op (full list shown) — the legacy data URL doesn't expose
-// `/indicators?region=` or `/geographies?indicator=` so falling back to it is
-// not an option.
-const API_URL = import.meta.env.VITE_API_URL;
-
 const byLabel = (a, b) => (a.label ?? '').localeCompare(b.label ?? '');
 
 /**
  * Active advanced-filter selection: `{ [tagKey]: string[] }`. Empty means no
  * restriction.
  */
-export const FACET_FILTERS = writable({});
+export const FACET_FILTERS = runtimeCatalog.indicatorFilters;
 
 export const HAS_ACTIVE_FACET_FILTERS = derived(FACET_FILTERS, ($filters) => activeFacetGroupCount($filters) > 0);
 
-/**
- * Re-resolves `/catalog` whenever the filter selection changes. The server
- * scopes each group by the *other* active filters, so the option counts
- * cascade. Falls back to the page-load groups before the first fetch settles.
- * @type {Readable<{groups: Object[], indicatorUids: Set<string>|null}>}
- */
-let facetRequestId = 0;
 export const FACET_SELECTION = derived(
-  [FACETS_INITIAL, FACET_FILTERS],
-  ([$initial, $filters], set) => {
-    const query = facetQuery($filters);
-    if (!query || !browser || !API_URL) {
-      set({ groups: $initial, indicatorUids: null });
+  [FACETS_INITIAL, FACET_FILTERS, FILTERED_INDICATORS_REQUEST, CURRENT_GEOGRAPHY_UID, SELECTION_MODE, RUNTIME_CATALOG_SELECTION],
+  ([$initial, $filters, $filtered, $geography, $mode, $selection], set) => {
+    const filtersAreActive = activeFacetGroupCount($filters) > 0;
+    const geographyNarrowsIndicators = $mode === 'geography' && Boolean($geography);
+    if (!filtersAreActive && !geographyNarrowsIndicators) {
+      set({ groups: $initial, indicatorIds: null });
       return;
     }
-    const requestId = ++facetRequestId;
-    fetch(`${API_URL}/catalog/?${query}`)
-      .then((r) => r.json())
-      .then(({ facets, indicators }) => {
-        if (requestId !== facetRequestId) return;
-        set({
-          groups: facets ?? $initial,
-          indicatorUids: new Set((indicators ?? []).map((i) => i.uid)),
-        });
-      })
-      .catch((e) => {
-        if (requestId !== facetRequestId) return;
-        console.warn(`catalog?${query} failed:`, e);
-        set({ groups: $initial, indicatorUids: null });
+    if ($filtered.status === 'success') {
+      set({
+        groups: $filtered.data.filters ?? $initial,
+        indicatorIds: filteredIndicatorIds({ request: $filtered, selection: $selection }),
       });
+    }
   },
-  { groups: [], indicatorUids: null },
+  { groups: [], indicatorIds: null }
 );
 
 export const FACET_GROUPS = derived(FACET_SELECTION, ($selection) => $selection.groups);
 
-/**
- * Derived store that holds the list of indicators ixmp4 has data for given the
- * currently selected geography. In indicator-first mode (or when no geography
- * is selected) returns every known indicator. Fetches from
- * `${API_URL}/indicators?region=${uid}` and intersects with `INDICATORS` so
- * downstream consumers keep the rich curated fields (description, unit, …).
- * @type {Readable<Object[]>}
- */
-let availableIndicatorsRequestId = 0;
 export const AVAILABLE_INDICATORS = derived(
   [INDICATORS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE, FACET_SELECTION],
-  ([$indicators, $uid, $mode, $facets], set) => {
-    // The advanced filters narrow the list on top of geography availability.
-    const byFacet = $facets.indicatorUids;
-    const faceted = byFacet ? $indicators.filter((i) => byFacet.has(i.uid)) : $indicators;
-    if ($mode === 'indicator' || !$uid || !API_URL) {
-      set([...faceted].sort(byLabel));
-      return;
-    }
-    if (!browser) {
-      set([]);
-      return;
-    }
-    const requestId = ++availableIndicatorsRequestId;
-    fetch(`${API_URL}/indicators/?region=${encodeURIComponent($uid)}`)
-      .then((r) => r.json())
-      .then(({ indicators }) => {
-        if (requestId !== availableIndicatorsRequestId) return;
-        const allowed = new Set(indicators.map((i) => i.uid));
-        set([...faceted].filter((i) => allowed.has(i.uid)).sort(byLabel));
-      })
-      .catch((e) => {
-        if (requestId !== availableIndicatorsRequestId) return;
-        console.warn(`indicators?region=${$uid} failed:`, e);
-        set([]);
-      });
+  ([$indicators, , , $facets]) => {
+    const allowed = $facets.indicatorIds;
+    if (!allowed) return [...$indicators].sort(byLabel);
+    return $indicators.filter((indicator) => allowed.has(`${indicator.instance}\u0000${indicator.uid}`)).sort(byLabel);
   },
-  [],
+  []
 );
 
-export const CURRENT_INDICATOR_UID = writable(getLocalStorage(LOCALSTORE_INDICATOR, undefined));
-// Persisted like the geography: whatever the user picked, valid or not. Validity
-// is re-checked against availability on the next load — it must not be decided
-// while the async availability probe is still empty (see
-// IS_COMBINATION_AVAILABLE_INDICATOR), or the stored selection is lost on every
-// page load.
-CURRENT_INDICATOR_UID.subscribe((value) => {
-  setLocalStorage(LOCALSTORE_INDICATOR, value);
-});
+export const ACTIVE_INDICATOR_SCOPE_CONTEXT = derived([FACET_FILTERS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE], ([$filters, $geography, $mode]) => ({
+  mode: $mode,
+  geography: $geography,
+  filters: $filters,
+}));
 
-/**
- * Derived store that filters GEOGRAPHIES to only those ixmp4 has data for under
- * the currently selected indicator. Returns the same shape as `GEOGRAPHIES`
- * (object keyed by geography type uid). Fetches from
- * `${API_URL}/geographies?indicator=${uid}` and intersects ids with the local
- * `GEOGRAPHIES` so the per-type structure is preserved.
- * @type {Readable<Object>}
- */
-let availableGeographiesRequestId = 0;
+export const ACTIVE_INDICATOR_SCOPE_REQUEST = derived([INDICATOR_INDEX_REQUEST, FILTERED_INDICATORS_REQUEST, ACTIVE_INDICATOR_SCOPE_CONTEXT], ([$index, $filtered, $context]) =>
+  indicatorListRequest({
+    ...$context,
+    indexRequest: $index,
+    filteredRequest: $filtered,
+  })
+);
+
+const currentIndicatorUidStore = writable(getStore(runtimeCatalog.selection).indicator?.id);
+let indicatorFromRuntime = false;
+runtimeCatalog.selection.subscribe((selection) => {
+  const id = selection.indicator?.id;
+  if (getStore(currentIndicatorUidStore) === id) return;
+  indicatorFromRuntime = true;
+  currentIndicatorUidStore.set(id);
+  indicatorFromRuntime = false;
+});
+currentIndicatorUidStore.subscribe((id) => {
+  if (indicatorFromRuntime) return;
+  const current = getStore(runtimeCatalog.selection).indicator;
+  if (current?.id === id) return;
+  if (!id) {
+    runtimeCatalog.selectIndicator(undefined);
+    return;
+  }
+  const match = getStore(INDICATORS).find((indicator) => indicator.uid === id);
+  if (match) runtimeCatalog.selectIndicator({ id: match.uid, instance: match.instance });
+});
+export const CURRENT_INDICATOR_UID = currentIndicatorUidStore;
+
 export const AVAILABLE_GEOGRAPHIES_FOR_INDICATOR = derived(
-  [CURRENT_INDICATOR_UID, GEOGRAPHIES],
-  ([$indicatorUid, $geographies], set) => {
-    if (!$indicatorUid || !API_URL) {
-      set($geographies);
-      return;
-    }
-    if (!browser) {
-      set({});
-      return;
-    }
-    const requestId = ++availableGeographiesRequestId;
-    fetch(`${API_URL}/geographies/?indicator=${encodeURIComponent($indicatorUid)}`)
-      .then((r) => r.json())
-      .then((rows) => {
-        if (requestId !== availableGeographiesRequestId) return;
-        const allowed = new Set(rows.map((r) => r.id));
-        const out = {};
-        for (const [typeUid, list] of Object.entries($geographies)) {
-          out[typeUid] = list.filter((g) => allowed.has(g.uid));
-        }
-        set(out);
-      })
-      .catch((e) => {
-        if (requestId !== availableGeographiesRequestId) return;
-        console.warn(`geographies?indicator=${$indicatorUid} failed:`, e);
-        set({});
-      });
+  [CURRENT_INDICATOR_UID, GEOGRAPHIES, GEOGRAPHY_AVAILABILITY_REQUEST],
+  ([$indicatorUid, $geographies, $availability]) => {
+    if (!$indicatorUid || $availability.status !== 'success') return $geographies;
+    const allowed = new Set($availability.data.geographyIds ?? []);
+    return Object.fromEntries(Object.entries($geographies).map(([type, rows]) => [type, rows.filter((geography) => allowed.has(geography.uid))]));
   },
-  {},
+  {}
 );
 
 export const IS_EMPTY_INDICATOR = derived(CURRENT_INDICATOR_UID, ($uid) => {
   return !Boolean($uid);
 });
 
-export const IS_COMBINATION_AVAILABLE_INDICATOR = derived([CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS], ([$uid, $validIndicators]) => {
-  if (!$uid) return false;
-  // `/indicators?region=` is async and AVAILABLE_INDICATORS starts empty, so an
-  // empty list means "not checked yet", not "nothing is available". Stay
-  // optimistic until it lands — mirrors isScenarioCombinationAvailable — instead
-  // of flashing “not available for this geography” and blanking the charts on
-  // every load.
-  if (!$validIndicators.length) return true;
-  return $validIndicators.some(({ uid }) => uid === $uid);
+export const IS_COMBINATION_AVAILABLE_INDICATOR = derived([RUNTIME_CATALOG_SELECTION, AVAILABLE_INDICATORS, ACTIVE_INDICATOR_SCOPE_REQUEST], ([$selection, $validIndicators, $request]) => {
+  return indicatorSelectionAvailable({ selection: $selection, indicators: $validIndicators, request: $request });
 });
 
-export const CURRENT_INDICATOR = derived([CURRENT_INDICATOR_UID, DICTIONARY_INDICATORS], ([$uid, $indicators]) => get($indicators, $uid));
+export const CURRENT_INDICATOR = derived([RUNTIME_CATALOG_SELECTION, INDICATORS], ([$selection, $indicators]) => {
+  const selected = $selection.indicator;
+  if (!selected) return undefined;
+  const indicator = $indicators.find((entry) => entry.uid === selected.id && entry.instance === selected.instance);
+  if (indicator) return indicator;
+  return {
+    uid: selected.id,
+    label: selected.id,
+    instance: selected.instance,
+    parameters: {},
+    unit: { uid: DEFAULT_FORMAT_UID, label: DEFAULT_FORMAT_UID, labelLong: DEFAULT_FORMAT_UID },
+  };
+});
 
 export const CURRENT_INDICATOR_UNIT = derived(CURRENT_INDICATOR, ($indicator) => get($indicator, ['unit']));
 
@@ -362,84 +325,44 @@ function getAllLocalStorageForParameters() {
 
 // Key value store of currently selected parameters
 // The initial lookup in the localstorage might get too many parameters as we can only filter out irrelevant parameters when we know the indicator
-export const CURRENT_INDICATOR_OPTION_VALUES = writable(getAllLocalStorageForParameters());
-CURRENT_INDICATOR_OPTION_VALUES.subscribe((obj) => {
+const initialIndicatorOptions = getAllLocalStorageForParameters();
+runtimeCatalog.selectParameters(initialIndicatorOptions);
+const currentIndicatorOptionValuesStore = writable(initialIndicatorOptions);
+let parametersFromRuntime = false;
+runtimeCatalog.selection.subscribe((selection) => {
+  if (_.isEqual(getStore(currentIndicatorOptionValuesStore), selection.parameters)) return;
+  parametersFromRuntime = true;
+  currentIndicatorOptionValuesStore.set(selection.parameters);
+  parametersFromRuntime = false;
+});
+currentIndicatorOptionValuesStore.subscribe((obj) => {
   // This loops over the parameter object …
   Object.entries(obj).forEach(([key, value]) => {
     // and stores all values with a prefix in the local storage
     setLocalStorage(`${LOCALSTORE_PARAMETER_PREFIX}${key}`, value);
   });
+  if (!parametersFromRuntime && !_.isEqual(getStore(runtimeCatalog.selection).parameters, obj)) {
+    runtimeCatalog.selectParameters(obj);
+  }
 });
+export const CURRENT_INDICATOR_OPTION_VALUES = currentIndicatorOptionValuesStore;
 
 // Array of available parameters for currently selected indicator
 // This list is based on the current indicator and the generally available parameters
-export const CURRENT_INDICATOR_PARAMETERS = derived([CURRENT_INDICATOR, INDICATOR_PARAMETERS], ([$indicator, $parameters]) => {
-  // This builds a list of all indicator parameter (with label, uid and options) that are available for this indicator
-  // It is based on the parameters provided by the indicator
-  // And then enriched by the label and options labels provided by the meta endpoint
-  const indicatorParameters = map($indicator?.parameters ?? {}, (optionsAvailableForIndicator, key) => {
-    // Search for the parameter in the list from the meta endpoint
-    const parameter = $parameters.find(({ uid }) => uid === key);
-    let options = [];
-    // If this parameter is present in the meta endpoint
-    if (![URL_PATH_TIME, URL_PATH_REFERENCE, URL_PATH_FREQUENCY, URL_PATH_SPATIAL, URL_PATH_INDICATOR_VALUE].includes(key)) {
-      console.warn(`Unknown indicator parameter ${key}. This might cause problems.`);
+export const CURRENT_INDICATOR_PARAMETERS = derived(
+  [RUNTIME_CATALOG_SELECTION, INDICATOR_DETAILS_REQUEST, INDICATOR_PARAMETERS],
+  ([$selection, $request, $definitions]) => {
+    const result = parameterAdapter({ selection: $selection, request: $request, definitions: $definitions });
+    if (result.nextValues && !_.isEqual(result.nextValues, $selection.parameters)) {
+      CURRENT_INDICATOR_OPTION_VALUES.set(result.nextValues);
     }
-    if (parameter && parameter.hasOwnProperty('options') && Array.isArray(parameter.options)) {
-      // Not all options are available for each indicator. So we need to filter out some options.
-      options = parameter.options.filter(({ uid }) => optionsAvailableForIndicator.includes(uid));
-    } else {
-      // If the indicator is not present in the meta endpoint, we can still use it by creating options manually
-      console.warn(`Indicator has parameter ${key} that is not defined in meta configuration.`);
-      // Both label and uid is the same here
-      options = optionsAvailableForIndicator.map((option) => ({ label: option, uid: option }));
+    for (const key of result.removedKeys) {
+      setLocalStorage(`${LOCALSTORE_PARAMETER_PREFIX}${key}`, undefined);
     }
-    return {
-      uid: key,
-      label: parameter?.label ?? key, // Use the key if no label is present
-      options,
-      description: parameter?.description,
-    };
-  });
-
-  // This builds a list of default values for this indicator by taking the first value from the possible options
-  let defaultValues = reduce($indicator?.parameters ?? {}, (acc, [def], key) => ({ ...acc, [key]: def }), {});
-
-  // Updating the current option selection with the default values, in case they were not present for the previous indicator
-  CURRENT_INDICATOR_OPTION_VALUES.update((previousValues) => {
-    // We want to keep the old values, but only if these values are valid values for the current indicator
-    const previousValidValues = [];
-    Object.entries(previousValues ?? {}).forEach(([key, value]) => {
-      // We try to find a list of possible values for the parameter
-      const possibleValuesForThisIndicator = $indicator?.parameters?.[key];
-      if (Array.isArray(possibleValuesForThisIndicator)) {
-        // If the parameter is preset in the current indicator
-        if (possibleValuesForThisIndicator.includes(value)) {
-          // If the old value is included in the list, we add it
-          previousValidValues.push([key, value]);
-        }
-        // We don’t need to do anything if it is not includes, since this is handled by the default values further down
-      } else {
-        // We want to keep the old values that are not present in the current indicator, because the user might switch back and wants to keep the selected value
-        const possibleParameter = $parameters.find(({ uid }) => uid === key);
-        if (possibleParameter && (possibleParameter?.options ?? []).find(({ uid }) => uid === value)) {
-          // We only want to keep it, if it’s present in the general list of possible parameters
-          previousValidValues.push([key, value]);
-        } else {
-          // We do some clean up and remove this parameter from the local storage
-          console.warn(`The entry ${LOCALSTORE_PARAMETER_PREFIX}${key} was removed from the localStorage.`);
-          setLocalStorage(`${LOCALSTORE_PARAMETER_PREFIX}${key}`, undefined);
-        }
-      }
-    });
-    return {
-      ...defaultValues,
-      ...Object.fromEntries(previousValidValues),
-    };
-  });
-
-  return indicatorParameters;
-});
+    return result.parameters;
+  },
+  []
+);
 
 // Key value store of full parameter objects
 export const CURRENT_INDICATOR_OPTIONS = derived([CURRENT_INDICATOR_OPTION_VALUES, DICTIONARY_INDICATOR_PARAMETERS], ([$currentOptions, $parameters]) => {
@@ -487,10 +410,19 @@ export const CURRENT_INDICATOR_PARAMETERS_KEYS = derived(CURRENT_INDICATOR_PARAM
  * SCENARIO STATE
  */
 
+const initialScenarios = getLocalStorage(LOCALSTORE_SCENARIOS, DEFAULT_SCENARIOS_UID, (value) => parseStoredScenarios(value, DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS));
+runtimeCatalog.selectScenarios(initialScenarios);
+const currentScenariosUidStore = writable(initialScenarios);
+let scenariosFromRuntime = false;
+runtimeCatalog.selection.subscribe((selection) => {
+  if (_.isEqual(getStore(currentScenariosUidStore), selection.scenarios)) return;
+  scenariosFromRuntime = true;
+  currentScenariosUidStore.set(selection.scenarios);
+  scenariosFromRuntime = false;
+});
+
 export const CURRENT_SCENARIOS_UID = (() => {
-  const { subscribe, set, update } = writable(
-    getLocalStorage(LOCALSTORE_SCENARIOS, DEFAULT_SCENARIOS_UID, (v) => parseStoredScenarios(v, DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS))
-  );
+  const { subscribe, set, update } = currentScenariosUidStore;
 
   return {
     subscribe,
@@ -530,22 +462,19 @@ export const CURRENT_SCENARIOS_UID = (() => {
   };
 })();
 CURRENT_SCENARIOS_UID.subscribe((value) => {
-  const scenarios = value.sort().slice(0, MAX_NUMBER_SELECTABLE_SCENARIOS);
+  const scenarios = [...value].sort().slice(0, MAX_NUMBER_SELECTABLE_SCENARIOS);
   if (value.length > MAX_NUMBER_SELECTABLE_SCENARIOS) {
     console.warn(`Too many scenarios selected. Reset to ${MAX_NUMBER_SELECTABLE_SCENARIOS} scenarios.`);
     CURRENT_SCENARIOS_UID.set(scenarios);
   }
   setLocalStorage(LOCALSTORE_SCENARIOS, JSON.stringify(scenarios));
+  if (!scenariosFromRuntime && !_.isEqual(getStore(runtimeCatalog.selection).scenarios, scenarios)) {
+    runtimeCatalog.selectScenarios(scenarios);
+  }
 });
-
 
 export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCENARIOS, THEME], ([$uids, $scenarios, $theme]) =>
   ($uids ?? []).map((uid, i) => ({
-    // Fall back to the raw uid when the catalog lookup misses — DICTIONARY_SCENARIOS
-    // is derived from `$page`, so it is still empty while components initialise
-    // (and stays empty for an unknown uid). Spreading `undefined` alone produced a
-    // label-less entry, and TEMPLATE_PROPS' Intl.ListFormat threw on it, which took
-    // the whole embed page — i.e. every downloaded graph — down with it.
     uid,
     label: uid,
     ...ciGet($scenarios, uid),
@@ -556,58 +485,8 @@ export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCEN
 
 export const DICTIONARY_CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS], ([$currentScenarios]) => keyBy($currentScenarios, 'uid'));
 
-/**
- * Which scenarios have data for the current indicator + geography + parameter
- * selection, and each one's timeframe — read from ixmp4 (not curation). Returns
- * [{ uid, yearStart, yearStep, yearEnd }]. Re-fetches when the selection or any
- * facet (time/reference/spatial) changes.
- *
- * `axis` picks which value axis the API probes. The percentile axis (default)
- * backs the percentile-band charts (impact-time/geo) and their ScenarioSelection.
- * The warming-level axis backs the unavoidable-risk scatter — its scenarios live
- * on that axis, which can cover a different (usually larger) set than the sparse
- * percentile axis. Both charts share the explore page, so each needs its own
- * availability store rather than one page-global axis.
- * @param {'percentile'|'warmingLevel'} [axis]
- * @returns {Readable<Array<{uid:string,yearStart:number,yearStep:number,yearEnd:number}>>}
- */
-function createScenarioAvailability(axis) {
-  let requestId = 0;
-  return derived(
-    [CURRENT_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_OPTION_VALUES],
-    ([$indicator, $geoUid, $options], set) => {
-      const indicatorUid = $indicator?.uid;
-      if (!indicatorUid || !$geoUid || !API_URL || !browser) {
-        set([]);
-        return;
-      }
-      const params = new URLSearchParams({ indicator: indicatorUid, region: $geoUid });
-      if ($indicator?.instance) params.set('instance', $indicator.instance);
-      if (axis) params.set('axis', axis);
-      // Facet dropdowns store raw convention values under these keys.
-      for (const key of ['time', 'reference', 'spatial']) {
-        if ($options?.[key]) params.set(key, $options[key]);
-      }
-      const rid = ++requestId;
-      fetch(`${API_URL}/scenarios/?${params}`)
-        .then((r) => r.json())
-        .then(({ scenarios }) => {
-          if (rid !== requestId) return;
-          set(scenarios ?? []);
-        })
-        .catch((e) => {
-          if (rid !== requestId) return;
-          console.warn(`scenarios?indicator=${indicatorUid}&region=${$geoUid}&axis=${axis ?? 'percentile'} failed:`, e);
-          set([]);
-        });
-    },
-    [],
-  );
-}
-
-export const SCENARIO_AVAILABILITY = createScenarioAvailability();
-// The unavoidable-risk scatter probes the warming-level axis (see above).
-export const WARMING_LEVEL_AVAILABILITY = createScenarioAvailability('warmingLevel');
+export const SCENARIO_AVAILABILITY = derived(PERCENTILE_SCENARIO_AVAILABILITY_REQUEST, scenarioAvailabilityRows);
+export const WARMING_LEVEL_AVAILABILITY = derived(WARMING_LEVEL_SCENARIO_AVAILABILITY_REQUEST, scenarioAvailabilityRows);
 
 /**
  * Graft ixmp4 availability onto the catalog scenario list: each scenario carries
@@ -618,9 +497,7 @@ export const WARMING_LEVEL_AVAILABILITY = createScenarioAvailability('warmingLev
  * isn't wrongly disabled and dropped.
  */
 function createAvailableScenarios(availabilityStore) {
-  return derived([SCENARIOS, availabilityStore], ([$SCENARIOS, $availability]) =>
-    graftScenarioAvailability($SCENARIOS, $availability),
-  );
+  return derived([SCENARIOS, availabilityStore], ([$SCENARIOS, $availability]) => graftScenarioAvailability($SCENARIOS, $availability));
 }
 
 export const AVAILABLE_SCENARIOS = createAvailableScenarios(SCENARIO_AVAILABILITY);
@@ -631,30 +508,13 @@ export const SELECTABLE_SCENARIOS = derived([AVAILABLE_SCENARIOS], ([$scenarios]
 
 // Warming-level equivalents — the scenario universe the unavoidable-risk scatter
 // plots (independent of the percentile-based ScenarioSelection on the same page).
-export const AVAILABLE_WARMING_SCENARIOS = createAvailableScenarios(WARMING_LEVEL_AVAILABILITY);
+export const AVAILABLE_WARMING_SCENARIOS = derived(WARMING_LEVEL_AVAILABILITY, ($availability) => $availability.map((scenario) => ({ ...scenario, disabled: false })));
 
 export const SELECTABLE_WARMING_SCENARIOS = derived([AVAILABLE_WARMING_SCENARIOS], ([$scenarios]) => {
   return $scenarios.filter(({ disabled }) => !disabled);
 });
 
 export const SELECTABLE_SCENARIOS_UID = derived(SELECTABLE_SCENARIOS, ($scenarios) => $scenarios.map(({ uid }) => uid));
-
-// Keep the scenario selection in sync with what ixmp4 actually has. We only
-// auto-fill a genuinely empty selection (first use). We deliberately never swap
-// or prune a selection the user already has: on slow in-app navigations the old
-// swap-on-invalid logic left a "no scenario / unavailable" gap and then flipped
-// the selection under the user. Now an unavailable selection stays put and the
-// picker surfaces "no data here — pick another".
-if (browser) {
-  SELECTABLE_SCENARIOS_UID.subscribe((selectable) => {
-    const next = resolveScenarioSelection({
-      selectable,
-      current: getStore(CURRENT_SCENARIOS_UID) || [],
-      defaults: DEFAULT_SCENARIOS_UID,
-    });
-    if (next) CURRENT_SCENARIOS_UID.set(next);
-  });
-}
 
 export const AVAILABLE_TIMEFRAMES = derived([AVAILABLE_SCENARIOS, SELECTABLE_SCENARIOS], ([$available, $selectable]) => {
   return extractEndYearFromScenarios($available ?? [], $selectable ?? []);
@@ -690,22 +550,53 @@ export const IS_EMPTY_SCENARIO = derived([CURRENT_SCENARIOS_UID, IS_AVOID_PAGE],
 
 export const IS_EMPTY_SELECTION = derived([IS_EMPTY_GEOGRAPHY, IS_EMPTY_INDICATOR, IS_EMPTY_SCENARIO], ([$geography, $indicator, $scenario]) => $geography || $indicator || $scenario);
 
-export const IS_COMBINATION_AVAILABLE_SCENARIO = derived(
-  [IS_AVOID_PAGE, SELECTABLE_SCENARIOS_UID, CURRENT_SCENARIOS_UID],
-  ([$isAvoidPage, $selectable, $current]) =>
-    isScenarioCombinationAvailable({ isAvoidPage: $isAvoidPage, selectable: $selectable, current: $current })
+export const IS_COMBINATION_AVAILABLE_SCENARIO = derived([IS_AVOID_PAGE, PERCENTILE_SCENARIO_AVAILABILITY_REQUEST, CURRENT_SCENARIOS_UID], ([$isAvoidPage, $availability, $current]) => {
+  if ($isAvoidPage) return true;
+  if (!Array.isArray($current) || !$current.length) return false;
+  if ($availability.status !== 'success') return true;
+  const selectable = new Set(($availability.data.scenarios ?? []).map((scenario) => scenario.id));
+  return $current.every((uid) => selectable.has(uid));
+});
+
+// Charts require resolved geography and indicator objects as well as available
+// IDs.
+export const IS_COMBINATION_AVAILABLE = derived(
+  [IS_COMBINATION_AVAILABLE_INDICATOR, IS_COMBINATION_AVAILABLE_SCENARIO, CURRENT_GEOGRAPHY, CURRENT_INDICATOR, INDICATOR_DETAILS_REQUEST, IS_AVOID_PAGE],
+  ([$indicatorAvailable, $scenariosAvailable, $geography, $indicator, $details, $isAvoidPage]) => {
+    const pairExists = Boolean($geography) && Boolean($indicator) && $indicatorAvailable && $scenariosAvailable;
+    if (!pairExists || $isAvoidPage) return pairExists;
+    return $details.status === 'success' && $details.data.id === $indicator.uid && $details.data.instance === $indicator.instance;
+  }
 );
 
-// The chart components gate their data fetch on this and then read
-// `$CURRENT_GEOGRAPHY.uid` / `$CURRENT_INDICATOR.uid` straight off the stores, so
-// it must not go true before both have actually resolved to an object. The
-// availability checks above only look at the *uids*; on the embed page — which
-// seeds the stores from the URL during init, before the catalog reaches `$page`
-// — that combination threw and blanked the whole page.
-export const IS_COMBINATION_AVAILABLE = derived(
-  [IS_COMBINATION_AVAILABLE_INDICATOR, IS_COMBINATION_AVAILABLE_SCENARIO, CURRENT_GEOGRAPHY, CURRENT_INDICATOR],
-  ([$indicatorAvailable, $scenariosAvailable, $geography, $indicator]) =>
-    Boolean($geography) && Boolean($indicator) && $indicatorAvailable && $scenariosAvailable
+export const WARMING_CHART_VIEW = derived(
+  [IS_COMBINATION_AVAILABLE, WARMING_LEVEL_SCENARIO_AVAILABILITY_REQUEST, ACTIVE_INDICATOR_SCOPE_REQUEST, ACTIVE_INDICATOR_SCOPE_CONTEXT, RUNTIME_CATALOG_SELECTION],
+  ([$combinationAvailable, $availability, $indicatorScopeRequest, $indicatorScopeContext, $selection]) =>
+    warmingChartView({
+      combinationAvailable: $combinationAvailable,
+      availability: $availability,
+      indicatorScopeRequest: $indicatorScopeRequest,
+      indicatorScopeContext: $indicatorScopeContext,
+      selection: $selection,
+    })
+);
+
+export const MAP_CHART_VIEW = derived(
+  [IS_COMBINATION_AVAILABLE, PERCENTILE_SCENARIO_AVAILABILITY_REQUEST, ACTIVE_INDICATOR_SCOPE_REQUEST, ACTIVE_INDICATOR_SCOPE_CONTEXT, RUNTIME_CATALOG_SELECTION, CURRENT_GEOGRAPHY, CURRENT_INDICATOR, CURRENT_SCENARIOS, CURRENT_INDICATOR_OPTION_VALUES],
+  ([$combinationAvailable, $availability, $indicatorScopeRequest, $indicatorScopeContext, $selection, $geography, $indicator, $scenarios, $optionValues]) =>
+    legacyMapView({
+      chartView: percentileChartView({
+        combinationAvailable: $combinationAvailable,
+        availability: $availability,
+        indicatorScopeRequest: $indicatorScopeRequest,
+        indicatorScopeContext: $indicatorScopeContext,
+        selection: $selection,
+      }),
+      geography: $geography,
+      indicator: $indicator,
+      scenarios: $scenarios,
+      optionValues: $optionValues,
+    })
 );
 
 export const TEMPLATE_PROPS = derived(
@@ -729,22 +620,10 @@ export const TEMPLATE_PROPS = derived(
 
 // Object holding the parameters that are needed in every data download request
 // scenario are not included since scenarios are specified as individual requests
-export const DOWNLOAD_URL_PARAMS = derived(
-  [CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_UID, CURRENT_INDICATOR_OPTION_VALUES],
-  ([$CURRENT_GEOGRAPHY, $CURRENT_INDICATOR, $CURRENT_INDICATOR_OPTION_VALUES]) => ({
-    geography: $CURRENT_GEOGRAPHY,
-    indicator: $CURRENT_INDICATOR,
-    ...$CURRENT_INDICATOR_OPTION_VALUES,
-  })
-);
+export const DOWNLOAD_URL_PARAMS = derived(RUNTIME_CATALOG_SELECTION, ($selection) => {
+  const { scenarios: _scenarios, ...params } = selectionUrlParams($selection);
+  return params;
+});
 
 // Object holding the parameters that are needed in every graph download request
-export const GRAPH_URL_PARAMS = derived(
-  [CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_UID, CURRENT_SCENARIOS_UID, CURRENT_INDICATOR_OPTION_VALUES],
-  ([$CURRENT_GEOGRAPHY, $CURRENT_INDICATOR, $CURRENT_SCENARIOS_UID, $CURRENT_INDICATOR_OPTION_VALUES]) => ({
-    geography: $CURRENT_GEOGRAPHY,
-    indicator: $CURRENT_INDICATOR,
-    scenarios: $CURRENT_SCENARIOS_UID,
-    ...$CURRENT_INDICATOR_OPTION_VALUES,
-  })
-);
+export const GRAPH_URL_PARAMS = derived(RUNTIME_CATALOG_SELECTION, selectionUrlParams);

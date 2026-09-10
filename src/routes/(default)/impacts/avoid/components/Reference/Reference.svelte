@@ -3,7 +3,7 @@
   import { SELECTED_STUDY_LOCATION, REFERENCE_PROCESSED, LEVEL_OF_IMPACT } from '$stores/avoid.js';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
-  import { END_AVOIDING_REFERENCE, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_STUDY_LOCATION } from '$config';
+  import { END_AVOIDING_REFERENCE, URL_PATH_STUDY_LOCATION } from '$config';
   import { fetchData } from '$lib/api/api';
   import ImpactLevel from './ImpactLevel.svelte';
   import { mean } from 'd3-array';
@@ -13,6 +13,8 @@
   import { createPopperActions } from 'svelte-popperjs';
   import ExpandIcon from '$lib/components/icons/Expand.svelte';
   import { formatValue, formatUnit } from '$lib/utils/formatting';
+  import { toLegacyAvoidRequest } from '$lib/catalog/translate.js';
+  import { sendLegacyAvoidRequest } from '$lib/catalog/legacy-avoid-request.js';
 
   const store = writable({});
 
@@ -24,18 +26,9 @@
     strategy: 'fixed',
     modifiers: [{ name: 'offset', options: { offset: [0, 10] } }],
   };
+  $: legacyParams = toLegacyAvoidRequest({ geography: $AVOID_GEOGRAPHY, indicator: $AVOID_INDICATOR, parameters: $AVOID_PARAMS });
 
-  $: !$AVOID_IS_EMPTY &&
-    $AVOID_IS_AVAILABLE &&
-    fetchData(store, {
-      endpoint: END_AVOIDING_REFERENCE,
-      params: {
-        [URL_PATH_GEOGRAPHY]: $AVOID_GEOGRAPHY.uid,
-        [URL_PATH_INDICATOR]: $AVOID_INDICATOR.uid,
-        ...$AVOID_PARAMS,
-        [URL_PATH_STUDY_LOCATION]: $SELECTED_STUDY_LOCATION,
-      },
-    });
+  $: !$AVOID_IS_EMPTY && $AVOID_IS_AVAILABLE && sendLegacyAvoidRequest(fetchData, store, END_AVOIDING_REFERENCE, legacyParams, { [URL_PATH_STUDY_LOCATION]: $SELECTED_STUDY_LOCATION });
 
   function getDecimalsOfNumber(n) {
     const parts = String(n).split('.');
@@ -83,9 +76,7 @@
 
   $: ({ unit } = $AVOID_INDICATOR ?? {});
   $: ({ decimals } = $REFERENCE_PROCESSED ?? {});
-  $: triggerValue = $REFERENCE_PROCESSED
-    ? `${formatValue($LEVEL_OF_IMPACT, unit?.uid, { decimals })}${formatUnit(unit)}`
-    : '—';
+  $: triggerValue = $REFERENCE_PROCESSED ? `${formatValue($LEVEL_OF_IMPACT, unit?.uid, { decimals })}${formatUnit(unit)}` : '—';
 </script>
 
 <Popover class="relative">
@@ -99,14 +90,7 @@
 
   <PopoverPanel use={[[popperContent, popperOptions]]} class="bg-surface-base shadow-md z-50 rounded border-contour-weakest border p-4 w-72">
     {#if !$AVOID_IS_EMPTY && $AVOID_IS_AVAILABLE}
-      <LoadingWrapper
-        {process}
-        let:asyncProps={{ data }}
-        asyncProps={{ data: $store }}
-        props={{ ...$AVOID_TEMPLATE_PROPS }}
-        warningSizeSmall={true}
-        warningBackground={false}
-      >
+      <LoadingWrapper {process} let:asyncProps={{ data }} asyncProps={{ data: $store }} props={{ ...$AVOID_TEMPLATE_PROPS }} warningSizeSmall={true} warningBackground={false}>
         <ImpactLevel {data} />
         <LoadingPlaceholder slot="placeholder" />
       </LoadingWrapper>

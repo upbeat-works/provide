@@ -1,4 +1,4 @@
-import { test, expect, describe } from 'bun:test';
+import { test, expect, describe } from 'vitest';
 import { facetQuery, toggleFacetValue, clearFacetGroup, activeFacetGroupCount } from './facet-selection.js';
 
 describe('facetQuery', () => {
@@ -13,17 +13,13 @@ describe('facetQuery', () => {
   });
 
   test('emits one param per group', () => {
-    const params = new URLSearchParams(
-      facetQuery({ 'Temporal Resolution': ['Annual'], 'Spatial Resolution': ['Global'] }),
-    );
+    const params = new URLSearchParams(facetQuery({ 'Temporal Resolution': ['Annual'], 'Spatial Resolution': ['Global'] }));
     expect(params.get('Temporal Resolution')).toBe('Annual');
     expect(params.get('Spatial Resolution')).toBe('Global');
   });
 
   test('skips empty groups so a cleared filter does not restrict', () => {
-    expect(facetQuery({ 'Temporal Resolution': ['Annual'], 'Data Source': [] })).toBe(
-      facetQuery({ 'Temporal Resolution': ['Annual'] }),
-    );
+    expect(facetQuery({ 'Temporal Resolution': ['Annual'], 'Data Source': [] })).toBe(facetQuery({ 'Temporal Resolution': ['Annual'] }));
   });
 });
 

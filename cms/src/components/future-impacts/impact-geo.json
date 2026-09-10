@@ -8,7 +8,12 @@
   "options": {},
   "attributes": {
     "Indicator": {
-      "type": "string"
+      "type": "string",
+      "required": true
+    },
+    "Instance": {
+      "type": "string",
+      "required": true
     },
     "Year": {
       "type": "string"
@@ -17,9 +22,7 @@
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": [
-        "images"
-      ]
+      "allowedTypes": ["images"]
     }
   }
 }

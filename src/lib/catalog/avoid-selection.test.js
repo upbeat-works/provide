@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { avoidAvailableIndicators, avoidIndicatorParameters, reconcileAvoidParams, avoidSectors, reconcileSector } from './avoid-selection.js';
+import { avoidAvailableIndicators, avoidIndicatorParameters, reconcileAvoidParams, avoidSectors, reconcileSector, resolveAvoidIndicatorSelection } from './avoid-selection.js';
 
 const INDS = [
   { uid: 'a', availableGeographies: ['accra', 'amman'] },
@@ -7,6 +7,10 @@ const INDS = [
 ];
 
 describe('avoid-selection helpers', () => {
+  test('manual indicator selection keeps its required source instance', () => {
+    expect(resolveAvoidIndicatorSelection('Heatwave days', [{ uid: 'Heatwave days', instance: 'provide-internal' }])).toEqual({ id: 'Heatwave days', instance: 'provide-internal' });
+  });
+
   test('avoidAvailableIndicators filters by city membership', () => {
     expect(avoidAvailableIndicators(INDS, 'accra').map((i) => i.uid)).toEqual(['a']);
     expect(avoidAvailableIndicators(INDS, undefined).map((i) => i.uid)).toEqual(['a', 'b']);

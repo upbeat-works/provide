@@ -1,23 +1,20 @@
 <script>
-  import { AVOID_CITY_UID, AVOID_INDICATOR_UID, AVOID_PARAMS, AVOID_IS_EMPTY, AVOID_IS_AVAILABLE } from '$stores/avoid-catalog.js';
+  import { AVOID_GEOGRAPHY, AVOID_INDICATOR, AVOID_PARAMS, AVOID_IS_EMPTY, AVOID_IS_AVAILABLE } from '$stores/avoid-catalog.js';
   import { LEVEL_OF_IMPACT, SELECTED_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
-  import { PATH_AVOID, URL_PATH_INDICATOR, URL_PATH_GEOGRAPHY, URL_PATH_LEVEL_OF_IMPACT, URL_PATH_CERTAINTY_LEVEL } from '$config';
+  import { PATH_AVOID, URL_PATH_LEVEL_OF_IMPACT, URL_PATH_CERTAINTY_LEVEL } from '$config';
   import { buildURL } from '$utils/url.js';
   import tooltip from '$lib/utils/tooltip';
   import copy from 'copy-to-clipboard';
   import { page } from '$app/stores';
   import Link from '$lib/components/icons/Link.svelte';
+  import { canonicalAvoidShareSelection } from '$lib/catalog/translate.js';
 
-  // Avoid emits its own native LEGACY ids (city uid, sector-prefixed indicator
-  // uid, legacy param values). Explore, on arrival, resolves them via translate.js.
   $: isDisabled = $AVOID_IS_EMPTY || !$AVOID_IS_AVAILABLE;
 
   $: query =
     !isDisabled &&
     buildURL(PATH_AVOID, {
-      [URL_PATH_INDICATOR]: $AVOID_INDICATOR_UID,
-      [URL_PATH_GEOGRAPHY]: $AVOID_CITY_UID,
-      ...$AVOID_PARAMS,
+      ...canonicalAvoidShareSelection({ geography: $AVOID_GEOGRAPHY, indicator: $AVOID_INDICATOR, parameters: $AVOID_PARAMS }),
       [URL_PATH_LEVEL_OF_IMPACT]: $LEVEL_OF_IMPACT,
       [URL_PATH_CERTAINTY_LEVEL]: $SELECTED_LIKELIHOOD_LEVEL,
     });

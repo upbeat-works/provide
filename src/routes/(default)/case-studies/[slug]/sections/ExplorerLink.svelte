@@ -6,7 +6,9 @@
   export let label = 'View in explorer';
 </script>
 
-<Button {href} class="self-start whitespace-nowrap flex-shrink-0">
-  {label}
-  <LinkArrow />
-</Button>
+{#if href}
+  <Button {href} class="self-start whitespace-nowrap flex-shrink-0">
+    {label}
+    <LinkArrow />
+  </Button>
+{/if}

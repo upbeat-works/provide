@@ -6,6 +6,8 @@
   import { countryBounds } from './choropleth.js';
   import { fetchData } from '$lib/api/api';
   import { END_GEO_SHAPE, STATUS_SUCCESS } from '$config';
+  import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
 
   // The scoreboard's map band: a country choropleth over the basemap. Both views
   // use it — the ranking view colours countries by their composite score, the
@@ -33,18 +35,32 @@
   let requested = false;
   $: if (highlight && !requested) {
     requested = true;
+    loadGeometry();
+  }
+
+  function loadGeometry() {
     fetchData(GEO_SHAPE_DATA, { endpoint: END_GEO_SHAPE, params: { 'geography-type': 'admin0' } });
   }
 
   $: shape = $GEO_SHAPE_DATA.status === STATUS_SUCCESS ? $GEO_SHAPE_DATA.data?.data : undefined;
-  // Falls back to the full frame while the shapes are still in flight.
+  $: geometryIsLoading = Boolean(highlight) && $GEO_SHAPE_DATA.status === 'loading';
+  $: geometryHasFailed = Boolean(highlight) && $GEO_SHAPE_DATA.status === 'failed';
   $: frame = (highlight && shape && countryBounds(shape, highlight)) || bounds;
 </script>
 
-<div class="{height} w-full">
-  <MapProvider bounds={frame} fitBoundsOptions={{ padding }}>
-    <ZoomControl />
-    <CountryChoropleth {values} {classes} {highlight} {selectable} on:select />
-    <slot />
-  </MapProvider>
+<div class="{height} w-full" aria-live="polite" aria-busy={geometryIsLoading}>
+  {#if geometryIsLoading}
+    <LoadingPlaceholder />
+  {:else if geometryHasFailed}
+    <div class="flex h-full flex-col items-center justify-center gap-3" role="alert">
+      <p class="text-sm text-text-weaker">Country map details could not be loaded.</p>
+      <Button variant="secondary" size="sm" on:click={loadGeometry}>Retry map</Button>
+    </div>
+  {:else}
+    <MapProvider bounds={frame} fitBoundsOptions={{ padding }}>
+      <ZoomControl />
+      <CountryChoropleth {values} {classes} {highlight} {selectable} on:select />
+      <slot />
+    </MapProvider>
+  {/if}
 </div>

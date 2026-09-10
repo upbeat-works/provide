@@ -14,7 +14,7 @@
       "type": "richtext"
     },
     "ExplorerUrl": {
-      "type": "string"
+      "type": "text"
     },
     "Indicators": {
       "type": "component",

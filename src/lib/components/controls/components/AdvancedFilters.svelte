@@ -2,8 +2,10 @@
   import Button from '$lib/components/ui/Button.svelte';
   import ExpandIcon from '$lib/components/icons/Expand.svelte';
   import FilterPill from '$lib/components/ui/FilterPill.svelte';
-  import { FACET_FILTERS, FACET_GROUPS } from '$stores/state.js';
+  import { FACET_FILTERS, FACET_GROUPS, FILTER_GROUPS_REQUEST } from '$stores/state.js';
   import { toggleFacetValue, clearFacetGroup, activeFacetGroupCount } from '$stores/facet-selection.js';
+  import { advancedFilterControlView } from '$stores/catalog-adapters.js';
+  import { catalogFlow } from '$stores/catalog-flow.js';
 
   let isOpen = false;
 
@@ -23,12 +25,19 @@
   $: selectedOf = (key) => $FACET_FILTERS[key] ?? [];
   $: groups = $FACET_GROUPS.filter((group) => group.options.length || selectedOf(group.key).length);
   $: activeGroupCount = activeFacetGroupCount($FACET_FILTERS);
+  $: view = advancedFilterControlView({ request: $FILTER_GROUPS_REQUEST, groups });
 
   const toggle = (key, value) => FACET_FILTERS.update(($f) => toggleFacetValue($f, key, value));
   const clearGroup = (key) => FACET_FILTERS.update(($f) => clearFacetGroup($f, key));
 </script>
 
-{#if groups.length}
+{#if view.status === 'loading'}
+  <p class="mt-3 text-sm" role="status">Loading advanced filters…</p>
+{:else if view.status === 'failure'}
+  <Button class="mt-3" variant="secondary" on:click={() => catalogFlow.openAdvancedFilters()}>Retry advanced filters</Button>
+{:else if view.status === 'empty'}
+  <p class="mt-3 text-sm text-text-weaker" role="status">No advanced filters are available.</p>
+{:else}
   <div class="mt-3 border-t border-contour-weakest pt-3">
     <Button variant="secondary" class="!px-2 !py-0.5 text-sm font-medium bg-petrol-100" on:click={() => (isOpen = !isOpen)}>
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -55,22 +64,13 @@
                 <span class="text-xs font-bold tracking-widest text-text-weaker uppercase">{group.label}</span>
               </div>
               {#if selectedOf(group.key).length}
-                <button
-                  class="text-xs text-text-weaker hover:text-text-base transition-colors"
-                  on:click={() => clearGroup(group.key)}
-                >
-                  Clear ×
-                </button>
+                <button class="text-xs text-text-weaker hover:text-text-base transition-colors" on:click={() => clearGroup(group.key)}> Clear × </button>
               {/if}
             </div>
             <div class="flex flex-wrap gap-1.5">
               {#each group.options as option (option.value)}
-                <FilterPill
-                  color={group.color}
-                  selected={selectedOf(group.key).includes(option.value)}
-                  count={option.count}
-                  on:click={() => toggle(group.key, option.value)}
-                >{option.value}</FilterPill>
+                <FilterPill color={group.color} selected={selectedOf(group.key).includes(option.value)} count={option.count} on:click={() => toggle(group.key, option.value)}>{option.value}</FilterPill
+                >
               {/each}
             </div>
           </div>

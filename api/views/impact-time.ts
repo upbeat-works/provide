@@ -89,10 +89,15 @@ export function zipBands(
  */
 export function assembleImpactTime(input: AssembleInput): ImpactTimeResponse {
   const { indicator, years, p5, p50, p95, scenarios } = input;
-  const data = zipBands(years, p5, p50, p95, scenarios);
+  const allData = zipBands(years, p5, p50, p95, scenarios);
+  const finiteIndices = Object.values(allData).flatMap((bands) => bands.flatMap((band, index) => band.some((value) => Number.isFinite(value)) ? [index] : []));
+  const start = finiteIndices.length ? Math.min(...finiteIndices) : 0;
+  const end = finiteIndices.length ? Math.max(...finiteIndices) + 1 : 0;
+  const selectedYears = years.slice(start, end);
+  const data = Object.fromEntries(Object.entries(allData).map(([scenario, bands]) => [scenario, bands.slice(start, end)]));
   return {
-    yearStart: years[0] ?? 0,
-    yearStep: years.length > 1 ? years[1] - years[0] : 0,
+    yearStart: selectedYears[0] ?? 0,
+    yearStep: selectedYears.length > 1 ? selectedYears[1] - selectedYears[0] : 0,
     title: indicator,
     description: '',
     model: input.model ?? '',
@@ -255,7 +260,9 @@ export async function fetchImpactTime(
   // Real global warming (World region, the emulator's own 10/50/90 axis with
   // band edges taken numerically), resampled onto the indicator's year axis —
   // the two models need not publish the same year grid.
-  response.gmt = gmtBandsForYears(gmtSeries, indicatorBands.years, params.scenarios);
+  const pointCount = Math.max(0, ...Object.values(response.data).map((bands) => bands.length));
+  const responseYears = Array.from({ length: pointCount }, (_, index) => response.yearStart + response.yearStep * index);
+  response.gmt = gmtBandsForYears(gmtSeries, responseYears, params.scenarios);
   // Natural-language unit straight from the ixmp4 data (e.g. "°C", "%").
   response.unit = indicatorBands.unit;
   return response;

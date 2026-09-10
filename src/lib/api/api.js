@@ -10,6 +10,21 @@ import { browser } from '$app/environment';
 
 const cache = {}; // Initializes an object to serve as a cache for storing fetch responses.
 
+function cachedRequest(url) {
+  const cached = cache[url];
+  if (cached && cached.status !== STATUS_FAILED) return cached;
+  const pending = {
+    status: STATUS_LOADING,
+    data: null,
+    loading: loadFromAPI(url).then((result) => {
+      cache[url] = result;
+      return result;
+    }),
+  };
+  cache[url] = pending;
+  return pending;
+}
+
 function buildStatusError(message, isExpected) {
   return {
     status: STATUS_FAILED,
@@ -78,20 +93,7 @@ const fetchMultiple = (store, configs) => {
     configs,
     (acc, config, keyOrIndex) => {
       const url = urls[keyOrIndex];
-      const cached = cache[url];
-      if (cached) {
-        acc[keyOrIndex] = cached;
-      } else {
-        // Intial empty object holding promise as data
-        const loadingData = {
-          url,
-          status: STATUS_LOADING,
-          loading: loadFromAPI(url),
-          data: null,
-        };
-        cache[url] = loadingData;
-        acc[keyOrIndex] = loadingData;
-      }
+      acc[keyOrIndex] = cachedRequest(url);
       return acc;
     },
     isObject ? {} : []
@@ -105,13 +107,11 @@ const fetchMultiple = (store, configs) => {
   forEach(initialData, (d, keyOrIndex) => {
     if (typeof d.loading?.then !== 'function') return;
     d.loading.then((res) => {
-      cache[d.url] = res.data ? buildStatusSuccess(res.data) : buildStatusError(res.message, res.isExpected);
-
       store.update((old) => {
         // Simple check to make sure no newer data has been requested in the meantime
         if (old[keyOrIndex] !== d) return old;
         const next = isObject ? { ...old } : [...old];
-        next[keyOrIndex] = cache[d.url];
+        next[keyOrIndex] = res;
         return next;
       });
     });
@@ -133,23 +133,12 @@ const fetchSingle = (store, { endpoint, params, base, arrayFormat }) => {
   // `base` lets a caller target the new Hono adapter (VITE_API_URL); defaults to
   // the legacy Climate Analytics API for endpoints not yet migrated.
   const url = `${base ?? import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`;
-  const cached = cache[url];
-
-  if (cached) {
-    store.set(cached);
-  } else {
-    const loadingData = { status: STATUS_LOADING, data: null };
-    cache[url] = loadingData;
-    store.set(loadingData);
-    loadFromAPI(url).then((res) => {
-      const currentData = res.data ? buildStatusSuccess(res.data) : buildStatusError(res.message, res.isExpected);
-      cache[url] = currentData;
-      store.update((d) => {
-        if (d !== loadingData) return d;
-        return currentData;
-      });
-    });
-  }
+  const current = cachedRequest(url);
+  store.set(current);
+  if (!current.loading) return;
+  current.loading.then((result) => {
+    store.update((value) => (value === current ? result : value));
+  });
 };
 
 export const fetchData = (store, config = []) => {

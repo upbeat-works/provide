@@ -17,10 +17,11 @@ const RUN_KEYS = FACET_KEYS.filter((f) => f.source === 'run').map((f) => f.key);
 // Per-run display strings, read by the chart footer — never facets.
 export const CITATION_KEYS = { model: 'Model Information', source: 'References' } as const;
 
-import type { Platform } from '@iiasa/ixmp4-ts';
+import type { Platform, VariableFilter } from '@iiasa/ixmp4-ts';
 import { parseVariable } from './conventions';
 
 export type FacetFilters = Record<string, string[]>;
+export type IndicatorIdentity = string;
 /** Opaque per-instance-unique run key (`<instance>#<runId>`). */
 export type RunKey = string;
 /** run -> { tagKey -> value } */
@@ -29,6 +30,10 @@ export type RunTags = Map<RunKey, Record<string, string>>;
 export type RunIndicators = Map<RunKey, string[]>;
 /** indicator uid -> its non-run facet values (Sector, Project) */
 export type IndicatorAttrs = Map<string, Record<string, string | undefined>>;
+
+export function indicatorIdentity(id: string, instance: string): IndicatorIdentity {
+  return JSON.stringify([instance, id]);
+}
 
 export interface FacetOption {
   value: string;
@@ -62,12 +67,7 @@ function indicatorsOf(runIndicators: RunIndicators, runIds: RunKey[]): Set<strin
  * active filters, so selecting a value never empties its own group. Counts are
  * distinct indicators, matching what the list shows. Pure.
  */
-export function resolveFacetSelection(
-  runTags: RunTags,
-  runIndicators: RunIndicators,
-  filters: FacetFilters,
-  indicatorAttrs: IndicatorAttrs = new Map(),
-): FacetSelection {
+export function resolveFacetSelection(runTags: RunTags, runIndicators: RunIndicators, filters: FacetFilters, indicatorAttrs: IndicatorAttrs = new Map()): FacetSelection {
   // The indicators surviving a filter set: run-level keys are matched per run
   // (so an AND across them means one run carries both), then intersected with
   // the indicator-level keys. `pin` forces one extra key=value on top.
@@ -89,7 +89,7 @@ export function resolveFacetSelection(
       [...fromRuns].filter((uid) => {
         const attrs = indicatorAttrs.get(uid) ?? {};
         return indEntries.every(([key, values]) => values.includes(attrs[key] as string));
-      }),
+      })
     );
   };
 
@@ -108,9 +108,7 @@ export function resolveFacetSelection(
 
     // The group is scoped by every OTHER active filter, never by its own.
     const others = Object.fromEntries(Object.entries(filters).filter(([k]) => k !== key));
-    facets[key] = [...allValues]
-      .map((value) => ({ value, count: select(others, { key, value }).size }))
-      .sort((a, b) => a.value.localeCompare(b.value));
+    facets[key] = [...allValues].map((value) => ({ value, count: select(others, { key, value }).size })).sort((a, b) => a.value.localeCompare(b.value));
   }
 
   return { runIds: runsMatching(runTags, filters), indicators: select(filters), facets };
@@ -127,9 +125,7 @@ export interface RunFacetData {
  * The I/O edge: read every run's meta and its indicators, keyed per instance so
  * run ids from different platforms can't collide.
  */
-export async function fetchRunFacetData(
-  platforms: Array<{ instance: { slug: string }; platform: Platform }>,
-): Promise<RunFacetData> {
+export async function fetchRunFacetData(platforms: Array<{ instance: { slug: string }; platform: Platform }>, options: { region?: string } = {}): Promise<RunFacetData> {
   const runTags: RunTags = new Map();
   const runIndicators: RunIndicators = new Map();
   const citations: RunFacetData['citations'] = new Map();
@@ -155,11 +151,13 @@ export async function fetchRunFacetData(
         runs.map(async (run) => {
           const rk = key(run.id);
           if (!runTags.has(rk)) runTags.set(rk, {});
-          const names = (await platform.iamc.variables.list({ run: { id_in: [run.id] } })).map((v) => v.name);
+          const filter: VariableFilter = { run: { id_in: [run.id] } };
+          if (options.region) filter.region = { name: options.region };
+          const names = (await platform.iamc.variables.list(filter)).map((v) => v.name);
           runIndicators.set(rk, [...new Set(names.map((n) => parseVariable(n).indicator))]);
-        }),
+        })
       );
-    }),
+    })
   );
 
   return { runTags, runIndicators, citations };
@@ -174,10 +172,7 @@ export interface IndicatorCitations {
  * Roll the per-run citation strings up to the indicators those runs carry.
  * Placeholder values (`-`) are dropped — they mean "none recorded".
  */
-export function citationsByIndicator(
-  runIndicators: RunIndicators,
-  citations: Map<RunKey, { model?: string; source?: string }>,
-): Map<string, IndicatorCitations> {
+export function citationsByIndicator(runIndicators: RunIndicators, citations: Map<RunKey, { model?: string; source?: string }>): Map<string, IndicatorCitations> {
   const out = new Map<string, IndicatorCitations>();
   const usable = (value?: string) => Boolean(value && value.trim() && value.trim() !== '-');
 
@@ -198,9 +193,7 @@ export function citationsByIndicator(
  * Citations keyed by the model name the datapoint rows carry, for the chart
  * footer (which knows a model/scenario, not a run id). Pure.
  */
-export function citationsByModel(
-  rows: Array<{ model: string; key: string; value: string }>,
-): Map<string, { model?: string; source?: string }> {
+export function citationsByModel(rows: Array<{ model: string; key: string; value: string }>): Map<string, { model?: string; source?: string }> {
   const out = new Map<string, { model?: string; source?: string }>();
   for (const { model, key, value } of rows) {
     if (!model || !value || value.trim() === '-') continue;
@@ -220,9 +213,7 @@ export async function fetchCitationsByModel(platform: Platform) {
   const models = df.columnValues('model') as string[];
   const keys = df.columnValues('key') as string[];
   const values = df.columnValues('value') as unknown[];
-  return citationsByModel(
-    keys.map((key, i) => ({ model: models[i], key, value: String(values[i]) })),
-  );
+  return citationsByModel(keys.map((key, i) => ({ model: models[i], key, value: String(values[i]) })));
 }
 
 /** `terrestrial-climate` -> `Terrestrial Climate`. Slugs are stored; labels are shown. */

@@ -1,7 +1,4 @@
-import { get } from 'lodash-es';
-import { ciEquals } from '$lib/utils/case-insensitive.js';
 import { buildAvoidMeta } from '$lib/catalog/avoid-meta.js';
-import { KEY_CHARACTERISTICS, KEY_SCENARIO_YEAR_DESCRIPTION, KEY_SCENARIO_ENDYEAR, KEY_SCENARIO_STARTYEAR, SCENARIO_DATA_KEYS } from '$config';
 
 // We use different locals to simulate different versions of the content.
 // Version 0: `en` and fallback version
@@ -18,10 +15,20 @@ const ENV_URL_CONTENT = (SSR && import.meta.env.VITE_CMS_URL_INTERNAL) || import
 // Legacy Climate Analytics API — public, resolvable from anywhere; used for
 // impact-time, unavoidable-risk, impact-geo, geo-shape, avoiding-*.
 const ENV_URL_DATA = import.meta.env.VITE_DATA_API_URL;
-// New Hono adapter — the indicator catalogue surface. Falls back to the legacy
-// URL until the cutover is complete.
-const ENV_URL_API =
-  (SSR && import.meta.env.VITE_API_URL_INTERNAL) || (import.meta.env.VITE_API_URL ?? ENV_URL_DATA);
+// Hono adapter for source-bound catalog resources.
+const ENV_URL_API = (SSR && import.meta.env.VITE_API_URL_INTERNAL) || import.meta.env.VITE_API_URL;
+
+const joinUrl = (base, path) => `${base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+
+export const catalogApiUrl = (path) => {
+  if (!ENV_URL_API) throw new TypeError('Catalog API URL is not configured');
+  return joinUrl(ENV_URL_API, path);
+};
+
+export const catalogContentUrl = (collection, id) => {
+  const query = ['fields[0]=UID', 'fields[1]=Description', `locale=${encodeURIComponent(localCode)}`, 'pagination[limit]=1', `filters[UID][$eq]=${encodeURIComponent(id)}`].join('&');
+  return `${joinUrl(ENV_URL_CONTENT, `api/${collection}`)}?${query}`;
+};
 
 export const loadFromStrapi = function (path, fetch, populate = 'populate=*', qs) {
   return new Promise(async (resolve, reject) => {
@@ -67,7 +74,7 @@ const labelsSingular = {
 };
 
 // The catalog API (Hono adapter) speaks JSON with strict:false trailing slashes.
-const apiUrl = (path) => `${ENV_URL_API}/${path}/`;
+const apiUrl = (path) => `${catalogApiUrl(path)}/`;
 
 async function getJSON(url, svelteFetch = fetch) {
   const res = await svelteFetch(url);
@@ -80,10 +87,7 @@ async function getJSON(url, svelteFetch = fetch) {
 // consume: `{ geographyTypes, <typeUid>: [...] }`. Pure D1 on the server, so
 // this is the cheap slice. Loaded only on the data sections, never globally.
 export const loadGeographies = async function (svelteFetch = fetch) {
-  const [types, geographies] = await Promise.all([
-    getJSON(apiUrl('geographies/types'), svelteFetch),
-    getJSON(apiUrl('geographies'), svelteFetch),
-  ]);
+  const [types, geographies] = await Promise.all([getJSON(apiUrl('geographies/types'), svelteFetch), getJSON(apiUrl('geographies'), svelteFetch)]);
 
   const geographyTypes = types.map((t) => ({
     uid: t.id,
@@ -107,88 +111,43 @@ export const loadGeographies = async function (svelteFetch = fetch) {
   return { geographyTypes, ...byType };
 };
 
-// Catalog slice — the searchable indicators (+ their parameter dimensions) and
-// the scenario universe, from the `/catalog` module (the expensive ixmp4 scan),
-// merged with the Strapi descriptions the UI shows. This is the slice that used
-// to make `/meta` slow, so it loads only where charts/selectors live.
-export const loadCatalog = async function (svelteFetch = fetch) {
-  const [descriptionIndicators, descriptionScenarios, catalog] = await Promise.all([
-    loadFromStrapi('indicators', svelteFetch),
-    loadFromStrapi('scenarios', svelteFetch),
-    getJSON(apiUrl('catalog'), svelteFetch),
-  ]);
-
+export const loadIndicatorIndex = async function (svelteFetch = fetch) {
+  const response = await getJSON(apiUrl('indicators'), svelteFetch);
   return {
-    indicatorParameters: catalog.indicatorParameters,
-    // Advanced-filter groups: static keys, values discovered from the data.
-    facets: catalog.facets ?? [],
-    indicators: catalog.indicators.map((indicator) => ({
+    ...response,
+    indicators: (response.indicators ?? []).map((indicator) => ({
       ...indicator,
-      // Strapi wins when it has a row; otherwise keep the prose ixmp4 ships in
-      // the variable docs (most indicators have no Strapi match).
-      description:
-        get(
-          descriptionIndicators.find((d) => d.attributes.UID === indicator.uid),
-          ['attributes', 'Description'],
-        ) ?? indicator.description,
+      uid: indicator.id,
     })),
-    scenarios: catalog.scenarios.map((scenario) => {
-      // Find the correct scenario in the list coming from Strapi
-      const currentScenario = descriptionScenarios.find((d) => ciEquals(d.attributes.UID, scenario.uid));
-      if (typeof currentScenario === 'undefined') {
-        console.warn(`Scenario could not be found. This may be caused by a mismatch of the content versions.`);
-      }
-      const description = get(currentScenario, ['attributes', 'Description']);
-      const descriptionYears = get(currentScenario, ['attributes', 'ScenarioCharacteristics'], [])
-        .map(({ Year: year, Description: description }) => (year && description ? { year, description } : false))
-        .filter((d) => Boolean(d))
-        .sort((a, b) => a.year - b.year);
-
-      // Convention scenarios carry no timeline data ({uid,label} only), so these
-      // keys resolve to null as before — preserved so timeline components that
-      // read them keep their existing (empty) behaviour.
-      const timelineData = Object.fromEntries(
-        SCENARIO_DATA_KEYS.map((key) => {
-          if (!scenario.hasOwnProperty(key)) return [key, null];
-          const { data, yearStart, yearStep } = scenario[key];
-          if (!data) return [key, null];
-          const seriesData = data.map((datum, i) => {
-            const hasRange = datum.length > 1;
-            const obj = { year: yearStart + yearStep * i, value: datum };
-            if (hasRange) {
-              obj['value'] = datum[1];
-              obj['min'] = datum[0];
-              obj['max'] = datum[2];
-            }
-            return obj;
-          });
-          return [key, seriesData];
-        }),
-      );
-
-      return {
-        ...scenario,
-        description,
-        ...timelineData,
-        // The catalog names these yearStart/yearEnd (as /scenarios does); the UI
-        // reads startYear/endYear.
-        [KEY_SCENARIO_STARTYEAR]: scenario.yearStart,
-        [KEY_SCENARIO_ENDYEAR]: scenario.yearEnd,
-        [KEY_SCENARIO_YEAR_DESCRIPTION]: descriptionYears,
-        [KEY_CHARACTERISTICS]: scenario.characteristics,
-      };
-    }),
   };
+};
+
+function gmtSeries(gmt) {
+  if (!gmt) return undefined;
+  return gmt.data.map(([min, value, max], index) => ({
+    year: gmt.yearStart + gmt.yearStep * index,
+    min,
+    value,
+    max,
+  }));
+}
+
+export const loadMethodologyScenarios = async function (svelteFetch = fetch) {
+  const scenarios = await getJSON(apiUrl('methodology-scenarios'), svelteFetch);
+  return scenarios.map((scenario) => ({
+    ...scenario,
+    uid: scenario.id,
+    startYear: scenario.yearStart,
+    endYear: scenario.yearEnd,
+    gmt: gmtSeries(scenario.gmt),
+  }));
 };
 
 // Curation slice — the transitional study-locations + likelihoods remnants not
 // yet derivable from conventions. Tiny static data; loaded only by the sections
 // that use it (avoid, adaptation).
 export const loadCuration = async function (svelteFetch = fetch) {
-  const [studyLocations, likelihoods] = await Promise.all([
-    getJSON(apiUrl('study-locations'), svelteFetch),
-    getJSON(apiUrl('likelihoods'), svelteFetch),
-  ]);
+  const [studyLocations, likelihoods] = await Promise.all([getJSON(apiUrl('study-locations'), svelteFetch), getJSON(apiUrl('likelihoods'), svelteFetch)]);
   return {
     studyLocations: studyLocations.studyLocations ?? [],
     likelihoods: likelihoods.likelihoods ?? [],
@@ -201,10 +160,7 @@ export const loadCuration = async function (svelteFetch = fetch) {
 export const loadAvoidMeta = async function (svelteFetch = fetch) {
   // Scenario labels come from the frozen /meta itself; only indicator
   // descriptions need Strapi enrichment.
-  const [meta, indicators] = await Promise.all([
-    getJSON(`${ENV_URL_DATA}/meta/`, svelteFetch),
-    loadFromStrapi('indicators', svelteFetch),
-  ]);
+  const [meta, indicators] = await Promise.all([getJSON(`${ENV_URL_DATA}/meta/`, svelteFetch), loadFromStrapi('indicators', svelteFetch)]);
   return buildAvoidMeta(meta, { indicators });
 };
 

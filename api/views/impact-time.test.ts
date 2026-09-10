@@ -45,6 +45,39 @@ describe('fetchImpactTime — which series it asks ixmp4 for', () => {
       'Mean Temperature|2011-2020 (Present Day)|Annual|Area|5th Percentile',
     ]);
   });
+
+  test('aligns GMT to the selected impact span after removing another scenario tail', async () => {
+    const columns = ['model', 'scenario', 'unit', '2080', '2090', '2100', '2110', '2300'];
+    const platform = {
+      iamc: {
+        tabulate: async (query: { region?: { name?: string } }) => {
+          if (query.region?.name === 'World') {
+            return { columns, values: [['FaIR', 'Standard', '°C', 1, 1.1, 1.2, 1.3, 1.4]] };
+          }
+          return {
+            columns,
+            values: [
+              ['M', 'Standard', '°C', 1, null, 2, null, null],
+              ['M', 'Extended', '°C', 1, 2, 3, 4, 5],
+            ],
+          };
+        },
+      },
+      meta: { tabulate: async () => ({ columnValues: () => [] }) },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    spy = spyOn(platformModule, 'createPlatform').mockResolvedValue(platform as any);
+
+    const response = await fetchImpactTime(instances[0], { username: 'u', password: 'p' }, {
+      indicator: 'Annual Maximum Temperature',
+      geography: 'Afghanistan',
+      scenarios: ['Standard'],
+    });
+
+    expect(response.data.Standard).toHaveLength(3);
+    expect(response.gmt?.Standard).toHaveLength(3);
+    expect(response.yearStart + response.yearStep * (response.data.Standard.length - 1)).toBe(2100);
+  });
 });
 
 describe('alignBands', () => {
@@ -139,6 +172,38 @@ describe('assembleImpactTime', () => {
     expect(out.title).toBe('Mean Temperature');
     expect(out.model).toBe('MESMER');
     expect(out.source).toBe('provide-internal');
+  });
+
+  test('uses the selected scenarios finite span without removing internal gaps', () => {
+    const years = Array.from({ length: 23 }, (_, index) => 2080 + index * 10);
+    const standard = years.map((year) => {
+      if (year === 2090 || year > 2100) return NaN;
+      return year / 100;
+    });
+    const extended = years.map((year) => year / 100);
+    const input = {
+      indicator: 'Annual Maximum Temperature',
+      years,
+      p5: { Standard: standard, Extended: extended, Incomplete: extended },
+      p50: { Standard: standard, Extended: extended, Incomplete: extended },
+      p95: { Standard: standard, Extended: extended },
+      scenarios: ['Standard'],
+    };
+
+    const standardResponse = assembleImpactTime(input);
+    expect(standardResponse.yearStart).toBe(2080);
+    expect(standardResponse.yearStep).toBe(10);
+    expect(standardResponse.data.Standard).toHaveLength(3);
+    expect(standardResponse.data.Standard[1][1]).toBeNaN();
+    expect(standardResponse.yearStart + standardResponse.yearStep * (standardResponse.data.Standard.length - 1)).toBe(2100);
+    expect(impactTimeToCsv(standardResponse, { indicator: input.indicator, geography: 'Afghanistan' })).not.toContain(',2300,');
+
+    const extendedResponse = assembleImpactTime({ ...input, scenarios: ['Extended'] });
+    expect(extendedResponse.yearStart + extendedResponse.yearStep * (extendedResponse.data.Extended.length - 1)).toBe(2300);
+
+    const withIncompleteExtended = assembleImpactTime({ ...input, scenarios: ['Standard', 'Incomplete'] });
+    expect(Object.keys(withIncompleteExtended.data)).toEqual(['Standard']);
+    expect(withIncompleteExtended.yearStart + withIncompleteExtended.yearStep * (withIncompleteExtended.data.Standard.length - 1)).toBe(2100);
   });
 });
 

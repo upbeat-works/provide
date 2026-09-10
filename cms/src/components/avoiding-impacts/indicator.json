@@ -7,7 +7,12 @@
   "options": {},
   "attributes": {
     "Uid": {
-      "type": "string"
+      "type": "string",
+      "required": true
+    },
+    "Instance": {
+      "type": "string",
+      "required": true
     }
   }
 }

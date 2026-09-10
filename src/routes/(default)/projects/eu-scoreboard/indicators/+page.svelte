@@ -5,7 +5,6 @@
   import FilterSelect from '../components/FilterSelect.svelte';
   import IndicatorSelection from '$lib/components/controls/IndicatorSelection.svelte';
   import { CURRENT_INDICATOR, CURRENT_SCENARIOS } from '$stores/state.js';
-  import { GEOGRAPHIES, INDICATORS, SCENARIOS } from '$stores/meta.js';
   import { sortBy } from 'lodash-es';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
@@ -25,16 +24,24 @@
   import { page } from '$app/stores';
   import { replaceState } from '$app/navigation';
   import { PATH_ADAPTATION, PATH_DOCUMENTATION, URL_PATH_GEOGRAPHY } from '$config';
+  import { loadIndicatorIndex } from '$utils/apis.js';
+  import { createOwnedIndicatorIndexRequest } from '$stores/owned-indicator-index.js';
 
   export let data;
+  const ownedIndicatorIndex = createOwnedIndicatorIndexRequest({
+    initialIndex: data.indicatorIndex,
+    load: () => loadIndicatorIndex(fetch),
+  });
+  const indicatorIndexRequest = ownedIndicatorIndex.state;
 
-  // Structure-only view: the controls, the map layers and every chart below are
-  // placeholders — there are no scoreboard endpoints yet, so what's real here
-  // is the layout it will be poured into.
+  function retryIndicatorIndex() {
+    void ownedIndicatorIndex.retry();
+  }
+
   const hazard = 'Heat Stress';
   // What the map's placeholder values stand for, until the scoreboard has its
   // own data: the legend names the selected indicator once there is one.
-  const placeholderIndicator = 'Annual maximum temperature';
+  const placeholderIndicator = 'Annual Maximum Temperature';
   $: indicator = $CURRENT_INDICATOR?.label ?? placeholderIndicator;
 
   // Whole of Europe, matching the ranking view's frame.
@@ -45,8 +52,8 @@
   // a promise the view can't keep. `geography` undefined means all of them.
   const covered = new Set(coveredGeoIds);
   $: countries = sortBy(
-    ($GEOGRAPHIES.admin0 ?? []).filter(({ geoId }) => covered.has(geoId)),
-    'label',
+    (data.geographies.admin0 ?? []).filter(({ geoId }) => covered.has(geoId)),
+    'label'
   );
 
   let geography;
@@ -98,7 +105,7 @@
   // comparing.
   let sides = [];
 
-  const optionsFor = (uid) => ({ scenario: $SCENARIOS, year: YEARS, geography: countries })[uid] ?? [];
+  const optionsFor = (uid) => ({ scenario: data.scenarios, year: YEARS, geography: countries })[uid] ?? [];
   const valueFor = (uid) => ({ scenario, year, geography })[uid];
 
   // Seed only when the compared dimension changes. `sides` must not be read
@@ -122,17 +129,11 @@
 
   // The geography selector needs its search and its "everything" row wherever it
   // is shown; the others are plain lists.
-  $: compareSelectProps =
-    compareBy?.uid === 'geography'
-      ? { allLabel: 'All available countries', buttonAllLabel: 'All countries', placeholder: 'Search geography' }
-      : {};
+  $: compareSelectProps = compareBy?.uid === 'geography' ? { allLabel: 'All available countries', buttonAllLabel: 'All countries', placeholder: 'Search geography' } : {};
 
   // Everything that names what is on screen follows the selection: the section
   // eyebrows, the map's legend card, and the country the map outlines.
-  $: scope =
-    compareBy?.uid === 'geography'
-      ? views.map(({ geography: g }) => g?.label ?? 'All countries').join(' vs ')
-      : (geography?.label ?? 'Europe');
+  $: scope = compareBy?.uid === 'geography' ? views.map(({ geography: g }) => g?.label ?? 'All countries').join(' vs ') : geography?.label ?? 'Europe';
 
   // Sequential ramp for a single indicator, where the ranking view's map runs a
   // diverging risk scale. Palette oranges, low to high — the map's own classes,
@@ -155,17 +156,15 @@
 </script>
 
 <ScoreboardLayout>
-  <!-- Geography and Scenario are the real controls; Indicator and Year are still
-       placeholders, waiting on the scoreboard's own endpoints. -->
   <svelte:fragment slot="filters">
     {#if compareBy?.uid !== 'geography'}
       <FilterSelect label="Geography" options={countries} bind:selected={geography} allLabel="All available countries" buttonAllLabel="All countries" placeholder="Search geography" />
     {/if}
     <!-- The scoreboard scopes itself by its own geography, so the modal offers
          the whole indicator catalog rather than explore's per-region list. -->
-    <IndicatorSelection indicators={$INDICATORS} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
+    <IndicatorSelection indicatorIndexRequest={$indicatorIndexRequest} {retryIndicatorIndex} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
     {#if compareBy?.uid !== 'scenario'}
-      <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
+      <ScenarioSelection scenarios={data.scenarios} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
     {/if}
     {#if compareBy?.uid !== 'year'}
       <FilterSelect label="Year" options={YEARS} bind:selected={year} />

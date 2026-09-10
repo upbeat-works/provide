@@ -4,44 +4,36 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const { IXMP4_UID_BY_LEGACY, ixmp4UidFor, planScenarioRekey } = require('./scenario-uid-map');
 
-// The 11 scenario names GET /api/catalog returns from `provide-internal` today
-// (2026-07-27). `Today` is the convention baseline and has no CMS entry.
 const LIVE = [
-  'SSP5-3.4-OS',
-  'Stabilisation At 1.5°C',
   '2020 Climate Policies',
-  '2020 Climate Targets',
+  '2020 Climate Policies then back to 1.5 °C',
+  '2020 Climate Policies then Stabilisation',
   'Delayed Climate Action',
-  'High Negative Emissions',
-  'High Renewables',
-  'Low Demand',
-  'SSP1-1.9',
+  'Delayed Climate Action then Net Zero',
   'Shifting Pathway',
-  'Today',
+  'Shifting Pathway then Net Zero',
+  '2020 Climate Targets',
+  '2020 Climate Targets then back to 1.5 °C',
+  '2020 Climate Targets then back to 1 °C',
+  '2020 Climate Targets then Stabilisation',
+  'High Negative Emissions',
+  'High Negative Emissions then Net Zero',
+  'High Negative Emissions then back to 0 °C',
+  'High Negative Emissions then Stabilisation',
+  'High Renewables',
+  'High Renewables then Net Zero CO2',
+  'Low Demand',
+  'Low Demand then Net Zero',
+  'SSP1-1.9',
+  'SSP1-1.9 (Extended)',
+  'SSP5-3.4-Overshoot',
+  'SSP5-3.4-Overshoot (Extended)',
+  'Stabilisation at 1.5 °C',
+  'Stabilisation at 1.5 °C (Extended)',
 ];
 
-// The overshoot / stabilisation / net-zero / extended variants. They exist in the
-// CMS and in the legacy API but NOT in ixmp4 today, so they must stay legacy.
-const UNMAPPED = [
-  'curpol-os',
-  'curpol-sap',
-  'gs-nzghg',
-  'ld-nzghg',
-  'modact-os-1.5c',
-  'modact-os-1c',
-  'modact-sap',
-  'neg-nzghg',
-  'neg-os-0',
-  'neg-sap',
-  'ref-1p5-extended',
-  'ren-nzco2',
-  'sp-nzghg',
-  'ssp119-extended',
-  'ssp534-over-extended',
-];
-
-test('maps exactly the 10 legacy uids that ixmp4 serves today', () => {
-  assert.equal(Object.keys(IXMP4_UID_BY_LEGACY).length, 10);
+test('maps all 25 legacy scenario uids', () => {
+  assert.equal(Object.keys(IXMP4_UID_BY_LEGACY).length, 25);
 });
 
 test('every target name is one ixmp4 actually returns', () => {
@@ -64,17 +56,26 @@ test('resolves the documented pairs', () => {
   assert.equal(ixmp4UidFor('ren'), 'High Renewables');
   assert.equal(ixmp4UidFor('ld'), 'Low Demand');
   assert.equal(ixmp4UidFor('ssp119'), 'SSP1-1.9');
-  assert.equal(ixmp4UidFor('ssp534-over'), 'SSP5-3.4-OS');
-  assert.equal(ixmp4UidFor('ref-1p5'), 'Stabilisation At 1.5°C');
+  assert.equal(ixmp4UidFor('ssp534-over'), 'SSP5-3.4-Overshoot');
+  assert.equal(ixmp4UidFor('ref-1p5'), 'Stabilisation at 1.5 °C');
 });
 
-test('leaves the variants ixmp4 does not serve alone', () => {
-  for (const uid of UNMAPPED) assert.equal(ixmp4UidFor(uid), null, `${uid} should not map`);
+test('maps variants and corrected canonical spellings', () => {
+  assert.equal(ixmp4UidFor('curpol-os'), '2020 Climate Policies then back to 1.5 °C');
+  assert.equal(ixmp4UidFor('ssp534-over-extended'), 'SSP5-3.4-Overshoot (Extended)');
+  assert.equal(ixmp4UidFor('SSP5-3.4-OS'), 'SSP5-3.4-Overshoot');
+  assert.equal(ixmp4UidFor('Stabilisation At 1.5°C'), 'Stabilisation at 1.5 °C');
 });
 
 test('is case-insensitive on the legacy uid', () => {
   assert.equal(ixmp4UidFor('CurPol'), '2020 Climate Policies');
-  assert.equal(ixmp4UidFor('SSP534-Over'), 'SSP5-3.4-OS');
+  assert.equal(ixmp4UidFor('SSP534-Over'), 'SSP5-3.4-Overshoot');
+});
+
+test('plans case-only corrections to the exact canonical name', () => {
+  assert.deepEqual(planScenarioRekey([{ id: 1, locale: 'en', UID: '2020 climate policies' }]), [
+    { id: 1, locale: 'en', from: '2020 climate policies', to: '2020 Climate Policies' },
+  ]);
 });
 
 test('returns null for unknown / empty input', () => {
@@ -98,8 +99,8 @@ test('plans one update per row that needs one, across locales', () => {
 
 test('skips rows with no live counterpart', () => {
   const plan = planScenarioRekey([
-    { id: 1, locale: 'en-EU', UID: 'curpol-os' },
-    { id: 2, locale: 'en-EU', UID: 'neg-nzghg' },
+    { id: 1, locale: 'en-EU', UID: 'unknown' },
+    { id: 2, locale: 'en-EU', UID: 'Today' },
   ]);
   assert.deepEqual(plan, []);
 });

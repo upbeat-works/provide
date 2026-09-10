@@ -7,7 +7,7 @@
  *
  * Additive: only indicators that need a curated fact ixmp4 can't provide (a
  * sector tag, or a `legacyUid` bridge to the frozen legacy /meta) appear here.
- * A missing row leaves that indicator unchanged in /catalog.
+ * A missing row leaves that indicator unchanged in the indicator index.
  */
 import { readFileSync } from 'node:fs';
 
@@ -15,6 +15,22 @@ export interface IndicatorRow {
   id: string;
   sector: string | null;
   legacyUid: string | null;
+}
+
+const SMALL_WORDS = new Set(['a', 'an', 'the', 'and', 'as', 'at', 'but', 'by', 'for', 'from', 'in', 'nor', 'of', 'on', 'or', 'per', 'to', 'via', 'with']);
+
+function titleCasePart(part: string): string {
+  if (/[A-Z].*[A-Z0-9°]|^[a-z][A-Z]/.test(part)) return part;
+  return part.toLowerCase().replace(/[a-z]/, (letter) => letter.toUpperCase());
+}
+
+export function titleCaseIndicator(value: string): string {
+  const words = value.split(' ');
+  return words.map((word, index) => {
+    const small = SMALL_WORDS.has(word.toLowerCase());
+    if (small && index > 0 && index < words.length - 1) return word.toLowerCase();
+    return word.split('-').map(titleCasePart).join('-');
+  }).join(' ');
 }
 
 function esc(value: string | null | undefined): string {
@@ -49,6 +65,7 @@ export function buildIndicatorsSeedSql(rows: IndicatorRow[]): string {
   const ids = new Set<string>();
   const legacy = new Set<string>();
   for (const r of rows) {
+    if (r.id !== titleCaseIndicator(r.id)) throw new Error(`indicator id is not in title case: "${r.id}"`);
     if (ids.has(r.id)) throw new Error(`duplicate id: "${r.id}"`);
     ids.add(r.id);
     if (r.legacyUid) {

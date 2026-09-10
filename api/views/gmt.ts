@@ -1,11 +1,8 @@
 /**
  * Global mean temperature — the climate emulator's warming trajectory.
  *
- * GMT is not a catalog indicator: it has no parameter axes and only one region
- * (`World`). It is a property of a *scenario*, so it surfaces two ways:
- *   - on `/catalog` scenario entries (the methodology timeline chart + the
- *     scenario characteristics table), and
- *   - as `response.gmt` on impact-time, colouring the chart line.
+ * GMT has no parameter axes and only one region (`World`). It is returned with
+ * scenario details and impact-time data.
  *
  * Two quirks of the published data drive the design here:
  *   - The percentile LABELS are not in value order — the "10th Percentile" series
@@ -15,6 +12,7 @@
  *
  * Pure assembly here, I/O at the bottom edge — same split as views/impact-time.ts.
  */
+import { NotFound } from '@iiasa/ixmp4-ts';
 import { createPlatform } from '../platform';
 import { composeGmtVariable, GMT_PERCENTILES, GMT_REGION } from '../conventions';
 import { caseInsensitiveLookup } from '../util';
@@ -73,10 +71,7 @@ export function gmtCharacteristics(points: Array<{ year: number; value: number }
 
   // Ascending years so a tie reports the earliest peak.
   const window = [...finite].filter((p) => p.year <= PEAK_WINDOW_END).sort((a, b) => a.year - b.year);
-  const peak = window.reduce<{ year: number; value: number } | undefined>(
-    (best, p) => (best === undefined || p.value > best.value ? p : best),
-    undefined,
-  );
+  const peak = window.reduce<{ year: number; value: number } | undefined>((best, p) => (best === undefined || p.value > best.value ? p : best), undefined);
   if (peak) out.gmtPeak = [round(peak.value, 1), peak.year];
 
   const v2100 = at(2100);
@@ -100,10 +95,7 @@ export function gmtCharacteristics(points: Array<{ year: number; value: number }
  * median is finite, so a 2100-only scenario on a 2300 union axis yields 17
  * points rather than a NaN tail. Pure.
  */
-export function assembleGmt(
-  years: number[],
-  byPct: Record<string, PercentileSeries>,
-): GmtByScenario {
+export function assembleGmt(years: number[], byPct: Record<string, PercentileSeries>): GmtByScenario {
   const out: GmtByScenario = new Map();
   const medians = byPct[MEDIAN] ?? {};
 
@@ -131,9 +123,7 @@ export function assembleGmt(
       yearStart: years[first],
       yearEnd: years[last],
       yearStep: last > first ? years[first + 1] - years[first] : 0,
-      characteristics: gmtCharacteristics(
-        data.map((triple, i) => ({ year: years[first + i], value: triple[1] })),
-      ),
+      characteristics: gmtCharacteristics(data.map((triple, i) => ({ year: years[first + i], value: triple[1] }))),
       scenario,
     });
   }
@@ -146,11 +136,7 @@ export function assembleGmt(
  * lacks becomes NaN at that index rather than shifting the series. Scenarios are
  * matched case-insensitively; output keys are the REQUESTED names. Pure.
  */
-export function gmtBandsForYears(
-  gmt: GmtByScenario,
-  years: number[],
-  scenarios: string[],
-): ScenarioBands {
+export function gmtBandsForYears(gmt: GmtByScenario, years: number[], scenarios: string[]): ScenarioBands {
   const NO_DATA: [number, number, number] = [NaN, NaN, NaN];
   const bands: ScenarioBands = {};
   const find = caseInsensitiveLookup([...gmt.keys()]);
@@ -169,30 +155,10 @@ export function gmtBandsForYears(
 
 type PlatformLike = { iamc: { tabulate: (query: unknown) => Promise<unknown> } };
 
-/**
- * The three World GMT percentile series from one platform — three tabulates, no
- * per-scenario calls. A missing variable yields an empty map rather than an
- * error, so an instance without the emulator runs degrades to "no GMT" instead
- * of sinking /catalog (the same defence fetchScenarioTimeframes uses).
- */
-export async function fetchGmtSeries(platform: PlatformLike): Promise<GmtByScenario> {
+function buildGmtSeries(dfs: Array<unknown | undefined>): GmtByScenario {
   const rowsByPct: Record<string, WideRow[]> = {};
   let model: string | undefined;
   let unit: string | undefined;
-
-  const dfs = await Promise.all(
-    GMT_PERCENTILES.map(async (value) => {
-      try {
-        return await platform.iamc.tabulate({
-          region: { name: GMT_REGION },
-          variable: { name: composeGmtVariable(value) },
-          wide: true,
-        });
-      } catch {
-        return undefined;
-      }
-    }),
-  );
 
   GMT_PERCENTILES.forEach((value, i) => {
     const df = dfs[i];
@@ -213,10 +179,67 @@ export async function fetchGmtSeries(platform: PlatformLike): Promise<GmtByScena
   return series;
 }
 
+async function fetchOptionalGmtFrame(platform: PlatformLike, query: unknown): Promise<unknown | undefined> {
+  try {
+    return await platform.iamc.tabulate(query);
+  } catch (reason) {
+    if (reason instanceof NotFound) return undefined;
+    throw reason;
+  }
+}
+
+/**
+ * The three World GMT percentile series from one platform — three tabulates, no
+ * per-scenario calls. A missing variable yields an empty map rather than an
+ * error, so an instance without the emulator runs degrades to "no GMT".
+ */
+export async function fetchGmtSeries(platform: PlatformLike): Promise<GmtByScenario> {
+  const dfs = await Promise.all(
+    GMT_PERCENTILES.map(async (value) => {
+      try {
+        return await platform.iamc.tabulate({
+          region: { name: GMT_REGION },
+          variable: { name: composeGmtVariable(value) },
+          wide: true,
+        });
+      } catch {
+        return undefined;
+      }
+    })
+  );
+
+  return buildGmtSeries(dfs);
+}
+
+export async function fetchGmtSeriesStrict(platform: PlatformLike): Promise<GmtByScenario> {
+  const dfs = await Promise.all(
+    GMT_PERCENTILES.map((value) =>
+      fetchOptionalGmtFrame(platform, {
+        region: { name: GMT_REGION },
+        variable: { name: composeGmtVariable(value) },
+        wide: true,
+      })
+    )
+  );
+  return buildGmtSeries(dfs);
+}
+
+export async function fetchGmtScenario(platform: PlatformLike, scenario: string): Promise<GmtByScenario> {
+  const dfs = await Promise.all(
+    GMT_PERCENTILES.map((value) =>
+      fetchOptionalGmtFrame(platform, {
+        region: { name: GMT_REGION },
+        scenario: { name_ilike: scenario },
+        variable: { name: composeGmtVariable(value) },
+        wide: true,
+      })
+    )
+  );
+  return buildGmtSeries(dfs);
+}
+
 /** Same, across every instance; the first instance carrying a scenario wins. */
-export async function fetchGmtSeriesAcross(
-  platforms: Array<{ platform: PlatformLike }>,
-): Promise<GmtByScenario> {
+export async function fetchGmtSeriesAcross(platforms: Array<{ platform: PlatformLike }>): Promise<GmtByScenario> {
   const merged: GmtByScenario = new Map();
   for (const { platform } of platforms) {
     for (const [key, series] of await fetchGmtSeries(platform)) {
@@ -227,9 +250,6 @@ export async function fetchGmtSeriesAcross(
 }
 
 /** Instance + creds entry point, mirroring fetchImpactTime's signature. */
-export async function fetchGmt(
-  instance: Ixmp4Instance,
-  creds: { username: string; password: string },
-): Promise<GmtByScenario> {
+export async function fetchGmt(instance: Ixmp4Instance, creds: { username: string; password: string }): Promise<GmtByScenario> {
   return fetchGmtSeries(await createPlatform(instance, creds.username, creds.password));
 }

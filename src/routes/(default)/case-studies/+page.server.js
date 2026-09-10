@@ -1,14 +1,11 @@
-import { loadFromStrapi } from '$utils/apis.js';
+import { loadFromStrapi, loadGeographies } from '$utils/apis.js';
 
-export const load = async ({ fetch, parent }) => {
-  const { geographies, catalog } = await parent();
+export const load = async ({ fetch }) => {
+  const [geographies, caseStudies] = await Promise.all([
+    loadGeographies(fetch),
+    loadFromStrapi('case-study-dynamics', fetch, ['populate[CoverImage]=*', 'populate[Topics]=*', 'populate[Project]=*', 'populate[Geography]=*', 'populate[Scenarios]=*'].join('&')),
+  ]);
   const cities = geographies.cities ?? [];
-  const scenarios = catalog.scenarios ?? [];
-  const caseStudies = await loadFromStrapi(
-    'case-study-dynamics',
-    fetch,
-    ['populate[CoverImage]=*', 'populate[Topics]=*', 'populate[Project]=*', 'populate[Geography]=*', 'populate[Scenarios]=*'].join('&')
-  );
 
   return {
     caseStudies: caseStudies.map((study) => {

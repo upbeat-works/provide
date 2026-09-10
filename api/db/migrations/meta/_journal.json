@@ -8,6 +8,13 @@
       "when": 1784670283484,
       "tag": "0000_cultured_redwing",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789066800000,
+      "tag": "0001_indicator_title_case",
+      "breakpoints": true
     }
   ]
 }

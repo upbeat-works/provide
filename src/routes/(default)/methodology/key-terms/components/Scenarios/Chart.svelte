@@ -8,10 +8,9 @@
 
   $: chartData = scenarios.map((scenario) => {
     const values = scenario[variable] ?? [];
-    const isHighlighted = false; // TODO: Maybe add hover effect
     return {
       ...scenario,
-      values: isHighlighted ? values : values.map(({ year, value }) => ({ year, value })),
+      values: values.map(({ year, value }) => ({ year, value })),
     };
   });
 </script>

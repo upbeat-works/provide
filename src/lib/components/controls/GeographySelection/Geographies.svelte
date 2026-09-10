@@ -27,10 +27,8 @@
 
   $: hasSearchTerm = String(term).trim().length;
 
-  // Search with default options
   $: results = (!hasSearchTerm ? defaultResults : fuse.search(term)).map(({ item, matches }) => {
     let label = item.label;
-    // Highlighting matching substrings
     if (matches) {
       const match = matches.find((d) => d.key === 'label');
       if (match) {
@@ -78,7 +76,6 @@
   // user expand a country to drill into its children inline.
   $: isCountryMode = geographyType?.uid === 'admin0';
 
-  // Countries grouped by continent (ordered by continent label).
   $: continentGroups = sortBy(Object.entries($GEOGRAPHY_INDEX.countriesByContinent), ['0']);
 
   // Group headings (continent / type) are labels, not rows: no rule underneath,
@@ -86,11 +83,11 @@
   const headingClass = 'mt-4 mb-1 px-5 block text-xs font-medium uppercase tracking-wider text-theme-weaker';
 
   let box;
-  $: (term, box?.scrollTo({ top: 0 }));
+  $: term, box?.scrollTo({ top: 0 });
 </script>
 
 <div bind:this={box} class="w-full overflow-x-hidden pt-2 pb-4">
-  <RadioGroup bind:value={currentUid} on:change={(e) => (currentUid = e.detail)}>
+  <RadioGroup bind:value={currentUid}>
     {#if hasSearchTerm}
       {#if results.length}
         <GeographyGroup group={results} bind:hoveredItem {currentUid} />

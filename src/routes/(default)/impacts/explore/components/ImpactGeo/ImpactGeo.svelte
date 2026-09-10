@@ -2,24 +2,19 @@
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
 
   import {
-    CURRENT_GEOGRAPHY,
-    CURRENT_INDICATOR,
-    CURRENT_INDICATOR_OPTION_VALUES,
-    CURRENT_SCENARIOS,
     AVAILABLE_IMPACT_GEO_YEARS,
     DEFAULT_AVAILABLE_IMPACT_GEO_YEAR,
     TEMPLATE_PROPS,
     DOWNLOAD_URL_PARAMS,
-    IS_COMBINATION_AVAILABLE,
+    ACTIVE_INDICATOR_SCOPE_CONTEXT,
+    MAP_CHART_VIEW,
   } from '$src/stores/state';
   import {
     URL_PATH_SCENARIO,
     URL_PATH_YEAR,
-    URL_PATH_INDICATOR,
     IMPACT_GEO_DISPLAY_OPTIONS,
     END_GEO_SHAPE,
     END_IMPACT_GEO,
-    URL_PATH_GEOGRAPHY_TYPE,
     URL_PATH_GEOGRAPHY,
     URL_PATH_SCENARIOS,
     IMPACT_GEO_KEY_DIFFERENCE,
@@ -35,12 +30,14 @@
 
   import Controls from './Controls.svelte';
   import Maps from './Maps.svelte';
-  import { toLegacyGeoId, toLegacyScenarioUid, toLegacyParameterValues } from '$lib/catalog/translate.js';
   import Message from '$lib/components/ui/Message.svelte';
   import { getColorScale, coordinatesToRectGrid, calculateDifference, coordinatesToContours } from '$utils/geo.js';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { formatValue } from '$lib/utils/formatting';
   import { isObject, isString, has } from 'lodash-es';
+  import { percentileChartRequest, retryPercentileChartRequest } from '$stores/catalog-adapters.js';
+  import { catalogFlow } from '$stores/catalog-flow.js';
+  import Button from '$lib/components/ui/Button.svelte';
 
   export let tagline;
   export let year = undefined;
@@ -86,58 +83,37 @@
     year = defaultYear;
   }
 
-  // The gridded maps and their outlines are the one part of explore still served
-  // by the legacy Climate Analytics API (ixmp4 carries region-aggregated
-  // timeseries, not grids), so every id crossing into them has to be translated
-  // out of the convention id space: geographies bridge on geoId, indicators on
-  // the curated legacyUid, scenarios and parameter values on the tables in
-  // `$lib/catalog/translate.js`.
-  $: legacyGeography = toLegacyGeoId($CURRENT_GEOGRAPHY);
-  $: legacyIndicator = $CURRENT_INDICATOR?.legacyUid;
-  $: legacyOptions = toLegacyParameterValues($CURRENT_INDICATOR_OPTION_VALUES);
-  // Keep each selected scenario paired with its legacy uid rather than mapping to
-  // a bare list: one request goes out per pair and `process` reads the responses
-  // back positionally, so dropping an unmappable scenario silently would shift
-  // every later map onto the wrong scenario's colour and label.
-  $: scenarioPairs = $CURRENT_SCENARIOS.map((scenario) => ({ scenario, legacyUid: toLegacyScenarioUid(scenario.uid) })).filter(({ legacyUid }) => legacyUid);
+  $: mapView = $MAP_CHART_VIEW;
+  $: legacyUrlParams = mapView.legacyUrlParams ?? {};
+  $: legacyGeography = legacyUrlParams[URL_PATH_GEOGRAPHY];
+  $: scenarioPairs = mapView.scenarioPairs ?? [];
   $: legacyScenarios = scenarioPairs.map(({ legacyUid }) => legacyUid);
-  // Only a selection that translates whole can be requested. An indicator with
-  // no legacy twin (most of the convention catalog) or a scenario that never
-  // existed there would otherwise fire a request the legacy API answers with a
-  // 520, so the section reports itself unavailable instead.
-  $: hasLegacyEquivalent = Boolean(legacyGeography && legacyIndicator && legacyScenarios.length);
-
-  // The legacy-space twin of DOWNLOAD_URL_PARAMS, for the requests and the data
-  // download that still go to the legacy API.
-  $: legacyUrlParams = {
-    [URL_PATH_GEOGRAPHY]: legacyGeography,
-    [URL_PATH_GEOGRAPHY_TYPE]: $CURRENT_GEOGRAPHY?.geographyType,
-    [URL_PATH_INDICATOR]: legacyIndicator,
-    ...legacyOptions,
-  };
-
-  $: if ($IS_COMBINATION_AVAILABLE && hasLegacyEquivalent) {
-    fetchData(
-      IMPACT_GEO_DATA,
-      legacyScenarios.map((scenario) => ({
-        endpoint: END_IMPACT_GEO,
-        params: {
-          ...legacyUrlParams,
-          [URL_PATH_SCENARIO]: scenario,
-          [URL_PATH_SCENARIOS]: legacyScenarios,
-          [URL_PATH_YEAR]: year,
-        },
-      }))
-    );
-
-    fetchData(GEO_SHAPE_DATA, {
+  $: impactGeoRequests = percentileChartRequest(mapView, {
+    data: legacyScenarios.map((scenario) => ({
+      endpoint: END_IMPACT_GEO,
+      params: {
+        ...legacyUrlParams,
+        [URL_PATH_SCENARIO]: scenario,
+        [URL_PATH_SCENARIOS]: legacyScenarios,
+        [URL_PATH_YEAR]: year,
+      },
+    })),
+    shape: {
       endpoint: END_GEO_SHAPE,
       params: {
-        // geoId, not the convention uid — geo-shape is keyed on the legacy id
-        // (`POL`, `accra`), and a convention name 520s.
         [URL_PATH_GEOGRAPHY]: legacyGeography,
       },
-    });
+    },
+  });
+
+  $: if (impactGeoRequests) {
+    fetchData(IMPACT_GEO_DATA, impactGeoRequests.data);
+
+    fetchData(GEO_SHAPE_DATA, impactGeoRequests.shape);
+  }
+
+  function retryMapRequest() {
+    retryPercentileChartRequest({ view: mapView, flow: catalogFlow, indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT });
   }
 
   // `scenarios` here is the mapped subset, positionally aligned with the
@@ -156,13 +132,16 @@
       showSatelliteOption = true;
     }
 
-    // The data that is actually being rendered
-    const renderedData = showDifference
-      ? [calculateDifference(data)]
-      : data.map((d, i) => ({
-          ...(isMultipMap ? scenarios[i] : {}),
-          ...d.data,
-        }));
+    let renderedData;
+    if (showDifference) {
+      renderedData = [calculateDifference(data)];
+    } else {
+      renderedData = data.map((d, i) => {
+        let scenario = {};
+        if (isMultipMap) scenario = scenarios[i];
+        return { ...scenario, ...d.data };
+      });
+    }
 
     const colorScale = getColorScale(
       renderedData.map((d) => d.data),
@@ -240,7 +219,7 @@
     const geoShape = shape.data.data.features.find((feature) => feature.properties.uid === geoId) ?? shape.data.data.features[0];
 
     // // In some cases, the API provides descriptions for each threshold
-    const rawDesciption = data[0].data.description; // The descriptions for all scenarios are the same.
+    const rawDesciption = data[0].data.description;
     let description;
     if (isObject(rawDesciption) && has(rawDesciption, displayOption)) {
       description = rawDesciption[displayOption];
@@ -251,7 +230,7 @@
     return {
       showDifference,
       geoData,
-      geoShape: geoShape, // shape.data.data.features[0],
+      geoShape,
       title: data[0].data.title,
       description,
       colorScale,
@@ -263,7 +242,7 @@
   };
 </script>
 
-{#if $IS_COMBINATION_AVAILABLE && hasLegacyEquivalent}
+{#if mapView.status === 'ready'}
   <LoadingWrapper
     let:asyncProps
     let:props
@@ -300,25 +279,22 @@
       {isProcessing}
     >
       <svelte:fragment slot="controls">
-        <Controls
-          scenarios={props.scenarios}
-          {yearOptions}
-          displayOptions={IMPACT_GEO_DISPLAY_OPTIONS}
-          {showSatelliteOption}
-          bind:showSatellite
-          bind:displayOption
-          bind:year
-        />
+        <Controls scenarios={props.scenarios} {yearOptions} displayOptions={IMPACT_GEO_DISPLAY_OPTIONS} {showSatelliteOption} bind:showSatellite bind:displayOption bind:year />
       </svelte:fragment>
       <Maps bind:isProcessing unit={props.indicator.unit} geoData={asyncProps.geoData} geoShape={asyncProps.geoShape} colorScale={asyncProps.colorScale} {showSatellite} />
     </ChartFrame>
     <LoadingPlaceholder slot="placeholder" />
   </LoadingWrapper>
-{:else if $IS_COMBINATION_AVAILABLE}
-  <Message headline="Maps are not available for this selection">
-    <span class="text-contour-weaker">
-      The gridded maps come from the legacy dataset, which doesn’t cover {$CURRENT_INDICATOR?.label ?? 'this indicator'}
-      {#if legacyIndicator && !legacyScenarios.length}for the selected scenarios{/if}. The other charts on this page are unaffected.
-    </span>
-  </Message>
+{:else if mapView.status === 'loading'}
+  <LoadingPlaceholder />
+{:else if mapView.status === 'failure'}
+  {#if mapView.failedRequest === 'indicatorScope'}
+    <Message headline="Indicators could not be loaded for this selection">
+      <Button variant="secondary" on:click={retryMapRequest}>Retry indicators</Button>
+    </Message>
+  {:else}
+    <Message headline="Scenario availability could not be loaded">
+      <Button variant="secondary" on:click={retryMapRequest}>Retry map scenarios</Button>
+    </Message>
+  {/if}
 {/if}

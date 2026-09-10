@@ -8,13 +8,17 @@ export function avoidAvailableIndicators(indicators = [], cityUid) {
   return indicators.filter((i) => (i.availableGeographies ?? []).includes(cityUid));
 }
 
+export function resolveAvoidIndicatorSelection(uid, indicators = []) {
+  const indicator = indicators.find((item) => item.uid === uid);
+  if (!indicator?.instance) return undefined;
+  return { id: uid, instance: indicator.instance };
+}
+
 // All params an indicator has, with each param's options intersected down to the
 // values the indicator allows. Used to default/send EVERY param value.
 export function avoidAllIndicatorParameters(indicator, indicatorParameters = []) {
   const allowed = indicator?.parameters ?? {};
-  return indicatorParameters
-    .filter((p) => Array.isArray(allowed[p.uid]))
-    .map((p) => ({ ...p, options: (p.options ?? []).filter((o) => allowed[p.uid].includes(o.uid)) }));
+  return indicatorParameters.filter((p) => Array.isArray(allowed[p.uid])).map((p) => ({ ...p, options: (p.options ?? []).filter((o) => allowed[p.uid].includes(o.uid)) }));
 }
 
 // The param dropdowns shown to the user: only those with a real choice (>1

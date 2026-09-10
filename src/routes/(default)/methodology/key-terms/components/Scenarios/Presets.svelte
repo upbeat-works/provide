@@ -15,7 +15,6 @@
   $: scenarioPresetsForCurrentTimeframe = scenarioPresets.filter(({ timeframe }) => timeframe === selectedTimeframe);
 
   function findPreset(selectedScenarios) {
-    // Get a preset from the selected scenarios
     const preset = scenarioPresets.find(({ scenarios }) => selectedScenarios.length === scenarios.length && scenarios.every((scenario) => selectedScenarios.includes(scenario)));
     if (preset && preset[PRESET_ID]) {
       if ($currentPreset !== preset[PRESET_ID]) {
@@ -26,31 +25,18 @@
     }
   }
 
-  $: findPreset(selectedScenarios); // We use a function here, because currentPreset would trigger this block too early
+  $: findPreset(selectedScenarios);
 
-  $: {
-    // Get the scenarios from a preset selection
-    if ($currentPreset) {
-      const preset = scenarioPresetsForCurrentTimeframe.find(({ [PRESET_ID]: id }) => id === $currentPreset);
-      if (preset && preset.scenarios) {
-        dispatch('selection', {
-          scenarios: preset.scenarios,
-        });
-      }
-    } else if (typeof $currentPreset === 'undefined') {
-      dispatch('selection', {
-        scenarios: [],
-      });
-    }
-  }
-  // Width of the content
   let widthContent = 0;
 
   function click(value) {
     if ($currentPreset === value) {
       currentPreset.set(undefined);
+      dispatch('selection', { scenarios: [] });
     } else {
       currentPreset.set(value);
+      const preset = scenarioPresetsForCurrentTimeframe.find(({ [PRESET_ID]: id }) => id === value);
+      dispatch('selection', { scenarios: preset?.scenarios ?? [] });
     }
   }
 </script>

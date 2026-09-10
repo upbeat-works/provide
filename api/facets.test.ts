@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { resolveFacetSelection, type RunTags, type RunIndicators } from './facets';
+import { indicatorIdentity, resolveFacetSelection, type RunTags, type RunIndicators } from './facets';
 
 // Three runs: two annual (one global, one national), one 5-yearly.
 const runTags: RunTags = new Map([
@@ -72,7 +72,10 @@ describe('resolveFacetSelection', () => {
   });
 
   test('runs without the tag are excluded from that facet', () => {
-    const partial: RunTags = new Map([['1', { 'Temporal Resolution': 'Annual' }], ['2', {}]]);
+    const partial: RunTags = new Map([
+      ['1', { 'Temporal Resolution': 'Annual' }],
+      ['2', {}],
+    ]);
     const { facets } = resolveFacetSelection(partial, runIndicators, {});
     expect(facets['Temporal Resolution']).toEqual([{ value: 'Annual', count: 2 }]);
   });
@@ -119,33 +122,18 @@ describe('resolveFacetSelection — indicator-level facets (Sector, Project)', (
   });
 
   test('filtering by sector narrows the indicator list', () => {
-    const { indicators } = resolveFacetSelection(
-      runTags,
-      runIndicators,
-      { Sector: ['Maritime Climate'] },
-      indicatorAttrs,
-    );
+    const { indicators } = resolveFacetSelection(runTags, runIndicators, { Sector: ['Maritime Climate'] }, indicatorAttrs);
     expect([...indicators]).toEqual(['Sea Level Rise']);
   });
 
   test('ANDs an indicator facet with a run facet', () => {
     // Terrestrial Climate covers runs 1+2; '5 years' is run 3 only → no overlap.
-    const { indicators } = resolveFacetSelection(
-      runTags,
-      runIndicators,
-      { Sector: ['Terrestrial Climate'], 'Temporal Resolution': ['5 years'] },
-      indicatorAttrs,
-    );
+    const { indicators } = resolveFacetSelection(runTags, runIndicators, { Sector: ['Terrestrial Climate'], 'Temporal Resolution': ['5 years'] }, indicatorAttrs);
     expect([...indicators]).toEqual([]);
   });
 
   test('a run facet scopes the sector counts, and vice versa', () => {
-    const { facets } = resolveFacetSelection(
-      runTags,
-      runIndicators,
-      { 'Temporal Resolution': ['5 years'] },
-      indicatorAttrs,
-    );
+    const { facets } = resolveFacetSelection(runTags, runIndicators, { 'Temporal Resolution': ['5 years'] }, indicatorAttrs);
     // Only Sea Level Rise survives, so Terrestrial Climate drops to 0 (muted).
     expect(facets.Sector).toEqual([
       { value: 'Maritime Climate', count: 1 },
@@ -154,12 +142,7 @@ describe('resolveFacetSelection — indicator-level facets (Sector, Project)', (
   });
 
   test('a sector selection does not scope its own group', () => {
-    const { facets } = resolveFacetSelection(
-      runTags,
-      runIndicators,
-      { Sector: ['Maritime Climate'] },
-      indicatorAttrs,
-    );
+    const { facets } = resolveFacetSelection(runTags, runIndicators, { Sector: ['Maritime Climate'] }, indicatorAttrs);
     expect(facets.Sector.map((o) => o.value)).toEqual(['Maritime Climate', 'Terrestrial Climate']);
     // …but it does scope the run-level groups.
     expect(facets['Temporal Resolution']).toEqual([
@@ -171,5 +154,22 @@ describe('resolveFacetSelection — indicator-level facets (Sector, Project)', (
   test('indicators with no sector row simply have no sector value', () => {
     const { facets } = resolveFacetSelection(runTags, runIndicators, {}, new Map());
     expect(facets.Sector).toEqual([]);
+  });
+});
+
+describe('resolveFacetSelection — source-bound indicators', () => {
+  test('counts equal indicator IDs from different instances separately', () => {
+    const sourceRuns: RunIndicators = new Map([
+      ['provide-internal#1', [indicatorIdentity('Heat', 'provide-internal')]],
+      ['sparccle#1', [indicatorIdentity('Heat', 'sparccle')]],
+    ]);
+    const sourceTags: RunTags = new Map([
+      ['provide-internal#1', { 'Temporal Resolution': 'Annual' }],
+      ['sparccle#1', { 'Temporal Resolution': 'Annual' }],
+    ]);
+
+    const { facets } = resolveFacetSelection(sourceTags, sourceRuns, {});
+
+    expect(facets['Temporal Resolution']).toEqual([{ value: 'Annual', count: 2 }]);
   });
 });

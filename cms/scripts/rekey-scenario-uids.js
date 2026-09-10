@@ -2,7 +2,7 @@
 /**
  * Re-key Strapi scenario UIDs from the legacy slugs (`curpol`) to the ixmp4 names
  * the catalog serves (`2020 Climate Policies`), so CMS descriptions rejoin
- * `GET /api/catalog`. Idempotent. See lib/scenario-uid-map.js for the map.
+ * the scenario details. Idempotent. See lib/scenario-uid-map.js for the map.
  *
  * The content of record is the REMOTE Strapi — a local-only run is reverted by
  * the next `npm run db:cms:pull`.
@@ -45,7 +45,7 @@ async function main() {
         log(`${locale}: ${from} -> ${to}`);
       }
       const skipped = rows.length - plan.length;
-      log(`${locale}: ${plan.length} renamed, ${skipped} left on their legacy uid (no ixmp4 counterpart)`);
+      log(`${locale}: ${plan.length} renamed, ${skipped} unchanged`);
     }
     log(DRY_RUN ? 'dry run complete — nothing written' : 'done');
   } finally {

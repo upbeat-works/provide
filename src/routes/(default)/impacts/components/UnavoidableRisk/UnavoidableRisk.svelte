@@ -7,8 +7,9 @@
     TEMPLATE_PROPS,
     CURRENT_SCENARIOS,
     SELECTABLE_WARMING_SCENARIOS,
-    IS_COMBINATION_AVAILABLE,
     DOWNLOAD_URL_PARAMS,
+    ACTIVE_INDICATOR_SCOPE_CONTEXT,
+    WARMING_CHART_VIEW,
   } from '$stores/state.js';
   import UnavoidableRiskChart from './UnavoidableRiskChart/UnavoidableRiskChart.svelte';
   import ColorLegend from '$lib/components/charts/legends/ColorLegend.svelte';
@@ -16,13 +17,17 @@
   import Select from '$lib/components/ui/Select.svelte';
   import { min } from 'd3-array';
   import { formatValue, findDecimalsForDistinctValues } from '$lib/utils/formatting';
-  import { URL_PATH_SCENARIOS, END_UN_AVOIDABLE_RISK, UNAVOIDABLE_UID, KEY_MODEL, KEY_SOURCE, KEY_SCENARIO_ENDYEAR, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR } from '$src/config.js';
-  import { sortBy, reverse, find, uniqBy, without, isObject, isString, has } from 'lodash-es';
+  import { URL_PATH_SCENARIOS, END_UN_AVOIDABLE_RISK, UNAVOIDABLE_UID, KEY_MODEL, KEY_SOURCE, KEY_SCENARIO_ENDYEAR } from '$src/config.js';
+  import { sortBy, reverse, find, without, isObject, isString, has } from 'lodash-es';
   import { fetchData } from '$lib/api/api';
   import { withScenarioTimeframe } from '$lib/utils/utils.js';
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { writable } from 'svelte/store';
+  import { retryWarmingChartRequest, scenariosForTimeframe, warmingChartRequest } from '$stores/catalog-adapters.js';
+  import { catalogFlow } from '$stores/catalog-flow.js';
+  import Button from '$lib/components/ui/Button.svelte';
+  import Message from '$lib/components/ui/Message.svelte';
 
   const STORE = writable({});
   let threshold; // This holds the selected threshold
@@ -51,7 +56,16 @@
     KEY_SCENARIO_ENDYEAR
   );
 
-  $: $IS_COMBINATION_AVAILABLE &&
+  $: warmingView = $WARMING_CHART_VIEW;
+  $: warmingRequest = warmingChartRequest({
+    view: warmingView,
+    geography: $CURRENT_GEOGRAPHY?.uid,
+    indicator: $CURRENT_INDICATOR ? { id: $CURRENT_INDICATOR.uid, instance: $CURRENT_INDICATOR.instance } : undefined,
+    scenarios: $SELECTABLE_WARMING_SCENARIOS,
+    parameters: $CURRENT_INDICATOR_OPTION_VALUES,
+  });
+
+  $: warmingRequest &&
     fetchData(STORE, {
       // Convention-driven ixmp4 adapter (not the legacy API). It resolves one
       // exceedance series per warming threshold. The adapter reads repeated
@@ -59,18 +73,12 @@
       base: import.meta.env.VITE_API_URL,
       arrayFormat: 'repeat',
       endpoint: END_UN_AVOIDABLE_RISK,
-      params: {
-        [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY.uid,
-        [URL_PATH_INDICATOR]: $CURRENT_INDICATOR.uid,
-        // Request ALL warming-level-selectable scenarios (not just the selected
-        // one) so the chart can plot the exceedance scatter across scenarios; the
-        // selected ones are highlighted, the rest render as "Other scenarios". The
-        // adapter omits any scenario that has no exceedance data.
-        [URL_PATH_SCENARIOS]: $SELECTABLE_WARMING_SCENARIOS.map(({ uid }) => uid),
-        instance: $CURRENT_INDICATOR.instance,
-        ...$CURRENT_INDICATOR_OPTION_VALUES,
-      },
+      params: warmingRequest,
     });
+
+  function retryWarmingRequest() {
+    retryWarmingChartRequest({ view: warmingView, flow: catalogFlow, indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT });
+  }
 
   $: process = ({ data }, { selectedScenarios, urlParams, allScenarios, indicator: { instance } = {} }) => {
     // This creates the list of thresholds
@@ -104,7 +112,7 @@
     // For this, we merge the selected and all scenarios together
     // This is because the selected scenarios have the assigned colors included
     // That’s why we spread them first in the new array
-    const mergedScenarios = uniqBy([...selectedScenarios, ...allScenarios], 'uid').filter((s) => s[KEY_SCENARIO_ENDYEAR] === timeframe);
+    const mergedScenarios = scenariosForTimeframe({ selectedScenarios, allScenarios });
 
     let processedScenarios = Object.entries(data.data)
       .map(([uid, scenarioData]) => {
@@ -221,7 +229,7 @@
   };
 </script>
 
-{#if $IS_COMBINATION_AVAILABLE}
+{#if warmingView.status === 'ready'}
   <LoadingWrapper
     let:props
     let:isLoading
@@ -265,4 +273,16 @@
     </ChartFrame>
     <LoadingPlaceholder slot="placeholder" />
   </LoadingWrapper>
+{:else if warmingView.status === 'loading'}
+  <LoadingPlaceholder />
+{:else if warmingView.status === 'failure'}
+  {#if warmingView.failedRequest === 'indicatorScope'}
+    <Message headline="Indicators could not be loaded for this selection">
+      <Button variant="secondary" on:click={retryWarmingRequest}>Retry indicators</Button>
+    </Message>
+  {:else}
+    <Message headline="Warming availability could not be loaded">
+      <Button variant="secondary" on:click={retryWarmingRequest}>Retry warming data</Button>
+    </Message>
+  {/if}
 {/if}

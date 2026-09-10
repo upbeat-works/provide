@@ -67,7 +67,7 @@ export function composeVariable(parts: VariableParts): string {
 }
 
 // Default facets for the default chart view and for "does this indicator have
-// data here" probes. Shared by /geographies, /scenarios and impact-time so the
+// data here" probes. Shared by availability and impact-time so the
 // representative variable name stays consistent across endpoints.
 export const FACET_DEFAULTS = { period: '2011-2020 (Present Day)', temporal: 'Annual', spatial: 'Area' };
 export const REPRESENTATIVE_VALUE = '50th Percentile';
@@ -94,13 +94,10 @@ export function composeGmtVariable(value: string): string {
 
 /**
  * A fully-faceted variable name for an indicator (representative value = the
- * median), used to probe which regions/scenarios have data for it. An indicator
+ * median), used to probe which regions and scenarios have data for it. An indicator
  * is many variables; this picks one canonical series to test for existence.
  */
-export function representativeVariable(
-  indicator: string,
-  facets: { period?: string; temporal?: string; spatial?: string } = {},
-): string {
+export function representativeVariable(indicator: string, facets: { period?: string; temporal?: string; spatial?: string } = {}): string {
   return composeVariable({
     indicator,
     period: facets.period ?? FACET_DEFAULTS.period,
@@ -162,8 +159,7 @@ export function indicatorsFromVariables(names: string[]): IndicatorFacets[] {
     if (p.value?.kind === 'percentile') acc.percentiles.set(p.value.raw, p.value.number);
   }
 
-  const sortedKeys = (m: Map<string, number>) =>
-    [...m.entries()].sort((a, b) => a[1] - b[1]).map(([raw]) => raw);
+  const sortedKeys = (m: Map<string, number>) => [...m.entries()].sort((a, b) => a[1] - b[1]).map(([raw]) => raw);
 
   return [...byIndicator.values()].map(({ entry, warmingLevels, percentiles }) => ({
     ...entry,

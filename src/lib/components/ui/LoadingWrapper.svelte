@@ -1,17 +1,18 @@
 <script>
   import { STATUS_FAILED, STATUS_SUCCESS } from '$src/config.js';
+  import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import Message from '$lib/components/ui/Message.svelte';
   import { each, filter } from 'lodash-es';
 
   export let props = {}; // Regular props/state that need to be kept in sync with the asyncProps
   export let asyncProps = {}; // Array or Dict of regular object that have a status property
   export let process = (d) => d; // Function for data processing before props are passed to slot
-  export let isEmpty = true; // true only on first load if no data is loaded yet
   export let isLoading; // true if no data or only partial data is loaded yet
   export let isFailed = false;
   export let warningSizeSmall = false;
   export let warningBackground = true;
   export let warningInverted = false;
+  export let wrapperClass = undefined;
 
   let currentProps;
   let currentAsyncProps; // Always holds previous props and only gets updated once all data is loaded
@@ -32,9 +33,6 @@
   $: isFailed = !!filter(flatData, (d) => d.status === STATUS_FAILED).length;
   $: isExpectedFail = isFailed && !!filter(flatData, (d) => d.isExpected).length;
 
-  // Set isEmpty to false only after initial data was loaded. Afterwards it is always false
-  $: if (currentAsyncProps) isEmpty = false;
-
   $: if (loadedData.length !== flatData.length || !flatData.length) {
     isLoading = true;
   } else {
@@ -49,31 +47,31 @@
   }
 </script>
 
-{#if isFailed}
-  <slot name="failed">
-    <Message {warningBackground} {warningSizeSmall} {warningInverted} warningSign={!isExpectedFail} headline={isExpectedFail ? 'Graph not available' : 'Data could not be loaded for this graph'}>
-      {#if isExpectedFail}
-        {#if flatData.length}
-          <div class="mt-4 flex flex-col">
-            {#each flatData.filter(({ message }) => typeof message !== 'undefined') as { message }}<span>{message}</span>{/each}
-          </div>
+<div aria-busy={isLoading && !isFailed} class={wrapperClass}>
+  {#if isFailed}
+    <slot name="failed">
+      <Message {warningBackground} {warningSizeSmall} {warningInverted} warningSign={!isExpectedFail} headline={isExpectedFail ? 'Graph not available' : 'Data could not be loaded for this graph'}>
+        {#if isExpectedFail}
+          {#if flatData.length}
+            <div class="mt-4 flex flex-col">
+              {#each flatData.filter(({ message }) => typeof message !== 'undefined') as { message }}<span>{message}</span>{/each}
+            </div>
+          {/if}
+        {:else}
+          <span>Try again in a moment.</span>
+          {#if flatData.length}
+            <div class="mt-4 font-mono text-xs text-text-weaker flex flex-col" class:text-white={warningInverted}>
+              {#each flatData.filter(({ message }) => typeof message !== 'undefined') as { message }}<span>{message}</span>{/each}
+            </div>
+          {/if}
         {/if}
-      {:else}
-        <span>This is probably because the data is not available for this selection.</span>
-        <span>Try another combination of geography, indicator and scenarios.</span>
-        {#if flatData.length}
-          <div class="mt-4 font-mono text-xs text-text-weaker flex flex-col" class:text-white={warningInverted}>
-            {#each flatData.filter(({ message }) => typeof message !== 'undefined') as { message, isExpected }}<span>{message}</span>{/each}
-          </div>
-        {/if}
-      {/if}
-    </Message>
-  </slot>
-{:else if isEmpty}
-  <slot name="placeholder" />
-{:else}
-  {#if isLoading}
-    <slot name="loading" />
+      </Message>
+    </slot>
+  {:else if isLoading}
+    <slot name="placeholder">
+      <LoadingPlaceholder />
+    </slot>
+  {:else}
+    <slot {isLoading} asyncProps={currentAsyncProps} props={currentProps} />
   {/if}
-  <slot {isLoading} {isEmpty} asyncProps={currentAsyncProps} props={currentProps} />
-{/if}
+</div>

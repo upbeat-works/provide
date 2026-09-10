@@ -1,274 +1,265 @@
 # Curated indicator enrichment (sector + legacy translation uid).
 #
-# `id` MUST equal the convention indicator name (the ixmp4 variable's first
-# segment, as returned by GET /api/catalog). The values below are a best-effort
-# PLACEHOLDER seeded from the legacy indicator LABEL — verify/replace each `id`
-# against a live `/catalog` before relying on explore `sector` or the
-# explore->avoid handoff. Because the /catalog join is additive, a mismatched
-# `id` simply yields no enrichment for that indicator (never an error), and the
-# avoid page works regardless (it uses the legacy uids directly).
-#
 # `legacyUid` = the frozen legacy /meta indicator uid (stable; from Appendix A).
 # `sector`    = the legacy sector. Cities/avoid indicators are all urban-climate.
 
-- id: Days a year with maximum temperatures above X°C
+- id: Days a Year with Maximum Temperatures Above X°C
   sector: urban-climate
   legacyUid: urbclim-T2M-dayoverX
-- id: Nights a year with minimum temperatures above X°C
+- id: Nights a Year with Minimum Temperatures Above X°C
   sector: urban-climate
   legacyUid: urbclim-T2M-nightoverX
-- id: Days a year with extreme heat stress
+- id: Days a Year with Extreme Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-dayover31
-- id: Days a year with very high heat stress
+- id: Days a Year with Very High Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-dayover295
-- id: Days a year with moderate heat stress
+- id: Days a Year with Moderate Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-dayover25
-- id: Days a year with high heat stress
+- id: Days a Year with High Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-dayover28
-- id: Cooling degree hours
+- id: Cooling Degree Hours
   sector: urban-climate
   legacyUid: urbclim-cooling-degree-hours
-- id: Hours a year with extreme heat stress
+- id: Hours a Year with Extreme Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-hourover31
-- id: Mean daily maximum temperature
+- id: Mean Daily Maximum Temperature
   sector: urban-climate
   legacyUid: urbclim-T2M-daily-mean-max
-- id: Nights a year with high heat stress
+- id: Nights a Year with High Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-nightover28
-- id: Lost working hours per year for moderate activities
+- id: Lost Working Hours per Year for Moderate Activities
   sector: urban-climate
   legacyUid: urbclim-LWH-mod
-- id: Heat-wave magnitude index daily (HWMId)
+- id: Heat-Wave Magnitude Index Daily (HWMId)
   sector: urban-climate
   legacyUid: urbclim-HWMI
-- id: Mean daily minimum temperature
+- id: Mean Daily Minimum Temperature
   sector: urban-climate
   legacyUid: urbclim-T2M-daily-mean-min
-- id: Hours a year with moderate heat stress
+- id: Hours a Year with Moderate Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-hourover25
-- id: Mean daily maximum wet bulb globe temperature
+- id: Mean Daily Maximum Wet Bulb Globe Temperature
   sector: urban-climate
   legacyUid: urbclim-WBGT-daily-mean-max
-- id: Lost working hours per year for light activities
+- id: Lost Working Hours per Year for Light Activities
   sector: urban-climate
   legacyUid: urbclim-LWH-light
-- id: Mean daily temperature
+- id: Mean Daily Temperature
   sector: urban-climate
   legacyUid: urbclim-T2M-mean
-- id: Lost working hours per year for intense activities
+- id: Lost Working Hours per Year for Intense Activities
   sector: urban-climate
   legacyUid: urbclim-LWH-int
-- id: Hours a year with high heat stress
+- id: Hours a Year with High Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-hourover28
-- id: Hours a year with very high heat stress
+- id: Hours a Year with Very High Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-hourover295
-- id: Heatwave days per year
+- id: Heatwave Days per Year
   sector: urban-climate
   legacyUid: urbclim-heatwave-days
-- id: Population exposed to heatwaves
+- id: Population Exposed to Heatwaves
   sector: urban-climate
   legacyUid: urbclim-heatwaves-population-exposed
-- id: Population exposed to moderate heatstress
+- id: Population Exposed to Moderate Heatstress
   sector: urban-climate
   legacyUid: urbclim-heatstressimpact-wbgt-dayover25
-- id: Population exposed to high heat stress
+- id: Population Exposed to High Heat Stress
   sector: urban-climate
   legacyUid: urbclim-heatstressimpact-wbgt-dayover28
-- id: Population exposed to very high heat stress
+- id: Population Exposed to Very High Heat Stress
   sector: urban-climate
   legacyUid: urbclim-heatstressimpact-wbgt-dayover295
-- id: Population exposed to extreme heatstress
+- id: Population Exposed to Extreme Heatstress
   sector: urban-climate
   legacyUid: urbclim-heatstressimpact-wbgt-dayover31
 
 # --- Imported from the legacy API (provide-api processing/metadata/metadata.py).
 # Every indicator the legacy /meta defined, with its sector. `id` is the legacy
-# LABEL verbatim except where verified against a live /catalog scan (only
+# LABEL verbatim except where verified against a live indicator scan (only
 # `Mean Temperature` exists in ixmp4 today; legacy spelled it "Mean temperature").
-# Re-verify the rest as their data lands — a mismatched `id` is inert, not an error.
 - id: Mean Temperature
   sector: terrestrial-climate
   legacyUid: terclim-mean-temperature
-- id: Extremely hot year
+- id: Extremely Hot Year
   sector: terrestrial-climate
   legacyUid: terclim-hot-extreme
-- id: Extremely cold year
+- id: Extremely Cold Year
   sector: terrestrial-climate
   legacyUid: terclim-cold-extreme
-- id: Annual maximum temperature
+- id: Annual Maximum Temperature
   sector: terrestrial-climate
   legacyUid: terclim-txx
-- id: Annual minimum of monthly mean soil moisture content
+- id: Annual Minimum of Monthly Mean Soil Moisture Content
   sector: terrestrial-climate
   legacyUid: terclim-mrso-minmon
-- id: Fire Weather Index during the fire season
+- id: Fire Weather Index During the Fire Season
   sector: terrestrial-climate
   legacyUid: terclim-fwisa
-- id: Length of the fire season
+- id: Length of the Fire Season
   sector: terrestrial-climate
   legacyUid: terclim-fwils
-- id: Soil moisture content
+- id: Soil Moisture Content
   sector: terrestrial-climate
   legacyUid: terclim-mrso
-- id: Annual maximum of the fire weather index
+- id: Annual Maximum of the Fire Weather Index
   sector: terrestrial-climate
   legacyUid: terclim-fwixx
-- id: Number of days with extreme fire weather
+- id: Number of Days with Extreme Fire Weather
   sector: terrestrial-climate
   legacyUid: terclim-fwixd
-- id: Species at risk from local extinction
+- id: Species at Risk from Local Extinction
   sector: biodiversity
   legacyUid: biodiversity-srr
-- id: Timber species at risk from local extinction
+- id: Timber Species at Risk from Local Extinction
   sector: biodiversity
   legacyUid: biodiversity-timber-srr
-- id: Pollinator species at risk from local extinction
+- id: Pollinator Species at Risk from Local Extinction
   sector: biodiversity
   legacyUid: biodiversity-pollinators-srr
-- id: Plant species at risk from local extinction
+- id: Plant Species at Risk from Local Extinction
   sector: biodiversity
   legacyUid: biodiversity-plantae-srr
-- id: Glacier area
+- id: Glacier Area
   sector: glacier
   legacyUid: glacier-area
-- id: Glacier volume
+- id: Glacier Volume
   sector: glacier
   legacyUid: glacier-volume
-- id: Glacier thinning rate
+- id: Glacier Thinning Rate
   sector: glacier
   legacyUid: glacier-thinning_rate
-- id: Nights a year with moderate heat stress
+- id: Nights a Year with Moderate Heat Stress
   sector: urban-climate
   legacyUid: urbclim-WBGT-nightover25
-- id: Sea surface temperature
+- id: Sea Surface Temperature
   sector: maritime-climate
   legacyUid: marclim-sst
-- id: Sea surface pH
+- id: Sea Surface pH
   sector: maritime-climate
   legacyUid: marclim-ph
-- id: Ocean oxygen content
+- id: Ocean Oxygen Content
   sector: maritime-climate
   legacyUid: marclim-oxygen
-- id: Marine heatwave days per year
+- id: Marine Heatwave Days per Year
   sector: maritime-climate
   legacyUid: marclim-sst_ext
-- id: Global atmospheric CH4 concentration from peatland emissions
+- id: Global Atmospheric CH4 Concentration from Peatland Emissions
   sector: carboncycle
   legacyUid: carboncycle-d-ch4
-- id: Global atmospheric CO2 concentration from peatland emissions
+- id: Global Atmospheric CO2 Concentration from Peatland Emissions
   sector: carboncycle
   legacyUid: carboncycle-d-co2
-- id: Peatland CH4 emission
+- id: Peatland CH4 Emission
   sector: carboncycle
   legacyUid: carboncycle-d-ept-ch4
-- id: Peatland CO2 flux
+- id: Peatland CO2 Flux
   sector: carboncycle
   legacyUid: carboncycle-d-ept-co2
-- id: Global annual mean temperature rise from peatland emissions
+- id: Global Annual Mean Temperature Rise from Peatland Emissions
   sector: carboncycle
   legacyUid: carboncycle-d-tg
-- id: Climate change impact on GDP
+- id: Climate Change Impact on GDP
   sector: macroeconomy
   legacyUid: macroeconomy-bhm
-- id: Export supply (food sector)
+- id: Export Supply (Food Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-export-supply-food
-- id: Export supply (livestock sector)
+- id: Export Supply (Livestock Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-export-supply-livestock
-- id: Export supply (manufacturing sector)
+- id: Export Supply (Manufacturing Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-export-supply-manufacturing
-- id: Export supply (services sector)
+- id: Export Supply (Services Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-export-supply-services
-- id: Private consumption (food sector)
+- id: Private Consumption (Food Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-private-consumption-food
-- id: Private consumption (livestock sector)
+- id: Private Consumption (Livestock Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-private-consumption-livestock
-- id: Private consumption (manufacturing sector)
+- id: Private Consumption (Manufacturing Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-private-consumption-manufacturing
-- id: Private consumption (services sector)
+- id: Private Consumption (Services Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-private-consumption-services
-- id: GDP (all sectors)
+- id: GDP (All Sectors)
   sector: macroeconomy
   legacyUid: macroeconomy-gdp-macro
-- id: Import demand (food sector)
+- id: Import Demand (Food Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-import-demand-food
-- id: Import demand (livestock sector)
+- id: Import Demand (Livestock Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-import-demand-livestock
-- id: Import demand (manufacturing sector)
+- id: Import Demand (Manufacturing Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-import-demand-manufacturing
-- id: Import demand (services sector)
+- id: Import Demand (Services Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-import-demand-services
-- id: Producer price (food sector)
+- id: Producer Price (Food Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-producer-price-food
-- id: Producer price (livestock sector)
+- id: Producer Price (Livestock Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-producer-price-livestock
-- id: Producer price (manufacturing sector)
+- id: Producer Price (Manufacturing Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-producer-price-manufacturing
-- id: Producer price (services sector)
+- id: Producer Price (Services Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-producer-price-services
-- id: Wages (food sector)
+- id: Wages (Food Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-wages-food
-- id: Wages (livestock sector)
+- id: Wages (Livestock Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-wages-livestock
-- id: Wages (manufacturing sector)
+- id: Wages (Manufacturing Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-wages-manufacturing
-- id: Wages (services sector)
+- id: Wages (Services Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-wages-services
-- id: Consumer price index (all sectors)
+- id: Consumer Price Index (All Sectors)
   sector: macroeconomy
   legacyUid: macroeconomy-consumer-price-index-macro
-- id: Production (food sector)
+- id: Production (Food Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-production-food
-- id: Production (livestock sector)
+- id: Production (Livestock Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-production-livestock
-- id: Production (manufacturing sector)
+- id: Production (Manufacturing Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-production-manufacturing
-- id: Production (services sector)
+- id: Production (Services Sector)
   sector: macroeconomy
   legacyUid: macroeconomy-production-services
 - id: Labour Productivity
   sector: macroeconomy
   legacyUid: macroeconomy-labour-productivity
-- id: Nights a year where minimum wet-bulb globe temperatures stay above X°C
+- id: Nights a Year Where Minimum Wet-Bulb Globe Temperatures Stay Above X°C
   sector: urban-climate
   legacyUid: urbclim-WBGT-nightoverX
-- id: Hours a year with maximum wet-bulb globe temperature above X°C
+- id: Hours a Year with Maximum Wet-Bulb Globe Temperature Above X°C
   sector: urban-climate
   legacyUid: urbclim-WBGT-houroverX
-- id: Daytime Urban Heat Island corrected for topography
+- id: Daytime Urban Heat Island Corrected for Topography
   sector: urban-climate
   legacyUid: urbclim-T2M-daily-mean-max-topography
-- id: Nighttime Urban Heat Island corrected for topography
+- id: Nighttime Urban Heat Island Corrected for Topography
   sector: urban-climate
   legacyUid: urbclim-T2M-daily-mean-min-topography

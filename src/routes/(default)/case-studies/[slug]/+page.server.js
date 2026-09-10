@@ -1,118 +1,56 @@
 import { error } from '@sveltejs/kit';
-import { loadFromAPI, loadFromStrapi } from '$utils/apis.js';
+import { loadCuration, loadFromStrapi, loadGeographies, loadIndicatorIndex, loadMethodologyScenarios } from '$utils/apis.js';
 import { parse } from 'marked';
-import qs from 'qs';
-import { scaleLinear } from 'd3-scale';
-import { each } from 'lodash-es';
-import { END_AVOIDING_IMPACTS, END_AVOIDING_REFERENCE, URL_PATH_CERTAINTY_LEVEL, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_LEVEL_OF_IMPACT } from '$config';
+import { loadCaseStudyAvoidingTables } from '$lib/server/case-study-avoiding.js';
+import { safeCaseStudyExplorerUrl } from '$lib/catalog/case-study-explorer-url.js';
 
-export const load = async ({ fetch, parent, params }) => {
-  const { geographies, catalog, curation } = await parent();
+export const load = async ({ fetch, params }) => {
+  const [geographies, indicatorIndex, caseStudiesRaw, caseStudyOutroRaw] = await Promise.all([
+    loadGeographies(fetch),
+    loadIndicatorIndex(fetch),
+    loadFromStrapi(
+      'case-study-dynamics',
+      fetch,
+      [
+        `populate[CoverImage]=*`,
+        `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactTimeSnapshot][populate]=Image`,
+        `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactGeoSnapshot][populate]=Image`,
+        `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image1`,
+        `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image2`,
+        `populate[MainContent][on][avoiding-impacts.avoiding-impacts][populate]=*`,
+        `populate[MainContent][on][section.section][populate]=*`,
+        `populate[Topics]=*`,
+        `populate[Project]=*`,
+        `populate[Geography]=*`,
+        `populate[Scenarios]=*`,
+      ].join('&')
+    ),
+    loadFromStrapi('case-study-outro', fetch),
+  ]);
   const meta = {
     cities: geographies.cities ?? [],
-    indicators: catalog.indicators ?? [],
-    scenarios: catalog.scenarios ?? [],
-    likelihoods: curation.likelihoods ?? [],
-    studyLocations: curation.studyLocations ?? [],
+    indicators: indicatorIndex.indicators ?? [],
   };
-
-  const caseStudiesRaw = await loadFromStrapi(
-    'case-study-dynamics',
-    fetch,
-    [
-      `populate[CoverImage]=*`,
-      `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactTimeSnapshot][populate]=Image`,
-      `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactGeoSnapshot][populate]=Image`,
-      `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image1`,
-      `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image2`,
-      `populate[MainContent][on][avoiding-impacts.avoiding-impacts][populate]=*`,
-      `populate[MainContent][on][section.section][populate]=*`,
-      `populate[Topics]=*`,
-      `populate[Project]=*`,
-      `populate[Geography]=*`,
-      `populate[Scenarios]=*`,
-    ].join('&')
-  );
-
-  const caseStudyOutro = (await loadFromStrapi('case-study-outro', fetch))?.attributes;
+  const indicatorIndexIncomplete = Boolean(indicatorIndex.failedInstances?.length);
+  const caseStudyOutro = caseStudyOutroRaw?.attributes;
 
   const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.Slug === params.slug)?.attributes;
   if (!caseStudyRaw) error(404, { message: 'No case study available for this slug' });
 
+  const hasAvoidingImpacts = caseStudyRaw.MainContent.some((content) => content.__component === 'avoiding-impacts.avoiding-impacts');
+  if (hasAvoidingImpacts && indicatorIndexIncomplete) {
+    error(503, { message: 'Case study indicator data is temporarily unavailable.' });
+  }
+  let avoidingResources;
+  if (hasAvoidingImpacts) {
+    const [curation, scenarios] = await Promise.all([loadCuration(fetch), loadMethodologyScenarios(fetch)]);
+    avoidingResources = { curation, scenarios };
+  }
+
   // Not every case study is about a city (the adaptation overview isn't), so fall
   // back to a synthetic entry instead of 404ing.
   const cityGeo = meta.cities.find((c) => c.geoId === caseStudyRaw.Slug);
-  const city = cityGeo
-    ? { ...cityGeo, uid: caseStudyRaw.Slug }
-    : { uid: caseStudyRaw.Slug, label: caseStudyRaw.Title ?? caseStudyRaw.Slug };
-
-  const loadAvoidingImpactsData = async ({ Indicators = [], StudyLocations = [] }) => {
-    if (!Indicators.length || !StudyLocations.length) return [];
-
-    // Load all avoiding impacts reference data
-    const refRequests = Indicators.map(({ Uid: indicatorUid }) => {
-      const indicator = meta.indicators.find((d) => d.uid === indicatorUid);
-      if (!indicator) error(404, { message: `Indicator ${indicatorUid} not found in metadata` });
-
-      const query = qs.stringify({
-        [URL_PATH_GEOGRAPHY]: caseStudyRaw.Slug,
-        [URL_PATH_INDICATOR]: indicator.uid,
-      });
-
-      return loadFromAPI(`${import.meta.env.VITE_DATA_API_URL}/${END_AVOIDING_REFERENCE}?${query}`, fetch, { indicator });
-    });
-
-    const refData = await Promise.all(refRequests);
-
-    // For each indicator load a number of sample impact levels and likelihood
-    const dataRequests = refData.reduce((acc, { impact_levels, indicator }) => {
-      const impactSteps = scaleLinear().domain(impact_levels.range_of_interest).ticks(5);
-
-      impactSteps.forEach((impactLevel) => {
-        meta.likelihoods.forEach((likelihood) => {
-          const query = qs.stringify({
-            [URL_PATH_GEOGRAPHY]: caseStudyRaw.Slug,
-            [URL_PATH_INDICATOR]: indicator.uid,
-            [URL_PATH_LEVEL_OF_IMPACT]: impactLevel,
-            [URL_PATH_CERTAINTY_LEVEL]: likelihood.uid,
-          });
-
-          acc.push(loadFromAPI(`${import.meta.env.VITE_DATA_API_URL}/${END_AVOIDING_IMPACTS}?${query}`, fetch, { indicator, impactLevel, likelihood }));
-        });
-      });
-      return acc;
-    }, []);
-
-    const data = await Promise.all(dataRequests);
-
-    // Process loaded data so we have an array of study location/indicator combinations each
-    // containing an array of scenario/impact level/likelihood combinations
-    const processedData = refData.reduce((acc, { indicator }) => {
-      const indicatorData = data.filter((d) => d.indicator.uid === indicator.uid);
-
-      StudyLocations.forEach(({ Uid: studyLocationUid }) => {
-        const studyLocation = meta.studyLocations.find((d) => d.uid === studyLocationUid);
-        if (!studyLocation) error(404, { message: `Study location ${studyLocationUid} not found in metadata` });
-        const table = [];
-        indicatorData.forEach((indicatorDatum) => {
-          each(indicatorDatum.study_locations[studyLocationUid].scenarios, ({ year }, scenario) => {
-            table.push({
-              ...indicatorDatum,
-              studyLocation,
-              indicator,
-              year: { uid: year, label: year },
-              scenario: meta.scenarios.find((d) => d.uid === scenario),
-            });
-          });
-        });
-        acc.push(table);
-      });
-
-      return acc;
-    }, []);
-
-    return processedData;
-  };
+  const city = cityGeo ? { ...cityGeo, uid: caseStudyRaw.Slug } : { uid: caseStudyRaw.Slug, label: caseStudyRaw.Title ?? caseStudyRaw.Slug };
 
   const caseStudy = {
     city,
@@ -124,10 +62,11 @@ export const load = async ({ fetch, parent, params }) => {
     topics: (caseStudyRaw.Topics?.data ?? []).map((d) => ({ id: d.id, ...d.attributes })),
     project: caseStudyRaw.Project?.data ? { id: caseStudyRaw.Project.data.id, ...caseStudyRaw.Project.data.attributes } : null,
     geography: caseStudyRaw.Geography?.data ? { id: caseStudyRaw.Geography.data.id, ...caseStudyRaw.Geography.data.attributes } : null,
-    scenarios: (caseStudyRaw.Scenarios?.data ?? []).map((d) => {
-      const metaScenario = meta.scenarios.find((s) => s.uid === d.attributes.UID);
-      return { id: d.id, uid: d.attributes.UID, label: metaScenario?.label ?? d.attributes.UID };
-    }),
+    scenarios: (caseStudyRaw.Scenarios?.data ?? []).map((d) => ({
+      id: d.id,
+      uid: d.attributes.UID,
+      label: d.attributes.Label ?? d.attributes.UID,
+    })),
     mainContent: (
       await Promise.all(
         caseStudyRaw.MainContent.map(async (c) => {
@@ -138,24 +77,31 @@ export const load = async ({ fetch, parent, params }) => {
                 type,
                 title: c.Title,
                 description: c.Description,
-                explorerUrl: c.ExplorerUrl,
+                explorerUrl: safeCaseStudyExplorerUrl(c.ExplorerUrl, indicatorIndex),
+                data: await loadCaseStudyAvoidingTables({
+                  ...avoidingResources,
+                  dataApiUrl: import.meta.env.VITE_DATA_API_URL,
+                  fetch,
+                  geographyId: caseStudyRaw.Slug,
+                  indicatorIndex,
+                  section: c,
+                }),
               };
             case 'future-impacts': {
-              // Resolve each snapshot's indicator against the convention catalog.
-              // Legacy urbclim-* slugs aren't in the catalog yet, so skip those
-              // snapshots instead of 404ing the whole page.
+              if (indicatorIndexIncomplete) {
+                error(503, { message: 'Case study indicator data is temporarily unavailable.' });
+              }
               const resolveSnapshot = (snpsht, extra) => {
-                const indicator = meta.indicators.find((d) => d.uid === snpsht.Indicator);
+                const matches = meta.indicators.filter((indicator) => indicator.uid === snpsht.Indicator && indicator.instance === snpsht.Instance);
+                const indicator = matches.length === 1 ? matches[0] : undefined;
                 return indicator ? { indicator, image: snpsht.Image?.data?.attributes, ...extra } : null;
               };
               const impactGeoSnapshots = c.ImpactGeoSnapshot.map((s) => resolveSnapshot(s, { year: s.Year })).filter(Boolean);
               const impactTimeSnapshots = c.ImpactTimeSnapshot.map((s) => resolveSnapshot(s, {})).filter(Boolean);
-              // FutureImpacts needs at least one time AND one geo snapshot to
-              // render; drop the whole block when that data isn't available.
               if (!impactGeoSnapshots.length || !impactTimeSnapshots.length) return null;
               return {
                 type,
-                explorerUrl: c.ExplorerUrl,
+                explorerUrl: safeCaseStudyExplorerUrl(c.ExplorerUrl, indicatorIndex),
                 impactGeoDescription: c.ImpactGeoDescription,
                 impactTimeDescription: c.ImpactTimeDescription,
                 impactGeoSnapshots,
@@ -165,7 +111,7 @@ export const load = async ({ fetch, parent, params }) => {
             case 'image-slider':
               return {
                 type,
-                explorerUrl: c.ExplorerUrl,
+                explorerUrl: safeCaseStudyExplorerUrl(c.ExplorerUrl, indicatorIndex),
                 attributeLabel: c.AttributeLabel,
                 groupingLabel: c.GroupingLabel,
                 allowImageSelection: c.AllowImageSelection,
@@ -204,5 +150,11 @@ export const load = async ({ fetch, parent, params }) => {
     };
   });
 
-  return { caseStudy, caseStudies, caseStudyOutro: { title: caseStudyOutro?.Title, text: caseStudyOutro?.Text ? parse(caseStudyOutro.Text) : null }, author: caseStudy.authors, description: caseStudy.abstract };
+  return {
+    caseStudy,
+    caseStudies,
+    caseStudyOutro: { title: caseStudyOutro?.Title, text: caseStudyOutro?.Text ? parse(caseStudyOutro.Text) : null },
+    author: caseStudy.authors,
+    description: caseStudy.abstract,
+  };
 };
