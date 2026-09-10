@@ -24,7 +24,7 @@ function inferredInstance(pending, indicatorIndex) {
 
 export async function initializeExplore({ pending, catalog, flow, requestFetch, apiUrl = '/api', isCurrent = () => true }) {
   const hasPending = pending.indicator || pending.geography || pending.scenarios.length || Object.keys(pending.parameters).length;
-  if (hasPending) catalog.setPendingSelection(pending);
+  if (hasPending) flow.restoreSelection(pending);
   await flow.start();
   if (!isCurrent()) return { status: 'cancelled' };
 
@@ -64,7 +64,7 @@ export async function initializeExplore({ pending, catalog, flow, requestFetch, 
     parameters: defaults.parameters ?? {},
     scenarios: [...pending.scenarios],
   };
-  catalog.setPendingSelection(resolved);
+  flow.restoreSelection(resolved);
   await flow.chooseIndicator(defaults.indicator);
   return { status: 'ready' };
 }

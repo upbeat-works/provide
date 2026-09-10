@@ -1,25 +1,21 @@
 import { formatReadableList } from '$lib/utils/utils.js';
-import { DEFAULT_FORMAT_UID, GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS, LOCALSTORE_PARAMETERS, PATH_AVOID, DEFAULT_IMPACT_GEO_YEAR } from '$config';
+import { DEFAULT_FORMAT_UID, GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS, PATH_AVOID, DEFAULT_IMPACT_GEO_YEAR } from '$config';
 import THEME from '$styles/theme-store.js';
 import { interpolateLab, piecewise } from 'd3-interpolate';
-import _, { get, keyBy, reduce } from 'lodash-es';
-import { derived, get as getStore, writable } from 'svelte/store';
-import { browser } from '$app/environment';
-import { getLocalStorage, setLocalStorage, getAllLocalStorage } from './utils.js';
+import { get, keyBy, reduce } from 'lodash-es';
+import { derived, writable } from 'svelte/store';
 import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
-import { ciKeyBy, ciGet } from '$lib/utils/case-insensitive.js';
+import { ciGet } from '$lib/utils/case-insensitive.js';
 import { extractEndYear, extractStartYear } from '$utils/meta.js';
 import { selectionUrlParams } from '$lib/catalog/selection-url.js';
 import { legacyMapView } from '$lib/catalog/legacy-map-request.js';
 
-import { DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS, LOCALSTORE_GEOGRAPHY, LOCALSTORE_SCENARIOS } from '../config.js';
-import { FACETS_INITIAL, GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_SCENARIOS, GEOGRAPHIES, GEOGRAPHY_INDEX, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
+import { FACETS_INITIAL, GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_SCENARIOS, GEOGRAPHIES, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
 import { activeFacetGroupCount } from './facet-selection.js';
-import { parseStoredScenarios, graftScenarioAvailability } from './scenario-selection.js';
+import { graftScenarioAvailability } from './scenario-selection.js';
 import { runtimeCatalog } from './runtime-catalog.js';
 import {
   filteredIndicatorIds,
-  indicatorFilterInput,
   indicatorListRequest,
   indicatorSelectionAvailable,
   parameterAdapter,
@@ -103,61 +99,14 @@ export const SELECTABLE_GEOGRAPHY_TYPES = derived(AVAILABLE_GEOGRAPHY_TYPES, ($t
   return $types.filter(({ disabled }) => !disabled);
 });
 
-/**
- * Writable store that holds the uid of the currently selected geography.
- * Initialised from localStorage only — there is no hardcoded default geography;
- * the first geography in the list is auto-selected once the geography index
- * loads.
- * @type {Writable<string|undefined>}
- */
-const initialGeography = getLocalStorage(LOCALSTORE_GEOGRAPHY, undefined);
-if (initialGeography) runtimeCatalog.selectGeography(initialGeography);
-const currentGeographyUidStore = writable(getStore(runtimeCatalog.selection).geography);
-let geographyFromRuntime = false;
-runtimeCatalog.selection.subscribe((selection) => {
-  if (getStore(currentGeographyUidStore) === selection.geography) return;
-  geographyFromRuntime = true;
-  currentGeographyUidStore.set(selection.geography);
-  geographyFromRuntime = false;
-});
-currentGeographyUidStore.subscribe((value) => {
-  setLocalStorage(LOCALSTORE_GEOGRAPHY, value);
-  if (!geographyFromRuntime && getStore(runtimeCatalog.selection).geography !== value) {
-    runtimeCatalog.selectGeography(value);
-  }
-});
-export const CURRENT_GEOGRAPHY_UID = currentGeographyUidStore;
-
-// Auto-select a default geography — the first one in the list — whenever none is
-// valid (no localStorage value, or a stored id that no longer exists). For the
-// Countries tab this is the first country of the first continent group, matching
-// what the selector renders at the top; otherwise the first geography of the
-// first selectable type, by label.
-// This effect waits for a non-empty geography index, so loading cannot clear a
-// stored or pending choice.
-if (browser) {
-  derived([SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES, GEOGRAPHY_INDEX, CURRENT_GEOGRAPHY_UID], (v) => v).subscribe(([$types, $geographies, $index, uid]) => {
-    if (!$types.length) return;
-    const isValid = uid && $types.some(({ uid: type }) => ($geographies[type] ?? []).some((g) => g.uid === uid));
-    if (isValid) return;
-    const firstType = $types[0].uid;
-    let first;
-    if (firstType === 'admin0') {
-      const groups = _.sortBy(Object.entries($index.countriesByContinent ?? {}), '0');
-      first = groups[0]?.[1]?.[0];
-    }
-    first ??= _.sortBy($geographies[firstType] ?? [], 'label')[0];
-    if (first) CURRENT_GEOGRAPHY_UID.set(first.uid);
-  });
-}
+/** @type {Readable<string|undefined>} */
+export const CURRENT_GEOGRAPHY_UID = derived(RUNTIME_CATALOG_SELECTION, ($selection) => $selection.geography);
 
 /**
  * The geography object behind CURRENT_GEOGRAPHY_UID, or undefined while the id
  * is unset or the list hasn't loaded.
  * @type {Readable<Object|undefined>}
  */
-// This lookup stays pure because the geography list may still be loading.
-// The auto-select effect validates the stored choice after the list arrives.
 export const CURRENT_GEOGRAPHY = derived([CURRENT_GEOGRAPHY_UID, SELECTABLE_GEOGRAPHY_TYPES, GEOGRAPHIES], ([$uid, $selectableGeographyTypes, $geographies]) => {
   if (typeof $uid === 'undefined') return undefined;
   for (const { uid: type } of $selectableGeographyTypes) {
@@ -264,27 +213,7 @@ export const ACTIVE_INDICATOR_SCOPE_REQUEST = derived([INDICATOR_INDEX_REQUEST, 
   })
 );
 
-const currentIndicatorUidStore = writable(getStore(runtimeCatalog.selection).indicator?.id);
-let indicatorFromRuntime = false;
-runtimeCatalog.selection.subscribe((selection) => {
-  const id = selection.indicator?.id;
-  if (getStore(currentIndicatorUidStore) === id) return;
-  indicatorFromRuntime = true;
-  currentIndicatorUidStore.set(id);
-  indicatorFromRuntime = false;
-});
-currentIndicatorUidStore.subscribe((id) => {
-  if (indicatorFromRuntime) return;
-  const current = getStore(runtimeCatalog.selection).indicator;
-  if (current?.id === id) return;
-  if (!id) {
-    runtimeCatalog.selectIndicator(undefined);
-    return;
-  }
-  const match = getStore(INDICATORS).find((indicator) => indicator.uid === id);
-  if (match) runtimeCatalog.selectIndicator({ id: match.uid, instance: match.instance });
-});
-export const CURRENT_INDICATOR_UID = currentIndicatorUidStore;
+export const CURRENT_INDICATOR_UID = derived(RUNTIME_CATALOG_SELECTION, ($selection) => $selection.indicator?.id);
 
 export const AVAILABLE_GEOGRAPHIES_FOR_INDICATOR = derived(
   [CURRENT_INDICATOR_UID, GEOGRAPHIES, GEOGRAPHY_AVAILABILITY_REQUEST],
@@ -322,37 +251,7 @@ export const CURRENT_INDICATOR_UNIT = derived(CURRENT_INDICATOR, ($indicator) =>
 
 export const CURRENT_INDICATOR_UNIT_UID = derived(CURRENT_INDICATOR_UNIT, ($unit) => get($unit, 'uid', DEFAULT_FORMAT_UID));
 
-const LOCALSTORE_PARAMETER_PREFIX = `${LOCALSTORE_PARAMETERS}-`;
-
-function getAllLocalStorageForParameters() {
-  const list = getAllLocalStorage().filter(([key]) => key.startsWith(LOCALSTORE_PARAMETER_PREFIX));
-  return Object.fromEntries(list.map(([key, value]) => [key.slice(LOCALSTORE_PARAMETER_PREFIX.length), value]));
-}
-
-const initialIndicatorOptions = getAllLocalStorageForParameters();
-runtimeCatalog.selectParameters(initialIndicatorOptions);
-const currentIndicatorOptionValuesStore = writable(initialIndicatorOptions);
-let parametersFromRuntime = false;
-runtimeCatalog.selection.subscribe((selection) => {
-  if (_.isEqual(getStore(currentIndicatorOptionValuesStore), selection.parameters)) return;
-  parametersFromRuntime = true;
-  currentIndicatorOptionValuesStore.set(selection.parameters);
-  parametersFromRuntime = false;
-});
-let storedParameterValues = initialIndicatorOptions;
-currentIndicatorOptionValuesStore.subscribe((values) => {
-  for (const key of Object.keys(storedParameterValues)) {
-    if (!(key in values)) setLocalStorage(`${LOCALSTORE_PARAMETER_PREFIX}${key}`, undefined);
-  }
-  for (const [key, value] of Object.entries(values)) {
-    setLocalStorage(`${LOCALSTORE_PARAMETER_PREFIX}${key}`, value);
-  }
-  storedParameterValues = values;
-  if (!parametersFromRuntime && !_.isEqual(getStore(runtimeCatalog.selection).parameters, values)) {
-    runtimeCatalog.selectParameters(values);
-  }
-});
-export const CURRENT_INDICATOR_OPTION_VALUES = currentIndicatorOptionValuesStore;
+export const CURRENT_INDICATOR_OPTION_VALUES = derived(RUNTIME_CATALOG_SELECTION, ($selection) => $selection.parameters);
 
 export const CURRENT_INDICATOR_PARAMETERS = derived(
   [RUNTIME_CATALOG_SELECTION, INDICATOR_DETAILS_REQUEST, INDICATOR_PARAMETERS],
@@ -406,68 +305,7 @@ export const CURRENT_INDICATOR_PARAMETERS_KEYS = derived(CURRENT_INDICATOR_PARAM
  * SCENARIO STATE
  */
 
-const initialScenarios = getLocalStorage(LOCALSTORE_SCENARIOS, DEFAULT_SCENARIOS_UID, (value) => parseStoredScenarios(value, DEFAULT_SCENARIOS_UID, MAX_NUMBER_SELECTABLE_SCENARIOS));
-runtimeCatalog.selectScenarios(initialScenarios);
-const currentScenariosUidStore = writable(initialScenarios);
-let scenariosFromRuntime = false;
-runtimeCatalog.selection.subscribe((selection) => {
-  if (_.isEqual(getStore(currentScenariosUidStore), selection.scenarios)) return;
-  scenariosFromRuntime = true;
-  currentScenariosUidStore.set(selection.scenarios);
-  scenariosFromRuntime = false;
-});
-
-export const CURRENT_SCENARIOS_UID = (() => {
-  const { subscribe, set, update } = currentScenariosUidStore;
-
-  return {
-    subscribe,
-    update,
-    set,
-    toggle: (id, timeframe) =>
-      update((selectedUids) => {
-        if (selectedUids.length === 0) return [id]; // If there was no scenarios previously selected
-
-        const availableScenarios = getStore(SELECTABLE_SCENARIOS);
-        const byUid = ciKeyBy(availableScenarios);
-        // Keep only scenarios still available, so an unavailable existing
-        // selection doesn't block adding a new one. Case-insensitive so a stale
-        // differently-cased uid (URL/localStorage) still matches.
-        const availableSelected = selectedUids.filter((uid) => ciGet(byUid, uid));
-        if (availableSelected.length === 0) return [id];
-        // Timeframes can't be mixed: if a timeframe is active and the current
-        // selection belongs to a different one, reset. endYear is data-driven
-        // (it lives on the available scenarios, not on the bare meta list).
-        const currentTimeframe = ciGet(byUid, availableSelected[0])?.endYear;
-        if (timeframe != null && currentTimeframe !== timeframe) return [id];
-
-        // The default list
-        let updatedList = availableSelected;
-        // Check if the id is already in the array
-        if (availableSelected.includes(id) && availableSelected.length > 1) {
-          // Remove the id from the array
-          updatedList = availableSelected.filter((selectedId) => selectedId !== id);
-        } else if (!availableSelected.includes(id) && availableSelected.length < MAX_NUMBER_SELECTABLE_SCENARIOS) {
-          // Add the id to the array if the limit is not reached
-          updatedList = [...availableSelected, id];
-        }
-        // Sort the list of ids.
-        // This allows to potentially reduce the number of requests because the same order can be handled by the cache.
-        return updatedList.sort();
-      }),
-  };
-})();
-CURRENT_SCENARIOS_UID.subscribe((value) => {
-  const scenarios = [...value].sort().slice(0, MAX_NUMBER_SELECTABLE_SCENARIOS);
-  if (value.length > MAX_NUMBER_SELECTABLE_SCENARIOS) {
-    console.warn(`Too many scenarios selected. Reset to ${MAX_NUMBER_SELECTABLE_SCENARIOS} scenarios.`);
-    CURRENT_SCENARIOS_UID.set(scenarios);
-  }
-  setLocalStorage(LOCALSTORE_SCENARIOS, JSON.stringify(scenarios));
-  if (!scenariosFromRuntime && !_.isEqual(getStore(runtimeCatalog.selection).scenarios, scenarios)) {
-    runtimeCatalog.selectScenarios(scenarios);
-  }
-});
+export const CURRENT_SCENARIOS_UID = derived(RUNTIME_CATALOG_SELECTION, ($selection) => $selection.scenarios);
 
 export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCENARIOS, THEME], ([$uids, $scenarios, $theme]) =>
   ($uids ?? []).map((uid, i) => ({

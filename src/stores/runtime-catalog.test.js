@@ -25,6 +25,10 @@ function memoryStorage(entries = []) {
   return {
     values,
     storage: {
+      get length() {
+        return values.size;
+      },
+      key: (index) => [...values.keys()][index],
       getItem: (key) => values.get(key) ?? null,
       setItem: (key, value) => values.set(key, value),
       removeItem: (key) => values.delete(key),
@@ -329,7 +333,7 @@ describe('runtime catalog selection', () => {
     });
   });
 
-  test('keeps a geography pending until its successful index proves it invalid', async () => {
+  test('keeps a geography pending until its successful index replaces it with the first country', async () => {
     server.use(
       http.get(`${API_URL}/geographies`, async () => {
         await delay(30);
@@ -345,7 +349,7 @@ describe('runtime catalog selection', () => {
     expect(get(catalog.pendingSelection).geography).toBe('DEU');
     await load;
 
-    expect(get(catalog.selection).geography).toBeUndefined();
+    expect(get(catalog.selection).geography).toBe('ESP');
     expect(get(catalog.pendingSelection).geography).toBeUndefined();
   });
 
@@ -362,6 +366,57 @@ describe('runtime catalog selection', () => {
     expect(get(catalog.geographyIndex).status).toBe('failure');
     expect(get(catalog.selection).geography).toBe('DEU');
     expect(get(catalog.pendingSelection).geography).toBe('DEU');
+  });
+
+  test('defaults to the first country in the first continent group', async () => {
+    let geographies = [
+      { id: 'ZWE', label: 'Zimbabwe', geographyType: 'admin0', parents: ['Africa'] },
+      { id: 'AUT', label: 'Austria', geographyType: 'admin0', parents: ['Europe'] },
+      { id: 'AGO', label: 'Angola', geographyType: 'admin0', parents: ['Africa'] },
+    ];
+    let geographyTypes = [{ id: 'admin0', label: 'Countries', isSelectable: true }];
+    server.use(
+      http.get(`${API_URL}/geographies`, () => HttpResponse.json(geographies)),
+      http.get(`${API_URL}/geographies/types`, () => HttpResponse.json(geographyTypes))
+    );
+    const catalog = createCatalog();
+
+    await catalog.loadGeographyIndex();
+
+    expect(get(catalog.selection).geography).toBe('AGO');
+
+    catalog.selectGeography('AUT');
+    geographies = [
+      { id: 'AFR', label: 'Africa', geographyType: 'continent', parents: [] },
+      { id: 'ZWE', label: 'Zimbabwe', geographyType: 'admin0', parents: ['Africa'] },
+    ];
+    geographyTypes = [
+      { id: 'continent', label: 'Continents', isSelectable: false, order: 0 },
+      { id: 'admin0', label: 'Countries', isSelectable: true, order: 1 },
+    ];
+
+    await catalog.loadGeographyIndex();
+
+    expect(get(catalog.selection).geography).toBe('ZWE');
+  });
+
+  test('does not let a slow indicator index apply a cached geography index over a newer choice', async () => {
+    server.use(
+      http.get(`${API_URL}/geographies`, () => HttpResponse.json([{ id: 'DEU', label: 'Germany', geographyType: 'admin0', parents: ['Europe'] }])),
+      http.get(`${API_URL}/geographies/types`, () => HttpResponse.json([{ id: 'admin0', label: 'Countries', isSelectable: true }])),
+      http.get(`${API_URL}/indicators`, async () => {
+        await delay(30);
+        return HttpResponse.json({ indicators: [], failedInstances: [] });
+      })
+    );
+    const catalog = createCatalog();
+    await catalog.loadGeographyIndex();
+
+    const load = catalog.loadIndicatorIndex();
+    catalog.selectGeography('ESP');
+    await load;
+
+    expect(get(catalog.selection).geography).toBe('ESP');
   });
 
   test('does not let an old geography index clear a newer user choice', async () => {
@@ -1059,6 +1114,46 @@ describe('reconcileConfirmedSelection', () => {
     expect(reconcileConfirmedSelection({ current: 'DEU', allowed: [] })).toBeUndefined();
     expect(reconcileConfirmedSelection({ current: ['A', 'B'], allowed: ['B', 'C'] })).toEqual(['B']);
   });
+});
+
+test('restores and persists the complete selection through its runtime owner', () => {
+  const { storage, values } = memoryStorage([
+    ['indicator', JSON.stringify({ id: 'Heat', instance: 'provide-internal' })],
+    ['geography', 'DEU'],
+    ['scenarios', JSON.stringify(['Low Demand'])],
+    ['parameters-time', 'Annual'],
+    ['parameters-stale', 'Remove'],
+  ]);
+  const catalog = createCatalog({ storage, defaultScenarios: ['Default'] });
+
+  expect(get(catalog.selection)).toEqual({
+    indicator: { id: 'Heat', instance: 'provide-internal' },
+    geography: 'DEU',
+    parameters: { time: 'Annual', stale: 'Remove' },
+    scenarios: ['Low Demand'],
+  });
+
+  catalog.selectParameters({ time: 'Seasonal' });
+  catalog.selectScenarios(['High Renewables']);
+  catalog.selectGeography('ESP');
+
+  const restored = createCatalog({ storage, defaultScenarios: ['Default'] });
+
+  expect(get(restored.selection)).toEqual({
+    indicator: { id: 'Heat', instance: 'provide-internal' },
+    geography: 'ESP',
+    parameters: { time: 'Seasonal' },
+    scenarios: ['High Renewables'],
+  });
+  expect(values.has('parameters-stale')).toBe(false);
+});
+
+test('uses default scenarios when storage has no valid scenario list', () => {
+  const { storage } = memoryStorage();
+
+  const catalog = createCatalog({ storage, defaultScenarios: ['Default'] });
+
+  expect(get(catalog.selection).scenarios).toEqual(['Default']);
 });
 
 test.each([

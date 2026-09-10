@@ -6,6 +6,7 @@
   import Primary from '$lib/components/icons/Primary.svelte';
   import { MAX_NUMBER_SELECTABLE_SCENARIOS } from '$config';
   import { markCatalogSelectionChange } from '$lib/catalog/selection-history.js';
+  import { catalogFlow } from '$stores/catalog-flow.js';
 
   export let scenarios;
   export let hoveredScenarioUid;
@@ -20,10 +21,10 @@
   function select(uid) {
     markCatalogSelectionChange();
     if (multiple) {
-      CURRENT_SCENARIOS_UID.toggle(uid, currentFilterUid);
+      catalogFlow.toggleScenario(uid, { scenarios, timeframe: currentFilterUid });
       return;
     }
-    CURRENT_SCENARIOS_UID.set([uid]);
+    catalogFlow.chooseScenarios([uid]);
   }
 
   const textScenarioNotAvailable = 'This scenario is not available for the selected indicator';

@@ -2,6 +2,9 @@ import { selectionUrlParams } from '$lib/catalog/selection-url.js';
 import { runtimeCatalog } from './runtime-catalog.js';
 import { indicatorFilterInput, indicatorFilterKey } from './catalog-adapters.js';
 import { markCatalogSelectionChange } from '$lib/catalog/selection-history.js';
+import { MAX_NUMBER_SELECTABLE_SCENARIOS } from '$config';
+import { ciGet, ciKeyBy } from '$lib/utils/case-insensitive.js';
+import { get } from 'svelte/store';
 
 export { selectionUrlParams };
 
@@ -38,6 +41,30 @@ export function createCatalogFlow(catalog) {
 
   function chooseScenarios(scenarios) {
     catalog.selectScenarios(scenarios);
+  }
+
+  function restoreSelection(selection) {
+    catalog.setPendingSelection(selection);
+  }
+
+  function toggleScenario(id, { scenarios, timeframe } = {}) {
+    const current = get(catalog.selection);
+    const availableByUid = ciKeyBy((scenarios ?? []).filter((scenario) => !scenario.disabled));
+    if (!ciGet(availableByUid, id)) return;
+    const selected = current.scenarios.filter((uid) => ciGet(availableByUid, uid));
+    if (!selected.length) {
+      chooseScenarios([id]);
+      return;
+    }
+    const selectedTimeframe = ciGet(availableByUid, selected[0])?.endYear;
+    if (timeframe != null && selectedTimeframe !== timeframe) {
+      chooseScenarios([id]);
+      return;
+    }
+    let next = selected;
+    if (selected.includes(id) && selected.length > 1) next = selected.filter((uid) => uid !== id);
+    if (!selected.includes(id) && selected.length < MAX_NUMBER_SELECTABLE_SCENARIOS) next = [...selected, id];
+    chooseScenarios([...next].sort());
   }
 
   async function openAdvancedFilters() {
@@ -92,6 +119,8 @@ export function createCatalogFlow(catalog) {
     chooseIndicator,
     changeParameters,
     chooseScenarios,
+    restoreSelection,
+    toggleScenario,
     openAdvancedFilters,
     applyFilters,
     syncIndicatorScope,

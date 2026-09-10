@@ -4,7 +4,6 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import { afterEach, expect, test, vi } from 'vitest';
 import ScenarioSelection from './ScenarioSelection.svelte';
 import { runtimeCatalog } from '$stores/runtime-catalog.js';
-import { CURRENT_SCENARIOS_UID } from '$stores/state.js';
 import THEME from '$styles/theme-store.js';
 import colors from '$styles/color-tokens-light.json';
 
@@ -40,7 +39,7 @@ test('replaces pending and failed scenario details and lets the user retry', asy
     }
   );
   THEME.set({ color: colors });
-  CURRENT_SCENARIOS_UID.set([]);
+  runtimeCatalog.selectScenarios([]);
   runtimeCatalog.selectIndicator({ id: 'Mean Temperature', instance: 'provide-internal' });
 
   render(ScenarioSelection, { scenarios: [{ uid: 'Example pathway', label: 'Example pathway', startYear: 2020, endYear: 2100 }] });

@@ -63,6 +63,31 @@ function createFlow(options = {}) {
   return { catalog, flow: createCatalogFlow(catalog) };
 }
 
+test('scenario choices enforce availability, timeframe, and the selection limit', () => {
+  const { catalog, flow } = createFlow();
+  const scenarios = [
+    { uid: 'Old', endYear: 2050 },
+    { uid: 'A', endYear: 2100 },
+    { uid: 'B', endYear: 2100 },
+    { uid: 'C', endYear: 2100 },
+    { uid: 'D', endYear: 2100, disabled: true },
+    { uid: 'E', endYear: 2100 },
+  ];
+
+  catalog.selectScenarios(['Unavailable', 'D']);
+  flow.toggleScenario('A', { scenarios, timeframe: 2100 });
+  flow.toggleScenario('B', { scenarios, timeframe: 2100 });
+  flow.toggleScenario('C', { scenarios, timeframe: 2100 });
+  flow.toggleScenario('E', { scenarios, timeframe: 2100 });
+  expect(get(catalog.selection).scenarios).toEqual(['A', 'B', 'C']);
+
+  flow.toggleScenario('D', { scenarios, timeframe: 2100 });
+  expect(get(catalog.selection).scenarios).toEqual(['A', 'B', 'C']);
+
+  flow.toggleScenario('Old', { scenarios, timeframe: 2050 });
+  expect(get(catalog.selection).scenarios).toEqual(['Old']);
+});
+
 function useIndexHandlers(requests = []) {
   server.use(
     http.get(`${API_URL}/indicators`, ({ request }) => {
@@ -348,7 +373,7 @@ describe('catalog page flow', () => {
     expect(requests).toEqual([]);
   });
 
-  test('keeps a URL geography pending in the control until a slow index rejects it', async () => {
+  test('keeps a URL geography pending until a slow index replaces it with the first country', async () => {
     server.use(
       http.get(`${API_URL}/geographies`, async () => {
         await delay(30);
@@ -378,7 +403,7 @@ describe('catalog page flow', () => {
       items: request.data.geographies,
     });
 
-    expect(settledView).toMatchObject({ selectedId: undefined, pending: false, list: { status: 'ready' } });
+    expect(settledView).toMatchObject({ selectedId: 'ESP', pending: false, list: { status: 'ready' } });
   });
 
   test('keeps an indicator-first URL geography pending until availability rejects it', async () => {

@@ -17,8 +17,8 @@ afterAll(async () => {
 
 describe('scoreboard indicator page SSR', () => {
   test('renders with the owned indicator request store', async () => {
-    const state = await vite.ssrLoadModule('/src/stores/state.js');
-    state.CURRENT_SCENARIOS_UID.set([]);
+    const { runtimeCatalog } = await vite.ssrLoadModule('/src/stores/runtime-catalog.js');
+    runtimeCatalog.selectScenarios([]);
     const page = await vite.ssrLoadModule('/src/routes/(default)/projects/eu-scoreboard/indicators/page.ssr.fixture.svelte');
     const data = {
       caseStudies: [],

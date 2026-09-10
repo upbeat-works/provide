@@ -8,16 +8,16 @@ function setup({ pending, instances = ['source-a'], response } = {}) {
   const catalog = {
     selection,
     indicatorIndex,
-    setPendingSelection: vi.fn((value) =>
+  };
+  const restoreSelection = vi.fn((value) =>
       selection.set({
         indicator: value.indicator ? { id: value.indicator, instance: value.instance } : undefined,
         geography: value.geography,
         parameters: value.parameters ?? {},
         scenarios: value.scenarios ?? [],
       })
-    ),
-  };
-  const flow = { start: vi.fn(async () => {}), chooseIndicator: vi.fn(async () => {}) };
+    );
+  const flow = { start: vi.fn(async () => {}), chooseIndicator: vi.fn(async () => {}), restoreSelection };
   const requestFetch = vi.fn(async () =>
     Response.json(response ?? { indicator: { id: 'Heat', instance: 'source-a' }, geography: 'Algeria', parameters: { time: 'Annual' }, scenarios: pending.scenarios })
   );
@@ -31,7 +31,7 @@ describe('Explore initialization', () => {
 
     expect(await initializeExplore({ pending, ...context })).toEqual({ status: 'ready' });
     expect(context.requestFetch).toHaveBeenCalledWith('/api/explore-defaults?instance=source-a&scenario=Low+Demand');
-    expect(context.catalog.setPendingSelection).toHaveBeenLastCalledWith({ indicator: 'Heat', instance: 'source-a', geography: 'Algeria', parameters: { time: 'Annual' }, scenarios: ['Low Demand'] });
+    expect(context.flow.restoreSelection).toHaveBeenLastCalledWith({ indicator: 'Heat', instance: 'source-a', geography: 'Algeria', parameters: { time: 'Annual' }, scenarios: ['Low Demand'] });
     expect(context.flow.chooseIndicator).toHaveBeenCalledWith({ id: 'Heat', instance: 'source-a' });
   });
 

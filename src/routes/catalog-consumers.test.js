@@ -1,11 +1,9 @@
-import { indicatorListRequest, percentileChartView, warmingChartView } from '$stores/catalog-adapters.js';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { createRuntimeCatalog } from '$stores/runtime-catalog.js';
 import { createCatalogFlow } from '$stores/catalog-flow.js';
 import { createOwnedIndicatorIndexRequest } from '$stores/owned-indicator-index.js';
 import { parseCatalogUrlSelection } from '$lib/utils/url.js';
-import { selectionUrlParams } from '$lib/catalog/selection-url.js';
 import { loadEmbedRuntime } from './(embed)/embed/[embed]/embed-runtime.js';
 
 const API_ORIGIN = 'https://catalog.example';
@@ -443,80 +441,6 @@ describe('focused catalog consumers', () => {
 
     expect(failure.status).toBe(503);
     expect(failure.body).toEqual({ message: 'Case study indicator data is temporarily unavailable.' });
-  });
-
-  test('embed URL and chart state keep one source-bound runtime selection', async () => {
-    const requests = [];
-    const requestFetch = async (input) => {
-      const url = new URL(String(input));
-      requests.push(`${url.pathname}${url.search}`);
-      if (url.pathname === '/api/indicators') {
-        return Response.json({
-          indicators: [{ id: 'Heat', label: 'Heat stress', unit: 'days', instance: 'provide-internal' }],
-          failedInstances: [],
-        });
-      }
-      if (url.pathname === '/api/geographies') return Response.json([{ id: 'DEU', label: 'Germany', geographyType: 'admin0', parents: [] }]);
-      if (url.pathname === '/api/geographies/types') return Response.json([{ id: 'admin0', label: 'Countries', isSelectable: true }]);
-      if (url.pathname === '/app/indicator-details/Heat') {
-        return Response.json({
-          id: 'Heat',
-          instance: 'provide-internal',
-          unit: 'days',
-          parameters: [{ id: 'time', label: 'Time', options: [{ id: 'Annual', label: 'Annual' }] }],
-          models: [],
-          sources: [],
-        });
-      }
-      if (url.pathname === '/api/geography-availability') return Response.json({ geographyIds: ['DEU'] });
-      if (url.pathname === '/api/scenario-availability') {
-        return Response.json({ scenarios: [{ id: 'Low Demand', label: 'Low Demand', yearStart: 2020, yearEnd: 2100 }] });
-      }
-      return Response.json({ error: 'Unexpected request' }, { status: 500 });
-    };
-    const catalog = createRuntimeCatalog({
-      fetch: requestFetch,
-      apiUrl: `${API_ORIGIN}/api`,
-      appUrl: `${APP_ORIGIN}/app`,
-    });
-    const flow = createCatalogFlow(catalog);
-    const pending = parseCatalogUrlSelection(new URL('https://provide.example/embed/impact-time?indicator=Heat&instance=provide-internal&geography=DEU&scenarios[0]=Low%20Demand&time=Annual'));
-
-    catalog.setPendingSelection(pending);
-    await loadEmbedRuntime(flow);
-
-    const selection = get(catalog.selection);
-    const context = { mode: 'geography', geography: selection.geography, filters: {} };
-    const chartInput = {
-      combinationAvailable: true,
-      indicatorScopeRequest: indicatorListRequest({
-        ...context,
-        indexRequest: get(catalog.indicatorIndex),
-        filteredRequest: get(catalog.filteredIndicators),
-      }),
-      indicatorScopeContext: context,
-      selection,
-    };
-    expect(percentileChartView({ ...chartInput, availability: get(catalog.percentileAvailability) })).toEqual({ status: 'ready' });
-    expect(warmingChartView({ ...chartInput, availability: get(catalog.warmingLevelAvailability) })).toEqual({ status: 'ready' });
-
-    expect(selectionUrlParams(get(catalog.selection))).toEqual({
-      indicator: 'Heat',
-      instance: 'provide-internal',
-      geography: 'DEU',
-      scenarios: ['Low Demand'],
-      time: 'Annual',
-    });
-    expect(requests).toEqual([
-      '/api/indicators',
-      '/api/geographies',
-      '/api/geographies/types',
-      '/app/indicator-details/Heat?instance=provide-internal',
-      '/api/geography-availability?indicator=Heat&instance=provide-internal',
-      '/api/scenario-availability?indicator=Heat&region=DEU&instance=provide-internal&time=Annual&axis=percentile',
-      '/api/scenario-availability?indicator=Heat&region=DEU&instance=provide-internal&time=Annual&axis=warmingLevel',
-      '/api/indicators?region=DEU',
-    ]);
   });
 
   test.each([

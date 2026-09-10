@@ -14,8 +14,8 @@ vi.mock('$stores/avoid.js', () => ({
   SELECTED_LIKELIHOOD_LEVEL: { set: vi.fn() },
   LEVEL_OF_IMPACT_ARRAY: { set: vi.fn() },
 }));
-vi.mock('$stores/runtime-catalog.js', () => ({
-  runtimeCatalog: { setPendingSelection: catalog.setPendingSelection },
+vi.mock('$stores/catalog-flow.js', () => ({
+  catalogFlow: { restoreSelection: catalog.setPendingSelection },
 }));
 
 beforeEach(() => {

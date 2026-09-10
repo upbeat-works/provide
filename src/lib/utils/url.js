@@ -1,7 +1,7 @@
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 import { SELECTED_LIKELIHOOD_LEVEL, LEVEL_OF_IMPACT_ARRAY } from '$stores/avoid.js';
-import { runtimeCatalog } from '$stores/runtime-catalog.js';
+import { catalogFlow } from '$stores/catalog-flow.js';
 import {
   URL_PATH_FREQUENCY,
   URL_PATH_INDICATOR_VALUE,
@@ -118,7 +118,7 @@ export function urlToState(currentUrl) {
   const params = parse(url.search.replace(/^\?/, ''));
   if (catalogUrlKeys.some((key) => params[key] != null)) {
     const selection = parseCatalogUrlSelection(url);
-    if (hasCatalogSelection(selection)) runtimeCatalog.setPendingSelection(selection);
+    if (hasCatalogSelection(selection)) catalogFlow.restoreSelection(selection);
     for (const key of catalogUrlKeys) {
       if (params[key] != null) removeParamFromURL(params[key], key, url);
     }

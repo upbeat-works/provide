@@ -1,6 +1,8 @@
 import { derived, get, readonly, writable } from 'svelte/store';
 import { createLatestRequest } from './request-state.js';
-import { resolveScenarioSelection } from './scenario-selection.js';
+import { parseStoredScenarios, resolveScenarioSelection } from './scenario-selection.js';
+import { DEFAULT_SCENARIOS_UID, LOCALSTORE_GEOGRAPHY, LOCALSTORE_PARAMETERS, LOCALSTORE_SCENARIOS, MAX_NUMBER_SELECTABLE_SCENARIOS } from '../config.js';
+import { buildIndex } from '$lib/components/controls/GeographySelection/geography-tree.js';
 
 function joinUrl(base, path) {
   return `${base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
@@ -37,6 +39,23 @@ function storedIndicator(storage, key) {
   } catch {
     return undefined;
   }
+}
+
+function storedValue(storage, key) {
+  const value = storage?.getItem(key);
+  return typeof value === 'string' && value ? value : undefined;
+}
+
+function storedParameters(storage, prefix) {
+  const parameters = {};
+  if (!storage) return parameters;
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (!key?.startsWith(prefix)) continue;
+    const value = storedValue(storage, key);
+    if (value !== undefined) parameters[key.slice(prefix.length)] = value;
+  }
+  return parameters;
 }
 
 function sameParameters(left, right) {
@@ -114,6 +133,28 @@ function filteredIndicatorResult(response, input) {
   };
 }
 
+function firstSelectableGeography(response) {
+  const types = (response.geographyTypes ?? [])
+    .filter((type) => type.isSelectable !== false && type.isAvailable !== false)
+    .sort((left, right) => {
+      const order = (left.order ?? Number.MAX_SAFE_INTEGER) - (right.order ?? Number.MAX_SAFE_INTEGER);
+      if (order) return order;
+      return (left.label ?? '').localeCompare(right.label ?? '');
+    });
+  const firstType = types[0]?.id;
+  if (!firstType) return undefined;
+  const candidates = (response.geographies ?? [])
+    .filter((geography) => geography.geographyType === firstType)
+    .map((geography) => ({ ...geography, uid: geography.id }));
+  if (firstType === 'admin0') {
+    const index = buildIndex({ admin0: candidates });
+    const firstGroup = Object.entries(index.countriesByContinent).sort(([left], [right]) => left.localeCompare(right))[0];
+    if (firstGroup) return firstGroup[1][0]?.uid;
+  }
+  candidates.sort((left, right) => (left.label ?? '').localeCompare(right.label ?? ''));
+  return candidates[0]?.id;
+}
+
 function resolveParameters(current, details) {
   const values = {};
   for (const parameter of details.parameters ?? []) {
@@ -135,20 +176,34 @@ export function reconcileConfirmedSelection({ current, allowed }) {
   return undefined;
 }
 
-export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', appUrl = '/app', defaultScenarios = [], storage, indicatorStorageKey = 'indicator' } = {}) {
+export function createRuntimeCatalog({
+  fetch: requestFetch,
+  apiUrl = '/api',
+  appUrl = '/app',
+  defaultScenarios = [],
+  storage,
+  indicatorStorageKey = 'indicator',
+} = {}) {
   if (typeof requestFetch !== 'function') throw new TypeError('fetch is required');
 
   const initialIndicator = storedIndicator(storage, indicatorStorageKey);
+  const parameterStoragePrefix = `${LOCALSTORE_PARAMETERS}-`;
+  const initialGeography = storedValue(storage, LOCALSTORE_GEOGRAPHY);
+  const initialParameters = storedParameters(storage, parameterStoragePrefix);
+  const initialScenarios = parseStoredScenarios(storage?.getItem(LOCALSTORE_SCENARIOS), defaultScenarios, MAX_NUMBER_SELECTABLE_SCENARIOS);
   const initialPendingSelection = {};
   if (initialIndicator) {
     initialPendingSelection.indicator = initialIndicator.id;
     initialPendingSelection.instance = initialIndicator.instance;
   }
+  if (initialGeography) initialPendingSelection.geography = initialGeography;
+  if (Object.keys(initialParameters).length) initialPendingSelection.parameters = initialParameters;
+  if (initialScenarios.length) initialPendingSelection.scenarios = initialScenarios;
   const selectionStore = writable({
     indicator: initialIndicator,
-    geography: undefined,
-    parameters: {},
-    scenarios: [],
+    geography: initialGeography,
+    parameters: initialParameters,
+    scenarios: initialScenarios,
   });
   const pendingSelectionStore = writable(initialPendingSelection);
   const indicatorFiltersStore = writable({});
@@ -196,6 +251,7 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
   let currentPercentileAvailabilityInput;
   let currentWarmingLevelAvailabilityInput;
   let indicatorSelectionRevision = 0;
+  let geographySelectionRevision = 0;
 
   selectionStore.subscribe((selection) => {
     if (selection.indicator) {
@@ -203,6 +259,18 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
       return;
     }
     storage?.removeItem(indicatorStorageKey);
+  });
+
+  let storedParameterKeys = Object.keys(initialParameters);
+  selectionStore.subscribe((selection) => {
+    if (selection.geography) storage?.setItem(LOCALSTORE_GEOGRAPHY, selection.geography);
+    else storage?.removeItem(LOCALSTORE_GEOGRAPHY);
+    storage?.setItem(LOCALSTORE_SCENARIOS, JSON.stringify(selection.scenarios));
+    for (const key of storedParameterKeys) {
+      if (!(key in selection.parameters)) storage?.removeItem(`${parameterStoragePrefix}${key}`);
+    }
+    for (const [key, value] of Object.entries(selection.parameters)) storage?.setItem(`${parameterStoragePrefix}${key}`, value);
+    storedParameterKeys = Object.keys(selection.parameters);
   });
 
   function clearScenarioAvailabilityRequests() {
@@ -219,6 +287,7 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
 
   function setPendingSelection(pending) {
     indicatorSelectionRevision += 1;
+    geographySelectionRevision += 1;
     const normalized = {
       ...pending,
       parameters: { ...(pending.parameters ?? {}) },
@@ -256,6 +325,7 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
   }
 
   function selectGeography(geography) {
+    geographySelectionRevision += 1;
     pendingSelectionStore.update((value) => withoutKeys(value, ['geography']));
     selectionStore.update((selection) => ({ ...selection, geography }));
     clearScenarioAvailabilityRequests();
@@ -293,11 +363,12 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
   }
 
   async function loadIndicatorIndex() {
+    const geographyRevision = geographySelectionRevision;
     await indicatorIndexRequest.run();
     const state = get(indicatorIndexRequest.state);
     if (state.status === 'success') applyIndicatorIndex(state.data);
     const geographyIndex = get(geographyIndexRequest.state);
-    if (geographyIndex.status === 'success') applyGeographyIndex(geographyIndex.data);
+    if (geographyRevision === geographySelectionRevision && geographyIndex.status === 'success') applyGeographyIndex(geographyIndex.data);
   }
 
   function clearFilteredIndicators() {
@@ -333,12 +404,19 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
 
   function applyGeographyIndex(response) {
     const pendingGeography = get(pendingSelectionStore).geography;
-    if (!pendingGeography) return;
-    const allowed = (response.geographies ?? []).map((geography) => geography.id);
-    const geography = reconcileConfirmedSelection({ current: pendingGeography, allowed });
-    if (geography !== pendingGeography) {
+    const selectableTypes = new Set(
+      (response.geographyTypes ?? []).filter((type) => type.isSelectable !== false && type.isAvailable !== false).map((type) => type.id)
+    );
+    const allowed = (response.geographies ?? []).filter((geography) => selectableTypes.has(geography.geographyType)).map((geography) => geography.id);
+    if (pendingGeography) {
+      const geography = reconcileConfirmedSelection({ current: pendingGeography, allowed });
+      if (geography !== pendingGeography) {
+        selectGeography(firstSelectableGeography(response));
+        return;
+      }
+    } else if (!allowed.includes(get(selectionStore).geography)) {
+      const geography = firstSelectableGeography(response);
       selectGeography(geography);
-      return;
     }
     const selectedIndicator = get(selectionStore).indicator;
     const indicatorIndex = get(indicatorIndexRequest.state);
@@ -352,7 +430,9 @@ export function createRuntimeCatalog({ fetch: requestFetch, apiUrl = '/api', app
   }
 
   async function loadGeographyIndex() {
+    const selectionRevision = geographySelectionRevision;
     await geographyIndexRequest.run();
+    if (selectionRevision !== geographySelectionRevision) return;
     const state = get(geographyIndexRequest.state);
     if (state.status !== 'success') return;
     applyGeographyIndex(state.data);
@@ -505,5 +585,6 @@ const indicatorStorage = typeof localStorage === 'undefined' ? undefined : local
 export const runtimeCatalog = createRuntimeCatalog({
   fetch: (...args) => fetch(...args),
   apiUrl: import.meta.env.VITE_API_URL ?? '/api',
+  defaultScenarios: DEFAULT_SCENARIOS_UID,
   storage: indicatorStorage,
 });
