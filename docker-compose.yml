@@ -44,8 +44,15 @@ services:
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
-      - ./api:/app/api # hot-reload: source only; node_modules stays from the image
-      - ./server.ts:/app/server.ts
+      # Mount the project ROOT, not ./api plus a single-file bind for server.ts.
+      # Docker resolves a single-file bind to an INODE, not a path: editors and
+      # `git checkout` save atomically (write temp -> rename), so the host path
+      # gets a new inode while the container stays pinned to the old one. The
+      # API then runs a stale — sometimes mid-write, truncated — server.ts,
+      # bun dies on a syntax error, and every SSR loader fetch 500s with a
+      # clean working tree on the host. A directory mount re-resolves per lookup.
+      - .:/app
+      - /app/node_modules # keep the container's Linux-built node_modules
 
   cms:
     build:
