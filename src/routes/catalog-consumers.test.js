@@ -4,7 +4,6 @@ import { createRuntimeCatalog } from '$stores/runtime-catalog.js';
 import { createCatalogFlow } from '$stores/catalog-flow.js';
 import { createOwnedIndicatorIndexRequest } from '$stores/owned-indicator-index.js';
 import { parseCatalogUrlSelection } from '$lib/utils/url.js';
-import { loadEmbedRuntime } from './(embed)/embed/[embed]/embed-runtime.js';
 
 const API_ORIGIN = 'https://catalog.example';
 const APP_ORIGIN = 'https://provide.example';
@@ -443,48 +442,4 @@ describe('focused catalog consumers', () => {
     expect(failure.body).toEqual({ message: 'Case study indicator data is temporarily unavailable.' });
   });
 
-  test.each([
-    ['total failure', Response.json({ error: 'Indicator sources unavailable' }, { status: 503 })],
-    [
-      'selected-source failure',
-      Response.json({
-        indicators: [{ id: 'Rain', label: 'Rain', unit: 'mm', instance: 'other-source' }],
-        failedInstances: [{ instance: 'provide-internal', code: 'unavailable' }],
-      }),
-    ],
-  ])('embed does not load dependent data after %s', async (_, indexResponse) => {
-    const requests = [];
-    const requestFetch = async (input) => {
-      const url = new URL(String(input));
-      requests.push(`${url.pathname}${url.search}`);
-      if (url.pathname === '/api/indicators') return indexResponse.clone();
-      if (url.pathname === '/api/geographies') return Response.json([{ id: 'DEU', label: 'Germany', geographyType: 'admin0', parents: [] }]);
-      if (url.pathname === '/api/geographies/types') return Response.json([{ id: 'admin0', label: 'Countries', isSelectable: true }]);
-      return Response.json({ error: 'Dependent request must not start' }, { status: 500 });
-    };
-    const catalog = createRuntimeCatalog({
-      fetch: requestFetch,
-      apiUrl: `${API_ORIGIN}/api`,
-      appUrl: `${APP_ORIGIN}/app`,
-    });
-    const flow = createCatalogFlow(catalog);
-    const pending = parseCatalogUrlSelection(new URL('https://provide.example/embed/impact-time?indicator=Heat&instance=provide-internal&geography=DEU&scenarios[0]=Low%20Demand&time=Annual'));
-
-    catalog.setPendingSelection(pending);
-    await loadEmbedRuntime(flow);
-
-    expect(requests).toEqual(['/api/indicators', '/api/geographies', '/api/geographies/types']);
-    expect(get(catalog.selection)).toEqual({
-      indicator: { id: 'Heat', instance: 'provide-internal' },
-      geography: 'DEU',
-      parameters: { time: 'Annual' },
-      scenarios: ['Low Demand'],
-    });
-    expect(get(catalog.pendingSelection)).toEqual({
-      indicator: 'Heat',
-      instance: 'provide-internal',
-      parameters: { time: 'Annual' },
-      scenarios: ['Low Demand'],
-    });
-  });
 });

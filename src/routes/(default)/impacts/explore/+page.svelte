@@ -3,7 +3,24 @@
   import ImpactGeo from './components/ImpactGeo/ImpactGeo.svelte';
   import UnAvoidableRisk from '../components/UnavoidableRisk/UnavoidableRisk.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
-  import { IS_COMBINATION_AVAILABLE, IS_EMPTY_SELECTION, CURRENT_GEOGRAPHY, CURRENT_INDICATOR, IS_STATIC, MAP_CHART_VIEW, WARMING_CHART_VIEW } from '$stores/state';
+  import {
+    IS_COMBINATION_AVAILABLE,
+    IS_EMPTY_SELECTION,
+    CURRENT_GEOGRAPHY,
+    CURRENT_INDICATOR,
+    CURRENT_INDICATOR_OPTION_VALUES,
+    CURRENT_SCENARIOS,
+    MAP_CHART_VIEW,
+    WARMING_CHART_VIEW,
+    TEMPLATE_PROPS,
+    DOWNLOAD_URL_PARAMS,
+    PERCENTILE_SCENARIO_AVAILABILITY_REQUEST,
+    ACTIVE_INDICATOR_SCOPE_REQUEST,
+    ACTIVE_INDICATOR_SCOPE_CONTEXT,
+    AVAILABLE_IMPACT_GEO_YEARS,
+    SELECTABLE_WARMING_SCENARIOS,
+    CURRENT_INDICATOR_UNIT_UID,
+  } from '$stores/state';
   import VisData from '$lib/components/icons/VisData.svelte';
   import { PATH_AVOID, GEOGRAPHY_TYPE_CITY } from '$config';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
@@ -30,6 +47,10 @@
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { initializeExplore } from './explore-initialization.js';
   import { createExploreUrlSync } from './explore-url-sync.js';
+  import { percentileChartView, retryPercentileChartRequest, scenariosForTimeframe } from '$stores/catalog-adapters.js';
+  import { retryWarmingChartRequest } from '$stores/catalog-adapters.js';
+  import { withScenarioTimeframe } from '$lib/utils/utils.js';
+  import { KEY_SCENARIO_ENDYEAR } from '$config';
 
   export let data;
 
@@ -95,6 +116,53 @@
 
   $: caseStudy = findCaseStudy(data.caseStudies, $CURRENT_GEOGRAPHY);
 
+  $: impactTimeView = percentileChartView({
+    combinationAvailable: $IS_COMBINATION_AVAILABLE,
+    availability: $PERCENTILE_SCENARIO_AVAILABILITY_REQUEST,
+    indicatorScopeRequest: $ACTIVE_INDICATOR_SCOPE_REQUEST,
+    indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT,
+    selection: $RUNTIME_CATALOG_SELECTION,
+  });
+  $: sharedChartContext = {
+    ...$TEMPLATE_PROPS,
+    geography: $CURRENT_GEOGRAPHY,
+    indicator: $CURRENT_INDICATOR,
+    scenarios: $CURRENT_SCENARIOS,
+    parameters: $CURRENT_INDICATOR_OPTION_VALUES,
+    urlParams: $DOWNLOAD_URL_PARAMS,
+    static: false,
+  };
+  $: impactTimeContext = { ...sharedChartContext, view: impactTimeView };
+  $: impactGeoContext = {
+    ...sharedChartContext,
+    view: $MAP_CHART_VIEW,
+    availableYears: $AVAILABLE_IMPACT_GEO_YEARS,
+  };
+  $: warmingScenarios = withScenarioTimeframe(
+    $CURRENT_SCENARIOS.map(({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe }) => ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe })),
+    $SELECTABLE_WARMING_SCENARIOS,
+    KEY_SCENARIO_ENDYEAR
+  );
+  $: warmingContext = {
+    ...sharedChartContext,
+    view: $WARMING_CHART_VIEW,
+    scenarios: warmingScenarios,
+    allScenarios: scenariosForTimeframe({ selectedScenarios: warmingScenarios, allScenarios: $SELECTABLE_WARMING_SCENARIOS }),
+    unitUid: $CURRENT_INDICATOR_UNIT_UID,
+  };
+
+  function retryImpactTimeAvailability() {
+    return retryPercentileChartRequest({ view: impactTimeView, flow: catalogFlow, indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT });
+  }
+
+  function retryMapAvailability() {
+    return retryPercentileChartRequest({ view: $MAP_CHART_VIEW, flow: catalogFlow, indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT });
+  }
+
+  function retryWarmingAvailability() {
+    return retryWarmingChartRequest({ view: $WARMING_CHART_VIEW, flow: catalogFlow, indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT });
+  }
+
   $: sections = [
     {
       slug: 'impact-time',
@@ -102,7 +170,7 @@
       description: 'How will this climate impact change?',
       component: ImpactTime,
       disabled: !isValidSelection,
-      props: { tagline: 'Timing' },
+      props: { tagline: 'Timing', chartContext: impactTimeContext, retryAvailability: retryImpactTimeAvailability },
     },
     $MAP_CHART_VIEW.status === 'empty' ? null : {
       slug: 'impact-geo',
@@ -110,7 +178,7 @@
       description: 'Where will impacts hit the hardest?',
       component: ImpactGeo,
       disabled: !isValidSelection,
-      props: { tagline: 'Location' },
+      props: { tagline: 'Location', chartContext: impactGeoContext, retryAvailability: retryMapAvailability },
     },
     $WARMING_CHART_VIEW.status === 'empty' ? null : {
       slug: 'unavoidable-risk',
@@ -118,7 +186,7 @@
       description: 'What can be avoided through emissions reductions?',
       component: UnAvoidableRisk,
       disabled: !isValidSelection,
-      props: { tagline: '(Un)avoidable risk' },
+      props: { tagline: '(Un)avoidable risk', chartContext: warmingContext, retryAvailability: retryWarmingAvailability },
     },
     { component: FallbackMessage, disabled: isValidSelection },
   ].filter(Boolean);
@@ -198,7 +266,7 @@
             <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-contour-weakest border-b last:border-none">
               <svelte:component this={section.component} {...section.props} />
             </section>
-            {#if (section.slug === 'impact-geo' || ($MAP_CHART_VIEW.status === 'empty' && section.slug === 'impact-time')) && !$IS_STATIC && $CURRENT_GEOGRAPHY}
+            {#if (section.slug === 'impact-geo' || ($MAP_CHART_VIEW.status === 'empty' && section.slug === 'impact-time')) && $CURRENT_GEOGRAPHY}
               <div class="mb-8 pb-8 -mx-6 px-6 border-b border-contour-weakest">
                 <LinkSection geography={$CURRENT_GEOGRAPHY} {caseStudy} />
               </div>

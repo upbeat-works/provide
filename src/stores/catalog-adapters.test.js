@@ -13,13 +13,11 @@ import {
   ownedIndicatorRequest,
   ownedScenarioControlView,
   parameterAdapter,
-  percentileChartRequest,
   percentileChartView,
   scenarioDetailLoadKey,
   scenarioControlView,
   scenarioAvailabilityRows,
   scenariosForTimeframe,
-  warmingChartRequest,
   warmingChartView,
 } from './catalog-adapters.js';
 
@@ -307,36 +305,6 @@ describe('catalog consumer adapters', () => {
     ).toEqual(expected);
   });
 
-  test.each(['loading', 'failure', 'empty'])('does not build a warming request while availability is %s', (view) => {
-    expect(
-      warmingChartRequest({
-        view: { status: view },
-        geography: 'DEU',
-        indicator: selectedIndicator,
-        scenarios: [{ uid: 'Low' }],
-        parameters: { time: 'Annual' },
-      })
-    ).toBeUndefined();
-  });
-
-  test('builds a warming request after confirmed non-empty availability', () => {
-    expect(
-      warmingChartRequest({
-        view: { status: 'ready' },
-        geography: 'DEU',
-        indicator: selectedIndicator,
-        scenarios: [{ uid: 'Low' }, { uid: 'High' }],
-        parameters: { time: 'Annual' },
-      })
-    ).toEqual({
-      geography: 'DEU',
-      indicator: 'Heat',
-      instance: 'primary',
-      scenarios: ['Low', 'High'],
-      time: 'Annual',
-    });
-  });
-
   test.each([
     [{ status: 'idle' }, { status: 'loading' }],
     [{ status: 'loading' }, { status: 'loading' }],
@@ -415,16 +383,6 @@ describe('catalog consumer adapters', () => {
         selection: { indicator: selectedIndicator, geography: 'DEU', parameters: { time: 'Annual' } },
       })
     ).toEqual({ status: 'loading' });
-  });
-
-  test.each(['hidden', 'loading', 'failure', 'empty'])('does not make a percentile chart request plan while its view is %s', (view) => {
-    expect(percentileChartRequest({ status: view }, { indicator: 'Heat' })).toBeUndefined();
-  });
-
-  test('makes a percentile chart request plan after matching availability succeeds', () => {
-    const request = { indicator: 'Heat', instance: 'primary', geography: 'DEU' };
-
-    expect(percentileChartRequest({ status: 'ready' }, request)).toBe(request);
   });
 
   test.each([

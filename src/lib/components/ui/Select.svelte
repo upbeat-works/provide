@@ -6,7 +6,6 @@
   import { createEventDispatcher } from 'svelte';
   import Info from '$lib/components/icons/Info.svelte';
   import Expand from '$lib/components/icons/Expand.svelte';
-  import { IS_STATIC } from '$stores/state';
 
   export let options = [];
   export let value;
@@ -19,6 +18,7 @@
   export let labelClass = '';
   export let selectClass = boxed ? 'bg-transparent text-theme-base appearance-none pr-1' : 'bg-transparent text-theme-base';
   export let boxClass = 'border border-theme-base/20 rounded-sm bg-white px-3 py-1.5';
+  export let staticMode = false;
 
   const dispatch = createEventDispatcher();
 
@@ -31,7 +31,7 @@
   instance++;
 </script>
 
-{#if !$IS_STATIC}
+{#if !staticMode}
   <div class="flex gap-2 font-normal transition-colors {wrapperClass}" class:items-center={boxed}>
     <div class="flex gap-2">
       {#if label}

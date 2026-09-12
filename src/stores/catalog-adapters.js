@@ -158,17 +158,6 @@ export function warmingChartView(input) {
   return scenarioChartView(input);
 }
 
-export function warmingChartRequest({ view, geography, indicator, scenarios, parameters }) {
-  if (view.status !== 'ready') return undefined;
-  return {
-    geography,
-    indicator: indicator?.id,
-    instance: indicator?.instance,
-    scenarios: scenarios.map(({ uid }) => uid),
-    ...parameters,
-  };
-}
-
 function sameParameterValues(left = {}, right = {}) {
   const leftEntries = Object.entries(left);
   const rightEntries = Object.entries(right);
@@ -187,11 +176,6 @@ export function scenarioAvailabilityMatches(availability, selection) {
 
 export function percentileChartView({ combinationAvailable, availability, indicatorScopeRequest, indicatorScopeContext, selection }) {
   return scenarioChartView({ combinationAvailable, availability, indicatorScopeRequest, indicatorScopeContext, selection });
-}
-
-export function percentileChartRequest(view, request) {
-  if (view.status !== 'ready') return undefined;
-  return request;
 }
 
 export async function retryPercentileChartRequest({ view, flow, indicatorScopeContext }) {

@@ -1,7 +1,6 @@
 import { formatReadableList } from '$lib/utils/utils.js';
-import { DEFAULT_FORMAT_UID, GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS, PATH_AVOID, DEFAULT_IMPACT_GEO_YEAR } from '$config';
+import { DEFAULT_FORMAT_UID, GEOGRAPHY_TYPES_IN_AVOIDING_IMPACTS, PATH_AVOID } from '$config';
 import THEME from '$styles/theme-store.js';
-import { interpolateLab, piecewise } from 'd3-interpolate';
 import { get, keyBy, reduce } from 'lodash-es';
 import { derived, writable } from 'svelte/store';
 import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
@@ -9,6 +8,7 @@ import { ciGet } from '$lib/utils/case-insensitive.js';
 import { extractEndYear, extractStartYear } from '$utils/meta.js';
 import { selectionUrlParams } from '$lib/catalog/selection-url.js';
 import { legacyMapView } from '$lib/catalog/legacy-map-request.js';
+import { colorScenarios } from '$lib/charts/scenarios.js';
 
 import { FACETS_INITIAL, GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_SCENARIOS, GEOGRAPHIES, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
 import { activeFacetGroupCount } from './facet-selection.js';
@@ -42,10 +42,6 @@ export const HEADER_CLASS = writable('');
 
 // Set to true if is in embed mode e.g. if the url is /embed/something
 export const IS_EMBEDED = writable(false);
-
-// Set to true for generating screenshots when we don't want
-// to display controls n stuff, derived from &static=true url parameter
-export const IS_STATIC = writable(false);
 
 export const CURRENT_PAGE = writable('/');
 
@@ -308,13 +304,11 @@ export const CURRENT_INDICATOR_PARAMETERS_KEYS = derived(CURRENT_INDICATOR_PARAM
 export const CURRENT_SCENARIOS_UID = derived(RUNTIME_CATALOG_SELECTION, ($selection) => $selection.scenarios);
 
 export const CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS_UID, DICTIONARY_SCENARIOS, THEME], ([$uids, $scenarios, $theme]) =>
-  ($uids ?? []).map((uid, i) => ({
+  colorScenarios(($uids ?? []).map((uid) => ({
     uid,
     label: uid,
     ...ciGet($scenarios, uid),
-    color: $theme.color.category.base[i],
-    colorInterpolator: piecewise(interpolateLab, [$theme.color.category.weakest[i], $theme.color.category.base[i], $theme.color.category.strongest[i]]),
-  }))
+  })), $theme.color.category)
 );
 
 export const DICTIONARY_CURRENT_SCENARIOS = derived([CURRENT_SCENARIOS], ([$currentScenarios]) => keyBy($currentScenarios, 'uid'));
@@ -371,10 +365,6 @@ export const AVAILABLE_IMPACT_GEO_YEARS = derived([CURRENT_INDICATOR, CURRENT_SC
       return true;
     });
 });
-
-// If the current year is not available, use the default year
-// If the default year is not available, use the first available year
-export const DEFAULT_AVAILABLE_IMPACT_GEO_YEAR = derived([AVAILABLE_IMPACT_GEO_YEARS], ([$years]) => ($years.includes(DEFAULT_IMPACT_GEO_YEAR) ? DEFAULT_IMPACT_GEO_YEAR : $years[0]));
 
 /* UTILITIES */
 export const IS_EMPTY_SCENARIO = derived([CURRENT_SCENARIOS_UID, IS_AVOID_PAGE], ([$scenarios, $isAvoidPage]) => {
@@ -468,6 +458,3 @@ export const DOWNLOAD_URL_PARAMS = derived(RUNTIME_CATALOG_SELECTION, ($selectio
   const { scenarios: _scenarios, ...params } = selectionUrlParams($selection);
   return params;
 });
-
-// Object holding the parameters that are needed in every graph download request
-export const GRAPH_URL_PARAMS = derived(RUNTIME_CATALOG_SELECTION, selectionUrlParams);

@@ -4,7 +4,6 @@
   import InfoList from '$lib/components/charts/ChartFrame/InfoList.svelte';
   import DataDownloadMenu from '$lib/components/charts/ChartFrame/DataDownloadMenu.svelte';
   import DownloadGraphMenu from '$lib/components/charts/ChartFrame/DownloadGraphMenu.svelte';
-  import { IS_STATIC } from '$stores/state';
 
   // The shell every scoreboard chart sits in: the legend that names its series,
   // the axis labels (HTML rather than SVG text, so the rotated one stays
@@ -30,6 +29,7 @@
   export let dataDownloadEndpoint = undefined;
   export let dataDownloadParams = undefined;
   export let dataDownloadOptions = [];
+  export let staticMode = false;
 
   $: hasCaption = chartInfo.length || graphDownloadParams || dataDownloadEndpoint;
 </script>
@@ -54,7 +54,7 @@
 
   <!-- Static rendering is the screenshot the graph download takes: menus that
        cannot be opened in an image become the list they would have shown. -->
-  {#if !$IS_STATIC && hasCaption}
+  {#if !staticMode && hasCaption}
     <figcaption class="flex justify-end items-center gap-4 mt-2 mb-2">
       <InfoButton label="About the data" items={chartInfo} />
       <DownloadGraphMenu embedUid={chartUid} {...graphDownloadSettings} graphParams={graphDownloadParams} />

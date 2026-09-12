@@ -1,18 +1,4 @@
 <script>
-  import {
-    CURRENT_INDICATOR,
-    CURRENT_GEOGRAPHY,
-    TEMPLATE_PROPS,
-    CURRENT_INDICATOR_OPTION_VALUES,
-    CURRENT_SCENARIOS_UID,
-    IS_COMBINATION_AVAILABLE,
-    DOWNLOAD_URL_PARAMS,
-    GRAPH_URL_PARAMS,
-    PERCENTILE_SCENARIO_AVAILABILITY_REQUEST,
-    ACTIVE_INDICATOR_SCOPE_REQUEST,
-    ACTIVE_INDICATOR_SCOPE_CONTEXT,
-    RUNTIME_CATALOG_SELECTION,
-  } from '$stores/state.js';
   import { END_IMPACT_TIME, KEY_MODEL, KEY_SOURCE, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_SCENARIOS } from '$config';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import { writable } from 'svelte/store';
@@ -25,36 +11,31 @@
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { scaleThreshold } from 'd3-scale';
   import { range } from 'd3-array';
-  import { percentileChartRequest, percentileChartView, retryPercentileChartRequest } from '$stores/catalog-adapters.js';
-  import { catalogFlow } from '$stores/catalog-flow.js';
 
   let IMPACT_TIME_DATA = writable([]);
 
-  export let tagline;
+  export let tagline = undefined;
+  export let chartContext;
+  export let retryAvailability = undefined;
 
-  $: percentileView = percentileChartView({
-    combinationAvailable: $IS_COMBINATION_AVAILABLE,
-    availability: $PERCENTILE_SCENARIO_AVAILABILITY_REQUEST,
-    indicatorScopeRequest: $ACTIVE_INDICATOR_SCOPE_REQUEST,
-    indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT,
-    selection: $RUNTIME_CATALOG_SELECTION,
-  });
-  $: impactTimeRequest = percentileChartRequest(percentileView, {
+  $: context = chartContext;
+  $: percentileView = context.view;
+  $: impactTimeRequest = percentileView.status === 'ready' ? {
     base: import.meta.env.VITE_API_URL,
     arrayFormat: 'repeat',
     endpoint: END_IMPACT_TIME,
     params: {
-      [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY?.uid,
-      [URL_PATH_INDICATOR]: $CURRENT_INDICATOR?.uid,
-      [URL_PATH_SCENARIOS]: $CURRENT_SCENARIOS_UID,
-      instance: $CURRENT_INDICATOR?.instance,
-      ...$CURRENT_INDICATOR_OPTION_VALUES,
+      [URL_PATH_GEOGRAPHY]: context.geography?.uid,
+      [URL_PATH_INDICATOR]: context.indicator?.uid,
+      [URL_PATH_SCENARIOS]: context.scenarios.map(({ uid }) => uid),
+      instance: context.indicator?.instance,
+      ...context.parameters,
     },
-  });
+  } : undefined;
   $: if (impactTimeRequest) fetchData(IMPACT_TIME_DATA, impactTimeRequest);
 
   function retryChartRequest() {
-    retryPercentileChartRequest({ view: percentileView, flow: catalogFlow, indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT });
+    fetchData(IMPACT_TIME_DATA, impactTimeRequest);
   }
 
   const colorMarkers = [-Infinity, 1.5, 2, 2.5, Infinity];
@@ -62,7 +43,8 @@
     .domain(colorMarkers)
     .range(range(0, 1, 1 / colorMarkers.length));
 
-  $: process = ({ impactTimeData }, { scenarios, urlParams, indicator: { instance } = {} }) => {
+  $: process = ({ impactTimeData }, { scenarios, urlParams, indicator = {}, geography, indicatorLabel }) => {
+    const { instance } = indicator;
     const MODEL = KEY_MODEL;
     const SOURCE = KEY_SOURCE;
     const { yearStart, yearStep, data, gmt: gmtByScenario = {}, unit, formats, description, title, [MODEL]: model, [SOURCE]: source, parameters } = impactTimeData.data;
@@ -71,8 +53,6 @@
       .filter((scenario) => data[scenario.uid])
       .map((scenario) => {
         const scenarioData = data[scenario.uid];
-        // GMT now arrives bundled in the response as a [min, median, max] band
-        // per year, aligned with yearStart/yearStep (replaces curated scenario.gmt).
         const gmtBand = gmtByScenario[scenario.uid] ?? [];
 
         return {
@@ -147,6 +127,9 @@
     const graphDownloadParams = {
       ...urlParams,
       scenarios: scenarios.map((d) => d.uid),
+      indicatorLabel,
+      geographyLabel: geography?.label,
+      unit: unit?.uid ?? unit,
     };
     return {
       impactTime,
@@ -167,15 +150,15 @@
 {#if percentileView.status === 'ready'}
   <LoadingWrapper
     {process}
+    retry={retryChartRequest}
     let:asyncProps
     let:props
     asyncProps={{
       impactTimeData: $IMPACT_TIME_DATA,
     }}
     props={{
-      ...$TEMPLATE_PROPS,
-      graphParams: $GRAPH_URL_PARAMS,
-      urlParams: $DOWNLOAD_URL_PARAMS,
+      ...context,
+      urlParams: context.urlParams,
     }}
   >
     <ChartFrame
@@ -190,6 +173,7 @@
       chartUid={END_IMPACT_TIME}
       chartInfo={asyncProps.chartInfo}
       templateProps={props}
+      staticMode={context.static}
     >
       {#if asyncProps.impactTime.length}
         <ImpactTimeChart data={asyncProps.impactTime} unit={asyncProps.unit ?? props.indicator.unit} indicatorLabel={props.indicatorLabel} steps={colorSteps} />
@@ -199,7 +183,7 @@
              `process`). Say so — rendering the chart with an empty series threw. -->
         <Message headline="There is no data for your current selection">
           <span class="text-contour-weaker"
-            >The selected {$CURRENT_SCENARIOS_UID.length > 1 ? 'scenarios have' : 'scenario has'} no data for this indicator and geography. Try another scenario or geography.</span
+            >The selected {context.scenarios.length > 1 ? 'scenarios have' : 'scenario has'} no data for this indicator and geography. Try another scenario or geography.</span
           >
         </Message>
       {/if}
@@ -211,11 +195,11 @@
 {:else if percentileView.status === 'failure'}
   {#if percentileView.failedRequest === 'indicatorScope'}
     <Message headline="Indicators could not be loaded for this selection">
-      <Button variant="secondary" on:click={retryChartRequest}>Retry indicators</Button>
+      <Button variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
     </Message>
   {:else}
     <Message headline="Scenario availability could not be loaded">
-      <Button variant="secondary" on:click={retryChartRequest}>Retry chart scenarios</Button>
+      <Button variant="secondary" on:click={retryAvailability}>Retry chart scenarios</Button>
     </Message>
   {/if}
 {:else if percentileView.status === 'empty'}

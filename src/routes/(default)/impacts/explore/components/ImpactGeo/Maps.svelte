@@ -13,7 +13,6 @@
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import { STATUS_IDLE, STATUS_PROCESSING, STATUS_FAILED, WORKER_MESSAGE_START, STATUS_FINISHED } from '$config';
-  import { CURRENT_GEOGRAPHY } from '$stores/state';
   import Progress from '$lib/components/ui/Progress.svelte';
   import { reduce } from 'lodash-es';
   import { formatValue } from '$formatting';
@@ -24,6 +23,8 @@
   export let unit;
   export let isProcessing;
   export let showSatellite;
+  export let geographyType;
+  export let staticMode = false;
 
   let workerStatus = STATUS_IDLE;
   let workerMessage;
@@ -45,8 +46,8 @@
         maskedGeoData = [];
         workerMessage = undefined;
 
-        const MyWorker = await import('$workers/geomask.js?worker');
-        maskWorker = new MyWorker.default();
+        const WorkerModule = await import('$workers/geomask.js?worker');
+        maskWorker = new WorkerModule.default();
 
         if (!maskWorker) {
           workerStatus = STATUS_FAILED;
@@ -140,11 +141,7 @@
     }
   }
 
-  // We need a Boolean value for the next step
   $: hasWorker = Boolean(maskWorker);
-  // This is used to trigger the creation of the mask.
-  // It is depended on the hasWorker Boolean. This is because when the page loads and geoData and geoShape is available, but the worker is not ready
-  // We use the Boolean value because we do not want to trigger this step, when a new worker is created, but only if the worker becomes available
   $: hasWorker && createMaske(geoData, geoShape);
 
   let maskedGeoData = [];
@@ -202,7 +199,7 @@
   }
 
   $: displayedGeoData = showSatellite ? geoData : maskedGeoData;
-  $: isUrban = $CURRENT_GEOGRAPHY.geographyType === 'cities';
+  $: isUrban = geographyType === 'cities';
 
   $: bounds = isUrban && showSatellite ? bbox(displayedGeoData[0].data) : bbox(geoShape);
 </script>
@@ -230,7 +227,7 @@
         class="w-full border-contour-weakest overflow-hidden relative"
       >
         {#key showSatellite}
-          <MapProvider bind:map={maps[i]} {bounds} {interactive} {paint} hideLogo={i > 0} style={showSatellite && import.meta.env.VITE_MAPBOX_STYLE_SATELLITE}>
+          <MapProvider bind:map={maps[i]} {bounds} {interactive} {paint} hideLogo={i > 0} style={showSatellite && import.meta.env.VITE_MAPBOX_STYLE_SATELLITE} {staticMode}>
             {#if invertedGeoShape && !isUrban}
               <DataSource data={invertedGeoShape}>
                 <PolygonLayer before={showSatellite ? 'tunnel-path' : 'ocean-fill'} lineWidth={3} lineOffset={1.5} lineOpacity={0.1} lineColor={$theme.color.contour.base} />

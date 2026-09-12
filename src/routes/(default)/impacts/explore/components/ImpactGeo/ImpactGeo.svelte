@@ -2,14 +2,6 @@
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
 
   import {
-    AVAILABLE_IMPACT_GEO_YEARS,
-    DEFAULT_AVAILABLE_IMPACT_GEO_YEAR,
-    TEMPLATE_PROPS,
-    DOWNLOAD_URL_PARAMS,
-    ACTIVE_INDICATOR_SCOPE_CONTEXT,
-    MAP_CHART_VIEW,
-  } from '$src/stores/state';
-  import {
     URL_PATH_SCENARIO,
     URL_PATH_YEAR,
     IMPACT_GEO_DISPLAY_OPTIONS,
@@ -35,15 +27,15 @@
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { formatValue } from '$lib/utils/formatting';
   import { isObject, isString, has } from 'lodash-es';
-  import { percentileChartRequest, retryPercentileChartRequest } from '$stores/catalog-adapters.js';
-  import { catalogFlow } from '$stores/catalog-flow.js';
   import Button from '$lib/components/ui/Button.svelte';
 
-  export let tagline;
+  export let tagline = undefined;
   export let year = undefined;
   export let displayOption = IMPACT_GEO_KEY_SIDE_BY_SIDE;
   export let showSatellite = false;
   export let showSatelliteOption = true;
+  export let chartContext;
+  export let retryAvailability = undefined;
 
   let isProcessing = false;
 
@@ -74,7 +66,7 @@
   }
   $: latchYears($IMPACT_GEO_DATA);
 
-  $: yearOptions = $AVAILABLE_IMPACT_GEO_YEARS.length ? $AVAILABLE_IMPACT_GEO_YEARS : latchedYears;
+  $: yearOptions = chartContext.availableYears?.length ? chartContext.availableYears : latchedYears;
   $: defaultYear = yearOptions.includes(DEFAULT_IMPACT_GEO_YEAR) ? DEFAULT_IMPACT_GEO_YEAR : yearOptions[0];
 
   // Only reset once options exist — clearing `year` mid-request would change the
@@ -83,12 +75,21 @@
     year = defaultYear;
   }
 
-  $: mapView = $MAP_CHART_VIEW;
+  $: mapView = chartContext.view;
   $: legacyUrlParams = mapView.legacyUrlParams ?? {};
   $: legacyGeography = legacyUrlParams[URL_PATH_GEOGRAPHY];
   $: scenarioPairs = mapView.scenarioPairs ?? [];
   $: legacyScenarios = scenarioPairs.map(({ legacyUid }) => legacyUid);
-  $: impactGeoRequests = percentileChartRequest(mapView, {
+  $: loadingProps = {
+    ...chartContext,
+    scenarios: scenarioPairs.map(({ scenario }) => scenario),
+    legacyScenarios,
+    year,
+    urlParams: chartContext.urlParams,
+    legacyUrlParams,
+    legacyGeography,
+  };
+  $: impactGeoRequests = mapView.status === 'ready' ? {
     data: legacyScenarios.map((scenario) => ({
       endpoint: END_IMPACT_GEO,
       params: {
@@ -104,7 +105,7 @@
         [URL_PATH_GEOGRAPHY]: legacyGeography,
       },
     },
-  });
+  } : undefined;
 
   $: if (impactGeoRequests) {
     fetchData(IMPACT_GEO_DATA, impactGeoRequests.data);
@@ -113,15 +114,11 @@
   }
 
   function retryMapRequest() {
-    retryPercentileChartRequest({ view: mapView, flow: catalogFlow, indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT });
+    fetchData(IMPACT_GEO_DATA, impactGeoRequests.data);
+    fetchData(GEO_SHAPE_DATA, impactGeoRequests.shape);
   }
 
-  // `scenarios` here is the mapped subset, positionally aligned with the
-  // responses — not the raw selection (see scenarioPairs). `urlParams` is the
-  // legacy-shaped selection, because this chart's data download hits the legacy
-  // API too.
   $: process = ({ data, shape }, { scenarios, legacyScenarios, indicator, urlParams, legacyUrlParams, geography, legacyGeography: geoId }) => {
-    isProcessing = true;
     const showDifference = data.length === 2 && displayOption === IMPACT_GEO_KEY_DIFFERENCE;
     const isMultipMap = data.length > 1 && !showDifference;
 
@@ -211,14 +208,21 @@
       ...urlParams,
       displayOption,
       year,
+      showSatellite,
       scenarios: scenarios.map((d) => d.uid),
+      geoId,
+      geographyType: geography.geographyType,
+      geographyLabel: geography.label,
+      indicatorLabel: indicator.label,
+      unit: indicator.unit?.uid,
+      colorScale: indicator.colorScale,
+      direction: indicator.direction,
     };
 
     // geo-shape features are tagged with the LEGACY geography id (`POL`), so the
     // outline is picked by geoId — the convention uid never matches.
     const geoShape = shape.data.data.features.find((feature) => feature.properties.uid === geoId) ?? shape.data.data.features[0];
 
-    // // In some cases, the API provides descriptions for each threshold
     const rawDesciption = data[0].data.description;
     let description;
     if (isObject(rawDesciption) && has(rawDesciption, displayOption)) {
@@ -244,20 +248,11 @@
 
 {#if mapView.status === 'ready'}
   <LoadingWrapper
+    retry={retryMapRequest}
     let:asyncProps
     let:props
     asyncProps={{ data: $IMPACT_GEO_DATA, shape: $GEO_SHAPE_DATA }}
-    props={{
-      ...$TEMPLATE_PROPS,
-      // The mapped subset, aligned with the responses — overrides the full
-      // selection TEMPLATE_PROPS carries.
-      scenarios: scenarioPairs.map(({ scenario }) => scenario),
-      legacyScenarios,
-      year,
-      urlParams: $DOWNLOAD_URL_PARAMS,
-      legacyUrlParams,
-      legacyGeography,
-    }}
+    props={loadingProps}
     {process}
     let:isLoading
   >
@@ -275,13 +270,14 @@
       chartUid={END_IMPACT_GEO}
       templateProps={{ ...props, showDifference: asyncProps.showDifference }}
       chartInfo={asyncProps.chartInfo}
+      staticMode={chartContext.static}
       {isLoading}
       {isProcessing}
     >
       <svelte:fragment slot="controls">
-        <Controls scenarios={props.scenarios} {yearOptions} displayOptions={IMPACT_GEO_DISPLAY_OPTIONS} {showSatelliteOption} bind:showSatellite bind:displayOption bind:year />
+        <Controls scenarios={props.scenarios} {yearOptions} displayOptions={IMPACT_GEO_DISPLAY_OPTIONS} {showSatelliteOption} staticMode={chartContext.static} bind:showSatellite bind:displayOption bind:year />
       </svelte:fragment>
-      <Maps bind:isProcessing unit={props.indicator.unit} geoData={asyncProps.geoData} geoShape={asyncProps.geoShape} colorScale={asyncProps.colorScale} {showSatellite} />
+      <Maps bind:isProcessing unit={props.indicator.unit} geographyType={props.geography.geographyType} geoData={asyncProps.geoData} geoShape={asyncProps.geoShape} colorScale={asyncProps.colorScale} {showSatellite} staticMode={chartContext.static} />
     </ChartFrame>
     <LoadingPlaceholder slot="placeholder" />
   </LoadingWrapper>
@@ -290,11 +286,11 @@
 {:else if mapView.status === 'failure'}
   {#if mapView.failedRequest === 'indicatorScope'}
     <Message headline="Indicators could not be loaded for this selection">
-      <Button variant="secondary" on:click={retryMapRequest}>Retry indicators</Button>
+      <Button variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
     </Message>
   {:else}
     <Message headline="Scenario availability could not be loaded">
-      <Button variant="secondary" on:click={retryMapRequest}>Retry map scenarios</Button>
+      <Button variant="secondary" on:click={retryAvailability}>Retry map scenarios</Button>
     </Message>
   {/if}
 {/if}

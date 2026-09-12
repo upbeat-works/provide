@@ -7,11 +7,9 @@ import { createCatalogFlow, selectionUrlParams } from '$stores/catalog-flow.js';
 import {
   geographyControlView,
   geographyListRequest,
-  percentileChartRequest,
   percentileChartView,
   retryPercentileChartRequest,
   retryWarmingChartRequest,
-  warmingChartRequest,
   warmingChartView,
 } from '$stores/catalog-adapters.js';
 
@@ -500,8 +498,6 @@ describe('catalog page flow', () => {
 
     expect(failedPercentileView).toEqual({ status: 'failure', failedRequest: 'indicatorScope' });
     expect(failedWarmingView).toEqual({ status: 'failure', failedRequest: 'indicatorScope' });
-    expect(percentileChartRequest(failedPercentileView, { endpoint: '/impact-time' })).toBeUndefined();
-    expect(warmingChartRequest({ view: failedWarmingView, geography: 'DEU', indicator: selection.indicator, scenarios: [], parameters: {} })).toBeUndefined();
 
     await flow.retryIndicatorScope(context);
     const recoveredScope = get(catalog.filteredIndicators);
@@ -513,7 +509,6 @@ describe('catalog page flow', () => {
       selection,
     });
     expect(waitingPercentileView).toEqual({ status: 'loading' });
-    expect(percentileChartRequest(waitingPercentileView, { endpoint: '/impact-time' })).toBeUndefined();
 
     await Promise.all([flow.retryPercentileAvailability(), flow.retryWarmingLevelAvailability()]);
     const percentileView = percentileChartView({
@@ -531,13 +526,8 @@ describe('catalog page flow', () => {
       selection,
     });
 
-    expect(percentileChartRequest(percentileView, { endpoint: '/impact-time' })).toEqual({ endpoint: '/impact-time' });
-    expect(warmingChartRequest({ view: warmingView, geography: 'DEU', indicator: selection.indicator, scenarios: [{ uid: 'High' }], parameters: {} })).toEqual({
-      geography: 'DEU',
-      indicator: 'Heat',
-      instance: 'provide-external',
-      scenarios: ['High'],
-    });
+    expect(percentileView).toEqual({ status: 'ready' });
+    expect(warmingView).toEqual({ status: 'ready' });
     expect(scopeAttempts).toBe(2);
   });
 

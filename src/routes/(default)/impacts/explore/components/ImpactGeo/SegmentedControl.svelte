@@ -3,8 +3,8 @@
 </script>
 
 <script>
-  import { IS_STATIC } from '$stores/state';
   export let options = [];
+  export let staticMode = false;
   export let value;
   export let label;
   export let uid;
@@ -14,7 +14,7 @@
   instance++;
 </script>
 
-{#if !$IS_STATIC}
+{#if !staticMode}
   <div class="flex">
     {#if label}
       <legend class="control-label" for={selectId}>{label}</legend>
