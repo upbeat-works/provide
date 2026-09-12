@@ -1,8 +1,3 @@
-// Pure shaping of the avoid page's catalog from the frozen legacy /meta. Kept
-// alias-free so it is unit-testable under `bun test`; the fetch that feeds it
-// lives in `loadAvoidMeta` (src/lib/utils/apis.js). Everything stays in the
-// LEGACY id space (city uids, sector-prefixed indicator uids). The avoid page is
-// cities-only, so only the city-available legacy indicators matter.
 export function buildAvoidMeta(legacyMeta = {}, descriptions = {}) {
   const cityType = (legacyMeta.geographyTypes ?? []).find((t) => t.uid === 'cities');
   const cityIndicatorUids = new Set(cityType?.availableIndicators ?? []);

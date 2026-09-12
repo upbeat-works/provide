@@ -5,6 +5,8 @@
   import Tagline from '$lib/components/ui/Tagline.svelte';
   import Primary from '$lib/components/icons/Primary.svelte';
   import { MAX_NUMBER_SELECTABLE_SCENARIOS } from '$config';
+  import { markCatalogSelectionChange } from '$lib/catalog/selection-history.js';
+  import { catalogFlow } from '$stores/catalog-flow.js';
 
   export let scenarios;
   export let hoveredScenarioUid;
@@ -16,7 +18,14 @@
 
   $: maxNumberOfScenariosSelected = multiple && $CURRENT_SCENARIOS_UID.length === MAX_NUMBER_SELECTABLE_SCENARIOS;
 
-  const select = (uid) => (multiple ? CURRENT_SCENARIOS_UID.toggle(uid, currentFilterUid) : CURRENT_SCENARIOS_UID.set([uid]));
+  function select(uid) {
+    markCatalogSelectionChange();
+    if (multiple) {
+      catalogFlow.toggleScenario(uid, { scenarios, timeframe: currentFilterUid });
+      return;
+    }
+    catalogFlow.chooseScenarios([uid]);
+  }
 
   const textScenarioNotAvailable = 'This scenario is not available for the selected indicator';
   const textMaxNumberOfScenarios = `You can not select more than ${MAX_NUMBER_SELECTABLE_SCENARIOS} scenarios.`

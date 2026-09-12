@@ -1,83 +1,60 @@
 <script>
-  import {
-    CURRENT_INDICATOR,
-    CURRENT_INDICATOR_UNIT_UID,
-    CURRENT_GEOGRAPHY,
-    CURRENT_INDICATOR_OPTION_VALUES,
-    TEMPLATE_PROPS,
-    CURRENT_SCENARIOS,
-    SELECTABLE_WARMING_SCENARIOS,
-    IS_COMBINATION_AVAILABLE,
-    DOWNLOAD_URL_PARAMS,
-  } from '$stores/state.js';
   import UnavoidableRiskChart from './UnavoidableRiskChart/UnavoidableRiskChart.svelte';
   import ColorLegend from '$lib/components/charts/legends/ColorLegend.svelte';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import { min } from 'd3-array';
   import { formatValue, findDecimalsForDistinctValues } from '$lib/utils/formatting';
-  import { URL_PATH_SCENARIOS, END_UN_AVOIDABLE_RISK, UNAVOIDABLE_UID, KEY_MODEL, KEY_SOURCE, KEY_SCENARIO_ENDYEAR, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR } from '$src/config.js';
-  import { sortBy, reverse, find, uniqBy, without, isObject, isString, has } from 'lodash-es';
+  import { URL_PATH_SCENARIOS, END_UN_AVOIDABLE_RISK, UNAVOIDABLE_UID, KEY_MODEL, KEY_SOURCE, KEY_SCENARIO_ENDYEAR } from '$src/config.js';
+  import { sortBy, reverse, find, without, isObject, isString, has } from 'lodash-es';
   import { fetchData } from '$lib/api/api';
-  import { withScenarioTimeframe } from '$lib/utils/utils.js';
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { writable } from 'svelte/store';
+  import { scenariosForTimeframe } from '$stores/catalog-adapters.js';
+  import Button from '$lib/components/ui/Button.svelte';
+  import Message from '$lib/components/ui/Message.svelte';
 
   const STORE = writable({});
-  let threshold; // This holds the selected threshold
+  export let threshold = undefined;
 
-  export let tagline;
+  export let tagline = undefined;
+  export let chartContext;
+  export let retryAvailability = undefined;
 
-  /** @type {Array} A list of currently selected scenarios.
-  This is nesecssary because of the two modes: The user can select scenarios in Future Impacts.
-  In this case we use the list given by the state with the selected scenarios.
-  In the Avoiding Impacts mode, we display the default list of scenarios. */
-  export let currentScenarios = [];
+  $: warmingView = chartContext.view;
+  $: currentSelectedScenarios = chartContext.scenarios;
+  $: allScenarios = chartContext.allScenarios;
+  $: warmingRequest = warmingView.status === 'ready' ? {
+    geography: chartContext.geography.uid,
+    indicator: chartContext.indicator.uid,
+    instance: chartContext.indicator.instance,
+    scenarios: allScenarios.map(({ uid }) => uid),
+    ...chartContext.parameters,
+  } : undefined;
 
-  // This checks if the passed list of scenarios is valid. If yes, it uses it, otherwise it falls back to the list in the state.
-  // endYear (the timeframe that drives the year filtering below) is data-driven
-  // and lives on SELECTABLE_WARMING_SCENARIOS, not on the bare CURRENT_SCENARIOS —
-  // graft it on, or timeframe is undefined and every year gets filtered out (blank
-  // chart). The scatter plots the warming-level axis, so its scenario universe and
-  // timeframes come from the warming-level availability, not the percentile-based
-  // selector shared with the impact-time/geo band charts on this page.
-  $: currentSelectedScenarios = withScenarioTimeframe(
-    (Array.isArray(currentScenarios) && currentScenarios.length ? currentScenarios : $CURRENT_SCENARIOS).map(
-      // We just need a small set of attributes
-      ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe }) => ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe })
-    ),
-    $SELECTABLE_WARMING_SCENARIOS,
-    KEY_SCENARIO_ENDYEAR
-  );
-
-  $: $IS_COMBINATION_AVAILABLE &&
-    fetchData(STORE, {
+  $: requestConfig = warmingRequest ? {
       // Convention-driven ixmp4 adapter (not the legacy API). It resolves one
       // exceedance series per warming threshold. The adapter reads repeated
       // `scenarios=` params, so serialise arrays that way.
       base: import.meta.env.VITE_API_URL,
       arrayFormat: 'repeat',
       endpoint: END_UN_AVOIDABLE_RISK,
-      params: {
-        [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY.uid,
-        [URL_PATH_INDICATOR]: $CURRENT_INDICATOR.uid,
-        // Request ALL warming-level-selectable scenarios (not just the selected
-        // one) so the chart can plot the exceedance scatter across scenarios; the
-        // selected ones are highlighted, the rest render as "Other scenarios". The
-        // adapter omits any scenario that has no exceedance data.
-        [URL_PATH_SCENARIOS]: $SELECTABLE_WARMING_SCENARIOS.map(({ uid }) => uid),
-        instance: $CURRENT_INDICATOR.instance,
-        ...$CURRENT_INDICATOR_OPTION_VALUES,
-      },
-    });
+      params: warmingRequest,
+    } : undefined;
+  $: if (requestConfig) fetchData(STORE, requestConfig);
 
-  $: process = ({ data }, { selectedScenarios, urlParams, allScenarios, indicator: { instance } = {} }) => {
+  function retryWarmingRequest() {
+    fetchData(STORE, requestConfig);
+  }
+
+  $: process = ({ data }, { selectedScenarios, urlParams, allScenarios, indicator = {}, geography, unitUid }) => {
+    const { instance } = indicator;
     // This creates the list of thresholds
-    const decimals = findDecimalsForDistinctValues(data.thresholds, $CURRENT_INDICATOR_UNIT_UID);
+    const decimals = findDecimalsForDistinctValues(data.thresholds, unitUid);
 
     const thresholds = data.thresholds.map((value) => ({
-      label: `${value < 0 ? '−' : ''}${formatValue(Math.abs(value), $CURRENT_INDICATOR_UNIT_UID, { decimals })}`,
+      label: `${value < 0 ? '−' : ''}${formatValue(Math.abs(value), unitUid, { decimals })}`,
       value,
     }));
 
@@ -88,7 +65,7 @@
     if (thresholdIndex === -1) {
       // If no thresholds are present, we use 0
       // If thresholds are present, we try to use the default threshold. If this is not present, we fallback to 0
-      thresholdIndex = hasThresholds ? data.thresholds.indexOf(data.defaultThreshold) || 0 : 0;
+      thresholdIndex = hasThresholds ? Math.max(0, data.thresholds.indexOf(data.defaultThreshold)) : 0;
     }
 
     // We use the index to find the threshold, but fallback to 0
@@ -104,7 +81,7 @@
     // For this, we merge the selected and all scenarios together
     // This is because the selected scenarios have the assigned colors included
     // That’s why we spread them first in the new array
-    const mergedScenarios = uniqBy([...selectedScenarios, ...allScenarios], 'uid').filter((s) => s[KEY_SCENARIO_ENDYEAR] === timeframe);
+    const mergedScenarios = scenariosForTimeframe({ selectedScenarios, allScenarios });
 
     let processedScenarios = Object.entries(data.data)
       .map(([uid, scenarioData]) => {
@@ -177,6 +154,11 @@
       ...urlParams,
       threshold,
       scenarios: selectedScenarios.map((d) => d.uid),
+      allScenarios: allScenarios.map((d) => d.uid),
+      timeframe,
+      unit: unitUid,
+      indicatorLabel: indicator.label,
+      geographyLabel: geography.label,
     };
 
     const chartInfo = [
@@ -186,10 +168,10 @@
 
     // The endpoint might not always return data for all scenarios
     const includedScenarios = Object.keys(data.data);
-    const legendItems = [...currentSelectedScenarios.filter(({ uid }) => includedScenarios.includes(uid))];
+    const legendItems = [...selectedScenarios.filter(({ uid }) => includedScenarios.includes(uid))];
 
     // Checking if there are more scenarios than the selected ones included
-    const hasOtherScenarios = without(includedScenarios, ...currentSelectedScenarios.map(({ uid }) => uid)).length;
+    const hasOtherScenarios = without(includedScenarios, ...selectedScenarios.map(({ uid }) => uid)).length;
     if (hasOtherScenarios) {
       legendItems.push({ label: 'Other scenarios', uid: 'other' });
     }
@@ -221,19 +203,21 @@
   };
 </script>
 
-{#if $IS_COMBINATION_AVAILABLE}
+{#if warmingView.status === 'ready'}
   <LoadingWrapper
+    retry={retryWarmingRequest}
     let:props
     let:isLoading
     let:asyncProps
     {process}
     asyncProps={$STORE}
     props={{
-      ...$TEMPLATE_PROPS,
-      allScenarios: $SELECTABLE_WARMING_SCENARIOS,
+      ...chartContext,
+      allScenarios,
       selectedScenarios: currentSelectedScenarios,
       threshold,
-      urlParams: $DOWNLOAD_URL_PARAMS,
+      urlParams: chartContext.urlParams,
+      unitUid: chartContext.unitUid,
     }}
   >
     <ChartFrame
@@ -248,11 +232,12 @@
       graphDownloadParams={asyncProps.graphDownloadParams}
       chartUid={END_UN_AVOIDABLE_RISK}
       chartInfo={asyncProps.chartInfo}
+      staticMode={chartContext.static}
       {isLoading}
     >
       <div class="0" slot="controls">
         {#if asyncProps.thresholds.length > 1}
-          <Select label="Impact level" options={asyncProps.thresholds} bind:value={threshold} />
+          <Select label="Impact level" options={asyncProps.thresholds} bind:value={threshold} staticMode={chartContext.static} />
         {/if}
       </div>
       <ColorLegend items={asyncProps.legendItems} class="my-4" />
@@ -265,4 +250,16 @@
     </ChartFrame>
     <LoadingPlaceholder slot="placeholder" />
   </LoadingWrapper>
+{:else if warmingView.status === 'loading'}
+  <LoadingPlaceholder />
+{:else if warmingView.status === 'failure'}
+  {#if warmingView.failedRequest === 'indicatorScope'}
+    <Message headline="Indicators could not be loaded for this selection">
+      <Button variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
+    </Message>
+  {:else}
+    <Message headline="Warming availability could not be loaded">
+      <Button variant="secondary" on:click={retryAvailability}>Retry warming data</Button>
+    </Message>
+  {/if}
 {/if}

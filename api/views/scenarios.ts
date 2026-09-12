@@ -1,20 +1,103 @@
+import type { Platform } from '@iiasa/ixmp4-ts';
 import { createPlatform } from '../platform';
-import {
-  representativeVariable,
-  composeVariable,
-  indicatorsFromVariables,
-  FACET_DEFAULTS,
-  BASELINE_SCENARIO,
-  REPRESENTATIVE_VALUE,
-} from '../conventions';
+import { representativeVariable, composeVariable, indicatorsFromVariables, FACET_DEFAULTS, BASELINE_SCENARIO } from '../conventions';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
+import type { ScenarioDetailsResponse, ScenarioGmtBand } from '../catalog/contracts';
 import type { Ixmp4Instance } from '../types';
+import { fetchGmtScenario, fetchGmtSeriesStrict, type GmtByScenario } from './gmt';
 
 export interface ScenarioAvailability {
-  uid: string;
+  id: string;
+  label: string;
   yearStart: number;
-  yearStep: number;
   yearEnd: number;
+}
+
+function publicGmtBand([min, value, max]: [number, number, number]): ScenarioGmtBand {
+  const finiteOrNull = (entry: number) => (Number.isFinite(entry) ? entry : null);
+  return [finiteOrNull(min), finiteOrNull(value), finiteOrNull(max)];
+}
+
+export function scenarioDetailsFromSources(instance: string, scenarioNames: string[], timeframes: Map<string, ScenarioTimeframe>, gmt: GmtByScenario): ScenarioDetailsResponse[] {
+  const names = new Map<string, string>();
+  for (const name of scenarioNames) {
+    const key = name.toLowerCase();
+    if (!names.has(key)) names.set(key, name);
+  }
+  for (const [key, series] of gmt) {
+    if (!names.has(key)) names.set(key, series.scenario);
+  }
+
+  const details: ScenarioDetailsResponse[] = [];
+  for (const [key, name] of names) {
+    const series = gmt.get(key);
+    let timeframe = timeframes.get(key);
+    if (!timeframe && series) {
+      timeframe = {
+        yearStart: series.yearStart,
+        yearStep: series.yearStep,
+        yearEnd: series.yearEnd,
+      };
+    }
+    if (!timeframe) continue;
+
+    const response: ScenarioDetailsResponse = {
+      id: name,
+      label: name,
+      instance,
+      ...timeframe,
+      characteristics: series?.characteristics ?? {},
+    };
+    if (series) {
+      response.gmt = {
+        data: series.data.map(publicGmtBand),
+        yearStart: series.yearStart,
+        yearStep: series.yearStep,
+        yearEnd: series.yearEnd,
+        ...(series.model ? { model: series.model } : {}),
+        ...(series.unit ? { unit: series.unit } : {}),
+      };
+    }
+    details.push(response);
+  }
+  return details;
+}
+
+async function fetchScenarioTimeframe(platform: Platform, scenario: string): Promise<ScenarioTimeframe | undefined> {
+  const df = await platform.iamc.tabulate({ scenario: { name_ilike: scenario }, wide: true });
+  return scenarioTimeframesFromRows(dfToRows(df as DataFrameLike)).get(scenario.toLowerCase());
+}
+
+export async function fetchScenarioDetail(instance: Ixmp4Instance, creds: { username: string; password: string }, requestedId: string): Promise<ScenarioDetailsResponse | null> {
+  const platform = await createPlatform(instance, creds.username, creds.password);
+  const [runs, timeframe, fetchedGmt] = await Promise.all([
+    platform.runs.list({ scenario: { name_ilike: requestedId } }),
+    fetchScenarioTimeframe(platform, requestedId),
+    fetchGmtScenario(platform, requestedId),
+  ]);
+  const key = requestedId.toLowerCase();
+  const scenarioNames = runs.map((run) => run.scenario.name).filter((name) => name.toLowerCase() === key);
+  const gmt = new Map([...fetchedGmt].filter(([scenarioKey]) => scenarioKey === key));
+  const timeframes = new Map<string, ScenarioTimeframe>();
+  if (timeframe) timeframes.set(key, timeframe);
+  return scenarioDetailsFromSources(instance.slug, scenarioNames, timeframes, gmt)[0] ?? null;
+}
+
+export async function fetchMethodologyScenarioDetails(instance: Ixmp4Instance, creds: { username: string; password: string }): Promise<ScenarioDetailsResponse[]> {
+  const platform = await createPlatform(instance, creds.username, creds.password);
+  const [runs, gmt] = await Promise.all([platform.runs.list(), fetchGmtSeriesStrict(platform)]);
+  const gmtModel = [...gmt.values()][0]?.model;
+  const names = new Map<string, string>();
+  for (const run of runs) {
+    if (gmtModel && run.model.name === gmtModel) continue;
+    const name = run.scenario.name;
+    const key = name.toLowerCase();
+    if (!names.has(key)) names.set(key, name);
+  }
+  const scenarioNames = [...names.values()];
+  const scenarioKeys = new Set(names.keys());
+  const scenarioGmt = new Map([...gmt].filter(([key]) => scenarioKeys.has(key)));
+  return scenarioDetailsFromSources(instance.slug, scenarioNames, new Map(), scenarioGmt);
 }
 
 // Which value axis to probe availability against. The percentile axis is the
@@ -42,10 +125,7 @@ export function pickRepresentativeWarmingLevel(levels: string[]): string | undef
  * avoid view uses it to keep the `Today` baseline out of the selectable set.
  * Pure.
  */
-export function scenarioAvailabilityFromRows(
-  rows: WideRow[],
-  opts: { exclude?: string[] } = {},
-): ScenarioAvailability[] {
+export function scenarioAvailabilityFromRows(rows: WideRow[], opts: { exclude?: string[] } = {}): ScenarioAvailability[] {
   // Dedup case-insensitively: a scenario uploaded under two casings (the
   // `SSP5-3.4-OS`/`SSP5-3.4-Os` source duplicate) is one availability entry.
   const excluded = new Set((opts.exclude ?? []).map((s) => s.toLowerCase()));
@@ -61,9 +141,9 @@ export function scenarioAvailabilityFromRows(
     if (!years.length) continue;
     seen.add(row.scenario.toLowerCase());
     out.push({
-      uid: row.scenario,
+      id: row.scenario,
+      label: row.scenario,
       yearStart: years[0],
-      yearStep: years.length > 1 ? years[1] - years[0] : 0,
       yearEnd: years[years.length - 1],
     });
   }
@@ -112,53 +192,6 @@ export function scenarioTimeframesFromRows(rows: WideRow[]): Map<string, Scenari
 }
 
 /**
- * Every catalog scenario's intrinsic timeframe, for the scenario list on the
- * methodology page (which is about scenarios in general, not one indicator in one
- * region — so unlike `/scenarios` it takes no indicator/region).
- *
- * Probes BOTH value axes, because their scenario coverage differs sharply: today
- * the percentile axis carries 2 scenarios and the warming-level axis 11. Walks
- * indicators only until every scenario is accounted for, so the common case is
- * two tabulates. Region is left unfiltered — a scenario's span is the widest it
- * has anywhere.
- */
-export async function fetchScenarioTimeframes(
-  platforms: Array<{ platform: { iamc: { tabulate: (q: unknown) => Promise<unknown> } } }>,
-  facets: Array<{ uid: string; periods: string[]; temporals: string[]; spatials: string[]; percentiles: string[]; warmingLevels: string[] }>,
-  scenarioNames: string[],
-): Promise<Map<string, ScenarioTimeframe>> {
-  const pending = new Set(scenarioNames.map((s) => s.toLowerCase()));
-  const rows: WideRow[] = [];
-
-  for (const { platform } of platforms) {
-    for (const facet of facets) {
-      if (!pending.size) break;
-      const base = {
-        indicator: facet.uid,
-        period: facet.periods[0] ?? FACET_DEFAULTS.period,
-        temporal: facet.temporals[0] ?? FACET_DEFAULTS.temporal,
-        spatial: facet.spatials[0] ?? FACET_DEFAULTS.spatial,
-      };
-      const level = pickRepresentativeWarmingLevel(facet.warmingLevels);
-      const values = [facet.percentiles.length ? REPRESENTATIVE_VALUE : undefined, level].filter(Boolean) as string[];
-
-      for (const value of values) {
-        // One bad variable must not sink the whole catalog.
-        try {
-          const df = await platform.iamc.tabulate({ variable: { name: composeVariable({ ...base, value }) }, wide: true });
-          const fetched = dfToRows(df as DataFrameLike);
-          rows.push(...fetched);
-          for (const row of fetched) pending.delete(row.scenario.toLowerCase());
-        } catch {
-          /* skip this probe */
-        }
-      }
-    }
-  }
-  return scenarioTimeframesFromRows(rows);
-}
-
-/**
  * The scenarios that have data for an indicator in a region, with each one's
  * timeframe — for the fully-faceted variable of the current parameter selection.
  *
@@ -179,16 +212,17 @@ export async function fetchScenarioAvailability(
     temporal?: string;
     spatial?: string;
     axis?: ScenarioAxis;
-  },
-): Promise<ScenarioAvailability[]> {
+  }
+): Promise<ScenarioAvailability[] | null> {
   const platform = await createPlatform(instance, creds.username, creds.password);
+  const variables = await platform.iamc.variables.list({ name_ilike: `${params.indicator}|*` });
+  const facets = indicatorsFromVariables(variables.map((variable) => variable.name)).find((facet) => facet.uid === params.indicator);
+  if (!facets) return null;
 
   if (params.axis === 'warmingLevel') {
     // Discover the indicator's warming levels from the naming convention, then
     // probe one representative level (all levels share the same scenario set).
-    const variables = await platform.iamc.variables.list();
-    const facets = indicatorsFromVariables(variables.map((v) => v.name)).find((f) => f.uid === params.indicator);
-    const level = pickRepresentativeWarmingLevel(facets?.warmingLevels ?? []);
+    const level = pickRepresentativeWarmingLevel(facets.warmingLevels);
     if (!level) return [];
     const name = composeVariable({
       indicator: params.indicator,

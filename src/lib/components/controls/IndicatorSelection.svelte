@@ -1,5 +1,18 @@
 <script>
-  import { IS_EMPTY_GEOGRAPHY, CURRENT_INDICATOR, IS_EMPTY_INDICATOR, CURRENT_INDICATOR_UID, AVAILABLE_INDICATORS, IS_COMBINATION_AVAILABLE_INDICATOR, SELECTION_MODE } from '$stores/state.js';
+  import {
+    IS_EMPTY_GEOGRAPHY,
+    CURRENT_GEOGRAPHY_UID,
+    CURRENT_INDICATOR,
+    IS_EMPTY_INDICATOR,
+    AVAILABLE_INDICATORS,
+    IS_COMBINATION_AVAILABLE_INDICATOR,
+    SELECTION_MODE,
+    RUNTIME_CATALOG_SELECTION,
+    INDICATOR_INDEX_REQUEST,
+    FILTERED_INDICATORS_REQUEST,
+    INDICATOR_DETAILS_REQUEST,
+    FACET_FILTERS,
+  } from '$stores/state.js';
   import SelectionModal from './components/SelectionModal.svelte';
   import SelectionPanel from './components/SelectionPanel.svelte';
   import AdvancedFilters from './components/AdvancedFilters.svelte';
@@ -9,13 +22,17 @@
   import { derived } from 'svelte/store';
   import Fuse from 'fuse.js';
   import { indicatorTags } from '$lib/catalog/indicator-tags.js';
+  import Button from '$lib/components/ui/Button.svelte';
+  import { catalogFlow } from '$stores/catalog-flow.js';
+  import { indicatorControlAdapter, indicatorFilterInput, listRequestView } from '$stores/catalog-adapters.js';
 
   export let label = 'Indicator';
   // Explore narrows the list to what has data for the current geography, and
   // gates itself on a geography being chosen. A view that scopes itself
   // differently (the scoreboard, whose geography is its own) passes the list it
   // wants offered, and owns the gating and availability warning that go with it.
-  export let indicators = undefined;
+  export let indicatorIndexRequest = undefined;
+  export let retryIndicatorIndex = undefined;
   export let disabled = undefined;
   // The control also lives in a page's filter bar, which sets its metrics.
   export let wrapperClass = undefined;
@@ -23,17 +40,22 @@
   export let buttonClass = 'border-theme-base/20 border rounded-sm p-3';
 
   // Whether the caller brought its own list — and with it, its own gating.
-  $: owned = Boolean(indicators);
-  $: available = indicators ?? $AVAILABLE_INDICATORS;
+  $: owned = Boolean(indicatorIndexRequest);
+  $: available = (indicatorIndexRequest?.data.indicators ?? $AVAILABLE_INDICATORS).map((indicator) => ({
+    ...indicator,
+    selectionKey: `${indicator.instance}\u0000${indicator.uid}`,
+  }));
+  $: selectedKey = $RUNTIME_CATALOG_SELECTION.indicator ? `${$RUNTIME_CATALOG_SELECTION.indicator.instance}\u0000${$RUNTIME_CATALOG_SELECTION.indicator.id}` : undefined;
 
   let modalOpen = false;
-  $: if ($CURRENT_INDICATOR_UID) modalOpen = false;
+  let stagedSelectionKey;
+  $: if (!modalOpen) stagedSelectionKey = selectedKey;
 
   let hoveredItem = null;
   let term = '';
   let listBox;
 
-  $: term, listBox?.scrollTo({ top: 0 });
+  $: (term, listBox?.scrollTo({ top: 0 }));
 
   // Sectors are no longer a convention facet, so the list shows all indicators
   // available for the geography (search narrows them).
@@ -58,13 +80,54 @@
         }
         return { ...item, label };
       });
-  $: current = available.find((d) => d.uid === $CURRENT_INDICATOR_UID);
+  $: current = available.find((item) => item.selectionKey === selectedKey);
+  $: staged = available.find((item) => item.selectionKey === stagedSelectionKey);
+  $: selectionChanged = modalOpen && Boolean(stagedSelectionKey) && stagedSelectionKey !== selectedKey;
   // Keep showing the last hovered item so the detail panel doesn't flicker
   // (appear/disappear) as the pointer crosses the gap between rows — InteractiveListItem
   // clears `hoveredItem` on mouseleave, which would otherwise blank the panel.
   let lastHovered = null;
   $: if (hoveredItem) lastHovered = hoveredItem;
-  $: detailsItem = available.find((d) => d.uid === (hoveredItem ?? lastHovered)) || current;
+  $: detailsItem = available.find((item) => item.selectionKey === (hoveredItem ?? lastHovered)) || staged || current;
+
+  $: filterContext = {
+    mode: $SELECTION_MODE,
+    geography: $CURRENT_GEOGRAPHY_UID,
+    filters: $FACET_FILTERS,
+  };
+  $: filterInput = indicatorFilterInput(filterContext);
+  $: control = indicatorControlAdapter({
+    ownedRequest: indicatorIndexRequest,
+    context: filterContext,
+    indexRequest: $INDICATOR_INDEX_REQUEST,
+    filteredRequest: $FILTERED_INDICATORS_REQUEST,
+  });
+  $: if (control.syncContext) syncFilters(control.syncContext);
+  $: listView = listRequestView({ request: control.request, items: searchedItems });
+
+  function syncFilters(context) {
+    if (!context) return;
+    void catalogFlow.syncIndicatorScope(context);
+  }
+
+  function retryIndicators() {
+    if (owned) {
+      retryIndicatorIndex?.();
+      return;
+    }
+    if (filterInput) {
+      void catalogFlow.retryIndicatorScope(filterContext);
+      return;
+    }
+    void catalogFlow.catalog.loadIndicatorIndex();
+  }
+
+  function applyIndicator() {
+    const indicator = available.find((item) => item.selectionKey === stagedSelectionKey);
+    if (!indicator) return;
+    modalOpen = false;
+    void catalogFlow.chooseIndicator({ id: indicator.uid, instance: indicator.instance }, { history: 'push' });
+  }
 
   const DISABLED = derived([IS_EMPTY_GEOGRAPHY, SELECTION_MODE], ([$isEmptyGeography, $mode]) => {
     if ($mode === 'geography' && $isEmptyGeography) {
@@ -76,7 +139,7 @@
 
 <SelectionModal
   {label}
-  buttonLabel={$CURRENT_INDICATOR?.label}
+  buttonLabel={current?.label ?? $CURRENT_INDICATOR?.label}
   warning={!owned && !$IS_EMPTY_INDICATOR && !$IS_COMBINATION_AVAILABLE_INDICATOR && !$IS_EMPTY_GEOGRAPHY ? 'Selected indicator is not available for this geography' : undefined}
   disabled={disabled ?? (owned ? undefined : $DISABLED)}
   placeholder={$IS_EMPTY_INDICATOR ? 'Select an indicator' : undefined}
@@ -88,22 +151,40 @@
   <SelectionPanel>
     <svelte:fragment slot="header">
       <SearchInput bind:value={term} placeholder="Search indicators" class="mb-3" />
-      <AdvancedFilters />
+      {#if control.showAdvancedFilters}
+        <AdvancedFilters />
+      {/if}
+      {#if listView.hasPartialFailure}
+        <Button variant="secondary" disabled={owned && !control.ownedRetryAvailable} on:click={retryIndicators}>Retry missing sources</Button>
+      {/if}
+      {#if control.ownedRetryStatus === 'loading'}
+        <p class="mt-2 text-sm" role="status">Refreshing indicators…</p>
+      {:else if control.ownedRetryStatus === 'failure'}
+        <p class="mt-2 text-sm" role="alert">Could not refresh indicators.</p>
+      {/if}
     </svelte:fragment>
     <svelte:fragment slot="sidebar">
       <span class="block px-5 pt-4 pb-2 text-xs uppercase tracking-widest text-text-weaker">Indicators</span>
       <div bind:this={listBox}>
-        <RadioGroup bind:value={$CURRENT_INDICATOR_UID} on:change={(e) => ($CURRENT_INDICATOR_UID = e.detail)}>
-          {#if searchedItems.length}
-            {#each searchedItems as { icon, uid, label }}
-              <RadioGroupOption value={uid} let:checked>
-                <InteractiveListItem {icon} {uid} {label} bind:hovered={hoveredItem} selected={checked} />
-              </RadioGroupOption>
-            {/each}
-          {:else}
-            <span class="text-xs py-1 px-5 block text-text-weaker" role="status">No indicators found.</span>
-          {/if}
-        </RadioGroup>
+        {#if listView.status === 'loading'}
+          <span class="text-xs py-1 px-5 block text-text-weaker" role="status">Loading indicators…</span>
+        {:else if listView.status === 'failure'}
+          <div class="px-5 py-2">
+            <Button variant="secondary" on:click={retryIndicators}>Retry indicators</Button>
+          </div>
+        {:else}
+          <RadioGroup bind:value={stagedSelectionKey}>
+            {#if listView.status === 'ready'}
+              {#each searchedItems as { icon, uid, label, selectionKey }}
+                <RadioGroupOption value={selectionKey} let:checked>
+                  <InteractiveListItem {icon} uid={selectionKey} {label} bind:hovered={hoveredItem} selected={checked} />
+                </RadioGroupOption>
+              {/each}
+            {:else}
+              <span class="text-xs py-1 px-5 block text-text-weaker" role="status">No indicators found.</span>
+            {/if}
+          </RadioGroup>
+        {/if}
       </div>
     </svelte:fragment>
     <svelte:fragment slot="content">
@@ -116,6 +197,11 @@
           {#if detailsItem.description}
             <p class="text-theme-base text-sm break-words">{@html detailsItem.description}</p>
           {/if}
+          {#if current?.selectionKey === detailsItem.selectionKey && $INDICATOR_DETAILS_REQUEST.status === 'loading'}
+            <p class="mt-4 text-sm" role="status">Loading details…</p>
+          {:else if current?.selectionKey === detailsItem.selectionKey && $INDICATOR_DETAILS_REQUEST.status === 'failure'}
+            <Button class="mt-4" variant="secondary" on:click={() => catalogFlow.retryIndicatorDetails()}>Retry details</Button>
+          {/if}
           {#if tags.length}
             <p class="mt-4 text-sm font-bold text-theme-stronger break-words">
               {#each tags as tag, i}{tag}{#if i < tags.length - 1}<span class="mx-1.5">·</span>{/if}{/each}
@@ -125,4 +211,17 @@
       {/if}
     </svelte:fragment>
   </SelectionPanel>
+
+  <div class="flex items-center justify-between gap-3 border-t border-contour-weakest bg-surface-base px-4 py-3">
+    <p class="min-w-0 truncate text-sm text-text-weaker">
+      {#if staged}
+        <span class="font-medium text-theme-base">{staged.label}</span> selected
+      {:else}
+        No indicator selected yet
+      {/if}
+    </p>
+    {#if selectionChanged}
+      <Button variant="primary" class="shrink-0" on:click={applyIndicator}>Apply</Button>
+    {/if}
+  </div>
 </SelectionModal>

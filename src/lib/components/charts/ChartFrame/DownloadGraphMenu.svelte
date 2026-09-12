@@ -55,10 +55,6 @@
   $: graphUrl = buildGraphURL(embedUid, graphQuery);
 
   function buildScreenshotUrl(format, width, processingIntensity, graphUrl) {
-    // Null during SSR (buildGraphURL is browser-only) and whenever the embed URL
-    // could not be built. This guard used to read `graphUrl.hasOwnProperty` on
-    // that null and throw — and the test was inert anyway, since a URL carries
-    // `href` on its prototype rather than as an own property.
     if (!graphUrl) {
       console.warn(`Screenshot build URL is not defined. Graph download will not be available.`);
       return null;

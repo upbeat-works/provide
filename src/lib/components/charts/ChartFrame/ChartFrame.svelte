@@ -4,7 +4,6 @@
   import DataDownloadMenu from './DataDownloadMenu.svelte';
   import DownloadGraphMenu from './DownloadGraphMenu.svelte';
   import Tagline from '$lib/components/ui/Tagline.svelte';
-  import { IS_STATIC } from '$stores/state';
   import InfoList from './InfoList.svelte';
 
   export let tagline;
@@ -24,10 +23,11 @@
   export let isLoading = false;
   export let hasDownload = true;
   export let isProcessing = false;
+  export let staticMode = false;
 </script>
 
 <figure aria-live="polite" aria-busy={isLoading || isProcessing}>
-  <header class="mb-4" class:max-w-prose={!$IS_STATIC}>
+  <header class="mb-4" class:max-w-prose={!staticMode}>
     {#if tagline}<Tagline color="text-contour-weak">{tagline}</Tagline>{/if}
     <h3 class="font-normal text-2xl mb-3">
       <Template template={title} data={templateProps} />
@@ -42,7 +42,7 @@
   <div class:opacity-40={isLoading} class:animate-pulse={isLoading} class:grayscale-80={isLoading}>
     <slot />
   </div>
-  {#if !$IS_STATIC && hasDownload && (chartInfo?.length || Object.keys(dataDownloadParams ?? {}).length || Object.keys(graphDownloadParams ?? {}).length)}
+  {#if !staticMode && hasDownload && (chartInfo?.length || Object.keys(dataDownloadParams ?? {}).length || Object.keys(graphDownloadParams ?? {}).length)}
     <figcaption class="flex justify-end items-center gap-4 mt-2 mb-2">
       <InfoButton label="About the data" items={chartInfo} />
       <DownloadGraphMenu embedUid={chartUid} {...graphDownloadSettings} graphParams={graphDownloadParams} />

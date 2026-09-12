@@ -2,8 +2,7 @@
   import ThresholdLevels from './components/ThresholdLevels/ThresholdLevels.svelte';
   import StudyLocations from './components/StudyLocations/StudyLocations.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
-  import { IS_STATIC } from '$stores/state';
-  import { AVOID_IS_EMPTY, AVOID_IS_AVAILABLE, AVOID_GEOGRAPHY, AVOID_CITY_UID, AVOID_INDICATOR_UID, AVOID_PARAMS } from '$stores/avoid-catalog.js';
+  import { AVOID_IS_EMPTY, AVOID_IS_AVAILABLE, AVOID_GEOGRAPHY, AVOID_CITY_UID, AVOID_INDICATOR_UID, AVOID_INSTANCE, AVOID_PARAMS } from '$stores/avoid-catalog.js';
   import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import SelectionCertaintyLevels from './components/Selection/CertaintyLevels/CertaintyLevels.svelte';
@@ -22,23 +21,27 @@
   import AvoidParameterSelection from './components/Selection/AvoidParameterSelection.svelte';
   import AvoidParamFilters from './components/Selection/AvoidParamFilters.svelte';
   import { page } from '$app/stores';
+  import { resolveCanonicalAvoidUrlSelection } from '$lib/catalog/translate.js';
 
   export let data;
 
-  // Deep-link handoff (explore -> avoid): the incoming ids are already in the
-  // avoid-native legacy space (geoId, legacyUid), so we just apply them. Param
-  // defaulting/reconciliation is handled by the AVOID_INDICATOR subscription in
-  // the store module (which fires as soon as the indicator resolves).
   onMount(() => {
     const url = $page.url;
-    const geo = url.searchParams.get('geography');
-    const ind = url.searchParams.get('indicator');
-    if (geo) AVOID_CITY_UID.set(geo);
-    if (ind) AVOID_INDICATOR_UID.set(ind);
-    if (geo || ind) {
+    const selection = resolveCanonicalAvoidUrlSelection(
+      {
+        geography: url.searchParams.get('geography'),
+        indicator: url.searchParams.get('indicator'),
+        instance: url.searchParams.get('instance'),
+      },
+      data.avoidMeta?.cities
+    );
+    if (selection) {
+      AVOID_CITY_UID.set(selection.geography);
+      AVOID_INDICATOR_UID.set(selection.indicator);
+      AVOID_INSTANCE.set(selection.instance);
       const next = {};
       for (const [k, v] of url.searchParams) {
-        if (k !== 'geography' && k !== 'indicator') next[k] = v;
+        if (k !== 'geography' && k !== 'indicator' && k !== 'instance') next[k] = v;
       }
       if (Object.keys(next).length) AVOID_PARAMS.update((p) => ({ ...p, ...next }));
     }
@@ -134,7 +137,7 @@
           </section>
         {/if}
       {/each}
-      {#if !$IS_STATIC && $AVOID_GEOGRAPHY}
+      {#if $AVOID_GEOGRAPHY}
         <LinkSection geography={$AVOID_GEOGRAPHY} {caseStudy} />
       {/if}
     </div>

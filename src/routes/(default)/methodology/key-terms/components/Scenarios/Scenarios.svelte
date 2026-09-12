@@ -1,7 +1,6 @@
 <script>
   import Presets from './Presets.svelte';
   import CrossLink from './CrossLink.svelte';
-  import Warning from './Warning.svelte';
   import Chart from './Chart.svelte';
   import Table from './Table/Table.svelte';
   import SectionContent from '$src/lib/components/layouts/SectionContent.svelte';
@@ -9,8 +8,9 @@
   import { writable } from 'svelte/store';
   import { extractEndYear } from '$utils/meta.js';
   import THEME from '$styles/theme-store.js';
-  import { LABEL_SCENARIOS_TIMELINES, LABEL_SCENARIOS_TIMEFRAMES, MAX_NUMBER_SELECTABLE_SCENARIOS, MEAN_TEMPERATURE_UID, EMISSIONS_UID, PATH_DOCUMENTATION } from '$config';
+  import { LABEL_SCENARIOS_TIMELINES, LABEL_SCENARIOS_TIMEFRAMES, MEAN_TEMPERATURE_UID, EMISSIONS_UID, PATH_DOCUMENTATION } from '$config';
   import DefinitionItem from '$lib/components/charts/DefinitionItem.svelte';
+  import { methodologyExplorerScenarioIds, methodologyScenarioKey, methodologyScenarioKeys, methodologyScenarioSelectionKeys } from '$lib/catalog/methodology-scenarios.js';
 
   export let scenarios;
   export let selectableTimeframes;
@@ -21,20 +21,29 @@
   $: scenariosListed = scenarios
     .filter((s) => extractEndYear(s) === selectedTimeframe)
     .map((scenario) => {
-      const scenarioSelectedIndex = $selectedScenarios.indexOf(scenario.uid);
-      const isSelected = $selectedScenarios.includes(scenario.uid) && scenarioSelectedIndex < MAX_NUMBER_SELECTABLE_SCENARIOS;
+      const selectionKey = methodologyScenarioKey(scenario);
+      const scenarioSelectedIndex = $selectedScenarioKeys.indexOf(selectionKey);
+      const isSelected = scenarioSelectedIndex >= 0;
       const color = isSelected ? $THEME.color.category.base[scenarioSelectedIndex] : undefined;
       return {
         ...scenario,
+        selectionKey,
         isSelected,
         color,
       };
     });
 
-  const selectedScenarios = writable([]);
+  const selectedScenarioKeys = writable([]);
+  $: explorerScenarioIds = methodologyExplorerScenarioIds(scenarios, $selectedScenarioKeys);
+  $: selectedInstances = [...new Set(scenarios.filter((scenario) => $selectedScenarioKeys.includes(methodologyScenarioKey(scenario))).map((scenario) => scenario.instance))];
+  $: explorerInstance = selectedInstances.length === 1 ? selectedInstances[0] : undefined;
+  $: sourceBoundPresets = scenarioPresets.map((preset) => ({
+    ...preset,
+    scenarios: methodologyScenarioKeys(scenarios, preset.scenarios),
+  }));
 
   function handlePreset(event) {
-    selectedScenarios.set(event.detail.scenarios);
+    selectedScenarioKeys.set(methodologyScenarioSelectionKeys(scenarios, event.detail.scenarios));
   }
 </script>
 
@@ -44,12 +53,11 @@
     <PillGroup bind:currentUid={selectedTimeframe} options={selectableTimeframes} />
   </div>
 
-  <Presets {selectedTimeframe} bind:selectedScenarios={$selectedScenarios} on:selection={handlePreset} {scenarioPresets} />
+  <Presets {selectedTimeframe} selectedScenarios={$selectedScenarioKeys} on:selection={handlePreset} scenarioPresets={sourceBoundPresets} />
 
-  <Table {scenariosListed} {selectedTimeframe} bind:selectedScenarios={$selectedScenarios} />
+  <Table {scenariosListed} {selectedTimeframe} bind:selectedScenarios={$selectedScenarioKeys} />
   <footer class="grid gap-x-6 gap-y-6 grid-cols-1 md:grid-cols-2">
-    <Warning selectedScenarios={$selectedScenarios} />
-    <CrossLink selectedScenarios={$selectedScenarios} />
+    <CrossLink selectedScenarios={explorerScenarioIds} instance={explorerInstance} />
   </footer>
   <div>
     <SectionContent title={LABEL_SCENARIOS_TIMELINES} subtitle="Select a scenario to see progress over time." />

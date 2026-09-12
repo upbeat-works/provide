@@ -47,8 +47,8 @@ const countryOptions = (series) => downloadOptions('Country', series);
 export const charts = [
   {
     slug: 'annual-mean-temperature',
-    short: 'Mean temperature',
-    title: 'Annual mean temperature (MESMER)',
+    short: 'Mean Temperature',
+    title: 'Annual Mean Temperature (MESMER)',
     description: 'How the yearly average temperature moves under each pathway, with the spread across the ensemble shown as a band around the high scenario.',
     component: LineChart,
     props: { series: meanTemperature, legend: pathwayLegend(meanTemperature), yLabel: 'raw value (ΔT °C)' },
@@ -58,7 +58,7 @@ export const charts = [
   {
     slug: 'annual-maximum-temperature',
     short: 'Maximum temperature',
-    title: 'Annual maximum temperature (MESMER)',
+    title: 'Annual Maximum Temperature (MESMER)',
     description: 'The hottest day of the year, which drives heat stress thresholds far more directly than the annual mean does.',
     component: LineChart,
     props: { series: maximumTemperature, legend: pathwayLegend(maximumTemperature), yLabel: 'raw value (ΔT °C)' },

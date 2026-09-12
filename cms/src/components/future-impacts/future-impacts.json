@@ -24,7 +24,7 @@
       "type": "richtext"
     },
     "ExplorerUrl": {
-      "type": "string"
+      "type": "text"
     }
   }
 }

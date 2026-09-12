@@ -1,10 +1,28 @@
-import { loadFromStrapi } from '$utils/apis.js';
+import { loadFromStrapi, loadMethodologyScenarios } from '$utils/apis.js';
 import { generatePageTitle } from '$utils/meta.js';
 import { groupBy, kebabCase } from 'lodash-es';
 import { parse } from 'marked';
 import { LABEL_KEY_CONCEPTS, KEY_SCENARIOPRESET_UID } from '$config';
-import _ from 'lodash-es';
-import { extractEndYear, extractStartYear } from '$utils/meta.js';
+
+const selectableTimeframes = [
+  { uid: 2100, label: '2100' },
+  { uid: 2300, label: '2300' },
+];
+
+async function loadScenarios(fetch) {
+  const [technicalScenarios, contentRows] = await Promise.all([loadMethodologyScenarios(fetch), loadFromStrapi('scenarios', fetch, 'fields[0]=UID&fields[1]=Description').catch(() => [])]);
+  const descriptions = new Map();
+  for (const row of contentRows ?? []) {
+    const uid = row?.attributes?.UID;
+    if (typeof uid !== 'string') continue;
+    descriptions.set(uid.toLowerCase(), row.attributes.Description);
+  }
+  return technicalScenarios.map((scenario) => {
+    const description = descriptions.get(String(scenario.uid).toLowerCase());
+    if (!description) return scenario;
+    return { ...scenario, description };
+  });
+}
 
 function filterUniqueObjects(value, index, array) {
   return array.indexOf(value) === index;
@@ -29,33 +47,16 @@ function processScenarioPresets(list) {
   });
 }
 
-const loadExplainer = async ({ fetch, parent }) => {
-  const { catalog } = await parent();
-
-  // Scenario Presets
-  const scenarioPresetsRaw = await loadFromStrapi('scenario-presets', fetch);
+const loadExplainer = async ({ fetch, methodologyScenarios }) => {
+  const [scenarios, scenarioPresetsRaw] = await Promise.all([methodologyScenarios, loadFromStrapi('scenario-presets', fetch)]);
   const scenarioPresets = processScenarioPresets(scenarioPresetsRaw);
-
-  // Selectable timeframes. Only projections count: the `Today` baseline is a
-  // single present-day datapoint (yearEnd === yearStart), and would otherwise add
-  // a timeframe pill with no scenarios and no table columns behind it.
-  const projections = (catalog.scenarios ?? []).filter((s) => extractEndYear(s) > extractStartYear(s));
-  const selectableTimeframes = _(projections)
-    .map(extractEndYear)
-    .uniq()
-    .sort()
-    .map((uid) => ({ uid: parseInt(uid), label: uid })) // The uid should already be a int, but let’s make sure. Note: This needs to be the same type as the scenario presets’ timeframe
-    .value();
-
-  // Still guard: an instance with no year metadata yields no timeframes.
-  const defaultTimeframe = selectableTimeframes[0]?.uid;
 
   return {
     entries: [],
     categories: [],
-    scenarios: catalog.scenarios,
+    scenarios,
     selectableTimeframes,
-    defaultTimeframe,
+    defaultTimeframe: 2100,
     scenarioPresets,
   };
 };
@@ -90,16 +91,20 @@ const loadGlossary = async ({ fetch }) => {
   };
 };
 
-export const load = async (params) => {
-  const [glossary, explainers] = await Promise.all([loadGlossary(params), loadExplainer(params)]);
-
+export const load = async ({ fetch, setHeaders }) => {
+  setHeaders({ 'X-Accel-Buffering': 'no' });
+  const methodologyScenarios = loadScenarios(fetch);
+  const glossary = loadGlossary({ fetch });
+  const explainer = loadExplainer({ fetch, methodologyScenarios });
+  glossary.catch(() => {});
+  explainer.catch(() => {});
   const title = generatePageTitle(LABEL_KEY_CONCEPTS);
 
   return {
     entries: [],
     categories: [],
     title,
-    ...glossary,
-    ...explainers,
+    glossary,
+    explainer,
   };
 };

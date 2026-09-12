@@ -1,23 +1,38 @@
-// Isolated selection + catalog state for the avoid page. Everything is in the
-// LEGACY id space (city uid == geoId slug, sector-prefixed indicator uid) — the
-// avoid page never sees a new/ixmp4 uid. Legacy /meta cities already carry
-// `group` (parent country), and their uid is the geoId the map and the
-// case-study cross-link key on, so no new-geo tree is needed. Pure logic lives in
-// `$lib/catalog/avoid-selection.js`; this module wires it to page data + storage.
+// Isolated canonical selection state for the avoid page.
 import { derived, writable, get as getStore } from 'svelte/store';
 import { page } from '$app/stores';
 import { browser } from '$app/environment';
 import { getLocalStorage, setLocalStorage } from './utils.js';
 import { LOCALSTORE_GEOGRAPHY, LOCALSTORE_INDICATOR } from '$config';
 import { avoidAvailableIndicators, avoidAllIndicatorParameters, reconcileAvoidParams, avoidSectors, reconcileSector } from '$lib/catalog/avoid-selection.js';
+import { canonicalAvoidIndicatorUid, canonicalAvoidParameterValues } from '$lib/catalog/translate.js';
 
 const AVOID_PREFIX = 'avoid-';
 
-// ---- Catalog (from the frozen legacy /meta, provided by the avoid loader) ----
 export const AVOID_META = derived(page, ($p) => $p.data?.avoidMeta ?? {});
-export const AVOID_CITIES = derived(AVOID_META, ($m) => $m.cities ?? []);
-export const AVOID_INDICATORS = derived(AVOID_META, ($m) => $m.indicators ?? []);
-export const AVOID_INDICATOR_PARAMETERS_ALL = derived(AVOID_META, ($m) => $m.indicatorParameters ?? []);
+export const AVOID_CITIES = derived(AVOID_META, ($m) => ($m.cities ?? []).map((city) => ({ ...city, id: city.label, uid: city.label, geoId: city.uid })));
+export const AVOID_INDICATORS = derived(AVOID_META, ($m) =>
+  ($m.indicators ?? [])
+    .map((indicator) => {
+      const id = canonicalAvoidIndicatorUid(indicator.uid);
+      if (!id) return undefined;
+      const parameters = {};
+      for (const [key, values] of Object.entries(indicator.parameters ?? {})) {
+        parameters[key] = values.map((value) => canonicalAvoidParameterValues({ [key]: value })[key]);
+      }
+      return { ...indicator, id, uid: id, instance: 'provide-internal', parameters };
+    })
+    .filter(Boolean)
+);
+export const AVOID_INDICATOR_PARAMETERS_ALL = derived(AVOID_META, ($m) =>
+  ($m.indicatorParameters ?? []).map((parameter) => ({
+    ...parameter,
+    options: (parameter.options ?? []).map((option) => ({
+      ...option,
+      uid: canonicalAvoidParameterValues({ [parameter.uid]: option.uid })[parameter.uid],
+    })),
+  }))
+);
 export const AVOID_SCENARIOS = derived(AVOID_META, ($m) => $m.scenarios ?? []);
 const AVOID_SECTORS_META = derived(AVOID_META, ($m) => $m.sectors ?? []);
 
@@ -27,6 +42,8 @@ AVOID_CITY_UID.subscribe((v) => setLocalStorage(`${AVOID_PREFIX}${LOCALSTORE_GEO
 
 export const AVOID_INDICATOR_UID = writable(getLocalStorage(`${AVOID_PREFIX}${LOCALSTORE_INDICATOR}`, undefined));
 AVOID_INDICATOR_UID.subscribe((v) => setLocalStorage(`${AVOID_PREFIX}${LOCALSTORE_INDICATOR}`, v));
+export const AVOID_INSTANCE = writable(getLocalStorage(`${AVOID_PREFIX}instance`, undefined));
+AVOID_INSTANCE.subscribe((v) => setLocalStorage(`${AVOID_PREFIX}instance`, v));
 
 export const AVOID_PARAMS = writable(
   getLocalStorage(`${AVOID_PREFIX}params`, undefined, (v) => {
@@ -37,7 +54,7 @@ export const AVOID_PARAMS = writable(
     } catch {
       return {};
     }
-  }),
+  })
 );
 AVOID_PARAMS.subscribe((v) => setLocalStorage(`${AVOID_PREFIX}params`, JSON.stringify(v ?? {})));
 
@@ -52,38 +69,27 @@ export const AVOID_GEOGRAPHY = derived([AVOID_CITY_UID, AVOID_CITIES], ([$uid, $
 export const AVOID_GEOGRAPHY_LABEL = derived(AVOID_GEOGRAPHY, ($g) => $g?.label);
 export const AVOID_IS_EMPTY_GEOGRAPHY = derived(AVOID_GEOGRAPHY, ($g) => !$g);
 
-export const AVOID_INDICATOR = derived([AVOID_INDICATOR_UID, AVOID_INDICATORS], ([$uid, $inds]) => $inds.find((i) => i.uid === $uid));
+export const AVOID_INDICATOR = derived([AVOID_INDICATOR_UID, AVOID_INSTANCE, AVOID_INDICATORS], ([$uid, $instance, $inds]) => {
+  return $inds.find((item) => item.uid === $uid && item.instance === $instance);
+});
 export const AVOID_IS_EMPTY_INDICATOR = derived(AVOID_INDICATOR, ($i) => !$i);
 
-// Availability (legacy city uid == what indicator.availableGeographies holds).
-export const AVOID_AVAILABLE_INDICATORS = derived(
-  [AVOID_INDICATORS, AVOID_CITY_UID, AVOID_SELECTION_MODE],
-  ([$inds, $city, $mode]) => ($mode === 'indicator' ? $inds : avoidAvailableIndicators($inds, $city)),
+export const AVOID_AVAILABLE_INDICATORS = derived([AVOID_INDICATORS, AVOID_GEOGRAPHY, AVOID_SELECTION_MODE], ([$inds, $city, $mode]) =>
+  $mode === 'indicator' ? $inds : avoidAvailableIndicators($inds, $city?.geoId)
 );
-export const AVOID_AVAILABLE_CITIES = derived(
-  [AVOID_CITIES, AVOID_INDICATOR, AVOID_SELECTION_MODE],
-  ([$cities, $ind, $mode]) => {
-    if ($mode !== 'indicator' || !$ind) return $cities;
-    const allowed = new Set($ind.availableGeographies ?? []);
-    return $cities.filter((c) => allowed.has(c.uid));
-  },
-);
+export const AVOID_AVAILABLE_CITIES = derived([AVOID_CITIES, AVOID_INDICATOR, AVOID_SELECTION_MODE], ([$cities, $ind, $mode]) => {
+  if ($mode !== 'indicator' || !$ind) return $cities;
+  const allowed = new Set($ind.availableGeographies ?? []);
+  return $cities.filter((c) => allowed.has(c.geoId));
+});
 
 export const AVOID_IS_EMPTY = derived([AVOID_GEOGRAPHY, AVOID_INDICATOR], ([$g, $i]) => !$g || !$i);
-export const AVOID_IS_AVAILABLE = derived(
-  [AVOID_INDICATOR, AVOID_CITY_UID],
-  ([$ind, $city]) => !!$ind && (!$city || ($ind.availableGeographies ?? []).includes($city)),
-);
+export const AVOID_IS_AVAILABLE = derived([AVOID_INDICATOR, AVOID_GEOGRAPHY], ([$ind, $city]) => !!$ind && (!$city || ($ind.availableGeographies ?? []).includes($city.geoId)));
 
-// Sector pills for the indicator picker — only sectors present in the available
-// indicators, labelled from the legacy /meta sectors, with counts (Image 1).
 export const AVOID_SECTORS = derived([AVOID_AVAILABLE_INDICATORS, AVOID_SECTORS_META], ([$inds, $meta]) => avoidSectors($inds, $meta));
 
 // Indicators shown in the list: available ones narrowed to the active sector pill.
-export const AVOID_SECTOR_INDICATORS = derived(
-  [AVOID_AVAILABLE_INDICATORS, AVOID_CURRENT_SECTOR],
-  ([$inds, $sector]) => (!$sector ? $inds : $inds.filter((i) => (i.sector ?? 'other') === $sector)),
-);
+export const AVOID_SECTOR_INDICATORS = derived([AVOID_AVAILABLE_INDICATORS, AVOID_CURRENT_SECTOR], ([$inds, $sector]) => (!$sector ? $inds : $inds.filter((i) => (i.sector ?? 'other') === $sector)));
 
 // ---- Parameters ----
 // ALL params for the indicator (defaulted + sent in every request); the visible
@@ -131,13 +137,10 @@ export const AVOID_INDICATOR_LABEL = derived([AVOID_INDICATOR, AVOID_CURRENT_OPT
   return { labelWithinSentence, label };
 });
 
-export const AVOID_TEMPLATE_PROPS = derived(
-  [AVOID_GEOGRAPHY, AVOID_INDICATOR, AVOID_CURRENT_OPTIONS, AVOID_INDICATOR_LABEL],
-  ([$geo, $ind, $options, $label]) => ({
-    geography: $geo,
-    indicator: $ind,
-    indicatorOptions: $options,
-    indicatorUnit: $ind?.unit,
-    indicatorLabel: $label,
-  }),
-);
+export const AVOID_TEMPLATE_PROPS = derived([AVOID_GEOGRAPHY, AVOID_INDICATOR, AVOID_CURRENT_OPTIONS, AVOID_INDICATOR_LABEL], ([$geo, $ind, $options, $label]) => ({
+  geography: $geo,
+  indicator: $ind,
+  indicatorOptions: $options,
+  indicatorUnit: $ind?.unit,
+  indicatorLabel: $label,
+}));

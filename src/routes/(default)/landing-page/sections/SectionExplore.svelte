@@ -1,7 +1,7 @@
 <script>
   import { goto } from '$app/navigation';
   import { PATH_EXPLORE, PATH_IMPACT, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR } from '$config';
-  import { IS_EMPTY_GEOGRAPHY, IS_EMPTY_INDICATOR, IS_COMBINATION_AVAILABLE_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_UID } from '$stores/state.js';
+  import { IS_EMPTY_GEOGRAPHY, IS_EMPTY_INDICATOR, IS_COMBINATION_AVAILABLE_INDICATOR, CURRENT_GEOGRAPHY_UID, CURRENT_INDICATOR_UID, SELECTED_INDICATOR_INSTANCE } from '$stores/state.js';
   import { buildURL } from '$lib/utils/url.js';
   import ParameterSelection from '$lib/components/controls/ParameterSelection.svelte';
   import ModeSelectionTabs from '$lib/components/controls/ModeSelectionTabs.svelte';
@@ -16,6 +16,7 @@
     const query = buildURL(PATH_IMPACT, {
       [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY_UID,
       [URL_PATH_INDICATOR]: $CURRENT_INDICATOR_UID,
+      instance: $SELECTED_INDICATOR_INSTANCE,
     });
     goto(`/${PATH_IMPACT}/${PATH_EXPLORE}${query}`);
   }
@@ -26,9 +27,7 @@
     <h2 class="text-3xl text-theme-800 leading-tight max-w-sm">
       {heading}
     </h2>
-    <p class="text-sm text-text-weaker leading-relaxed self-end">
-      See how different levels of climate action will lead to different climate impacts for countries, cities, and more.
-    </p>
+    <p class="text-sm text-text-weaker leading-relaxed self-end">See how different levels of climate action will lead to different climate impacts for countries, cities, and more.</p>
   </header>
 
   <div class="md:pt-16 pb-6 md:pb-12 bg-slate-50 border-t border-contour-weakest">
@@ -40,10 +39,10 @@
     <hr class="border-t border-contour-weakest" />
     <ParameterSelection />
     <div class="flex justify-end mt-8 px-6">
-    <Button disabled={!isValidSelection} on:click={viewResults}>
-      View results
-      <LinkArrow />
-    </Button>
+      <Button disabled={!isValidSelection} on:click={viewResults}>
+        View results
+        <LinkArrow />
+      </Button>
     </div>
   </div>
 </section>

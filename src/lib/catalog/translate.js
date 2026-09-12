@@ -1,10 +1,8 @@
 import { MAX_NUMBER_SELECTABLE_SCENARIOS } from '$config';
+import MAP_INDICATOR_IDS from './legacy-map-indicators.json';
 
-// The single explore<->avoid translation boundary. Geographies bridge on geoId
-// (== legacy uid, verified in the D1 seed); indicators bridge on the curated
-// legacyUid carried on catalog indicators from the enrichment join. Resolvers
-// accept EITHER id space (new uid or legacy) and normalise to the new object —
-// legacy ids (ISO3/slug, sector-prefixed) never collide with convention names.
+// The explore-to-avoid boundary sends old API IDs. Incoming choices use exact
+// canonical IDs.
 
 export function toLegacyGeoId(geo) {
   return geo?.geoId ?? undefined;
@@ -12,38 +10,74 @@ export function toLegacyGeoId(geo) {
 
 export function resolveGeo(value, geographies = []) {
   if (!value) return undefined;
-  return geographies.find((g) => g.uid === value) ?? geographies.find((g) => g.geoId === value);
+  return geographies.find((geography) => (geography.id ?? geography.uid) === value);
 }
 
-export function toLegacyIndicatorUid(newUid, indicators = []) {
-  return indicators.find((i) => i.uid === newUid)?.legacyUid ?? undefined;
+const AVOID_INDICATOR_IDS = {
+  'Days a Year with Maximum Temperatures Above X°C': 'urbclim-T2M-dayoverX',
+  'Nights a Year with Minimum Temperatures Above X°C': 'urbclim-T2M-nightoverX',
+  'Days a Year with Extreme Heat Stress': 'urbclim-WBGT-dayover31',
+  'Days a Year with Very High Heat Stress': 'urbclim-WBGT-dayover295',
+  'Cooling Degree Hours': 'urbclim-cooling-degree-hours',
+  'Lost Working Hours per Year for Intense Activities': 'urbclim-LWH-int',
+  'Heatwave Days per Year': 'urbclim-heatwave-days',
+  'Population Exposed to Heatwaves': 'urbclim-heatwaves-population-exposed',
+};
+const CANONICAL_AVOID_INDICATOR_IDS = new Map(Object.entries(AVOID_INDICATOR_IDS).map(([id, legacyId]) => [legacyId, id]));
+const LEGACY_DATA_INSTANCE = 'provide-internal';
+
+export function toLegacyAvoidIndicatorUid(id) {
+  return AVOID_INDICATOR_IDS[id];
+}
+
+export function toLegacyMapIndicatorUid(indicator) {
+  if (indicator?.instance !== LEGACY_DATA_INSTANCE) return undefined;
+  return MAP_INDICATOR_IDS[indicator?.id ?? indicator?.uid];
+}
+
+export function canonicalAvoidIndicatorUid(legacyId) {
+  return CANONICAL_AVOID_INDICATOR_IDS.get(legacyId);
+}
+
+export function resolveCanonicalAvoidUrlSelection(selection, cities = []) {
+  if (selection?.instance !== LEGACY_DATA_INSTANCE || !toLegacyAvoidIndicatorUid(selection.indicator)) return undefined;
+  const city = cities.find((candidate) => [candidate.id, candidate.label, candidate.uid].includes(selection.geography));
+  if (!city) return undefined;
+  return { geography: selection.geography, indicator: selection.indicator, instance: selection.instance };
 }
 
 export function resolveIndicator(value, indicators = []) {
   if (!value) return undefined;
-  return indicators.find((i) => i.uid === value) ?? indicators.find((i) => i.legacyUid === value);
+  return indicators.find((indicator) => (indicator.id ?? indicator.uid) === value);
 }
 
-// Scenario names are the ixmp4 run names in the new id space and opaque slugs in
-// the legacy one, so the bridge is a table. It is derived from the frozen legacy
-// `/meta` scenario LABELS (e.g. legacy `curpol` is labelled "2020 climate
-// policies", which is the convention name verbatim); the mapping is written out
-// rather than resolved at runtime so the explore page doesn't have to load the
-// legacy meta payload just to render a map. Every legacy scenario here is the
-// 2100 variant — the convention scenarios all end in 2100, never the `-extended`
-// 2300 twins. `Today` is the present-day baseline and has no legacy projection.
-const LEGACY_SCENARIO_UIDS = {
+const LEGACY_SCENARIO_UIDS = new Map(Object.entries({
   '2020 Climate Policies': 'curpol',
-  '2020 Climate Targets': 'modact',
+  '2020 Climate Policies then back to 1.5 °C': 'curpol-os',
+  '2020 Climate Policies then Stabilisation': 'curpol-sap',
   'Delayed Climate Action': 'gs',
-  'High Negative Emissions': 'neg',
-  'High Renewables': 'ren',
-  'Low Demand': 'ld',
+  'Delayed Climate Action then Net Zero': 'gs-nzghg',
   'Shifting Pathway': 'sp',
+  'Shifting Pathway then Net Zero': 'sp-nzghg',
+  '2020 Climate Targets': 'modact',
+  '2020 Climate Targets then back to 1.5 °C': 'modact-os-1.5c',
+  '2020 Climate Targets then back to 1 °C': 'modact-os-1c',
+  '2020 Climate Targets then Stabilisation': 'modact-sap',
+  'High Negative Emissions': 'neg',
+  'High Negative Emissions then Net Zero': 'neg-nzghg',
+  'High Negative Emissions then back to 0 °C': 'neg-os-0',
+  'High Negative Emissions then Stabilisation': 'neg-sap',
+  'High Renewables': 'ren',
+  'High Renewables then Net Zero CO2': 'ren-nzco2',
+  'Low Demand': 'ld',
+  'Low Demand then Net Zero': 'ld-nzghg',
   'SSP1-1.9': 'ssp119',
-  'SSP5-3.4-OS': 'ssp534-over',
-  'Stabilisation At 1.5°C': 'ref-1p5',
-};
+  'SSP1-1.9 (Extended)': 'ssp119-extended',
+  'SSP5-3.4-Overshoot': 'ssp534-over',
+  'SSP5-3.4-Overshoot (Extended)': 'ssp534-over-extended',
+  'Stabilisation at 1.5 °C': 'ref-1p5',
+  'Stabilisation at 1.5 °C (Extended)': 'ref-1p5-extended',
+}));
 
 // Convention parameter values → the legacy API's slugs, per dimension. Closed
 // sets (the whole selectable universe of each), so an unmapped value means the
@@ -63,15 +97,9 @@ const LEGACY_PARAMETER_VALUES = {
   spatial: { Area: 'area' },
 };
 
-const lowerKeys = (table) =>
-  new Map(Object.entries(table).map(([name, uid]) => [name.toLowerCase(), uid]));
-
-// ixmp4 carries case-only duplicate run names, so match scenarios case-insensitively.
-const LEGACY_SCENARIOS_BY_LOWER = lowerKeys(LEGACY_SCENARIO_UIDS);
-
 export function toLegacyScenarioUid(uid) {
   if (!uid) return undefined;
-  return LEGACY_SCENARIOS_BY_LOWER.get(String(uid).toLowerCase());
+  return LEGACY_SCENARIO_UIDS.get(uid);
 }
 
 /** The mappable subset, in the order given — scenarios with no legacy twin drop out. */
@@ -100,16 +128,53 @@ export function toLegacyParameterValues(values = {}) {
   return out;
 }
 
-// Scenario uids arriving from a URL (`?scenarios[0]=…`), normalised against the
-// catalog: unknown ones dropped, casing canonicalised, capped at the selectable
-// maximum. Case-insensitive because ixmp4 carries case-only duplicate runs.
+const CANONICAL_AVOID_PARAMETER_VALUES = {
+  time: new Map(Object.entries(LEGACY_PARAMETER_VALUES.time).map(([value, legacy]) => [legacy, value])),
+  reference: new Map(Object.entries(LEGACY_PARAMETER_VALUES.reference).map(([value, legacy]) => [legacy, value])),
+  spatial: new Map(Object.entries(LEGACY_PARAMETER_VALUES.spatial).map(([value, legacy]) => [legacy, value])),
+};
+CANONICAL_AVOID_PARAMETER_VALUES.reference.set('absolute', '2011-2020 (Present Day)');
+
+export function canonicalAvoidParameterValues(values = {}) {
+  const result = {};
+  for (const [key, value] of Object.entries(values ?? {})) {
+    result[key] = CANONICAL_AVOID_PARAMETER_VALUES[key]?.get(value) ?? value;
+  }
+  return result;
+}
+
+export function toLegacyAvoidRequest({ geography, indicator, scenarios, parameters = {} }) {
+  if (indicator?.instance !== LEGACY_DATA_INSTANCE) return undefined;
+  const result = {
+    geography: toLegacyGeoId(geography),
+    indicator: toLegacyAvoidIndicatorUid(indicator?.id ?? indicator?.uid),
+    ...toLegacyParameterValues(parameters),
+  };
+  if (scenarios) result.scenarios = toLegacyScenarioUids(scenarios);
+  return result;
+}
+
+export function canonicalAvoidShareSelection({ geography, indicator, parameters = {} }) {
+  return {
+    geography: geography?.id ?? geography?.uid,
+    indicator: indicator?.id ?? indicator?.uid,
+    instance: indicator?.instance,
+    ...parameters,
+  };
+}
+
+// Scenario IDs arriving from a URL are checked against the canonical index.
 export function resolveScenarioUids(values, scenarios = []) {
-  const list = Array.isArray(values) ? values : values ? [values] : [];
-  const byLower = new Map(scenarios.map((s) => [String(s.uid).toLowerCase(), s.uid]));
+  let list = [];
+  if (Array.isArray(values)) {
+    list = values;
+  } else if (values) {
+    list = [values];
+  }
+  const known = new Set(scenarios.map((scenario) => scenario.id ?? scenario.uid));
   const out = [];
   for (const value of list) {
-    const uid = byLower.get(String(value).toLowerCase());
-    if (uid && !out.includes(uid)) out.push(uid);
+    if (known.has(value) && !out.includes(value)) out.push(value);
   }
   return out.slice(0, MAX_NUMBER_SELECTABLE_SCENARIOS);
 }

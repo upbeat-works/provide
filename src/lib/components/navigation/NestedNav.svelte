@@ -19,6 +19,10 @@
   let dynamicActiveIndex = 0;
   let headingEls = [];
   let spy = null;
+  let observer = null;
+  let observedContentRef;
+  let headingSnapshot = '';
+  let dynamicNavSections;
 
   function handleNavClick(targetIndex) {
     spy?.click(targetIndex);
@@ -66,31 +70,69 @@
     return createLevel(flatItems, startLevel);
   };
 
-  // If containerRef is given, query all h2/h3 titles from the given container, assign IDs,
-  // set up scroll-spy, and build the nav hierarchy.
-  $: dynamicNavSections = (() => {
-    if (!contentRef) return;
+  function headingTitle(element) {
+    return (element.innerText ?? element.textContent ?? '').trim();
+  }
 
+  function readHeadings() {
+    return [...contentRef.querySelectorAll('h2, h3')].filter((element) => headingTitle(element));
+  }
+
+  function snapshot(headings) {
+    return headings.map((element) => `${element.tagName}|${element.id}|${headingTitle(element)}`).join('\n');
+  }
+
+  function rebuildDynamicNav(headings = readHeadings()) {
     spy?.destroy();
-
-    headingEls = [...contentRef.querySelectorAll('h2, h3')].filter((el) => el.innerText.trim());
+    headingEls = headings;
     headingEls.forEach((el) => {
-      el.setAttribute('id', el.getAttribute('id') || slugify(el.innerText));
+      el.setAttribute('id', el.getAttribute('id') || slugify(headingTitle(el)));
     });
+    headingSnapshot = snapshot(headingEls);
 
     spy = createScrollSpy(contentRef, {
       getItems: () => headingEls,
-      onActive: (i) => { dynamicActiveIndex = i; },
+      onActive: (i) => {
+        dynamicActiveIndex = i;
+      },
     });
 
-    return createHierarchy(headingEls.map((el) => ({
-      props: { title: el.innerText, slug: el.getAttribute('id') },
-      level: parseFloat(el.tagName[1]),
-      content: true,
-    })));
-  })();
+    dynamicNavSections = createHierarchy(
+      headingEls.map((el) => ({
+        props: { title: headingTitle(el), slug: el.getAttribute('id') },
+        level: parseFloat(el.tagName[1]),
+        content: true,
+      }))
+    );
+  }
 
-  onDestroy(() => spy?.destroy());
+  function observeContent(nextContentRef) {
+    observer?.disconnect();
+    spy?.destroy();
+    observer = null;
+    spy = null;
+    observedContentRef = nextContentRef;
+    if (!nextContentRef) {
+      dynamicNavSections = undefined;
+      return;
+    }
+
+    rebuildDynamicNav();
+    observer = new MutationObserver(() => {
+      const headings = readHeadings();
+      const sameHeadingElements = headings.length === headingEls.length && headings.every((element, index) => element === headingEls[index]);
+      if (sameHeadingElements && snapshot(headings) === headingSnapshot) return;
+      rebuildDynamicNav(headings);
+    });
+    observer.observe(nextContentRef, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['id'] });
+  }
+
+  $: if (contentRef !== observedContentRef) observeContent(contentRef);
+
+  onDestroy(() => {
+    observer?.disconnect();
+    spy?.destroy();
+  });
 
   // In dynamic mode use the internally tracked heading index;
   // in static mode use the activeIndex prop (tracks top-level sections).
@@ -158,10 +200,7 @@
   <ul data-index={effectiveActiveIndex} class="[&>li:last-child>div]:border-b-0">
     {#each processedSections as { title, slug, isActive, index, isOpen, sections, hasContent }}
       {#if hasContent}
-        <li class="border-r-3 pr-12"
-          class:border-r-theme-base={isActive && (!isOpen || !sections.length)}
-          class:border-r-transparent={!isActive || (isOpen && sections.length)}
-        >
+        <li class="border-r-3 pr-12" class:border-r-theme-base={isActive && (!isOpen || !sections.length)} class:border-r-transparent={!isActive || (isOpen && sections.length)}>
           <div class="py-2 border-b border-contour-weakest">
             <div aria-expanded={String(isActive)} class:text-theme-base={isActive} class="flex justify-between items-center">
               <a class="font-semibold text-sm" href={`#${slug}`} on:click={() => handleNavClick(index)}>{title}</a>
@@ -173,13 +212,16 @@
               <ul>
                 {#each sections as { slug, title, isActive, index: subIndex }}
                   <li class="mt-1 relative">
-                    <a aria-current={isActive ? 'step' : 'false'} class="inline-block text-sm font-normal py-1 leading-tight" class:text-theme-base={isActive} href={`#${slug}`} on:click={() => handleNavClick(subIndex)}>
+                    <a
+                      aria-current={isActive ? 'step' : 'false'}
+                      class="inline-block text-sm font-normal py-1 leading-tight"
+                      class:text-theme-base={isActive}
+                      href={`#${slug}`}
+                      on:click={() => handleNavClick(subIndex)}
+                    >
                       {title}
                     </a>
-                    <span class="absolute inset-y-0 -right-[3.2rem] border-r-3"
-                      class:border-r-theme-base={isActive}
-                      class:border-r-transparent={!isActive}
-                    ></span>
+                    <span class="absolute inset-y-0 -right-[3.2rem] border-r-3" class:border-r-theme-base={isActive} class:border-r-transparent={!isActive}></span>
                   </li>
                 {/each}
               </ul>

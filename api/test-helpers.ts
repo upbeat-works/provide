@@ -6,7 +6,7 @@ import { schema } from './db';
 import { migrationStatements } from './db/migrations-sql';
 import { pgBaseConfig } from './db/connection';
 import { instances } from './instances';
-import type { Env } from './types';
+import type { Env, Ixmp4Instance } from './types';
 
 // The generated DDL, replayed into each test's ephemeral schema.
 const MIGRATION_SQL = migrationStatements();
@@ -61,9 +61,7 @@ export async function teardownTestEnvs(): Promise<void> {
 
 /** Sweep any `test_*` schemas leaked by a previously crashed run. */
 export async function dropStaleTestSchemas(): Promise<void> {
-  const { rows } = await admin().query<{ schema_name: string }>(
-    "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'test\\_%'",
-  );
+  const { rows } = await admin().query<{ schema_name: string }>("SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'test\\_%'");
   for (const { schema_name } of rows) {
     await admin().query(`DROP SCHEMA IF EXISTS "${schema_name}" CASCADE`);
   }
@@ -94,7 +92,10 @@ export function listEnvelope(rows: unknown[]): {
  * Wraps a tabular response for `*.tabulate()` calls. The SDK reads it as a
  * pandas-style DataFrame: columns + rows-of-values + dtypes.
  */
-export function tabulateEnvelope(columns: string[], rows: unknown[][]): {
+export function tabulateEnvelope(
+  columns: string[],
+  rows: unknown[][]
+): {
   results: { data: unknown[][]; index: number[]; columns: string[]; dtypes: string[] };
   total: number;
   pagination: { limit: number; offset: number };
@@ -117,16 +118,7 @@ export function tabulateEnvelope(columns: string[], rows: unknown[][]): {
  */
 export const testInstance = instances[0];
 
-const enumerationPaths = [
-  '/iamc/variables/',
-  '/iamc/timeseries/',
-  '/iamc/datapoints/',
-  '/scenarios/',
-  '/regions/',
-  '/units/',
-  '/runs/',
-  '/meta/',
-];
+const enumerationPaths = ['/iamc/variables/', '/iamc/timeseries/', '/iamc/datapoints/', '/scenarios/', '/regions/', '/units/', '/runs/', '/meta/'];
 
 /**
  * Default MSW handlers: token endpoint returns a fake token, every ixmp4
@@ -149,15 +141,14 @@ function emptyEnumerationResponse(request: Request, suffix: string): Response {
   return HttpResponse.json(listEnvelope([]));
 }
 
-const defaultHandlers = [
-  http.post(`${testInstance.managerUrl}/token/obtain/`, () =>
-    HttpResponse.json({ access: 'fake-token' }),
-  ),
-  ...enumerationPaths.map((p) =>
-    http.patch(`${testInstance.url}${p}`, ({ request }) => emptyEnumerationResponse(request, p)),
-  ),
-  // Variable docs are a GET enumeration, not a PATCH one.
-  http.get(`${testInstance.url}/docs/iamc/variables/`, () => HttpResponse.json(listEnvelope([]))),
-];
+export function emptyIxmp4Handlers(instance: Ixmp4Instance) {
+  return [
+    http.post(`${instance.managerUrl}/token/obtain/`, () => HttpResponse.json({ access: 'fake-token' })),
+    ...enumerationPaths.map((p) => http.patch(`${instance.url}${p}`, ({ request }) => emptyEnumerationResponse(request, p))),
+    http.get(`${instance.url}/docs/iamc/variables/`, () => HttpResponse.json(listEnvelope([]))),
+  ];
+}
+
+const defaultHandlers = emptyIxmp4Handlers(testInstance);
 
 export const server = setupServer(...defaultHandlers);

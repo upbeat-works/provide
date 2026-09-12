@@ -1,8 +1,18 @@
 <script>
-  // Duplicated from the shared IndicatorSelection, bound to the isolated AVOID_*
-  // stores, with the sector-category pills restored from the legacy `sector`
-  // field (Image 1). Shows only the indicators avoid has data for.
-  import { AVOID_INDICATOR, AVOID_INDICATOR_LABEL, AVOID_IS_EMPTY_INDICATOR, AVOID_INDICATOR_UID, AVOID_IS_AVAILABLE, AVOID_IS_EMPTY_GEOGRAPHY, AVOID_SELECTION_MODE, AVOID_SECTORS, AVOID_CURRENT_SECTOR, AVOID_SECTOR_INDICATORS } from '$stores/avoid-catalog.js';
+  import {
+    AVOID_INDICATOR,
+    AVOID_INDICATOR_LABEL,
+    AVOID_IS_EMPTY_INDICATOR,
+    AVOID_INDICATOR_UID,
+    AVOID_INSTANCE,
+    AVOID_IS_AVAILABLE,
+    AVOID_IS_EMPTY_GEOGRAPHY,
+    AVOID_SELECTION_MODE,
+    AVOID_SECTORS,
+    AVOID_CURRENT_SECTOR,
+    AVOID_SECTOR_INDICATORS,
+  } from '$stores/avoid-catalog.js';
+  import { resolveAvoidIndicatorSelection } from '$lib/catalog/avoid-selection.js';
   import SelectionModal from '$lib/components/controls/components/SelectionModal.svelte';
   import SelectionPanel from '$lib/components/controls/components/SelectionPanel.svelte';
   import PillGroup from '$lib/components/ui/PillGroup.svelte';
@@ -11,16 +21,27 @@
   import { RadioGroup, RadioGroupOption } from '@rgossiaux/svelte-headlessui';
   import { derived } from 'svelte/store';
   import Fuse from 'fuse.js';
+  import Button from '$lib/components/ui/Button.svelte';
 
   export let label = 'Indicator';
 
   let modalOpen = false;
-  $: if ($AVOID_INDICATOR_UID) modalOpen = false;
+  let initialUid;
+  let initialInstance;
+  let stagedUid;
+
+  $: snapshotOnOpen(modalOpen);
+  function snapshotOnOpen(open) {
+    if (!open) return;
+    initialUid = $AVOID_INDICATOR_UID;
+    initialInstance = $AVOID_INSTANCE;
+    stagedUid = initialUid;
+  }
 
   let hoveredItem = null;
   let term = '';
   let listBox;
-  $: term, listBox?.scrollTo({ top: 0 });
+  $: (term, listBox?.scrollTo({ top: 0 }));
 
   // The active sector pill is defaulted/reconciled in the store module.
   $: availableItems = $AVOID_SECTOR_INDICATORS;
@@ -46,12 +67,21 @@
 
   let lastHovered = null;
   $: if (hoveredItem) lastHovered = hoveredItem;
-  $: detailsItem = availableItems.find((d) => d.uid === (hoveredItem ?? lastHovered)) || $AVOID_INDICATOR;
+  $: stagedSelection = resolveAvoidIndicatorSelection(stagedUid, availableItems);
+  $: selectionChanged = modalOpen && stagedSelection && (stagedSelection.id !== initialUid || stagedSelection.instance !== initialInstance);
+  $: detailsItem = availableItems.find((d) => d.uid === (hoveredItem ?? lastHovered ?? stagedUid)) || $AVOID_INDICATOR;
 
   const DISABLED = derived([AVOID_IS_EMPTY_GEOGRAPHY, AVOID_SELECTION_MODE], ([$isEmptyGeo, $mode]) => {
     if ($mode === 'geography' && $isEmptyGeo) return 'Select a city first';
     return undefined;
   });
+
+  function applyIndicator() {
+    if (!selectionChanged) return;
+    AVOID_INDICATOR_UID.set(stagedSelection.id);
+    AVOID_INSTANCE.set(stagedSelection.instance);
+    modalOpen = false;
+  }
 </script>
 
 <SelectionModal
@@ -72,7 +102,7 @@
     <svelte:fragment slot="sidebar">
       <span class="block px-5 pt-4 pb-2 text-xs uppercase tracking-widest text-text-weaker">Indicators</span>
       <div bind:this={listBox}>
-        <RadioGroup bind:value={$AVOID_INDICATOR_UID} on:change={(e) => ($AVOID_INDICATOR_UID = e.detail)}>
+        <RadioGroup bind:value={stagedUid}>
           {#if searchedItems.length}
             {#each searchedItems as { icon, uid, label }}
               <RadioGroupOption value={uid} let:checked>
@@ -96,4 +126,16 @@
       {/if}
     </svelte:fragment>
   </SelectionPanel>
+  <div class="flex items-center justify-between gap-3 border-t border-contour-weakest bg-surface-base px-4 py-3">
+    <p class="min-w-0 truncate text-sm text-text-weaker">
+      {#if stagedSelection}
+        <span class="font-medium text-theme-base">{availableItems.find((item) => item.uid === stagedSelection.id)?.label ?? stagedSelection.id}</span> selected
+      {:else}
+        No indicator selected yet
+      {/if}
+    </p>
+    {#if selectionChanged}
+      <Button variant="primary" class="shrink-0" on:click={applyIndicator}>Apply</Button>
+    {/if}
+  </div>
 </SelectionModal>

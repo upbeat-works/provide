@@ -11,19 +11,19 @@ beforeEach(async () => {
 describe('indicators enrichment table', () => {
   test('stores id, sector and legacyUid', async () => {
     await env.DB.insert(schema.indicators).values({
-      id: 'Mean daily temperature',
+      id: 'Mean Daily Temperature',
       sector: 'urban-climate',
       legacyUid: 'urbclim-T2M-mean',
     });
     const rows = await env.DB.select().from(schema.indicators);
     expect(rows).toEqual([
-      { id: 'Mean daily temperature', sector: 'urban-climate', legacyUid: 'urbclim-T2M-mean' },
+      { id: 'Mean Daily Temperature', sector: 'urban-climate', legacyUid: 'urbclim-T2M-mean' },
     ]);
   });
 
   test('sector and legacyUid are optional (additive)', async () => {
-    await env.DB.insert(schema.indicators).values({ id: 'Glacier area' });
+    await env.DB.insert(schema.indicators).values({ id: 'Glacier Area' });
     const [row] = await env.DB.select().from(schema.indicators);
-    expect(row).toEqual({ id: 'Glacier area', sector: null, legacyUid: null });
+    expect(row).toEqual({ id: 'Glacier Area', sector: null, legacyUid: null });
   });
 });

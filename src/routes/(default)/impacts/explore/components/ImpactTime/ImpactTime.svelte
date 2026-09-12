@@ -1,14 +1,4 @@
 <script>
-  import {
-    CURRENT_INDICATOR,
-    CURRENT_GEOGRAPHY,
-    TEMPLATE_PROPS,
-    CURRENT_INDICATOR_OPTION_VALUES,
-    CURRENT_SCENARIOS_UID,
-    IS_COMBINATION_AVAILABLE,
-    DOWNLOAD_URL_PARAMS,
-    GRAPH_URL_PARAMS,
-  } from '$stores/state.js';
   import { END_IMPACT_TIME, KEY_MODEL, KEY_SOURCE, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_SCENARIOS } from '$config';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import { writable } from 'svelte/store';
@@ -17,39 +7,44 @@
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
   import ImpactTimeChart from './ImpactTimeChart.svelte';
   import Message from '$lib/components/ui/Message.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { scaleThreshold } from 'd3-scale';
   import { range } from 'd3-array';
 
   let IMPACT_TIME_DATA = writable([]);
 
-  export let tagline;
+  export let tagline = undefined;
+  export let chartContext;
+  export let retryAvailability = undefined;
 
-  $: $IS_COMBINATION_AVAILABLE &&
-    fetchData(IMPACT_TIME_DATA, {
-      // Convention-driven ixmp4 adapter (not the legacy API). It resolves the
-      // variables and bundles the GMT band into the response. The adapter reads
-      // repeated `scenarios=` params, so serialise arrays that way.
-      base: import.meta.env.VITE_API_URL,
-      arrayFormat: 'repeat',
-      endpoint: END_IMPACT_TIME,
-      params: {
-        [URL_PATH_GEOGRAPHY]: $CURRENT_GEOGRAPHY.uid,
-        [URL_PATH_INDICATOR]: $CURRENT_INDICATOR.uid,
-        [URL_PATH_SCENARIOS]: $CURRENT_SCENARIOS_UID,
-        instance: $CURRENT_INDICATOR.instance,
-        ...$CURRENT_INDICATOR_OPTION_VALUES,
-      },
-    });
+  $: context = chartContext;
+  $: percentileView = context.view;
+  $: impactTimeRequest = percentileView.status === 'ready' ? {
+    base: import.meta.env.VITE_API_URL,
+    arrayFormat: 'repeat',
+    endpoint: END_IMPACT_TIME,
+    params: {
+      [URL_PATH_GEOGRAPHY]: context.geography?.uid,
+      [URL_PATH_INDICATOR]: context.indicator?.uid,
+      [URL_PATH_SCENARIOS]: context.scenarios.map(({ uid }) => uid),
+      instance: context.indicator?.instance,
+      ...context.parameters,
+    },
+  } : undefined;
+  $: if (impactTimeRequest) fetchData(IMPACT_TIME_DATA, impactTimeRequest);
 
-  // This is used for the coloring of the line according to the GMT
+  function retryChartRequest() {
+    fetchData(IMPACT_TIME_DATA, impactTimeRequest);
+  }
+
   const colorMarkers = [-Infinity, 1.5, 2, 2.5, Infinity];
   const colorSteps = scaleThreshold()
     .domain(colorMarkers)
     .range(range(0, 1, 1 / colorMarkers.length));
 
-  $: process = ({ impactTimeData }, { scenarios, urlParams, indicator: { instance } = {} }) => {
-    // Scenarios are coming from TEMPLATE_PROPS
+  $: process = ({ impactTimeData }, { scenarios, urlParams, indicator = {}, geography, indicatorLabel }) => {
+    const { instance } = indicator;
     const MODEL = KEY_MODEL;
     const SOURCE = KEY_SOURCE;
     const { yearStart, yearStep, data, gmt: gmtByScenario = {}, unit, formats, description, title, [MODEL]: model, [SOURCE]: source, parameters } = impactTimeData.data;
@@ -57,9 +52,7 @@
       // A selected scenario may have no data for this indicator in the instance.
       .filter((scenario) => data[scenario.uid])
       .map((scenario) => {
-        const scenarioData = data[scenario.uid]; // Data is coming from the impact time endpoint
-        // GMT now arrives bundled in the response as a [min, median, max] band
-        // per year, aligned with yearStart/yearStep (replaces curated scenario.gmt).
+        const scenarioData = data[scenario.uid];
         const gmtBand = gmtByScenario[scenario.uid] ?? [];
 
         return {
@@ -97,7 +90,6 @@
       });
 
     const hasSingleScenario = impactTimeData.length === 1;
-    // None of the selected scenarios had data for this combination.
     const first = impactTime[0] ?? {};
     const chartInfo = [
       { label: 'Model', value: first.model },
@@ -135,6 +127,9 @@
     const graphDownloadParams = {
       ...urlParams,
       scenarios: scenarios.map((d) => d.uid),
+      indicatorLabel,
+      geographyLabel: geography?.label,
+      unit: unit?.uid ?? unit,
     };
     return {
       impactTime,
@@ -152,18 +147,18 @@
   };
 </script>
 
-{#if $IS_COMBINATION_AVAILABLE}
+{#if percentileView.status === 'ready'}
   <LoadingWrapper
     {process}
+    retry={retryChartRequest}
     let:asyncProps
     let:props
     asyncProps={{
       impactTimeData: $IMPACT_TIME_DATA,
     }}
     props={{
-      ...$TEMPLATE_PROPS,
-      graphParams: $GRAPH_URL_PARAMS,
-      urlParams: $DOWNLOAD_URL_PARAMS,
+      ...context,
+      urlParams: context.urlParams,
     }}
   >
     <ChartFrame
@@ -178,6 +173,7 @@
       chartUid={END_IMPACT_TIME}
       chartInfo={asyncProps.chartInfo}
       templateProps={props}
+      staticMode={context.static}
     >
       {#if asyncProps.impactTime.length}
         <ImpactTimeChart data={asyncProps.impactTime} unit={asyncProps.unit ?? props.indicator.unit} indicatorLabel={props.indicatorLabel} steps={colorSteps} />
@@ -186,10 +182,26 @@
              this indicator/geography/parameter combination (see the filter in
              `process`). Say so — rendering the chart with an empty series threw. -->
         <Message headline="There is no data for your current selection">
-          <span class="text-contour-weaker">The selected {$CURRENT_SCENARIOS_UID.length > 1 ? 'scenarios have' : 'scenario has'} no data for this indicator and geography. Try another scenario or geography.</span>
+          <span class="text-contour-weaker"
+            >The selected {context.scenarios.length > 1 ? 'scenarios have' : 'scenario has'} no data for this indicator and geography. Try another scenario or geography.</span
+          >
         </Message>
       {/if}
     </ChartFrame>
     <LoadingPlaceholder slot="placeholder" />
   </LoadingWrapper>
+{:else if percentileView.status === 'loading'}
+  <LoadingPlaceholder />
+{:else if percentileView.status === 'failure'}
+  {#if percentileView.failedRequest === 'indicatorScope'}
+    <Message headline="Indicators could not be loaded for this selection">
+      <Button variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
+    </Message>
+  {:else}
+    <Message headline="Scenario availability could not be loaded">
+      <Button variant="secondary" on:click={retryAvailability}>Retry chart scenarios</Button>
+    </Message>
+  {/if}
+{:else if percentileView.status === 'empty'}
+  <Message headline="There is no scenario data for this selection" />
 {/if}

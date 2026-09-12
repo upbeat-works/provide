@@ -2,85 +2,149 @@ import { page } from '$app/stores';
 import { UID_STUDY_LOCATION_AVERAGE } from '$config';
 import { unitLabels } from '$lib/utils/formatting';
 import { buildIndex } from '$lib/components/controls/GeographySelection/geography-tree.js';
-import { get, keyBy, sortBy } from 'lodash-es';
+import { keyBy, sortBy } from 'lodash-es';
 import { derived } from 'svelte/store';
 import { ciKeyBy } from '$lib/utils/case-insensitive.js';
+import { runtimeCatalog } from './runtime-catalog.js';
 
-// META DATA (This will only be set once on load and won't change again)
-// Non-selectable types (continents) are grouping headers only — they must never
-// appear as a selectable pill, so they are filtered out here.
-export const GEOGRAPHY_TYPES = derived(page, ($page) =>
+export const RUNTIME_INDICATORS = derived(
+  runtimeCatalog.indicatorIndex,
+  ($request, set) => {
+    if ($request.status === 'idle') set([]);
+    if ($request.status === 'success') set($request.data.indicators ?? []);
+  },
+  []
+);
+
+export const RUNTIME_FILTER_GROUPS = derived(
+  runtimeCatalog.filterGroups,
+  ($request, set) => {
+    if ($request.status === 'idle') set([]);
+    if ($request.status === 'success') set($request.data.filters ?? []);
+  },
+  []
+);
+
+export const RUNTIME_GEOGRAPHIES = derived(
+  runtimeCatalog.geographyIndex,
+  ($request, set) => {
+    if ($request.status === 'idle') set({ geographies: [], geographyTypes: [] });
+    if ($request.status === 'success') set($request.data);
+  },
+  { geographies: [], geographyTypes: [] }
+);
+
+export const RUNTIME_INDICATOR_PARAMETERS = derived(
+  runtimeCatalog.indicatorDetails,
+  ($request, set) => {
+    if ($request.status === 'idle') set([]);
+    if ($request.status === 'success') set($request.data.parameters ?? []);
+  },
+  []
+);
+
+export const GEOGRAPHY_TYPES = derived(RUNTIME_GEOGRAPHIES, ($runtime) =>
   sortBy(
-    ($page.data?.geographies?.geographyTypes ?? [])
-      .filter((t) => t.isSelectable !== false)
-      .map((t) => ({ ...t, disabled: !t.isAvailable })),
-    [
-      (t) => t.disabled, // This sorts the available types first
-      (t) => t.order,
-      (t) => t.label,
-    ]
+    ($runtime.geographyTypes ?? [])
+      .filter((type) => type.isSelectable !== false)
+      .map((type) => ({
+        ...type,
+        uid: type.id,
+        labelSingular: type.labelSingular ?? type.label,
+        disabled: type.isAvailable === false,
+      })),
+    [(t) => t.disabled, (t) => t.order, (t) => t.label]
   )
 );
 
-export const GEOGRAPHIES = derived(page, ($page) => {
-  // Extract the geography types and its data from the geographies slice
-  const { geographyTypes, ...byType } = $page.data?.geographies ?? {};
-  if (geographyTypes?.length) {
-    const geographies = geographyTypes.map(({ uid }) => {
-      // Find the array of geographies for this geography type in the geographies slice
-      const geographiesOfType = get(byType, uid, []).map((d) => ({
-        ...d,
-        geographyType: uid, // Add the geography type to each geography in the array
-      }));
-      return [uid, geographiesOfType]; // Return id and array to create object from it
+export const GEOGRAPHIES = derived(RUNTIME_GEOGRAPHIES, ($runtime) => {
+  const byType = {};
+  for (const geography of $runtime.geographies ?? []) {
+    const type = geography.geographyType;
+    (byType[type] ??= []).push({
+      ...geography,
+      uid: geography.id,
+      geoId: geography.geoId ?? geography.id,
     });
-    return Object.fromEntries(geographies); // Create object of the geography types and geographies
-  } else {
-    return {};
   }
+  return byType;
 });
 
-// Tree lookups (byId, childrenByParent, countriesByContinent) derived once from
-// the flat per-type geography map. Continents flow through GEOGRAPHIES under the
-// `continent` key, so country -> continent grouping resolves here even though
-// continents are not a selectable type.
 export const GEOGRAPHY_INDEX = derived(GEOGRAPHIES, ($geographies) => buildIndex($geographies));
 
-export const SCENARIOS = derived(page, ($page) => {
-  return $page.data?.catalog?.scenarios ?? [];
-});
+function scenarioGmt(details) {
+  if (!details?.gmt) return undefined;
+  return details.gmt.data.map(([minimum, value, maximum], index) => ({
+    year: details.gmt.yearStart + details.gmt.yearStep * index,
+    value,
+    min: minimum,
+    max: maximum,
+  }));
+}
+
+export const SCENARIOS = derived(
+  [runtimeCatalog.percentileAvailability, runtimeCatalog.scenarioDetails],
+  ([$availability, $details], set) => {
+    if ($availability.status !== 'success') return;
+    const detail = $details.status === 'success' ? $details.data : undefined;
+    set(
+      ($availability.data.scenarios ?? []).map((scenario) => {
+        const currentDetail = detail?.id === scenario.id ? detail : undefined;
+        return {
+          uid: scenario.id,
+          label: currentDetail?.label ?? scenario.label,
+          startYear: currentDetail?.yearStart ?? scenario.yearStart,
+          yearStep: currentDetail?.yearStep,
+          endYear: currentDetail?.yearEnd ?? scenario.yearEnd,
+          description: currentDetail?.description,
+          characteristics: currentDetail?.characteristics,
+          gmt: scenarioGmt(currentDetail),
+          instance: currentDetail?.instance,
+        };
+      })
+    );
+  },
+  []
+);
 
 // Case-insensitive keys so a lookup by a differently-cased scenario uid (the
 // SSP5-3.4-OS/Os source duplicate) still resolves. Read it with ciGet.
 export const DICTIONARY_SCENARIOS = derived(SCENARIOS, ($scenarios) => ciKeyBy($scenarios));
 
-
-export const INDICATORS = derived(page, ($page) => {
-  const catalog = $page.data?.catalog ?? {};
-  const indicators = catalog.indicators ?? [];
-  return indicators.map((indicator) => {
-    // Scenario availability + geography filtering are no longer curated — they
-    // come from ixmp4 (`/api/scenarios?indicator=&region=`, `/api/geographies?indicator=`).
+export const INDICATORS = derived([RUNTIME_INDICATORS, runtimeCatalog.indicatorDetails], ([$indicators, $details]) => {
+  const detail = $details.status === 'success' ? $details.data : undefined;
+  return $indicators.map((indicator) => {
     const labels = unitLabels[indicator.unit];
     const unit = {
       uid: indicator.unit,
       label: labels?.label ?? indicator.unit,
       labelLong: labels?.labelLong ?? indicator.unit,
     };
+    const currentDetail = detail?.id === indicator.id && detail.instance === indicator.instance ? detail : undefined;
+    const parameters = Object.fromEntries((currentDetail?.parameters ?? []).map((parameter) => [parameter.id, parameter.options.map((option) => option.id)]));
     return {
       ...indicator,
+      uid: indicator.id,
       unit,
+      parameters,
+      description: currentDetail?.description,
+      models: currentDetail?.models ?? [],
+      sources: currentDetail?.sources ?? [],
     };
   });
 });
 
 export const DICTIONARY_INDICATORS = derived(INDICATORS, ($indicators) => keyBy($indicators, 'uid'));
 
-// Advanced-filter groups as served on page load (no filters active). Keys are
-// static; their values and counts come from the data.
-export const FACETS_INITIAL = derived(page, ($page) => $page.data?.catalog?.facets ?? []);
+export const FACETS_INITIAL = RUNTIME_FILTER_GROUPS;
 
-export const INDICATOR_PARAMETERS = derived(page, ($page) => $page.data?.catalog?.indicatorParameters ?? []);
+export const INDICATOR_PARAMETERS = derived(RUNTIME_INDICATOR_PARAMETERS, ($parameters) =>
+  $parameters.map((parameter) => ({
+    uid: parameter.id,
+    label: parameter.label,
+    options: parameter.options.map((option) => ({ uid: option.id, label: option.label })),
+  }))
+);
 export const DICTIONARY_INDICATOR_PARAMETERS = derived(INDICATOR_PARAMETERS, ($parameters) => keyBy($parameters, 'uid'));
 
 // On the avoid page these come from the frozen legacy /meta (avoidMeta); other

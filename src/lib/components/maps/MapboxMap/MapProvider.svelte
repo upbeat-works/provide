@@ -3,7 +3,6 @@
   import 'mapbox-gl/dist/mapbox-gl.css';
   import { getContext, setContext, onMount } from 'svelte';
   import { writable } from 'svelte/store';
-  import { IS_STATIC } from '$stores/state';
 
   let clazz = '';
   let _map;
@@ -23,6 +22,7 @@
   export let fitBoundsExtent = 20;
   export let paint = [];
   export let hideLogo = false;
+  export let staticMode = false;
 
   const theme = getContext('theme');
 
@@ -59,7 +59,7 @@
       minZoom: zoomRange[0] - 0.00000001,
       maxZoom: zoomRange[1],
       center,
-      preserveDrawingBuffer: $IS_STATIC,
+      preserveDrawingBuffer: staticMode,
     });
 
     _map = $map;

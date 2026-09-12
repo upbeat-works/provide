@@ -20,12 +20,6 @@
     return chroma.contrast(color, 'black') > chroma.contrast(color, 'white');
   }
 
-  // The columns are described in arrays with the following function:
-  // Label
-  // Tooltip
-  // Access key in the scenario characteristics
-  // Formatting function. In some cases it is in degrees or a value in a year. The fallback is a simple return of the value
-  // The output of the function is used for the coloring. The fallback is a simple return of the value
   const COLUMNS = {
     2100: [
       [
@@ -122,7 +116,6 @@
       2300: 350,
     }[selectedTimeframe] ?? 250;
 
-  // Get the values for each key and create color scales for each.
   $: tableColumns = (COLUMNS[selectedTimeframe] ?? []).map(([label, tooltip, key, formatting = (d) => d, get = (d) => d]) => {
     // ixmp4 carries no scenario characteristics yet, so a cell may be absent —
     // render the row without it rather than taking the whole table down.
@@ -146,9 +139,9 @@
   const SCENARIO_NUMBER = 'scenarioNumber';
 
   $: scenarios = scenariosListed.map((scenario, i) => {
-    const { uid, label, description, isPrimary } = scenario;
-    const isSelected = selectedScenarios.includes(uid);
-    const scenarioSelectedIndex = selectedScenarios.indexOf(uid);
+    const { uid, label, description, isPrimary, selectionKey } = scenario;
+    const scenarioSelectedIndex = selectedScenarios.indexOf(selectionKey);
+    const isSelected = scenarioSelectedIndex >= 0;
     const hasBorderBottom = i !== scenariosListed.length - 1;
     const borderColorLeft = isSelected ? $THEME.color.category.base[scenarioSelectedIndex] : 'transparent';
     const values = tableColumns.map(({ key, scale, formatting, get }) => {
@@ -175,6 +168,7 @@
       disabled: selectedScenarios.length >= MAX_NUMBER_SELECTABLE_SCENARIOS && !isSelected,
       [SCENARIO_NUMBER]: i,
       uid,
+      selectionKey,
       label,
       borderColorLeft,
       hasBorderBottom,
@@ -197,7 +191,6 @@
     })
     .join(' ');
 
-  // Width of the columns without the static part
   let widthColumns = 0;
 
   $: subGridColumns = `grid-column: span ${tableColumns.length + 1};`;
@@ -231,7 +224,7 @@
         </div>
       </div>
       <div role="rowgroup" class="grid max-w-full relative grid-cols-subgrid" style={subGridColumns}>
-        {#each sortedScenarios as { i, uid, label, values, borderColorLeft, description, isPrimary, disabled }, index}
+        {#each sortedScenarios as { i, uid, selectionKey, label, values, borderColorLeft, description, isPrimary, disabled }, index}
           <button
             {disabled}
             aria-disabled={disabled}
@@ -241,7 +234,7 @@
             style={subGridColumns}
             bind:clientWidth={widthColumns}
           >
-            <label for={uid} class="grid justify-start max-w-full grid-flow-col grid-cols-subgrid" style={subGridColumns}>
+            <label for={selectionKey} class="grid justify-start max-w-full grid-flow-col grid-cols-subgrid" style={subGridColumns}>
               <div
                 aria-disabled={disabled}
                 style="border-left-color: {borderColorLeft}"
@@ -249,7 +242,7 @@
                 class="border-b-contour-weakest aria-disabled:cursor-not-allowed py-2 border-l-4 border-current px-3 text-left sticky left-0 bg-current grid grid-cols-[14px_1fr_14px_14px] items-center gap-x-1.5 whitespace-nowrap overflow-hidden text-ellipsis"
                 role="gridcell"
               >
-                <input {disabled} aria-disabled={disabled} tabindex="-1" id={uid} type="checkbox" name="scenarios" value={uid} bind:group={selectedScenarios} />
+                <input {disabled} aria-disabled={disabled} tabindex="-1" id={selectionKey} type="checkbox" name="scenarios" value={selectionKey} bind:group={selectedScenarios} />
                 <span
                   class="text-sm font-bold inline-block overflow-hidden text-ellipsis transition-colors"
                   class:text-text-base={!disabled}

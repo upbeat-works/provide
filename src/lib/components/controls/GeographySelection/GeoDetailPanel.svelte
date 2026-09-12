@@ -1,9 +1,10 @@
 <script>
   import { GEOGRAPHY_INDEX, GEOGRAPHY_TYPES } from '$stores/meta.js';
-  import { CURRENT_GEOGRAPHY_UID } from '$stores/state.js';
   import { parentCountriesOf, continentOf, childSummary, plainLabel } from './geography-tree.js';
+  import { createEventDispatcher } from 'svelte';
 
   export let geography; // selected geography object or undefined
+  const dispatch = createEventDispatcher();
 
   // One line under the map: what is selected, and what it contains (a country's
   // children) or what contains it (the country a city/basin/EEZ belongs to).
@@ -32,7 +33,7 @@
     <span class="text-xs font-medium uppercase tracking-wider text-text-weaker">{geography.label}:</span>
     {#each tags as tag}
       {#if tag.uid}
-        <button type="button" class="rounded-full bg-theme-50 px-3 py-1 text-xs text-theme-700 transition-colors hover:bg-theme-100" on:click={() => CURRENT_GEOGRAPHY_UID.set(tag.uid)}
+        <button type="button" class="rounded-full bg-theme-50 px-3 py-1 text-xs text-theme-700 transition-colors hover:bg-theme-100" on:click={() => dispatch('select', tag.uid)}
           >{tag.label}</button
         >
       {:else}

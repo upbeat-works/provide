@@ -2,14 +2,16 @@
   import { MAX_NUMBER_SELECTABLE_SCENARIOS, PATH_EXPLORE, PATH_IMPACT } from '$config';
   import Arrow from '$lib/components/icons/Arrow.svelte';
   import { buildURL } from '$utils/url.js';
+  import { methodologyExplorerParams } from './cross-link.js';
 
   export let selectedScenarios = [];
+  export let instance = undefined;
 
   $: noScenarioSelected = !selectedScenarios.length;
   $: tooManyScenariosSelected = selectedScenarios.length > MAX_NUMBER_SELECTABLE_SCENARIOS;
   $: isDisabled = noScenarioSelected || tooManyScenariosSelected;
 
-  $: query = buildURL(PATH_IMPACT, { scenarios: selectedScenarios });
+  $: query = buildURL(PATH_IMPACT, methodologyExplorerParams(selectedScenarios, instance));
 </script>
 
 <!-- We keep this because we remove href (https://www.scottohara.me/blog/2021/05/28/disabled-links.html) -->

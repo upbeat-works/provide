@@ -5,6 +5,7 @@
   // This is what the graph download screenshots, so it carries the heading the
   // section around the chart would otherwise supply.
   export let chart = undefined;
+  export let staticMode = false;
 
   $: entry = chartBySlug(chart) ?? charts[0];
 </script>
@@ -15,6 +16,6 @@
       <h1 class="mb-3 text-2xl font-normal">{entry.title}</h1>
       <p class="leading-relaxed">{entry.description}</p>
     </header>
-    <svelte:component this={entry.component} {...entry.props} chartInfo={entry.info} />
+    <svelte:component this={entry.component} {...entry.props} chartInfo={entry.info} {staticMode} />
   </div>
 {/if}

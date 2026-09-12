@@ -3,7 +3,6 @@
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
   import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
   import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
-  import { SCENARIOS } from '$stores/meta.js';
   import { CURRENT_SCENARIOS } from '$stores/state.js';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
@@ -18,6 +17,8 @@
   import { comparisonViews, seedComparison } from './components/comparison.js';
   import { goto } from '$app/navigation';
   import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS, URL_PATH_GEOGRAPHY } from '$config';
+
+  export let data;
 
   // Scoreboard ranking view. Structure-only: there are no scoreboard endpoints
   // yet, so the controls and the scores are placeholders — what's real here is
@@ -42,7 +43,7 @@
   // The compared dimension's value per map; only read while comparing.
   let sides = [];
 
-  const optionsFor = (uid) => ({ scenario: $SCENARIOS, year: YEARS })[uid] ?? [];
+  const optionsFor = (uid) => ({ scenario: data.scenarios, year: YEARS })[uid] ?? [];
   const valueFor = (uid) => ({ scenario, year })[uid];
 
   // Seed only when the compared dimension changes. `sides` must not be read
@@ -114,13 +115,13 @@
   ];
 
   const indicators = [
-    'Annual maximum temperature',
-    'Annual mean temperature (MESMER)',
-    'Days above 30 °C',
-    'Tropical nights',
-    'Heatwave duration',
-    'Cooling degree days',
-    'Population exposed to extreme heat',
+    'Annual Maximum Temperature',
+    'Annual Mean Temperature (MESMER)',
+    'Days Above 30 °C',
+    'Tropical Nights',
+    'Heatwave Duration',
+    'Cooling Degree Days',
+    'Population Exposed to Extreme Heat',
   ];
 
   let contentRef;
@@ -134,7 +135,7 @@
          it offers the whole scenario universe, and one scenario at a time —
          every view here is tied to a single pathway. -->
     {#if compareBy?.uid !== 'scenario'}
-      <ScenarioSelection scenarios={$SCENARIOS} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
+      <ScenarioSelection scenarios={data.scenarios} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
     {/if}
     {#if compareBy?.uid !== 'year'}
       <FilterSelect label="Year" options={YEARS} bind:selected={year} />

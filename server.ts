@@ -6,6 +6,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { api } from './api/index.ts';
 import { schema } from './api/db/index.ts';
 import { pgBaseConfig, DB_SCHEMA } from './api/db/connection.ts';
+import { apiServerOptions } from './api/server-options.ts';
 
 // One shared pool; every connection pins the search_path to the API's schema so
 // the unqualified tables resolve to (and migrations land in) `catalog`.
@@ -33,4 +34,4 @@ app.route('/', api);
 const port = Number(process.env.PORT ?? 8080);
 console.log(`PROVIDE API listening on http://0.0.0.0:${port}`);
 
-export default { fetch: app.fetch, port };
+export default apiServerOptions(app.fetch, port);

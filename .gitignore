@@ -28,6 +28,11 @@ cms/.snapshot
 # Local SQLite database — keep the dir (via .gitkeep), ignore the db files
 cms/database/*
 !cms/database/.gitkeep
+!cms/database/migrations/
+cms/database/migrations/*
+!cms/database/migrations/2026.09.10T00.00.00.canonical-catalog-references.js
+!cms/database/migrations/2026.09.10T00.00.01.title-case-catalog-references.js
+!cms/database/migrations/2026.09.10T00.00.02.canonical-scenario-references.js
 
 # Local dumps pulled from the remote CMS (contains content + admin/token hashes)
 cms/dumps/

@@ -3,7 +3,7 @@
  * the fetching; everything decidable without I/O lives here so it is testable.
  */
 
-/** Serialise the active selection into the `/catalog` query string. */
+/** Serialise the active indicator filters. */
 export function facetQuery(filters) {
   const params = new URLSearchParams();
   for (const [key, values] of Object.entries(filters)) {

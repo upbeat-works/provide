@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test';
-import { scenarioAvailabilityFromRows, pickRepresentativeWarmingLevel, scenarioTimeframesFromRows } from './scenarios';
+import type { GmtByScenario } from './gmt';
+import { pickRepresentativeWarmingLevel, scenarioAvailabilityFromRows, scenarioDetailsFromSources, scenarioTimeframesFromRows } from './scenarios';
 
 describe('scenarioAvailabilityFromRows', () => {
   test('derives each scenario timeframe from its finite year columns', () => {
@@ -9,8 +10,8 @@ describe('scenarioAvailabilityFromRows', () => {
       { scenario: 'B', model: 'M', '2020': 1, '2025': 2, '2030': null },
     ];
     expect(scenarioAvailabilityFromRows(rows)).toEqual([
-      { uid: 'A', yearStart: 2020, yearStep: 5, yearEnd: 2030 },
-      { uid: 'B', yearStart: 2020, yearStep: 5, yearEnd: 2025 },
+      { id: 'A', label: 'A', yearStart: 2020, yearEnd: 2030 },
+      { id: 'B', label: 'B', yearStart: 2020, yearEnd: 2025 },
     ]);
   });
 
@@ -20,7 +21,7 @@ describe('scenarioAvailabilityFromRows', () => {
       { scenario: 'A', model: 'M2', '2020': 9, '2025': 9 }, // duplicate scenario
       { scenario: 'Empty', model: 'M', '2020': null, '2025': null },
     ];
-    expect(scenarioAvailabilityFromRows(rows).map((s) => s.uid)).toEqual(['A']);
+    expect(scenarioAvailabilityFromRows(rows).map((s) => s.id)).toEqual(['A']);
   });
 
   test('dedupes scenarios case-insensitively (the SSP5-3.4-OS/Os source duplicate)', () => {
@@ -28,7 +29,7 @@ describe('scenarioAvailabilityFromRows', () => {
       { scenario: 'SSP5-3.4-Os', model: 'M1', '2020': 1, '2025': 2 },
       { scenario: 'SSP5-3.4-OS', model: 'M2', '2020': 9, '2025': 9 }, // same scenario, other casing
     ];
-    expect(scenarioAvailabilityFromRows(rows).map((s) => s.uid)).toEqual(['SSP5-3.4-Os']);
+    expect(scenarioAvailabilityFromRows(rows).map((s) => s.id)).toEqual(['SSP5-3.4-Os']);
   });
 
   test('excludes named scenarios (the Today baseline) so they are not selectable', () => {
@@ -36,9 +37,7 @@ describe('scenarioAvailabilityFromRows', () => {
       { scenario: '2020 Climate Policies', model: 'M', '2030': 0.3, '2100': 0.9 },
       { scenario: 'Today', model: 'M', '2000': 0.1 }, // baseline — never a selectable projection
     ];
-    expect(scenarioAvailabilityFromRows(rows, { exclude: ['Today'] }).map((s) => s.uid)).toEqual([
-      '2020 Climate Policies',
-    ]);
+    expect(scenarioAvailabilityFromRows(rows, { exclude: ['Today'] }).map((s) => s.id)).toEqual(['2020 Climate Policies']);
   });
 
   test('exclusion matches case-insensitively', () => {
@@ -46,7 +45,7 @@ describe('scenarioAvailabilityFromRows', () => {
       { scenario: 'today', model: 'M', '2000': 0.1 }, // lower-cased in this run
       { scenario: 'A', model: 'M', '2030': 0.3 },
     ];
-    expect(scenarioAvailabilityFromRows(rows, { exclude: ['Today'] }).map((s) => s.uid)).toEqual(['A']);
+    expect(scenarioAvailabilityFromRows(rows, { exclude: ['Today'] }).map((s) => s.id)).toEqual(['A']);
   });
 });
 
@@ -107,5 +106,103 @@ describe('scenarioTimeframesFromRows', () => {
 
   test('tolerates no rows', () => {
     expect(scenarioTimeframesFromRows([]).size).toBe(0);
+  });
+});
+
+describe('scenarioDetailsFromSources', () => {
+  test('uses source names and returns the exact GMT detail fields', () => {
+    const gmt: GmtByScenario = new Map([
+      [
+        'curpol',
+        {
+          scenario: 'curpol',
+          data: [[1.1, 1.3, 1.5]],
+          yearStart: 2020,
+          yearStep: 5,
+          yearEnd: 2020,
+          model: 'FaIR',
+          unit: '°C',
+          characteristics: { gmtPeak: [1.3, 2020] },
+        },
+      ],
+    ]);
+
+    expect(scenarioDetailsFromSources('provide-internal', ['CurPol'], new Map([['curpol', { yearStart: 2020, yearStep: 5, yearEnd: 2100 }]]), gmt)).toEqual([
+      {
+        id: 'CurPol',
+        label: 'CurPol',
+        instance: 'provide-internal',
+        yearStart: 2020,
+        yearStep: 5,
+        yearEnd: 2100,
+        gmt: {
+          data: [[1.1, 1.3, 1.5]],
+          yearStart: 2020,
+          yearStep: 5,
+          yearEnd: 2020,
+          model: 'FaIR',
+          unit: '°C',
+        },
+        characteristics: { gmtPeak: [1.3, 2020] },
+      },
+    ]);
+  });
+
+  test('keeps a GMT-only scenario and uses its timeframe', () => {
+    const gmt: GmtByScenario = new Map([
+      [
+        'extended',
+        {
+          scenario: 'Extended',
+          data: [[1, 1.2, 1.4]],
+          yearStart: 2100,
+          yearStep: 10,
+          yearEnd: 2300,
+          characteristics: {},
+        },
+      ],
+    ]);
+
+    expect(scenarioDetailsFromSources('source', [], new Map(), gmt)[0]).toMatchObject({
+      id: 'Extended',
+      instance: 'source',
+      yearStart: 2100,
+      yearStep: 10,
+      yearEnd: 2300,
+    });
+  });
+
+  test('uses null for GMT gaps in the public response', () => {
+    const gmt: GmtByScenario = new Map([
+      [
+        'gap',
+        {
+          scenario: 'Gap',
+          data: [
+            [1, 1.2, 1.4],
+            [NaN, NaN, NaN],
+            [1.1, 1.3, 1.5],
+          ],
+          yearStart: 2020,
+          yearStep: 10,
+          yearEnd: 2040,
+          characteristics: {},
+        },
+      ],
+    ]);
+
+    const details = scenarioDetailsFromSources('source', ['Gap'], new Map([['gap', { yearStart: 2020, yearStep: 10, yearEnd: 2040 }]]), gmt);
+
+    expect(details[0].gmt?.data[1]).toEqual([null, null, null]);
+  });
+
+  test('deduplicates names only within one instance', () => {
+    const details = scenarioDetailsFromSources('source', ['SSP5-3.4-Os', 'SSP5-3.4-OS'], new Map([['ssp5-3.4-os', { yearStart: 2020, yearStep: 5, yearEnd: 2100 }]]), new Map());
+
+    expect(details.map(({ id, instance }) => ({ id, instance }))).toEqual([{ id: 'SSP5-3.4-Os', instance: 'source' }]);
+  });
+
+  test('drops a run that has no real timeframe', () => {
+    expect(scenarioDetailsFromSources('source', ['No Data'], new Map(), new Map())).toEqual([]);
   });
 });

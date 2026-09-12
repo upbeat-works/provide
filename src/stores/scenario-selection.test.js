@@ -1,33 +1,70 @@
-import { test, expect, describe } from 'bun:test';
+import { test, expect, describe } from 'vitest';
 import { resolveScenarioSelection, isScenarioCombinationAvailable, parseStoredScenarios, graftScenarioAvailability } from './scenario-selection.js';
 
 describe('resolveScenarioSelection', () => {
   const defaults = ['2020 Climate Policies'];
 
-  test('leaves selection untouched while availability is still loading', () => {
-    expect(resolveScenarioSelection({ selectable: [], current: ['High Renewables'], defaults })).toBeNull();
+  test.each(['idle', 'loading', 'failure'])('leaves the selection untouched while availability is %s', (status) => {
+    expect(
+      resolveScenarioSelection({
+        availability: { status },
+        current: ['High Renewables'],
+        defaults,
+      })
+    ).toBeNull();
   });
 
-  test('keeps a valid selection unchanged', () => {
-    expect(resolveScenarioSelection({ selectable: ['High Renewables', 'SSP1-1.9'], current: ['High Renewables'], defaults })).toBeNull();
+  test('keeps a confirmed valid selection unchanged', () => {
+    expect(
+      resolveScenarioSelection({
+        availability: { status: 'success', data: [{ id: 'High Renewables' }] },
+        current: ['High Renewables'],
+        defaults,
+      })
+    ).toBeNull();
   });
 
-  test('does NOT swap a selection that has no data for this view', () => {
-    // 'High Renewables' is selected but not available here — we must leave it
-    // alone (surfaced as "no data here — pick another"), never swap it.
-    expect(resolveScenarioSelection({ selectable: ['2020 Climate Policies', 'SSP1-1.9'], current: ['High Renewables'], defaults })).toBeNull();
+  test('removes only scenarios excluded by a successful response', () => {
+    expect(
+      resolveScenarioSelection({
+        availability: { status: 'success', data: [{ id: '2020 Climate Policies' }] },
+        current: ['2020 Climate Policies', 'High Renewables'],
+        defaults,
+      })
+    ).toEqual(['2020 Climate Policies']);
   });
 
-  test('does NOT prune an unavailable scenario out of a multi-selection', () => {
-    expect(resolveScenarioSelection({ selectable: ['2020 Climate Policies'], current: ['2020 Climate Policies', 'High Renewables'], defaults })).toBeNull();
+  test('uses a default when success confirms the current selection is empty', () => {
+    expect(
+      resolveScenarioSelection({
+        availability: {
+          status: 'success',
+          data: [{ id: '2020 Climate Policies' }, { id: 'SSP1-1.9' }],
+        },
+        current: ['High Renewables'],
+        defaults,
+      })
+    ).toEqual(['2020 Climate Policies']);
   });
 
-  test('fills an empty selection with the default when it is available', () => {
-    expect(resolveScenarioSelection({ selectable: ['2020 Climate Policies', 'SSP1-1.9'], current: [], defaults })).toEqual(['2020 Climate Policies']);
+  test('uses the first allowed scenario when no default is allowed', () => {
+    expect(
+      resolveScenarioSelection({
+        availability: { status: 'success', data: [{ id: 'SSP1-1.9' }, { id: 'Low Demand' }] },
+        current: [],
+        defaults,
+      })
+    ).toEqual(['SSP1-1.9']);
   });
 
-  test('fills an empty selection with the first selectable when the default is unavailable', () => {
-    expect(resolveScenarioSelection({ selectable: ['SSP1-1.9', 'Low Demand'], current: [], defaults })).toEqual(['SSP1-1.9']);
+  test('clears the selection when success confirms no scenarios are allowed', () => {
+    expect(
+      resolveScenarioSelection({
+        availability: { status: 'success', data: [] },
+        current: ['High Renewables'],
+        defaults,
+      })
+    ).toEqual([]);
   });
 });
 
