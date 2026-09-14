@@ -149,6 +149,6 @@ export function emptyIxmp4Handlers(instance: Ixmp4Instance) {
   ];
 }
 
-const defaultHandlers = emptyIxmp4Handlers(testInstance);
+const defaultHandlers = instances.flatMap(emptyIxmp4Handlers);
 
 export const server = setupServer(...defaultHandlers);

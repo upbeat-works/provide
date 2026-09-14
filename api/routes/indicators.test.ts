@@ -35,6 +35,40 @@ function useUnit(instanceUnderTest: Ixmp4Instance, unit: string) {
 }
 
 describe('GET /api/indicators', () => {
+  test('includes SPARCCLE Internal indicators using the shared login', async () => {
+    const logins: unknown[] = [];
+    let authorization: string | null = null;
+    server.use(
+      http.post(`${instance.managerUrl}/token/obtain/`, async ({ request }) => {
+        logins.push(await request.json());
+        return HttpResponse.json({ access: 'shared-access-token' });
+      }),
+      http.patch('https://ixmp4.ece.iiasa.ac.at/v1/sparccle-internal/iamc/variables/', ({ request }) => {
+        authorization = request.headers.get('authorization');
+        return HttpResponse.json(listEnvelope([variable(1, 'Heat')]));
+      }),
+      http.patch('https://ixmp4.ece.iiasa.ac.at/v1/sparccle-internal/units/', () =>
+        HttpResponse.json(listEnvelope([{ id: 1, name: 'days' }]))
+      )
+    );
+
+    const res = await api.request('/api/indicators', {}, await createTestEnv());
+    const json = (await res.json()) as IndicatorIndexResponse;
+
+    expect(res.status).toBe(200);
+    expect(json.indicators).toContainEqual(expect.objectContaining({
+      id: 'Heat',
+      instance: 'sparccle-internal',
+      unit: 'days',
+    }));
+    expect(json.failedInstances).toEqual([]);
+    expect(authorization).toBe('Bearer shared-access-token');
+    expect(logins.length).toBeGreaterThan(0);
+    for (const login of logins) {
+      expect(login).toEqual({ username: 'test-user', password: 'test-pass' });
+    }
+  });
+
   test('returns the full indicator index contract with curated sector data', async () => {
     let unitFilter: unknown;
     server.use(
