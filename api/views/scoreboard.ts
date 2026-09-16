@@ -12,24 +12,28 @@ export interface ScoreboardSelection {
   region: string;
 }
 
-export async function readDefaultRunSeries(
-  platform: Pick<Platform, 'iamc'>,
-  reference: ScoreboardVariableReference,
-): Promise<WideRow[]> {
+export interface ScoreboardScope {
+  scenario?: string;
+  regions: string[];
+  year?: number;
+}
+
+export async function readDefaultRunSeries(platform: Pick<Platform, 'iamc'>, reference: ScoreboardVariableReference, scope: ScoreboardScope): Promise<WideRow[]> {
+  if (!scope.regions.length) return [];
   const df = await platform.iamc.tabulate({
     variable: { name: reference.variable },
     model: { name: reference.model },
     unit: { name: reference.unit },
     run: { defaultOnly: true },
+    region: { name_in: scope.regions },
+    ...(scope.scenario ? { scenario: { name: scope.scenario } } : {}),
+    ...(scope.year !== undefined ? { stepYear: scope.year } : {}),
     wide: true,
   });
   return dfToRows(df as DataFrameLike);
 }
 
-export function selectScoreboardData(
-  rows: WideRow[],
-  selection: ScoreboardSelection,
-): Array<{ year: number; value: number | null }> {
+export function selectScoreboardData(rows: WideRow[], selection: ScoreboardSelection): Array<{ year: number; value: number | null }> {
   const matches = rows.filter((row) => row.scenario === selection.scenario && row.region === selection.region);
   if (matches.length > 1) throw new Error('Ambiguous default-run rows');
   if (matches.length === 0) return [];

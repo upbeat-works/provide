@@ -14,17 +14,20 @@ test('shows only charts with visible results', async () => {
   const definition = scoreboard.definitions[0];
   const data = {
     scoreboard,
-    scenarios: [], regions: [], years: [], selection: {},
-    charts: [{ definition, status: 'ready', data: [{ line: [{ year: 2050, value: null }] }] }],
+    scenarios: [],
+    regions: [],
+    years: [],
+    selection: {},
+    charts: [{ definition, result: { definition, status: 'ready', data: [{ line: [{ year: 2050, value: null }] }] } }],
   };
   const empty = page.default.render({ data });
   expect(empty.html).not.toContain(definition.title);
 
-  data.charts[0] = { definition, status: 'ready', data: [{ line: [{ year: 2050, value: 2 }] }] };
+  data.charts[0].result = { definition, status: 'ready', data: [{ line: [{ year: 2050, value: 2 }] }] };
   const ready = page.default.render({ data });
   expect(ready.html).toContain(definition.title);
 
-  data.charts[0] = { definition, status: 'error', data: [], error: 'Source unavailable' };
+  data.charts[0].result = { definition, status: 'error', data: [], error: 'Source unavailable' };
   const error = page.default.render({ data });
   expect(error.html).toContain(definition.title);
   expect(error.html).toContain('Source unavailable');

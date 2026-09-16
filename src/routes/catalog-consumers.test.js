@@ -78,19 +78,14 @@ function createLoaderFetch({
       return Response.json([{ id: 'cities', label: 'Cities', labelSingular: 'City', isSelectable: true }]);
     }
     if (url.origin === API_ORIGIN && path === '/api/methodology-scenarios') return Response.json(scenarioDetails(scenarioTechnicalDescription, url.searchParams.get('instance') ?? 'provide-internal'));
-    if (url.origin === API_ORIGIN && path === '/api/scoreboard') {
+    if (url.origin === API_ORIGIN && path === '/api/scoreboard/options') {
       const scenario = { uid: 'Low Demand', label: 'Low Demand' };
       const region = { uid: 'European Union (R9)', label: 'European Union (R9)' };
       const year = { uid: '2050', label: '2050' };
-      return Response.json({
-        scenarios: [scenario], regions: [region], years: [year],
-        selection: { scenario, region, year },
-        charts: [{
-          definition: { chartId: 'live-chart', title: 'Live chart', description: 'Live data.', chartType: 'line', data: [] },
-          status: 'empty', data: [],
-        }],
-      });
+      return Response.json({ status: 'ready', scenarios: [scenario], regions: [region], years: [year], selection: { scenario, region } });
     }
+    if (url.origin === API_ORIGIN && path === '/api/scoreboard/map') return Response.json({ status: 'empty', values: [] });
+    if (url.origin === API_ORIGIN && path.startsWith('/api/scoreboard/charts/')) return Response.json({ status: 'empty', data: [] });
     if (url.origin === API_ORIGIN && path === '/api/study-locations') return Response.json({ studyLocations });
     if (url.origin === API_ORIGIN && path === '/api/likelihoods') return Response.json({ likelihoods });
     if (url.origin === API_ORIGIN && path === '/api/catalog') {
@@ -240,55 +235,25 @@ describe('focused catalog consumers', () => {
     expect(apiPaths(requests)).toEqual([]);
   });
 
-  test('empty scoreboard sectors load no catalogs or CMS content', async () => {
+  test.each(['heat-stress', 'testing'])('scoreboard %s server loads only shared choices', async (sector) => {
     const { loaderFetch, requests } = createLoaderFetch();
     const [{ load: loadLayout }, { load: loadRanking }, { load: loadIndicators }] = await Promise.all([
       import('./(default)/projects/eu-scoreboard/+layout.server.js'),
       import('./(default)/projects/eu-scoreboard/+page.server.js'),
-      import('./(default)/projects/eu-scoreboard/indicators/+page.server.js'),
+      import('./(default)/projects/eu-scoreboard/indicators/+page.js'),
     ]);
-    for (const sector of ['', 'heat-stress', 'unknown']) {
-      const url = new URL(`${APP_ORIGIN}/projects/eu-scoreboard?sector=${sector}`);
-      expect((await loadLayout({ url })).scoreboard).toMatchObject({ instance: 'sparccle-internal', sector: { uid: 'heat-stress' }, definitions: [] });
-      expect(await loadRanking({ fetch: loaderFetch, url, parent: () => loadLayout({ url }) })).toMatchObject({ scenarios: [] });
-      expect(await loadIndicators({ fetch: loaderFetch, url, parent: () => loadLayout({ url }) })).toMatchObject({ scenarios: [], regions: [], years: [], charts: [] });
-    }
-    expect(requests).toEqual([]);
-  });
-
-  test('Testing scoreboard requests its fixed chart data', async () => {
-    const { loaderFetch, requests } = createLoaderFetch();
-    const [{ load: loadLayout }, { load: loadRanking }, { load: loadIndicators }] = await Promise.all([
-      import('./(default)/projects/eu-scoreboard/+layout.server.js'),
-      import('./(default)/projects/eu-scoreboard/+page.server.js'),
-      import('./(default)/projects/eu-scoreboard/indicators/+page.server.js'),
-    ]);
-    const url = new URL(`${APP_ORIGIN}/projects/eu-scoreboard?sector=testing&instance=provide-internal`);
-    const parent = () => loadLayout({ url });
-    const ranking = await loadRanking({ fetch: loaderFetch, url, parent });
-    expect(apiPaths(requests)).toEqual(['/api/scoreboard']);
-    expect(requests[0].searchParams.get('sector')).toBe('testing');
-    expect(requests[0].searchParams.has('instance')).toBe(false);
-    expect(ranking.scenarios[0]).toMatchObject({ uid: 'Low Demand' });
-
-    requests.length = 0;
-    const indicators = await loadIndicators({ fetch: loaderFetch, url, parent });
-    expect(apiPaths(requests)).toEqual(['/api/scoreboard']);
-    expect(indicators).not.toHaveProperty('indicatorIndex');
-    expect(indicators.scenarios[0]).toMatchObject({ uid: 'Low Demand' });
-  });
-
-  test('scoreboard controller keeps its source when a caller supplies another instance', async () => {
-    const { loaderFetch, requests } = createLoaderFetch();
-    const { getScoreboard } = await import('./(default)/projects/eu-scoreboard/controller.js');
-    const { loadCharts } = await import('./(default)/projects/eu-scoreboard/controller.server.js');
-    const scoreboard = { ...getScoreboard('testing'), instance: 'provide-internal' };
-    await loadCharts({ scoreboard, fetch: loaderFetch, selections: {} });
-
-    const scoreboardRequests = requests.filter((request) => request.origin === API_ORIGIN && request.pathname.replace(/\/$/, '') === '/api/scoreboard');
-    expect(scoreboardRequests).toHaveLength(1);
-    expect(scoreboardRequests[0].searchParams.get('sector')).toBe('testing');
-    expect(scoreboardRequests[0].searchParams.has('instance')).toBe(false);
+    const url = new URL(`${APP_ORIGIN}/projects/eu-scoreboard?sector=${sector}&instance=provide-internal`);
+    const layout = await loadLayout({ url, fetch: loaderFetch, depends: () => {} });
+    await loadRanking({ fetch: loaderFetch, url, parent: async () => layout });
+    expect(apiPaths(requests)).toEqual(['/api/scoreboard/options']);
+    const selection = { ...layout.scoreboardOptions.selection, year: layout.scoreboardOptions.years[0] };
+    const indicators = await loadIndicators({ fetch: loaderFetch, url, parent: async () => ({ ...layout, selection }) });
+    await Promise.all([indicators.map, ...indicators.charts.map(({ result }) => result)]);
+    expect(apiPaths(requests).filter((path) => path === '/api/scoreboard/options')).toHaveLength(1);
+    expect(apiPaths(requests)).toEqual(['/api/scoreboard/options']);
+    expect(apiPaths(requests).filter((path) => path.startsWith('/api/scoreboard/charts/'))).toHaveLength(0);
+    expect(requests.every((request) => !request.searchParams.has('instance'))).toBe(true);
+    expect(requests.every((request) => request.origin === API_ORIGIN)).toBe(true);
   });
 
   test('case-study list and detail request separate focused data', async () => {
@@ -465,5 +430,4 @@ describe('focused catalog consumers', () => {
     expect(failure.status).toBe(503);
     expect(failure.body).toEqual({ message: 'Case study indicator data is temporarily unavailable.' });
   });
-
 });

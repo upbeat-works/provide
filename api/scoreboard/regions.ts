@@ -6,7 +6,17 @@ type CatalogGeography = { id: string; label: string; geographyType?: string };
 type ParentEdge = { geographyId: string; parentId: string };
 
 // IAMC common region definitions: github.com/IAMconsortium/common-definitions/blob/main/definitions/region/common.yaml
-export const WORLD_R9 = ['China (R9)', 'European Union (R9)', 'India (R9)', 'Latin America (R9)', 'Middle East & Africa (R9)', 'Other Asia (R9)', 'Other OECD (R9)', 'Reforming Economies (R9)', 'USA (R9)'];
+export const WORLD_R9 = [
+  'China (R9)',
+  'European Union (R9)',
+  'India (R9)',
+  'Latin America (R9)',
+  'Middle East & Africa (R9)',
+  'Other Asia (R9)',
+  'Other OECD (R9)',
+  'Reforming Economies (R9)',
+  'USA (R9)',
+];
 
 export function childRegionsFromCatalog(parentId: string, geographies: CatalogGeography[], parents: ParentEdge[]): Option[] {
   const parent = geographies.find(({ id }) => id === parentId);
@@ -22,60 +32,50 @@ export function worldR9Regions(): Option[] {
   return WORLD_R9.map((uid) => ({ uid, label: uid }));
 }
 
-async function catalogRows(db: Db) {
-  return Promise.all([db.select().from(schema.geographies), db.select().from(schema.geographyParents)]);
+export async function loadRegionCatalog(db: Db) {
+  const [geographies, parents] = await Promise.all([db.select().from(schema.geographies), db.select().from(schema.geographyParents)]);
+  return { geographies, parents };
 }
 
-export async function loadChildRegions(db: Db, parentId: string): Promise<Option[]> {
+type RegionCatalog = Awaited<ReturnType<typeof loadRegionCatalog>>;
+
+export function childRegions(parentId: string, catalog: RegionCatalog): Option[] {
   if (parentId === 'World') return worldR9Regions();
-  const [geographies, parents] = await catalogRows(db);
-  return childRegionsFromCatalog(parentId, geographies, parents);
+  return childRegionsFromCatalog(parentId, catalog.geographies, catalog.parents);
 }
 
-export async function loadSupportedAreas(db: Db, availableRegions: Set<string>): Promise<Option[]> {
+export function supportedAreas(available: Set<string>, catalog: RegionCatalog): Option[] {
   const areas: Option[] = [];
-  if (worldR9Regions().some(({ uid }) => availableRegions.has(uid))) areas.push({ uid: 'World', label: 'World' });
-  const [geographies, parents] = await catalogRows(db);
-  for (const geography of geographies) {
+  if (WORLD_R9.some((uid) => available.has(uid))) areas.push({ uid: 'World', label: 'World' });
+  for (const geography of catalog.geographies) {
     if (geography.geographyType !== 'continent') continue;
-    if (childRegionsFromCatalog(geography.id, geographies, parents).some(({ uid }) => availableRegions.has(uid))) {
+    if (childRegions(geography.id, catalog).some(({ uid }) => available.has(uid))) {
       areas.push({ uid: geography.id, label: geography.label });
     }
   }
-  return areas.sort((left, right) => left.label.localeCompare(right.label));
+  return areas;
 }
 
-export async function loadMapRegionOptions(db: Db, geographyType: 'admin0' | 'r9', availableRegions: Set<string>): Promise<Option[]> {
-  if (geographyType === 'r9') {
-    const regions = worldR9Regions().filter(({ uid }) => availableRegions.has(uid));
+export function mapRegionOptions(type: 'admin0' | 'r9', available: Set<string>, catalog: RegionCatalog): Option[] {
+  if (type === 'r9') {
+    const regions = worldR9Regions().filter(({ uid }) => available.has(uid));
     return regions.length ? [{ uid: 'World', label: 'World' }, ...regions] : [];
   }
-  const [geographies, parents] = await catalogRows(db);
-  const countries = geographies
-    .filter(({ id, geographyType, geoId }) => geographyType === 'admin0' && geoId && availableRegions.has(id))
-    .map(({ id, label }) => ({ uid: id, label }));
-  const continents = geographies
-    .filter(({ geographyType }) => geographyType === 'continent')
-    .filter(({ id }) => childRegionsFromCatalog(id, geographies, parents).some(({ uid }) => availableRegions.has(uid)))
-    .map(({ id, label }) => ({ uid: id, label }));
+  const countries = catalog.geographies.filter(({ id, geographyType, geoId }) => geographyType === 'admin0' && geoId && available.has(id)).map(({ id, label }) => ({ uid: id, label }));
+  const continents = supportedAreas(new Set(countries.map(({ uid }) => uid)), catalog);
   return countries.length ? [{ uid: 'World', label: 'World' }, ...continents, ...countries] : [];
 }
 
-export async function loadMapMembers(db: Db, geographyType: 'admin0' | 'r9', area: string): Promise<Option[]> {
-  if (geographyType === 'r9') {
+export function mapMembers(type: 'admin0' | 'r9', area: string, catalog: RegionCatalog): Option[] {
+  if (type === 'r9') {
     if (area === 'World') return worldR9Regions();
     return WORLD_R9.includes(area) ? [{ uid: area, label: area }] : [];
   }
-  const [geographies, parents] = await catalogRows(db);
   if (area === 'World') {
-    return geographies.filter(({ geographyType, geoId }) => geographyType === 'admin0' && geoId).map(({ id, label }) => ({ uid: id, label }));
+    return catalog.geographies.filter(({ geographyType, geoId }) => geographyType === 'admin0' && geoId).map(({ id, label }) => ({ uid: id, label }));
   }
-  const children = childRegionsFromCatalog(area, geographies, parents);
+  const children = childRegions(area, catalog);
   if (children.length) return children;
-  const country = geographies.find(({ id, geographyType, geoId }) => id === area && geographyType === 'admin0' && geoId);
+  const country = catalog.geographies.find(({ id, geographyType, geoId }) => id === area && geographyType === 'admin0' && geoId);
   return country ? [{ uid: country.id, label: country.label }] : [];
-}
-
-export async function loadAdmin0Geographies(db: Db) {
-  return (await db.select().from(schema.geographies)).filter(({ geographyType }) => geographyType === 'admin0');
 }

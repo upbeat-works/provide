@@ -3,7 +3,7 @@
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
   import ScoreboardMap from './components/ScoreboardMap.svelte';
   import RankingPanel from './components/RankingPanel.svelte';
-  import SectorSelect from './components/SectorSelect.svelte';
+  import ScoreboardFilters from './components/ScoreboardFilters.svelte';
   import SectionIndex from './components/SectionIndex.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
@@ -11,7 +11,6 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS } from '$config';
-  import { isChartVisible } from './components/charts/adapter.js';
   import { RISK_CLASSES, riskRankingFor, riskValuesFor } from './components/scores.js';
 
   export let data;
@@ -61,17 +60,16 @@
   let contentRef;
   let activeSlug;
   $: hazard = data.scoreboard.sector.label;
-  $: chartResults = (data.charts ?? []).filter((result) => isChartVisible(result, data.selection));
-  $: indicatorsHref = `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators?${selectionParams()}`;
+  $: chartDefinitions = data.scoreboard.definitions;
+  $: indicatorsHref = `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators${$page.url.search}`;
   $: rankingView = { scenario: data.selection?.scenario, year: data.selection?.year };
   $: mapValues = riskValuesFor(rankingView);
-  $: rankingEntries = riskRankingFor(rankingView).slice(0, 5).map((entry) => ({ ...entry, href: countryHref(entry.label) }));
-  $: rankingParts = [
-    { label: data.selection?.scenario?.label ?? 'No scenario' },
-    { label: data.selection?.year?.label ?? 'No year' },
-  ];
+  $: rankingEntries = riskRankingFor(rankingView)
+    .slice(0, 5)
+    .map((entry) => ({ ...entry, href: countryHref(entry.label) }));
+  $: rankingParts = [{ label: data.selection?.scenario?.label ?? 'No scenario' }, { label: data.selection?.year?.label ?? 'No year' }];
 
-  function selectionParams(region) {
+  function selectionParams(data, region) {
     const params = new URLSearchParams({ sector: data.scoreboard.sector.uid });
     for (const key of ['scenario', 'region', 'year']) {
       let value = data.selection?.[key]?.uid;
@@ -81,44 +79,17 @@
     return params;
   }
 
-  const countryHref = (label) => `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators?${selectionParams(label)}`;
+  const countryHref = (label) => `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators?${selectionParams(data, label)}`;
 
   function selectCountry(uid) {
     const country = mapValues.find((entry) => entry.uid === uid);
     if (country) void goto(countryHref(country.label));
   }
-
-  function select(key, event) {
-    const url = new URL($page.url);
-    url.searchParams.set(key, event.currentTarget.value);
-    void goto(url, { keepFocus: true, noScroll: true });
-  }
 </script>
 
 <ScoreboardLayout>
   <svelte:fragment slot="filters">
-    <SectorSelect scoreboard={data.scoreboard} />
-    <label class="flex min-w-[10rem] flex-col text-sm">
-      <span>Scenario</span>
-      <select aria-label="Scenario" class="mt-1 bg-transparent font-semibold" disabled={!data.scenarios?.length} value={data.selection?.scenario?.uid} on:change={(event) => select('scenario', event)}>
-        {#if !data.scenarios?.length}<option>No data</option>{/if}
-        {#each data.scenarios ?? [] as option (option.uid)}<option value={option.uid}>{option.label}</option>{/each}
-      </select>
-    </label>
-    <label class="flex min-w-[10rem] flex-col text-sm">
-      <span>Region</span>
-      <select aria-label="Region" class="mt-1 bg-transparent font-semibold" disabled={!data.regions?.length} value={data.selection?.region?.uid} on:change={(event) => select('region', event)}>
-        {#if !data.regions?.length}<option>No data</option>{/if}
-        {#each data.regions ?? [] as option (option.uid)}<option value={option.uid}>{option.label}</option>{/each}
-      </select>
-    </label>
-    <label class="flex min-w-[8rem] flex-col text-sm">
-      <span>Year</span>
-      <select aria-label="Year" class="mt-1 bg-transparent font-semibold" disabled={!data.years?.length} value={data.selection?.year?.uid} on:change={(event) => select('year', event)}>
-        {#if !data.years?.length}<option>No data</option>{/if}
-        {#each data.years ?? [] as option (option.uid)}<option value={option.uid}>{option.label}</option>{/each}
-      </select>
-    </label>
+    <ScoreboardFilters {data} />
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
@@ -205,12 +176,11 @@
         {/each}
       </ul>
 
-      {#if chartResults.length}
+      {#if chartDefinitions.length}
         <ul class="mt-6 flex max-w-3xl flex-col gap-3">
-          {#each chartResults as result (result.definition.chartId)}
+          {#each chartDefinitions as definition (definition.chartId)}
             <li>
-              <a class="font-semibold text-theme-base" href={`${indicatorsHref}#${result.definition.chartId}`}>{result.definition.title}</a>
-              {#if result.status === 'error'}<span class="ml-2 text-sm text-text-weaker">Data could not be loaded</span>{/if}
+              <a class="font-semibold text-theme-base" href={`${indicatorsHref}#${definition.chartId}`}>{definition.title}</a>
             </li>
           {/each}
         </ul>

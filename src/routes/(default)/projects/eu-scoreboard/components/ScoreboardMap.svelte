@@ -4,7 +4,7 @@
   import ZoomControl from '$lib/components/maps/MapboxMap/ZoomControl.svelte';
   import CountryChoropleth from './CountryChoropleth.svelte';
   import R9Choropleth from './R9Choropleth.svelte';
-  import { countryBounds } from './choropleth.js';
+  import { countriesBounds } from './choropleth.js';
   import { fetchData } from '$lib/api/api';
   import { END_GEO_SHAPE, STATUS_SUCCESS } from '$config';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
@@ -23,19 +23,18 @@
   // Geo id of the country the view is scoped to, if any. The map outlines it and
   // frames it; with none, it frames `bounds` — the whole coverage.
   export let highlight = undefined;
+  export let fitCountries = [];
   // Keeps the fitted shape off the edges of the band. A fixed inset rather than
   // a fraction of the width, so a map narrowed by a comparison keeps it.
   export let padding = 48;
   // Set where `select` is handled — clicking a scored country then opens it.
   export let selectable = false;
 
-  // Framing needs geometry, and the choropleth's vector tiles carry none we can
-  // measure, so the country outlines come from geo-shape — fetched the first
-  // time a country is picked (and cached, shared with the geography modal), so
-  // the default Europe-wide view never pays for them.
+  // Vector tiles expose no geometry for fitting the selected countries.
   const GEO_SHAPE_DATA = writable({});
   let requested = false;
-  $: if (geographyType === 'admin0' && highlight && !requested) {
+  $: framedCountries = highlight ? [highlight] : fitCountries;
+  $: if (geographyType === 'admin0' && framedCountries.length && !requested) {
     requested = true;
     loadGeometry();
   }
@@ -45,10 +44,10 @@
   }
 
   $: shape = $GEO_SHAPE_DATA.status === STATUS_SUCCESS ? $GEO_SHAPE_DATA.data?.data : undefined;
-  $: geometryIsLoading = geographyType === 'admin0' && Boolean(highlight) && $GEO_SHAPE_DATA.status === 'loading';
-  $: geometryHasFailed = geographyType === 'admin0' && Boolean(highlight) && $GEO_SHAPE_DATA.status === 'failed';
-  $: frame = (highlight && shape && countryBounds(shape, highlight)) || bounds;
-  $: zoomRange = geographyType === 'r9' ? [-1, 14] : [1, 14];
+  $: geometryIsLoading = geographyType === 'admin0' && framedCountries.length > 0 && $GEO_SHAPE_DATA.status === 'loading';
+  $: geometryHasFailed = geographyType === 'admin0' && framedCountries.length > 0 && $GEO_SHAPE_DATA.status === 'failed';
+  $: frame = (framedCountries.length && shape && countriesBounds(shape, framedCountries)) || bounds;
+  const zoomRange = [-1, 14];
 </script>
 
 <div class="relative {height} w-full" aria-live="polite" aria-busy={geometryIsLoading}>

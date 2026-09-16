@@ -1,9 +1,9 @@
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect } from 'vitest';
 import {
   boundsForGeography,
   classOf,
   colorFor,
-  countryBounds,
+  countriesBounds,
   countryFillColor,
   countryFilter,
   scoredCountryFilter,
@@ -108,10 +108,10 @@ describe('countryFilter', () => {
   });
 
   test('measures a country for framing, and knows nothing of one it has no shape for', () => {
-    expect(countryBounds(shapes, 'ESP')).toEqual([4, 0, 5, 2]);
-    expect(countryBounds(shapes, 'KOS')).toEqual([9, 0, 10, 2]); // matched by its alias too
-    expect(countryBounds(shapes, 'MAR')).toBeUndefined();
-    expect(countryBounds(undefined, 'ESP')).toBeUndefined();
+    expect(countriesBounds(shapes, ['ESP'])).toEqual([4, 0, 5, 2]);
+    expect(countriesBounds(shapes, ['KOS'])).toEqual([9, 0, 10, 2]); // matched by its alias too
+    expect(countriesBounds(shapes, ['MAR'])).toBeUndefined();
+    expect(countriesBounds(undefined, ['ESP'])).toBeUndefined();
   });
 });
 

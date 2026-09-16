@@ -19,15 +19,20 @@ describe('scoreboard default-run reader', () => {
       },
     };
 
-    const rows = await readDefaultRunSeries(platform, reference);
+    const rows = await readDefaultRunSeries(platform, reference, { scenario: 'Current Policies', regions: ['Austria'], year: 2050 });
 
-    expect(calls).toEqual([{
-      variable: { name: 'Temperature|Mean' },
-      model: { name: 'MESMER' },
-      unit: { name: 'K' },
-      run: { defaultOnly: true },
-      wide: true,
-    }]);
+    expect(calls).toEqual([
+      {
+        variable: { name: 'Temperature|Mean' },
+        model: { name: 'MESMER' },
+        unit: { name: 'K' },
+        run: { defaultOnly: true },
+        scenario: { name: 'Current Policies' },
+        region: { name_in: ['Austria'] },
+        stepYear: 2050,
+        wide: true,
+      },
+    ]);
     expect(rows).toEqual([{ scenario: 'Current Policies', region: 'Austria', model: 'MESMER', unit: 'K', '2040': 1.2, '2050': 1.4 }]);
   });
 

@@ -10,6 +10,7 @@
   export let selection = {};
   export let sector = undefined;
   export let staticMode = false;
+  export let retry = () => invalidateAll();
 
   const components = {
     line: LineChart,
@@ -26,7 +27,7 @@
 {#if chart.status === 'error'}
   <div role="alert">
     <p>{chart.error || 'Chart data could not be loaded.'}</p>
-    <button type="button" class="mt-2 font-bold text-theme-base" on:click={() => invalidateAll()}>Retry</button>
+    <button type="button" class="mt-2 font-bold text-theme-base" on:click={retry}>Retry</button>
   </div>
 {:else if chart.status === 'ready' && component}
   <svelte:component this={component} {...chart.props} chartInfo={chart.info} chartUid={EMBED_UID} {graphDownloadParams} {staticMode} />

@@ -1,13 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { instances } from '../instances';
 import { methodologyScenarios } from './methodology-scenarios';
-import { fetchMethodologyScenarioDetails } from '../views/scenarios';
-
-vi.mock('../views/scenarios', () => ({ fetchMethodologyScenarioDetails: vi.fn() }));
+import * as scenarios from '../views/scenarios';
+let fetchMethodologyScenarioDetails;
 
 const env = { IXMP4_USERNAME: 'user', IXMP4_PASSWORD: 'password' };
 
-beforeEach(() => vi.resetAllMocks());
+beforeEach(() => {
+  fetchMethodologyScenarioDetails = vi.spyOn(scenarios, 'fetchMethodologyScenarioDetails');
+});
+afterEach(() => vi.restoreAllMocks());
 
 describe('methodology scenarios source selection', () => {
   it('loads the selected source even when other sources are unavailable', async () => {

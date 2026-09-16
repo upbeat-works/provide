@@ -4,12 +4,13 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Page from './page.test.fixture.svelte';
 import { getScoreboard } from './controller.js';
 
-const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
-vi.mock('$app/navigation', () => ({ goto }));
+const { goto, invalidate } = vi.hoisted(() => ({ goto: vi.fn(), invalidate: vi.fn() }));
+vi.mock('$app/navigation', () => ({ goto, invalidate }));
 vi.mock('./components/ScoreboardMap.svelte', () => import('./components/Map.test.fixture.svelte'));
 
 beforeEach(() => {
   goto.mockClear();
+  invalidate.mockClear();
   vi.stubGlobal(
     'IntersectionObserver',
     class {
@@ -42,17 +43,13 @@ const dataFor = (status = 'empty') => {
   return data;
 };
 
-test('omits links for charts whose resolved data is empty', () => {
-  const data = dataFor('adapter-empty');
+test('lists the configured indicators without loading their values', () => {
+  const data = dataFor('empty');
+  data.scoreboard = getScoreboard('testing');
   render(Page, { data });
-  expect(screen.getByRole('img', { name: 'Mock country map' })).toBeTruthy();
-  expect(screen.queryByRole('link', { name: data.charts[0].definition.title })).toBeNull();
-});
-
-test.each(['empty', 'error'])('keeps the base map visible for a %s chart result', (status) => {
-  render(Page, { data: dataFor(status) });
-  expect(screen.getByRole('img', { name: 'Mock country map' })).toBeTruthy();
-  if (status === 'error') expect(screen.getByText('Data could not be loaded')).toBeTruthy();
+  for (const definition of data.scoreboard.definitions) {
+    expect(screen.getByRole('link', { name: definition.title })).toBeTruthy();
+  }
 });
 
 test('shows a five-country mock ranking from the same values as the map', () => {
@@ -93,6 +90,16 @@ test('indicator links carry the resolved selection', () => {
   expect(url.searchParams.get('year')).toBe('2050');
 });
 
+test.each(['Indicators', /Explore Heat stress indicators/])('links follow changed filters: %s', async (name) => {
+  const data = dataFor('empty');
+  const { rerender } = render(Page, { data });
+  await rerender({
+    data: { ...data, years: [option('2060')], selection: { ...data.selection, year: option('2060') } },
+    url: new URL('http://localhost/projects/eu-scoreboard?sector=heat-stress&scenario=CurrentPolicies&region=AT11&year=2060'),
+  });
+  expect(new URL(screen.getByRole('link', { name }).href).searchParams.get('year')).toBe('2060');
+});
+
 test('the overview index links to each explanatory section', () => {
   const { container } = render(Page, { data: dataFor('empty') });
   const index = screen.getByText('Index').closest('nav');
@@ -124,4 +131,17 @@ test('sector choices come from server-loaded scoreboard data', () => {
   render(Page, { data });
   const sector = screen.getByRole('combobox', { name: 'Hazard/Sector' });
   expect([...sector.options].map(({ value }) => value)).toEqual(['custom']);
+});
+
+test('keeps the selected year visible and other choices usable after a year lookup failure', async () => {
+  const data = dataFor();
+  data.selection.year = option('2070');
+  data.scoreboardOptions = { status: 'ready', yearStatus: 'error', yearError: 'Years could not be loaded.' };
+  render(Page, { data });
+  expect(screen.getByRole('combobox', { name: 'Year' }).value).toBe('2070');
+  expect(screen.getByRole('combobox', { name: 'Scenario' }).disabled).toBe(false);
+  expect(screen.getByRole('combobox', { name: 'Region' }).disabled).toBe(false);
+  expect(screen.getByRole('alert').textContent).toContain('Years could not be loaded.');
+  await fireEvent.click(screen.getByRole('button', { name: 'Retry choices' }));
+  expect(invalidate).toHaveBeenCalledWith('scoreboard:options');
 });

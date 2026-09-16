@@ -149,14 +149,17 @@ export const loadMethodologyScenarios = async function (svelteFetch = fetch, { i
   }));
 };
 
-export const loadScoreboard = async function (svelteFetch = fetch, selections = {}) {
+async function scoreboardResource(resource, svelteFetch, selections) {
   const params = new URLSearchParams();
-  for (const key of ['sector', 'scenario', 'region', 'year', 'chartId']) {
+  for (const key of ['sector', 'scenario', 'region', 'year']) {
     if (selections[key] !== undefined) params.set(key, selections[key]);
   }
-  const query = params.size ? `?${params}` : '';
-  return getJSON(`${apiUrl('scoreboard')}${query}`, svelteFetch);
-};
+  return getJSON(`${apiUrl(`scoreboard/${resource}`)}?${params}`, svelteFetch);
+}
+
+export const loadScoreboardOptions = (svelteFetch = fetch, selections = {}) => scoreboardResource('options', svelteFetch, selections);
+export const loadScoreboardMap = (svelteFetch = fetch, selections = {}) => scoreboardResource('map', svelteFetch, selections);
+export const loadScoreboardChart = (svelteFetch = fetch, selections = {}) => scoreboardResource(`charts/${encodeURIComponent(selections.chartId)}`, svelteFetch, selections);
 
 // Curation slice — the transitional study-locations + likelihoods remnants not
 // yet derivable from conventions. Tiny static data; loaded only by the sections

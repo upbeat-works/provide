@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { definitionGroupingError } from './scoreboard';
+import { definitionGroupingError } from '../scoreboard/charts';
 
 const reference = { variable: 'Value', model: 'Model', unit: 'unit' };
 

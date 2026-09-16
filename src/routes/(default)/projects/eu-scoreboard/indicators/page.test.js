@@ -1,73 +1,85 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, expect, test, vi } from 'vitest';
 import Page from './page.ssr.fixture.svelte';
 import { getScoreboard } from '../controller.js';
 
 vi.mock('../components/ScoreboardMap.svelte', () => import('../components/Map.test.fixture.svelte'));
-const { invalidateAll } = vi.hoisted(() => ({ invalidateAll: vi.fn() }));
-vi.mock('$app/navigation', () => ({ goto: vi.fn(), invalidateAll }));
-
+vi.mock('$app/navigation', () => ({ goto: vi.fn(), invalidate: vi.fn(), invalidateAll: vi.fn() }));
 afterEach(() => {
   cleanup();
-  invalidateAll.mockClear();
+  vi.unstubAllGlobals();
 });
-
 const option = (uid) => ({ uid, label: uid });
+const scoreboard = getScoreboard('testing');
+const definition = scoreboard.definitions[0];
+const readyChart = { definition, status: 'ready', data: [{ line: [{ year: 2050, value: 2 }] }] };
 const common = {
+  scoreboard,
   scenarios: [option('scenario')],
   regions: [option('region')],
   years: [option('2050')],
   selection: { scenario: option('scenario'), region: option('region'), year: option('2050') },
-  map: {
-    definition: { title: 'Heat-vulnerable population', geographyType: 'r9', data: { unit: 'million' } },
-    status: 'ready',
-    values: [{ uid: 'European Union (R9)', label: 'European Union (R9)', value: 12 }],
-  },
+  map: { definition: scoreboard.mapDefinition, status: 'ready', values: [{ uid: 'European Union (R9)', label: 'European Union (R9)', value: 12 }] },
+  charts: [],
 };
 
-test('an empty sector keeps the base map visible', () => {
-  const map = { definition: getScoreboard('heat-stress').mapDefinition, status: 'empty', values: [] };
-  render(Page, { data: { ...common, scoreboard: getScoreboard('heat-stress'), map, charts: [] } });
-  expect(screen.getByRole('img', { name: 'Mock country map' })).toBeTruthy();
-});
-
-test('a chart error keeps the base map and reports the data error', () => {
-  const definition = getScoreboard('testing').definitions[0];
+test('renders a map and a ready chart while another chart is still loading', async () => {
+  let finish;
+  const slow = new Promise((resolve) => {
+    finish = resolve;
+  });
   render(Page, {
     data: {
       ...common,
-      scoreboard: getScoreboard('testing'),
-      charts: [{ definition, status: 'error', data: [], error: 'Source unavailable' }],
+      charts: [
+        { definition, result: readyChart },
+        { definition: scoreboard.definitions[1], result: slow },
+      ],
     },
   });
   expect(screen.getByRole('img', { name: 'Mock country map' })).toBeTruthy();
-  expect(screen.getByRole('alert').textContent).toContain('Source unavailable');
+  expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
+  expect(screen.getByRole('status').textContent).toContain(scoreboard.definitions[1].title);
+  finish({ definition: scoreboard.definitions[1], status: 'empty', data: [] });
+  await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+  expect(screen.queryByRole('heading', { name: scoreboard.definitions[1].title })).toBeNull();
 });
 
-test('maps API values and clears the legend when a selection has no values', async () => {
-  const data = { ...common, scoreboard: getScoreboard('testing'), charts: [] };
-  const { component } = render(Page, { data });
+test('ignores an old map result after the selection changes', async () => {
+  let finish;
+  const slow = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const { rerender } = render(Page, { data: { ...common, map: slow } });
+  await rerender({ data: { ...common, selection: { ...common.selection, year: option('2060') } } });
   const map = screen.getByRole('img', { name: 'Mock country map' });
   expect(JSON.parse(map.dataset.values)).toEqual(common.map.values);
-  expect(map.dataset.geographyType).toBe('r9');
-  expect(screen.getByText('Heat-vulnerable population')).toBeTruthy();
-  expect(screen.getByText(/million/)).toBeTruthy();
-
-  const empty = { ...data, map: { ...data.map, status: 'empty', values: [] } };
-  await component.$set({ data: empty });
-  expect(JSON.parse(map.dataset.values)).toEqual([]);
-  expect(screen.queryByText('Heat-vulnerable population')).toBeNull();
+  finish({ ...common.map, values: [{ uid: 'India (R9)', value: 99 }] });
+  await Promise.resolve();
+  expect(JSON.parse(map.dataset.values)).toEqual(common.map.values);
 });
 
-test('keeps the map visible and offers retry after a map error', async () => {
-  const map = { ...common.map, status: 'error', values: [], error: 'Map unavailable' };
-  const scoreboard = getScoreboard('testing');
-  const charts = [{ definition: scoreboard.definitions[0], status: 'ready', data: [{ line: [{ year: 2050, value: 2 }] }] }];
-  render(Page, { data: { ...common, scoreboard, map, charts } });
-  expect(screen.getByRole('img', { name: 'Mock country map' })).toBeTruthy();
-  expect(screen.getByRole('alert').textContent).toContain('Map unavailable');
-  expect(screen.getByRole('heading', { name: scoreboard.definitions[0].title })).toBeTruthy();
+test('retries only the failed map and keeps a ready chart visible', async () => {
+  const fetcher = vi.fn().mockResolvedValue(Response.json(common.map));
+  vi.stubGlobal('fetch', fetcher);
+  render(Page, { data: { ...common, map: { ...common.map, status: 'error', values: [], error: 'Map unavailable' }, charts: [{ definition, result: readyChart }] } });
+  expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
+  await fireEvent.click(screen.getByRole('button', { name: 'Retry map' }));
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  expect(fetcher).toHaveBeenCalledOnce();
+  expect(fetcher.mock.calls[0][0]).toBe('/app/scoreboard/map?sector=testing&scenario=scenario&region=region&year=2050');
+  expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
+});
+
+test('retries only the failed chart and leaves the map in place', async () => {
+  const fetcher = vi.fn().mockResolvedValue(Response.json(readyChart));
+  vi.stubGlobal('fetch', fetcher);
+  render(Page, { data: { ...common, charts: [{ definition, result: { definition, status: 'error', error: 'Chart unavailable', data: [] } }] } });
+  const map = screen.getByRole('img', { name: 'Mock country map' });
   await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-  expect(invalidateAll).toHaveBeenCalledOnce();
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  expect(fetcher).toHaveBeenCalledOnce();
+  expect(fetcher.mock.calls[0][0]).toBe(`/app/scoreboard/charts/${definition.chartId}?sector=testing&scenario=scenario&region=region&year=2050`);
+  expect(screen.getByRole('img', { name: 'Mock country map' })).toBe(map);
 });

@@ -1,98 +1,49 @@
-import { loadFromStrapi, loadScoreboard } from '$utils/apis.js';
+import { loadFromStrapi, loadScoreboardOptions, loadScoreboardChart, loadScoreboardMap } from '$utils/apis.js';
 import { toCaseStudyLink } from '$lib/catalog/case-study-link.js';
 
-const caseStudyId = (study) => String(study.id);
-
-function safeFailure(reason) {
-  if (!(reason instanceof Error)) return { reasonType: typeof reason };
-  const failure = { reasonName: reason.name };
-  if ('code' in reason && typeof reason.code === 'string') failure.reasonCode = reason.code;
-  if ('status' in reason && typeof reason.status === 'number') failure.reasonStatus = reason.status;
-  if (reason.cause instanceof Error) {
-    failure.causeName = reason.cause.name;
-    if ('code' in reason.cause && typeof reason.cause.code === 'string') failure.causeCode = reason.cause.code;
-  }
-  if ('response' in reason && reason.response && typeof reason.response === 'object' && 'status' in reason.response && typeof reason.response.status === 'number') {
-    failure.reasonStatus = reason.response.status;
-  }
-  const httpStatus = reason.message.match(/HTTP (\d{3})/i)?.[1];
-  if (httpStatus && failure.reasonStatus === undefined) failure.reasonStatus = Number(httpStatus);
-  return failure;
+function reportFailure(operation, reason) {
+  console.error('Scoreboard request failed', { operation, reasonName: reason instanceof Error ? reason.name : typeof reason, status: reason?.status });
 }
 
-export async function loadCharts({ scoreboard, fetch, selections = {}, chartId }) {
-  if (!scoreboard.definitions.length && (!scoreboard.mapDefinition || chartId)) {
-    return {
-      scenarios: [],
-      regions: [],
-      years: [],
-      selection: { scenario: null, region: null, year: null },
-      map: undefined,
-      charts: [],
-    };
+export async function loadOptions({ scoreboard, fetch, selections = {} }) {
+  try {
+    return await loadScoreboardOptions(fetch, { sector: scoreboard.sector.uid, scenario: selections.scenario, region: selections.region });
+  } catch (reason) {
+    reportFailure('load-options', reason);
+    return { status: 'error', error: 'Choices could not be loaded.', scenarios: [], regions: [], years: [], selection: {} };
   }
+}
+
+export async function loadChart({ scoreboard, fetch, selections, chartId }) {
+  const definition = scoreboard.definitions.find((item) => item.chartId === chartId);
+  if (!definition) return undefined;
   let result;
   try {
-    result = await loadScoreboard(fetch, {
-      sector: scoreboard.sector.uid,
-      ...selections,
-      ...(chartId ? { chartId } : {}),
-    });
+    result = await loadScoreboardChart(fetch, { sector: scoreboard.sector.uid, ...selections, chartId });
   } catch (reason) {
-    console.error('Scoreboard request failed', {
-      operation: 'load-scoreboard',
-      sector: scoreboard.sector.uid,
-      chartId,
-      scenario: selections.scenario,
-      region: selections.region,
-      year: selections.year,
-      ...safeFailure(reason),
-    });
-    const definitions = chartId ? scoreboard.definitions.filter((definition) => definition.chartId === chartId) : scoreboard.definitions;
-    return {
-      scenarios: [],
-      regions: [],
-      years: [],
-      selection: { scenario: null, region: null, year: null },
-      map: !chartId && scoreboard.mapDefinition ? {
-        definition: scoreboard.mapDefinition,
-        status: 'error',
-        values: [],
-        error: 'Map data could not be loaded.',
-      } : undefined,
-      charts: definitions.map((definition) => ({
-        definition,
-        status: 'error',
-        data: [],
-        error: 'Chart data could not be loaded.',
-      })),
-    };
+    reportFailure('load-chart', reason);
+    return { definition, status: 'error', data: [], error: 'Chart data could not be loaded.' };
   }
-  const ids = new Set(result.charts.map(({ definition }) => definition.caseStudyId).filter(Boolean).map(String));
-  let studiesById = new Map();
-  if (ids.size) {
+  if (definition.caseStudyId && result.status === 'ready') {
     try {
-      const studies = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*&populate[Covers]=*');
-      studiesById = new Map(studies.filter((study) => ids.has(caseStudyId(study))).map((study) => [caseStudyId(study), toCaseStudyLink(study)]));
+      const studies = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*&populate[Covers]=*', `filters[id][$eq]=${encodeURIComponent(definition.caseStudyId)}`);
+      const study = studies.find(({ id }) => String(id) === String(definition.caseStudyId));
+      if (study) result = { ...result, caseStudy: toCaseStudyLink(study) };
     } catch (reason) {
-      console.error('Scoreboard case studies failed', {
-        operation: 'load-case-studies',
-        sector: scoreboard.sector.uid,
-        chartId,
-        caseStudyIds: [...ids],
-        ...safeFailure(reason),
-      });
-      studiesById = new Map();
+      reportFailure('load-case-study', reason);
     }
   }
-  return {
-    ...result,
-    charts: result.charts.map((chart) => {
-      const id = chart.definition.caseStudyId;
-      if (!id) return chart;
-      return { ...chart, caseStudy: studiesById.get(String(id)) };
-    }),
-  };
+  return result;
+}
+
+export async function loadMap({ scoreboard, fetch, selections }) {
+  if (!scoreboard.mapDefinition) return undefined;
+  try {
+    return await loadScoreboardMap(fetch, { sector: scoreboard.sector.uid, ...selections });
+  } catch (reason) {
+    reportFailure('load-map', reason);
+    return { definition: scoreboard.mapDefinition, status: 'error', values: [], error: 'Map data could not be loaded.' };
+  }
 }
 
 export const selectionsFromUrl = (url) => ({

@@ -19,13 +19,10 @@ const CODE_ALIASES = {
 
 const codesFor = (uid) => CODE_ALIASES[uid] ?? [uid];
 
-// The tiles carry no geometry we can measure, so framing a country needs the
-// geo-shape outlines. Returns [minLng, minLat, maxLng, maxLat], or undefined
-// when the shapes have no such country.
-export function countryBounds(shape, uid) {
-  const codes = codesFor(uid);
-  const feature = (shape?.features ?? []).find((f) => codes.includes(f.properties?.uid));
-  return feature ? bbox(feature) : undefined;
+export function countriesBounds(shape, uids) {
+  const codes = new Set(uids.flatMap(codesFor));
+  const features = (shape?.features ?? []).filter(({ properties }) => codes.has(properties?.uid));
+  return features.length ? bbox({ type: 'FeatureCollection', features }) : undefined;
 }
 
 // The class a value falls in: the last one whose `min` it reaches.
@@ -55,7 +52,7 @@ export function numericClasses(values = [], unit = undefined) {
 }
 
 const MAP_BOUNDS = {
-  admin0: [-25, 34, 45, 72],
+  admin0: [-180, -60, 180, 85],
   r9: [-180, -60, 180, 85],
 };
 
