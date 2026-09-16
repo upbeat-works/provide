@@ -1,8 +1,8 @@
 import { generatePageTitle } from '$utils/meta.js';
 import { LABEL_EU_SCOREBOARD } from '$config';
-import { loadMethodologyScenarios } from '$utils/apis.js';
+import { loadCharts, selectionsFromUrl } from './controller.server.js';
 
-export const load = async ({ fetch }) => ({
-  title: generatePageTitle(LABEL_EU_SCOREBOARD),
-  scenarios: await loadMethodologyScenarios(fetch),
-});
+export const load = async ({ fetch, parent, url }) => {
+  const { scoreboard } = await parent();
+  return { title: generatePageTitle(LABEL_EU_SCOREBOARD), ...(await loadCharts({ scoreboard, fetch, selections: selectionsFromUrl(url) })) };
+};

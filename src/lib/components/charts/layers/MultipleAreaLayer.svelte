@@ -9,6 +9,7 @@
   const { data, xGet, yScale } = getContext('LayerCake');
 
   $: areaGen = area()
+    .defined((d) => Number.isFinite(d[y0Key]) && Number.isFinite(d[y1Key]))
     .x((d) => $xGet(d))
     .y0((d) => $yScale(d[y0Key]))
     .y1((d) => $yScale(d[y1Key]));
@@ -17,10 +18,5 @@
 </script>
 
 {#each chartData as d}
-  <path
-    class:opacity-20={d.isSelected}
-    class:opacity-10={!d.isSelected}
-    d={areaGen(d.values)}
-    fill={d.range}
-  />
+  <path class:opacity-20={d.isSelected} class:opacity-10={!d.isSelected} d={areaGen(d.values)} fill={d.range} />
 {/each}

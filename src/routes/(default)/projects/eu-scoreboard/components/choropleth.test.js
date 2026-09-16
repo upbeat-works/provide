@@ -1,5 +1,20 @@
 import { describe, test, expect } from 'bun:test';
-import { classOf, colorFor, countryBounds, countryFillColor, countryFilter, scoredCountryFilter, legendOf, uidForCode, COUNTRY_CODE } from './choropleth.js';
+import {
+  boundsForGeography,
+  classOf,
+  colorFor,
+  countryBounds,
+  countryFillColor,
+  countryFilter,
+  scoredCountryFilter,
+  legendOf,
+  numericClasses,
+  r9FillColor,
+  r9Filter,
+  uidForCode,
+  COUNTRY_CODE,
+  R9_REGION,
+} from './choropleth.js';
 import { indicatorValuesFor, RISK_CLASSES, riskRankingFor, riskValues } from './scores.js';
 
 describe('classOf', () => {
@@ -137,6 +152,29 @@ describe('legendOf', () => {
     expect(legendOf(RISK_CLASSES).labels).toEqual(['Very Low', 'Low', 'Medium', 'High']);
     expect(legendOf(RISK_CLASSES, { highestFirst: true }).labels).toEqual(['High', 'Medium', 'Low', 'Very Low']);
     expect(legendOf(RISK_CLASSES, { highestFirst: true }).scale[0]).toBe('#5A0F6B');
+  });
+});
+
+describe('numeric indicator map scale', () => {
+  test('includes zero and negative values in readable numeric classes', () => {
+    const classes = numericClasses([{ value: -2 }, { value: 0 }, { value: 8 }, { value: null }], 'K');
+    expect(classes).toHaveLength(5);
+    expect(classOf(-2, classes)).toBe(classes[0]);
+    expect(classOf(0, classes)).toBeDefined();
+    expect(classes.every(({ label }) => label.includes('K'))).toBe(true);
+  });
+
+  test('uses one honest class for equal values and none for missing values', () => {
+    expect(numericClasses([{ value: 0 }, { value: 0 }], '%')).toEqual([{ min: 0, label: '0 %', color: '#ee9f3f' }]);
+    expect(numericClasses([{ value: null }])).toEqual([]);
+  });
+
+  test('builds the R9 match expression and keeps empty overlays transparent', () => {
+    const classes = numericClasses([{ value: 4 }]);
+    expect(r9FillColor([{ uid: 'European Union (R9)', value: 4 }], classes)).toEqual(['match', R9_REGION, 'European Union (R9)', '#ee9f3f', 'transparent']);
+    expect(r9FillColor([], classes)).toBe('transparent');
+    expect(r9Filter([], classes)).toEqual(['in', R9_REGION, ['literal', []]]);
+    expect(boundsForGeography('r9')).toEqual([-180, -60, 180, 85]);
   });
 });
 

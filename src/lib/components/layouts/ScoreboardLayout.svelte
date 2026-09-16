@@ -8,6 +8,7 @@
 
   // Exposed so sticky content inside the sections can clear the control bar.
   export let barHeight = 0;
+  export let showSidebar = true;
 </script>
 
 {#if $$slots.filters || $$slots.actions}
@@ -31,7 +32,7 @@
   </div>
 {/if}
 
-{#if $$slots.sidebar}
+{#if showSidebar && $$slots.sidebar}
   <div class="mx-auto max-w-7xl px-6 grid grid-cols-1 md:grid-cols-[minmax(0,15rem)_1fr] gap-8 md:gap-16">
     <div class="py-10 md:sticky h-fit" style="top: {barHeight}px">
       <slot name="sidebar" />

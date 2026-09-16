@@ -1,10 +1,5 @@
 import bbox from '@turf/bbox';
 
-// The scoreboard's maps are step choropleths, not continuous ramps: a country
-// is placed in one of a handful of classes so the map reads the same way the
-// legend beside it does. A class is `{ min, label, color }` and a scale is those
-// classes ordered ascending — see `scores.js` for the two the scoreboard uses.
-
 // Countries are drawn from Mapbox's `country-boundaries-v1` tileset rather than
 // from our own geo-shape geojson: those shapes are simplified hard enough that
 // coastlines and borders go blocky next to the basemap under them, while the
@@ -40,6 +35,47 @@ export function classOf(value, classes = []) {
 }
 
 export const colorFor = (value, classes) => classOf(value, classes)?.color;
+
+const NUMERIC_COLORS = ['#fff2cc', '#f9d67a', '#ee9f3f', '#d75b2a', '#9f2727'];
+const formatNumber = (value) => new Intl.NumberFormat('en', { maximumFractionDigits: 2 }).format(value);
+
+export function numericClasses(values = [], unit = undefined) {
+  const finite = values.map(({ value }) => value).filter(Number.isFinite);
+  if (!finite.length) return [];
+  const minimum = Math.min(...finite);
+  const maximum = Math.max(...finite);
+  const suffix = unit ? ` ${unit}` : '';
+  if (minimum === maximum) return [{ min: minimum, label: `${formatNumber(minimum)}${suffix}`, color: NUMERIC_COLORS[2] }];
+  const step = (maximum - minimum) / NUMERIC_COLORS.length;
+  return NUMERIC_COLORS.map((color, index) => {
+    const start = minimum + step * index;
+    const end = index === NUMERIC_COLORS.length - 1 ? maximum : minimum + step * (index + 1);
+    return { min: start, label: `${formatNumber(start)}–${formatNumber(end)}${suffix}`, color };
+  });
+}
+
+const MAP_BOUNDS = {
+  admin0: [-25, 34, 45, 72],
+  r9: [-180, -60, 180, 85],
+};
+
+export const boundsForGeography = (geographyType) => MAP_BOUNDS[geographyType] ?? MAP_BOUNDS.admin0;
+
+export const R9_REGION_PROPERTY = 'I_REGION';
+export const R9_REGION = ['get', R9_REGION_PROPERTY];
+
+export function r9FillColor(values = [], classes = []) {
+  const cases = values.flatMap((entry) => {
+    const color = colorFor(entry.value, classes);
+    return color ? [entry.uid, color] : [];
+  });
+  return cases.length ? ['match', R9_REGION, ...cases, 'transparent'] : 'transparent';
+}
+
+export function r9Filter(values = [], classes = []) {
+  const uids = values.flatMap((entry) => (colorFor(entry.value, classes) ? [entry.uid] : []));
+  return ['in', R9_REGION, ['literal', uids]];
+}
 
 // `values` is `[{ uid, value }]` keyed on the geo id (`ITA`). Anything it has no
 // value for falls through to the default and stays transparent — outside the

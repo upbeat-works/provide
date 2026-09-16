@@ -9,6 +9,8 @@
   import { EMBED_UID } from '$routes/(default)/projects/eu-scoreboard/components/charts/catalog.js';
   import Logo from '$lib/components/site/Logo.svelte';
 
+  export let data = {};
+
   const embeds = {
     'impact-time': ImpactTime,
     'impact-geo': ImpactGeo,
@@ -24,7 +26,14 @@
     return context;
   }
   function paramsForEmbed(embed, params, context) {
-    if (embed === EMBED_UID) return { ...params, staticMode: params.static };
+    if (embed === EMBED_UID) {
+      return {
+        result: data.scoreboardChart,
+        selection: data.selection,
+        sector: data.scoreboard?.sector.uid,
+        staticMode: params.static,
+      };
+    }
     if (embed === 'impact-geo') return { chartContext: context, year: params.year, displayOption: params.displayOption, showSatellite: params.showSatellite };
     if (embed === 'unavoidable-risk') return { chartContext: context, threshold: params.threshold };
     return { chartContext: context };

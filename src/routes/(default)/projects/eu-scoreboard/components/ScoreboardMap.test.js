@@ -45,3 +45,8 @@ test('shows loading and lets the user retry failed country geometry', async () =
   expect(screen.queryByRole('alert')).toBeNull();
   expect(attempts).toBe(2);
 });
+
+test('fits the world map within a narrow viewport', () => {
+  render(ScoreboardMap, { geographyType: 'r9' });
+  expect(JSON.parse(screen.getByText('Country map').dataset.zoomRange)).toEqual([-1, 14]);
+});

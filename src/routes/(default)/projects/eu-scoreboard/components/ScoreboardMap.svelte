@@ -3,6 +3,7 @@
   import MapProvider from '$lib/components/maps/MapboxMap/MapProvider.svelte';
   import ZoomControl from '$lib/components/maps/MapboxMap/ZoomControl.svelte';
   import CountryChoropleth from './CountryChoropleth.svelte';
+  import R9Choropleth from './R9Choropleth.svelte';
   import { countryBounds } from './choropleth.js';
   import { fetchData } from '$lib/api/api';
   import { END_GEO_SHAPE, STATUS_SUCCESS } from '$config';
@@ -18,6 +19,7 @@
   // `[{ uid, label, value }]`, keyed on the country's alpha-3 geo id (`ITA`).
   export let values = [];
   export let classes = [];
+  export let geographyType = 'admin0';
   // Geo id of the country the view is scoped to, if any. The map outlines it and
   // frames it; with none, it frames `bounds` — the whole coverage.
   export let highlight = undefined;
@@ -33,7 +35,7 @@
   // the default Europe-wide view never pays for them.
   const GEO_SHAPE_DATA = writable({});
   let requested = false;
-  $: if (highlight && !requested) {
+  $: if (geographyType === 'admin0' && highlight && !requested) {
     requested = true;
     loadGeometry();
   }
@@ -43,12 +45,13 @@
   }
 
   $: shape = $GEO_SHAPE_DATA.status === STATUS_SUCCESS ? $GEO_SHAPE_DATA.data?.data : undefined;
-  $: geometryIsLoading = Boolean(highlight) && $GEO_SHAPE_DATA.status === 'loading';
-  $: geometryHasFailed = Boolean(highlight) && $GEO_SHAPE_DATA.status === 'failed';
+  $: geometryIsLoading = geographyType === 'admin0' && Boolean(highlight) && $GEO_SHAPE_DATA.status === 'loading';
+  $: geometryHasFailed = geographyType === 'admin0' && Boolean(highlight) && $GEO_SHAPE_DATA.status === 'failed';
   $: frame = (highlight && shape && countryBounds(shape, highlight)) || bounds;
+  $: zoomRange = geographyType === 'r9' ? [-1, 14] : [1, 14];
 </script>
 
-<div class="{height} w-full" aria-live="polite" aria-busy={geometryIsLoading}>
+<div class="relative {height} w-full" aria-live="polite" aria-busy={geometryIsLoading}>
   {#if geometryIsLoading}
     <LoadingPlaceholder />
   {:else if geometryHasFailed}
@@ -57,10 +60,17 @@
       <Button variant="secondary" size="sm" on:click={loadGeometry}>Retry map</Button>
     </div>
   {:else}
-    <MapProvider bounds={frame} fitBoundsOptions={{ padding }}>
+    <MapProvider bounds={frame} fitBoundsOptions={{ padding }} {zoomRange}>
       <ZoomControl />
-      <CountryChoropleth {values} {classes} {highlight} {selectable} on:select />
+      {#if geographyType === 'r9'}
+        <R9Choropleth {values} {classes} />
+      {:else}
+        <CountryChoropleth {values} {classes} {highlight} {selectable} on:select />
+      {/if}
       <slot />
     </MapProvider>
+    {#if geographyType === 'r9'}
+      <p class="absolute bottom-1 right-2 rounded bg-white/80 px-1 text-[10px] text-text-weaker">Source: IIASA Scenario Services team · Natural Earth · CC BY 4.0</p>
+    {/if}
   {/if}
 </div>

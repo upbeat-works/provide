@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { get } from 'svelte/store';
 import { createRuntimeCatalog } from '$stores/runtime-catalog.js';
 import { createCatalogFlow } from '$stores/catalog-flow.js';
-import { createOwnedIndicatorIndexRequest } from '$stores/owned-indicator-index.js';
 import { parseCatalogUrlSelection } from '$lib/utils/url.js';
 
 const API_ORIGIN = 'https://catalog.example';
@@ -25,12 +23,12 @@ afterEach(() => {
   vi.resetModules();
 });
 
-function scenarioDetails(description) {
+function scenarioDetails(description, instance = 'provide-internal') {
   return [
     {
       id: 'Low Demand',
       label: 'Low Demand',
-      instance: 'provide-internal',
+      instance,
       yearStart: 2020,
       yearStep: 10,
       yearEnd: 2100,
@@ -79,7 +77,20 @@ function createLoaderFetch({
     if (url.origin === API_ORIGIN && path === '/api/geographies/types') {
       return Response.json([{ id: 'cities', label: 'Cities', labelSingular: 'City', isSelectable: true }]);
     }
-    if (url.origin === API_ORIGIN && path === '/api/methodology-scenarios') return Response.json(scenarioDetails(scenarioTechnicalDescription));
+    if (url.origin === API_ORIGIN && path === '/api/methodology-scenarios') return Response.json(scenarioDetails(scenarioTechnicalDescription, url.searchParams.get('instance') ?? 'provide-internal'));
+    if (url.origin === API_ORIGIN && path === '/api/scoreboard') {
+      const scenario = { uid: 'Low Demand', label: 'Low Demand' };
+      const region = { uid: 'European Union (R9)', label: 'European Union (R9)' };
+      const year = { uid: '2050', label: '2050' };
+      return Response.json({
+        scenarios: [scenario], regions: [region], years: [year],
+        selection: { scenario, region, year },
+        charts: [{
+          definition: { chartId: 'live-chart', title: 'Live chart', description: 'Live data.', chartType: 'line', data: [] },
+          status: 'empty', data: [],
+        }],
+      });
+    }
     if (url.origin === API_ORIGIN && path === '/api/study-locations') return Response.json({ studyLocations });
     if (url.origin === API_ORIGIN && path === '/api/likelihoods') return Response.json({ likelihoods });
     if (url.origin === API_ORIGIN && path === '/api/catalog') {
@@ -229,42 +240,55 @@ describe('focused catalog consumers', () => {
     expect(apiPaths(requests)).toEqual([]);
   });
 
-  test('scoreboard pages request only the indexes used by each view', async () => {
+  test('empty scoreboard sectors load no catalogs or CMS content', async () => {
     const { loaderFetch, requests } = createLoaderFetch();
     const [{ load: loadLayout }, { load: loadRanking }, { load: loadIndicators }] = await Promise.all([
       import('./(default)/projects/eu-scoreboard/+layout.server.js'),
       import('./(default)/projects/eu-scoreboard/+page.server.js'),
       import('./(default)/projects/eu-scoreboard/indicators/+page.server.js'),
     ]);
-
-    expect(await loadLayout({ fetch: loaderFetch })).toEqual({});
-    const ranking = await loadRanking({ fetch: loaderFetch });
-    expect(apiPaths(requests)).toEqual(['/api/methodology-scenarios']);
-    expect(ranking.scenarios[0]).toMatchObject({ uid: 'Low Demand', instance: 'provide-internal' });
-
-    requests.length = 0;
-    const indicators = await loadIndicators({ fetch: loaderFetch });
-    expect(apiPaths(requests).sort()).toEqual(['/api/geographies', '/api/geographies/types', '/api/indicators', '/api/methodology-scenarios'].sort());
-    expect(indicators.indicatorIndex.indicators[0]).toMatchObject({ uid: 'Heat', instance: 'provide-internal' });
-    expect(indicators.geographies.cities[0]).toMatchObject({ uid: 'lisbon', label: 'Lisbon' });
-    expect(indicators.scenarios[0]).toMatchObject({ uid: 'Low Demand', instance: 'provide-internal' });
+    for (const sector of ['', 'heat-stress', 'unknown']) {
+      const url = new URL(`${APP_ORIGIN}/projects/eu-scoreboard?sector=${sector}`);
+      expect((await loadLayout({ url })).scoreboard).toMatchObject({ instance: 'sparccle-internal', sector: { uid: 'heat-stress' }, definitions: [] });
+      expect(await loadRanking({ fetch: loaderFetch, url, parent: () => loadLayout({ url }) })).toMatchObject({ scenarios: [] });
+      expect(await loadIndicators({ fetch: loaderFetch, url, parent: () => loadLayout({ url }) })).toMatchObject({ scenarios: [], regions: [], years: [], charts: [] });
+    }
+    expect(requests).toEqual([]);
   });
 
-  test('scoreboard indicator retry reloads only its owned index', async () => {
+  test('Testing scoreboard requests its fixed chart data', async () => {
     const { loaderFetch, requests } = createLoaderFetch();
-    const { loadIndicatorIndex } = await import('$utils/apis.js');
-    const request = createOwnedIndicatorIndexRequest({
-      initialIndex: { indicators: [], failedInstances: [{ instance: 'failed-source' }] },
-      load: () => loadIndicatorIndex(loaderFetch),
-    });
+    const [{ load: loadLayout }, { load: loadRanking }, { load: loadIndicators }] = await Promise.all([
+      import('./(default)/projects/eu-scoreboard/+layout.server.js'),
+      import('./(default)/projects/eu-scoreboard/+page.server.js'),
+      import('./(default)/projects/eu-scoreboard/indicators/+page.server.js'),
+    ]);
+    const url = new URL(`${APP_ORIGIN}/projects/eu-scoreboard?sector=testing&instance=provide-internal`);
+    const parent = () => loadLayout({ url });
+    const ranking = await loadRanking({ fetch: loaderFetch, url, parent });
+    expect(apiPaths(requests)).toEqual(['/api/scoreboard']);
+    expect(requests[0].searchParams.get('sector')).toBe('testing');
+    expect(requests[0].searchParams.has('instance')).toBe(false);
+    expect(ranking.scenarios[0]).toMatchObject({ uid: 'Low Demand' });
 
-    await request.retry();
+    requests.length = 0;
+    const indicators = await loadIndicators({ fetch: loaderFetch, url, parent });
+    expect(apiPaths(requests)).toEqual(['/api/scoreboard']);
+    expect(indicators).not.toHaveProperty('indicatorIndex');
+    expect(indicators.scenarios[0]).toMatchObject({ uid: 'Low Demand' });
+  });
 
-    expect(apiPaths(requests)).toEqual(['/api/indicators']);
-    expect(get(request.state)).toMatchObject({
-      status: 'success',
-      data: { indicators: [{ uid: 'Heat', instance: 'provide-internal' }] },
-    });
+  test('scoreboard controller keeps its source when a caller supplies another instance', async () => {
+    const { loaderFetch, requests } = createLoaderFetch();
+    const { getScoreboard } = await import('./(default)/projects/eu-scoreboard/controller.js');
+    const { loadCharts } = await import('./(default)/projects/eu-scoreboard/controller.server.js');
+    const scoreboard = { ...getScoreboard('testing'), instance: 'provide-internal' };
+    await loadCharts({ scoreboard, fetch: loaderFetch, selections: {} });
+
+    const scoreboardRequests = requests.filter((request) => request.origin === API_ORIGIN && request.pathname.replace(/\/$/, '') === '/api/scoreboard');
+    expect(scoreboardRequests).toHaveLength(1);
+    expect(scoreboardRequests[0].searchParams.get('sector')).toBe('testing');
+    expect(scoreboardRequests[0].searchParams.has('instance')).toBe(false);
   });
 
   test('case-study list and detail request separate focused data', async () => {

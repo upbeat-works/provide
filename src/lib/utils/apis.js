@@ -78,7 +78,11 @@ const apiUrl = (path) => `${catalogApiUrl(path)}/`;
 
 async function getJSON(url, svelteFetch = fetch) {
   const res = await svelteFetch(url);
-  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+  if (!res.ok) {
+    const error = new Error('Request failed');
+    error.status = res.status;
+    throw error;
+  }
   return res.json();
 }
 
@@ -132,8 +136,10 @@ function gmtSeries(gmt) {
   }));
 }
 
-export const loadMethodologyScenarios = async function (svelteFetch = fetch) {
-  const scenarios = await getJSON(apiUrl('methodology-scenarios'), svelteFetch);
+export const loadMethodologyScenarios = async function (svelteFetch = fetch, { instance } = {}) {
+  let url = apiUrl('methodology-scenarios');
+  if (instance !== undefined) url += `?instance=${encodeURIComponent(instance)}`;
+  const scenarios = await getJSON(url, svelteFetch);
   return scenarios.map((scenario) => ({
     ...scenario,
     uid: scenario.id,
@@ -141,6 +147,15 @@ export const loadMethodologyScenarios = async function (svelteFetch = fetch) {
     endYear: scenario.yearEnd,
     gmt: gmtSeries(scenario.gmt),
   }));
+};
+
+export const loadScoreboard = async function (svelteFetch = fetch, selections = {}) {
+  const params = new URLSearchParams();
+  for (const key of ['sector', 'scenario', 'region', 'year', 'chartId']) {
+    if (selections[key] !== undefined) params.set(key, selections[key]);
+  }
+  const query = params.size ? `?${params}` : '';
+  return getJSON(`${apiUrl('scoreboard')}${query}`, svelteFetch);
 };
 
 // Curation slice — the transitional study-locations + likelihoods remnants not
