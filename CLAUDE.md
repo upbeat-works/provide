@@ -40,3 +40,11 @@ from conventions — shrink it, don't grow it.
 
 `bun test api/` (also `npm test`). Routes use MSW-free Hono `api.request(...)` with a test env;
 view pure-functions are unit-tested directly. Tests live next to the code (`*.test.ts`).
+
+The frontend has its own runner: `npm run test:web` (vitest, `vitest.config.js`). Run it **inside
+the web container** — `docker compose exec web npm run test:web` — since vitest's worker pool does
+not work under bun. Two dialects live under `src/`: most `*.test.js` are vitest, fourteen are
+`bun:test` and are picked up by `bun test`; the vitest config selects its own by looking for a
+`vitest` import, so a new frontend test just needs to import from `vitest`. SvelteKit's `$app/*`
+modules have no implementation outside a running app — `test/stubs/` keeps them importable, and a
+test that asserts on navigation mocks them (`vi.mock('$app/navigation', …)`).
