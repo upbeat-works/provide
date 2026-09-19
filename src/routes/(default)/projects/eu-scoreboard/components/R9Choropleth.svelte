@@ -4,7 +4,7 @@
 
 <script>
   import { getContext, onDestroy } from 'svelte';
-  import { r9FillColor, r9Filter } from './choropleth.js';
+  import { r9FillColor, r9Filter, R9_SOURCE } from './choropleth.js';
 
   export let values = [];
   export let classes = [];
@@ -20,7 +20,7 @@
   const firstSymbolLayer = () => $map.getStyle().layers.find(({ type }) => type === 'symbol')?.id;
   $map.addSource(sourceId, {
     type: 'geojson',
-    data: '/data/eu-scoreboard/r9_regions.geojson',
+    data: R9_SOURCE,
     attribution: '© IIASA Scenario Services team; boundaries made with Natural Earth (CC BY 4.0)',
   });
   const before = firstSymbolLayer();

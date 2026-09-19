@@ -1,13 +1,11 @@
 <script>
-  import { writable } from 'svelte/store';
+  import { browser } from '$app/environment';
   import MapProvider from '$lib/components/maps/MapboxMap/MapProvider.svelte';
   import ZoomControl from '$lib/components/maps/MapboxMap/ZoomControl.svelte';
-  import CountryChoropleth from './CountryChoropleth.svelte';
+  import NutsChoropleth from './NutsChoropleth.svelte';
   import R9Choropleth from './R9Choropleth.svelte';
-  import { countriesBounds } from './choropleth.js';
-  import { fetchData } from '$lib/api/api';
-  import { END_GEO_SHAPE, STATUS_SUCCESS } from '$config';
-  import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
+  import { countriesBounds, COUNTRY_SOURCE } from './choropleth.js';
+  import MapLoading from './MapLoading.svelte';
   import Button from '$lib/components/ui/Button.svelte';
 
   // The scoreboard's map band: a country choropleth over the basemap. Both views
@@ -30,46 +28,60 @@
   // Set where `select` is handled — clicking a scored country then opens it.
   export let selectable = false;
 
-  // Vector tiles expose no geometry for fitting the selected countries.
-  const GEO_SHAPE_DATA = writable({});
-  let requested = false;
+  // The country layer draws from a bundled geojson, and the band needs the same
+  // geometry to frame the selection, so it is fetched here and handed down —
+  // once per band, however often the values or the framing change afterwards.
+  // Which map a band is stays fixed for its lifetime (both callers read it off
+  // the map definition), so this is settled at construction rather than
+  // reactively; the R9 map draws its own source and needs none of it.
+  let shapes = start();
+
+  function start() {
+    // Nothing to fetch a relative path from on the server, and no map to draw
+    // there either — hold the pending branch and let hydration do the work.
+    if (!browser) return new Promise(() => {});
+    return geographyType === 'r9' ? Promise.resolve(undefined) : load();
+  }
+
+  async function load() {
+    const response = await fetch(COUNTRY_SOURCE);
+    if (!response.ok) throw new Error(`${COUNTRY_SOURCE} → ${response.status}`);
+    return response.json();
+  }
+
+  const retry = () => {
+    shapes = load();
+  };
+
   $: framedCountries = highlight ? [highlight] : fitCountries;
-  $: if (geographyType === 'admin0' && framedCountries.length && !requested) {
-    requested = true;
-    loadGeometry();
-  }
-
-  function loadGeometry() {
-    fetchData(GEO_SHAPE_DATA, { endpoint: END_GEO_SHAPE, params: { 'geography-type': 'admin0' } });
-  }
-
-  $: shape = $GEO_SHAPE_DATA.status === STATUS_SUCCESS ? $GEO_SHAPE_DATA.data?.data : undefined;
-  $: geometryIsLoading = geographyType === 'admin0' && framedCountries.length > 0 && $GEO_SHAPE_DATA.status === 'loading';
-  $: geometryHasFailed = geographyType === 'admin0' && framedCountries.length > 0 && $GEO_SHAPE_DATA.status === 'failed';
-  $: frame = (framedCountries.length && shape && countriesBounds(shape, framedCountries)) || bounds;
   const zoomRange = [-1, 14];
 </script>
 
-<div class="relative {height} w-full" aria-live="polite" aria-busy={geometryIsLoading}>
-  {#if geometryIsLoading}
-    <LoadingPlaceholder />
-  {:else if geometryHasFailed}
-    <div class="flex h-full flex-col items-center justify-center gap-3" role="alert">
-      <p class="text-sm text-text-weaker">Country map details could not be loaded.</p>
-      <Button variant="secondary" size="sm" on:click={loadGeometry}>Retry map</Button>
-    </div>
-  {:else}
+<div class="relative {height} w-full" aria-live="polite">
+  {#await shapes}
+    <MapLoading />
+  {:then shape}
+    {@const frame = (framedCountries.length && countriesBounds(shape, framedCountries)) || bounds}
     <MapProvider bounds={frame} fitBoundsOptions={{ padding }} {zoomRange}>
       <ZoomControl />
       {#if geographyType === 'r9'}
         <R9Choropleth {values} {classes} />
       {:else}
-        <CountryChoropleth {values} {classes} {highlight} {selectable} on:select />
+        <NutsChoropleth {shape} {values} {classes} {highlight} {selectable} on:select />
       {/if}
       <slot />
     </MapProvider>
-    {#if geographyType === 'r9'}
-      <p class="absolute bottom-1 right-2 rounded bg-white/80 px-1 text-[10px] text-text-weaker">Source: IIASA Scenario Services team · Natural Earth · CC BY 4.0</p>
-    {/if}
-  {/if}
+    <p class="absolute bottom-1 right-2 rounded bg-white/80 px-1 text-[10px] text-text-weaker">
+      {#if geographyType === 'r9'}
+        Source: IIASA Scenario Services team · Natural Earth · CC BY 4.0
+      {:else}
+        Source: IIASA Scenario Services team · EUROSTAT NUTS 2024 · CC BY 4.0
+      {/if}
+    </p>
+  {:catch}
+    <div class="flex h-full flex-col items-center justify-center gap-3" role="alert">
+      <p class="text-sm text-text-weaker">Country map details could not be loaded.</p>
+      <Button variant="secondary" size="sm" on:click={retry}>Retry map</Button>
+    </div>
+  {/await}
 </div>
