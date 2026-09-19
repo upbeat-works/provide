@@ -18,3 +18,17 @@ export function comparisonViews(compareBy, sides = [], shared = {}) {
   if (!compareBy) return [shared];
   return sides.map((value) => ({ ...shared, [compareBy]: value }));
 }
+
+// Both maps in a comparison have to be read against the same ramp: classes
+// derived per map would give each side its own scale, and two maps coloured on
+// different scales cannot be compared by eye, which is the whole point.
+export const combinedValues = (results = []) => results.flatMap((result) => result?.values ?? []);
+
+// The label row on a map's legend card: the whole selection, so two cards side
+// by side say what makes them different, with the compared part picked out.
+export function legendParts(view = {}, compared = undefined) {
+  return ['region', 'scenario', 'year'].flatMap((key) => {
+    const value = view[key];
+    return value ? [{ label: String(value.label ?? value.uid), accent: key === compared }] : [];
+  });
+}

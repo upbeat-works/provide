@@ -21,7 +21,10 @@ test('shows only charts with visible results', async () => {
     charts: [{ definition, result: { definition, status: 'ready', data: [{ line: [{ year: 2050, value: null }] }] } }],
   };
   const empty = page.default.render({ data });
-  expect(empty.html).not.toContain(definition.title);
+  // Asserted on the section, not on the title anywhere in the page: the
+  // article index in the sidebar names every chart the sector defines,
+  // including one whose data turns out to be empty.
+  expect(empty.html).not.toContain(`id="${definition.chartId}"`);
 
   data.charts[0].result = { definition, status: 'ready', data: [{ line: [{ year: 2050, value: 2 }] }] };
   const ready = page.default.render({ data });

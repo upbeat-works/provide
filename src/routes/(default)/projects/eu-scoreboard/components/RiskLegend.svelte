@@ -10,12 +10,14 @@
 </script>
 
 <div class="flex flex-col gap-1.5">
-  <div class="flex h-2 w-full gap-0.5">
+  <!-- Butted together, not spaced: the classes partition one range, and a gap
+       between them reads as a gap in the data. -->
+  <div class="flex h-2.5 w-full">
     {#each scale as color}
-      <div class="h-full flex-1 rounded-[1px]" style="background-color: {color}" />
+      <div class="h-full flex-1" style="background-color: {color}" />
     {/each}
   </div>
-  <div class="flex text-[11px] text-text-weaker">
+  <div class="flex text-xs text-theme-stronger">
     {#each labels as label}
       <span class="flex-1 text-center">{label}</span>
     {/each}

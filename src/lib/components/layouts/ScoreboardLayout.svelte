@@ -14,11 +14,14 @@
 {#if $$slots.filters || $$slots.actions}
   <div bind:clientHeight={barHeight} class="sticky top-0 z-40 bg-white border-b border-contour-weakest">
     <div class="mx-auto max-w-7xl flex items-stretch">
-      <div class="flex min-w-0 flex-1 overflow-x-auto scrollbar-hide divide-x divide-contour-weakest [&>*]:shrink-0 [&>*]:px-6 [&>*]:py-3">
+      <!-- Same metrics as the explore view's control bar (PageLayout), so the
+           two read as one surface; the scroll is this bar's own, for the extra
+           controls a sector can bring. -->
+      <div class="flex min-w-0 flex-1 overflow-x-auto scrollbar-hide divide-x divide-contour-weakest [&>*]:shrink-0 [&>*]:px-6 [&>*]:py-4">
         <slot name="filters" />
       </div>
       {#if $$slots.actions}
-        <div class="shrink-0 flex items-center gap-2 px-6 py-3 border-l border-contour-weakest">
+        <div class="shrink-0 flex items-center gap-2 px-6 py-4 border-l border-contour-weakest">
           <slot name="actions" />
         </div>
       {/if}

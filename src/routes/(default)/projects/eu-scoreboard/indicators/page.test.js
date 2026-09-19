@@ -1,11 +1,22 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Page from './page.ssr.fixture.svelte';
 import { getScoreboard } from '../controller.js';
 
 vi.mock('../components/ScoreboardMap.svelte', () => import('../components/Map.test.fixture.svelte'));
 vi.mock('$app/navigation', () => ({ goto: vi.fn(), invalidate: vi.fn(), invalidateAll: vi.fn() }));
+// The sidebar's index watches the article column, which needs an observer
+// jsdom does not implement.
+beforeEach(() =>
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  )
+);
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -82,4 +93,42 @@ test('retries only the failed chart and leaves the map in place', async () => {
   expect(fetcher).toHaveBeenCalledOnce();
   expect(fetcher.mock.calls[0][0]).toBe(`/app/scoreboard/charts/${definition.chartId}?sector=testing&scenario=scenario&region=region&year=2050`);
   expect(screen.getByRole('img', { name: 'Mock country map' })).toBe(map);
+});
+
+test('compares a dimension side by side, taking it out of the filter bar', async () => {
+  const fetcher = vi.fn().mockResolvedValue(Response.json({ ...common.map, values: [{ uid: 'India (R9)', label: 'India (R9)', value: 40 }] }));
+  vi.stubGlobal('fetch', fetcher);
+  render(Page, { data: { ...common, scenarios: [option('scenario'), option('other')] } });
+
+  // One map, and one scenario picker — the filter bar's.
+  expect(screen.getAllByRole('img', { name: 'Mock country map' })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: /^Scenario:/ })).toHaveLength(1);
+
+  await fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Scenario' }));
+
+  await waitFor(() => expect(screen.getAllByRole('img', { name: 'Mock country map' })).toHaveLength(2));
+  // The compared dimension leaves the bar and reappears on each map: one picker
+  // before, two after — the bar's is gone and each map has its own.
+  expect(screen.getAllByRole('button', { name: /^Scenario:/ })).toHaveLength(2);
+  // Geography and Year stay shared, in the bar, one each.
+  expect(screen.getAllByRole('button', { name: /^Geography:/ })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: /^Year:/ })).toHaveLength(1);
+  // The second side opened on a different scenario, so it asked for its own data.
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0][0]).toContain('scenario=other');
+});
+
+test('colours both compared maps on one scale', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ ...common.map, values: [{ uid: 'India (R9)', label: 'India (R9)', value: 40 }] })));
+  render(Page, { data: { ...common, scenarios: [option('scenario'), option('other')] } });
+  await fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Scenario' }));
+
+  await waitFor(() => expect(screen.getAllByRole('img', { name: 'Mock country map' })).toHaveLength(2));
+  // Two maps read against different ramps cannot be compared by eye, which is
+  // the point of putting them side by side.
+  const [left, right] = screen.getAllByRole('img', { name: 'Mock country map' });
+  expect(left.dataset.classCount).toBe(right.dataset.classCount);
+  expect(Number(left.dataset.classCount)).toBeGreaterThan(0);
 });

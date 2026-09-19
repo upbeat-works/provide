@@ -64,10 +64,9 @@
   $: indicatorsHref = `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators${$page.url.search}`;
   $: rankingView = { scenario: data.selection?.scenario, year: data.selection?.year };
   $: mapValues = riskValuesFor(rankingView);
-  $: rankingEntries = riskRankingFor(rankingView)
-    .slice(0, 5)
-    .map((entry) => ({ ...entry, href: countryHref(entry.label) }));
-  $: rankingParts = [{ label: data.selection?.scenario?.label ?? 'No scenario' }, { label: data.selection?.year?.label ?? 'No year' }];
+  // The whole ranking — the panel pages through it rather than being handed a
+  // single page of five.
+  $: rankingEntries = riskRankingFor(rankingView).map((entry) => ({ ...entry, href: countryHref(entry.label) }));
 
   function selectionParams(data, region) {
     const params = new URLSearchParams({ sector: data.scoreboard.sector.uid });
@@ -89,19 +88,21 @@
 
 <ScoreboardLayout>
   <svelte:fragment slot="filters">
-    <ScoreboardFilters {data} />
+    <ScoreboardFilters {data} filters={['sector', 'scenario', 'year']} />
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
     <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={mapValues} classes={RISK_CLASSES} selectable={true} on:select={({ detail }) => selectCountry(detail.uid)} />
     <div class="pointer-events-none absolute inset-0 mx-auto max-w-7xl px-6">
       <div class="pointer-events-auto absolute bottom-6 left-6">
-        <p class="mb-2 text-sm font-semibold">Mock data</p>
-        <RankingPanel parts={rankingParts} {hazard} entries={rankingEntries} />
+        <RankingPanel {hazard} entries={rankingEntries} />
       </div>
     </div>
-    <div class="absolute inset-x-0 bottom-6 flex justify-center">
-      <Button href={`#${sections[0].slug}`}>
+    <!-- A full-width strip laid over the map to centre one button. Without
+         `pointer-events-none` the empty rest of it sits on top of the ranking
+         card and swallows clicks meant for the controls at the card's foot. -->
+    <div class="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
+      <Button class="pointer-events-auto" href={`#${sections[0].slug}`}>
         How to read this scoreboard
         <span class="inline-flex rotate-90"><LinkArrow /></span>
       </Button>

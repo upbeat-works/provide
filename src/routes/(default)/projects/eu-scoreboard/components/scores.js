@@ -7,10 +7,10 @@
 // Composite risk score, 0–100. Classes ascending; the colours are the ones the
 // ranking panel's ramp already used (they are not in color-tokens-light.json).
 export const RISK_CLASSES = [
-  { min: 0, label: 'Very Low', color: '#EEBF5E' },
-  { min: 40, label: 'Low', color: '#E9974A' },
-  { min: 60, label: 'Medium', color: '#C91C1C' },
-  { min: 80, label: 'High', color: '#5A0F6B' },
+  { min: 0, label: 'Very Low', color: '#FBD95A' },
+  { min: 40, label: 'Low', color: '#F2AF4B' },
+  { min: 60, label: 'Medium', color: '#DC6360' },
+  { min: 80, label: 'High', color: '#8A55BF' },
 ];
 
 // A single indicator (annual maximum temperature, °C) gets a sequential ramp
@@ -23,11 +23,11 @@ export const INDICATOR_CLASSES = [
   { min: 40, label: 'High', color: '#8C5B2C' },
 ];
 
-// Keyed on the legacy admin0 geo id the geo-shape features carry. Covers the
+// Keyed on the alpha-3 geo id the NUTS country features carry. Covers the
 // EU-27, the EEA/EFTA states, the UK and the accession countries — the extent
 // the scoreboard speaks for. Anything outside it (Russia, Türkiye, north
-// Africa) is deliberately unscored and stays basemap. Malta and the
-// microstates are absent from the admin0 shapes, so they cannot be drawn.
+// Africa) is deliberately unscored and stays basemap. Moldova is scored but
+// cannot be drawn: it is outside NUTS, so the country map has no shape for it.
 const EUROPE = [
   { uid: 'ESP', label: 'Spain', score: 92, maxTemp: 42 },
   { uid: 'GRC', label: 'Greece', score: 90, maxTemp: 42 },

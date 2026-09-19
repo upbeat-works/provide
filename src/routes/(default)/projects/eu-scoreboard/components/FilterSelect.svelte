@@ -1,4 +1,5 @@
 <script>
+  import { createEventDispatcher } from 'svelte';
   import { Popover, PopoverButton, PopoverPanel } from '@rgossiaux/svelte-headlessui';
   import { createPopperActions } from 'svelte-popperjs';
   import Fuse from 'fuse.js';
@@ -14,6 +15,11 @@
   export let wrapperClass = 'min-w-[10rem]';
   export let buttonClass = 'mt-1 text-sm';
   export let labelClass = '';
+
+  // Two-way binding suits a caller holding the choice in local state (the
+  // comparison's per-map selectors); `change` suits one that has to act on it —
+  // the filter bar puts the scoreboard's selection in the URL.
+  const dispatch = createEventDispatcher();
 
   const [popperRef, popperContent] = createPopperActions();
   const popperOptions = {
@@ -31,13 +37,21 @@
     selected = option;
     term = '';
     close();
+    dispatch('change', option);
   }
 </script>
 
 <Popover class={wrapperClass}>
   <!-- SelectionButton contains a button, so the popover trigger must use a div. -->
   <PopoverButton as="div" use={[popperRef]} let:open class="cursor-pointer">
-    <SelectionButton {label} buttonLabel={selected?.label ?? buttonAllLabel} {buttonClass} {labelClass} {open} />
+    <SelectionButton
+      {label}
+      buttonLabel={selected?.label ?? buttonAllLabel}
+      buttonAriaLabel="{label}: {selected?.label ?? buttonAllLabel ?? 'none'}"
+      {buttonClass}
+      {labelClass}
+      {open}
+    />
   </PopoverButton>
 
   <PopoverPanel use={[[popperContent, popperOptions]]} let:close class="z-50 {placeholder ? 'w-[20rem]' : 'w-[14rem]'} max-w-[90vw] rounded border border-contour-weakest bg-surface-base shadow-md">

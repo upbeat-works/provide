@@ -12,6 +12,10 @@
   export let open = false;
   export let colors = undefined;
   export let wrapperClass = '';
+  // Overrides the derived name. The default announces only the chosen value,
+  // which leaves a button in a row of them unidentified; a caller that knows
+  // the field can say both.
+  export let buttonAriaLabel = undefined;
 
   $: isDisabled = Boolean(disabled);
 </script>
@@ -20,7 +24,7 @@
   <span class={`uppercase text-xs tracking-widest font-semibold text-contour-weak inline-block ${labelClass}`}>{label}</span>
   <button
     aria-disabled={isDisabled}
-    aria-label={disabled ?? warning ?? placeholder ?? `${category ? `${category}:` : ''}${buttonLabel}`}
+    aria-label={buttonAriaLabel ?? disabled ?? warning ?? placeholder ?? `${category ? `${category}:` : ''}${buttonLabel}`}
     disabled={isDisabled}
     on:click
     class={[

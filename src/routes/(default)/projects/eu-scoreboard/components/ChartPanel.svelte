@@ -9,6 +9,8 @@
   export let result;
   export let selection;
   export let sector;
+  // Marks the section the index has scrolled to, the way the ranking view does.
+  export let accent = false;
   $: request = result;
 
   function retry() {
@@ -22,7 +24,7 @@
   {#if chart?.status === 'loading'}
     <p class="py-8" role="status">Loading {definition.title}…</p>
   {:else if chart && isChartVisible(chart, selection)}
-    <ScoreboardSection eyebrow={selection.region?.label ?? 'No region'} slug={definition.chartId} title={definition.title} description={definition.description}>
+    <ScoreboardSection eyebrow={selection.region?.label ?? 'No region'} slug={definition.chartId} title={definition.title} description={definition.description} {accent}>
       {#if chart.caseStudy?.slug}
         <a class="mb-4 block text-sm font-bold text-theme-base" href="/{PATH_ADAPTATION}/{chart.caseStudy.slug}">See {chart.caseStudy.title ?? 'case study'} →</a>
       {/if}

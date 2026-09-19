@@ -61,9 +61,12 @@ export function mapRegionOptions(type: 'admin0' | 'r9', available: Set<string>, 
     const regions = worldR9Regions().filter(({ uid }) => available.has(uid));
     return regions.length ? [{ uid: 'World', label: 'World' }, ...regions] : [];
   }
+  // No `World` for the country map: it is drawn from NUTS, which stops at
+  // Europe, so a world option would offer a view that does not exist. The R9
+  // map above is genuinely global and keeps it.
   const countries = catalog.geographies.filter(({ id, geographyType, geoId }) => geographyType === 'admin0' && geoId && available.has(id)).map(({ id, label }) => ({ uid: id, label }));
   const continents = supportedAreas(new Set(countries.map(({ uid }) => uid)), catalog);
-  return countries.length ? [{ uid: 'World', label: 'World' }, ...continents, ...countries] : [];
+  return countries.length ? [...continents, ...countries] : [];
 }
 
 export function mapMembers(type: 'admin0' | 'r9', area: string, catalog: RegionCatalog): Option[] {
@@ -71,9 +74,9 @@ export function mapMembers(type: 'admin0' | 'r9', area: string, catalog: RegionC
     if (area === 'World') return worldR9Regions();
     return WORLD_R9.includes(area) ? [{ uid: area, label: area }] : [];
   }
-  if (area === 'World') {
-    return catalog.geographies.filter(({ geographyType, geoId }) => geographyType === 'admin0' && geoId).map(({ id, label }) => ({ uid: id, label }));
-  }
+  // `World` is not offered for the country map, and not accepted either — a URL
+  // still carrying it names no area this map can draw.
+  if (area === 'World') return [];
   const children = childRegions(area, catalog);
   if (children.length) return children;
   const country = catalog.geographies.find(({ id, geographyType, geoId }) => id === area && geographyType === 'admin0' && geoId);
