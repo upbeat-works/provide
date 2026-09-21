@@ -86,6 +86,7 @@ export const GMT_REGION = 'World';
 // data the label order is NOT the value order (the "10th" series carries the
 // highest values), so callers must take band edges numerically. See views/gmt.ts.
 export const GMT_PERCENTILES = ['10th Percentile', '50th Percentile', '90th Percentile'] as const;
+export const EMISSIONS_VARIABLE = 'Emissions|Kyoto Gases';
 
 /** The ixmp4 variable name for one GMT percentile — the 2-segment inverse of parseVariable. */
 export function composeGmtVariable(value: string): string {

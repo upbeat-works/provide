@@ -78,7 +78,11 @@ const apiUrl = (path) => `${catalogApiUrl(path)}/`;
 
 async function getJSON(url, svelteFetch = fetch) {
   const res = await svelteFetch(url);
-  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+  if (!res.ok) {
+    const error = new Error('Request failed');
+    error.status = res.status;
+    throw error;
+  }
   return res.json();
 }
 
@@ -132,16 +136,36 @@ function gmtSeries(gmt) {
   }));
 }
 
-export const loadMethodologyScenarios = async function (svelteFetch = fetch) {
-  const scenarios = await getJSON(apiUrl('methodology-scenarios'), svelteFetch);
+function emissionsSeries(emissions) {
+  if (!emissions) return undefined;
+  return emissions.data.map(({ year, value }) => ({ year, value }));
+}
+
+export const loadMethodologyScenarios = async function (svelteFetch = fetch, { instance } = {}) {
+  let url = apiUrl('methodology-scenarios');
+  if (instance !== undefined) url += `?instance=${encodeURIComponent(instance)}`;
+  const scenarios = await getJSON(url, svelteFetch);
   return scenarios.map((scenario) => ({
     ...scenario,
     uid: scenario.id,
     startYear: scenario.yearStart,
     endYear: scenario.yearEnd,
     gmt: gmtSeries(scenario.gmt),
+    emissions: emissionsSeries(scenario.emissions),
   }));
 };
+
+async function scoreboardResource(resource, svelteFetch, selections) {
+  const params = new URLSearchParams();
+  for (const key of ['sector', 'scenario', 'region', 'year']) {
+    if (selections[key] !== undefined) params.set(key, selections[key]);
+  }
+  return getJSON(`${apiUrl(`scoreboard/${resource}`)}?${params}`, svelteFetch);
+}
+
+export const loadScoreboardOptions = (svelteFetch = fetch, selections = {}) => scoreboardResource('options', svelteFetch, selections);
+export const loadScoreboardMap = (svelteFetch = fetch, selections = {}) => scoreboardResource('map', svelteFetch, selections);
+export const loadScoreboardChart = (svelteFetch = fetch, selections = {}) => scoreboardResource(`charts/${encodeURIComponent(selections.chartId)}`, svelteFetch, selections);
 
 // Curation slice — the transitional study-locations + likelihoods remnants not
 // yet derivable from conventions. Tiny static data; loaded only by the sections

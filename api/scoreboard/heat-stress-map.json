@@ -1,0 +1,9 @@
+{
+  "title": "Maximum air temperature",
+  "geographyType": "admin0",
+  "data": {
+    "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+    "model": "RIME-X v1.0.0",
+    "unit": "°C"
+  }
+}

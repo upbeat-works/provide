@@ -8,6 +8,10 @@ export type Env = {
     DB: Db;
     IXMP4_USERNAME: string;
     IXMP4_PASSWORD: string;
+    GEOSERVER_URL?: string;
+    GEOSERVER_WORKSPACE?: string;
+    GEOSERVER_USERNAME?: string;
+    GEOSERVER_PASSWORD?: string;
   };
 };
 

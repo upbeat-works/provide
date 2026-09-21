@@ -4,6 +4,11 @@ import { markCatalogSelectionChange } from '$lib/catalog/selection-history.js';
 import { parseCatalogUrlSelection } from '$lib/utils/url.js';
 import { createExploreUrlSync } from './explore-url-sync.js';
 
+vi.mock('$app/stores', async () => {
+  const { readable } = await import('svelte/store');
+  return { page: readable({ url: new URL('https://provide.example/impacts/explore') }), navigating: readable(null), updated: readable(false) };
+});
+
 function selectionFromUrl(url) {
   const parsed = parseCatalogUrlSelection(url);
   return {

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { parseRequiredInstance } from '../catalog/contracts';
 import { instances } from '../instances';
 import type { Env } from '../types';
 import { fetchMethodologyScenarioDetails } from '../views/scenarios';
@@ -6,9 +7,17 @@ import { fetchMethodologyScenarioDetails } from '../views/scenarios';
 const methodologyScenarios = new Hono<Env>();
 
 methodologyScenarios.get('/', async (c) => {
+  let sources = instances;
+  const requestedInstance = c.req.query('instance');
+  if (requestedInstance !== undefined) {
+    const instance = parseRequiredInstance(requestedInstance);
+    if ('status' in instance) return c.json({ error: instance.error }, instance.status);
+    sources = [instance];
+  }
+
   try {
     const details = await Promise.all(
-      instances.map(async (instance) => {
+      sources.map(async (instance) => {
         try {
           return await fetchMethodologyScenarioDetails(instance, {
             username: c.env.IXMP4_USERNAME,

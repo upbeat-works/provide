@@ -8,16 +8,20 @@
 
   // Exposed so sticky content inside the sections can clear the control bar.
   export let barHeight = 0;
+  export let showSidebar = true;
 </script>
 
 {#if $$slots.filters || $$slots.actions}
   <div bind:clientHeight={barHeight} class="sticky top-0 z-40 bg-white border-b border-contour-weakest">
     <div class="mx-auto max-w-7xl flex items-stretch">
-      <div class="flex min-w-0 flex-1 overflow-x-auto scrollbar-hide divide-x divide-contour-weakest [&>*]:shrink-0 [&>*]:px-6 [&>*]:py-3">
+      <!-- Same metrics as the explore view's control bar (PageLayout), so the
+           two read as one surface; the scroll is this bar's own, for the extra
+           controls a sector can bring. -->
+      <div class="flex min-w-0 flex-1 overflow-x-auto scrollbar-hide divide-x divide-contour-weakest [&>*]:shrink-0 [&>*]:px-6 [&>*]:py-4">
         <slot name="filters" />
       </div>
       {#if $$slots.actions}
-        <div class="shrink-0 flex items-center gap-2 px-6 py-3 border-l border-contour-weakest">
+        <div class="shrink-0 flex items-center gap-2 px-6 py-4 border-l border-contour-weakest">
           <slot name="actions" />
         </div>
       {/if}
@@ -31,7 +35,7 @@
   </div>
 {/if}
 
-{#if $$slots.sidebar}
+{#if showSidebar && $$slots.sidebar}
   <div class="mx-auto max-w-7xl px-6 grid grid-cols-1 md:grid-cols-[minmax(0,15rem)_1fr] gap-8 md:gap-16">
     <div class="py-10 md:sticky h-fit" style="top: {barHeight}px">
       <slot name="sidebar" />

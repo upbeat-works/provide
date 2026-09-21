@@ -16,15 +16,14 @@ describe('embed chart URL context', () => {
     expect(result.scenarios[0].uid).toBe('003');
   });
 
-  test('builds a map request from URL metadata without a catalog', () => {
+  test('builds a canonical map selection from URL metadata without a catalog', () => {
     const result = context(
-      'indicator=Annual%20Maximum%20Temperature&instance=provide-internal&geography=Afghanistan&geoId=AFG&geographyType=admin0&scenarios[0]=Low%20Demand&time=Annual&unit=%C2%B0C'
+      'indicator=Mean%20Temperature&instance=provide-internal&geography=Cameroon&geoId=CMR&geographyType=admin0&scenarios[0]=Low%20Demand&time=Annual&reference=2011-2020%20(Present%20Day)&spatial=Area&unit=%C2%B0C'
     );
 
     expect(result.mapView).toMatchObject({
-      status: 'ready',
-      legacyUrlParams: { indicator: 'terclim-txx', geography: 'AFG', 'geography-type': 'admin0', time: 'annual' },
-      scenarioPairs: [{ legacyUid: 'ld' }],
+      status: 'loading',
+      selection: { indicator: 'Mean Temperature', instance: 'provide-internal', geography: 'Cameroon', scenarios: ['Low Demand'] },
     });
   });
 });

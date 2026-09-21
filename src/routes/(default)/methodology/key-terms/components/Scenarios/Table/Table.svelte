@@ -117,8 +117,6 @@
     }[selectedTimeframe] ?? 250;
 
   $: tableColumns = (COLUMNS[selectedTimeframe] ?? []).map(([label, tooltip, key, formatting = (d) => d, get = (d) => d]) => {
-    // ixmp4 carries no scenario characteristics yet, so a cell may be absent —
-    // render the row without it rather than taking the whole table down.
     const values = scenariosListed
       .map((s) => s[KEY_CHARACTERISTICS]?.[key])
       .filter((raw) => raw != null)

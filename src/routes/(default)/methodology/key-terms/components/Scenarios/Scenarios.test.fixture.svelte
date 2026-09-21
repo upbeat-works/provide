@@ -7,6 +7,12 @@
     { year: 2020, value: 1 },
     { year: 2100, value: 2 },
   ];
+  const emissions = [
+    { year: 2020, value: 40 },
+    { year: 2050, value: 0 },
+    { year: 2075, value: null },
+    { year: 2100, value: -2 },
+  ];
   const scenarios = [
     {
       id: 'one',
@@ -14,9 +20,12 @@
       instance: 'provide-internal',
       label: 'First scenario',
       [KEY_SCENARIO_ENDYEAR]: 2100,
-      characteristics: {},
+      characteristics: {
+        emissions2050: 0,
+        emissions2100: -2,
+      },
       gmt: series,
-      emissions: series,
+      emissions,
     },
   ];
 </script>

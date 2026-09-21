@@ -255,11 +255,11 @@
 {:else if warmingView.status === 'failure'}
   {#if warmingView.failedRequest === 'indicatorScope'}
     <Message headline="Indicators could not be loaded for this selection">
-      <Button variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
+      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
     </Message>
   {:else}
     <Message headline="Warming availability could not be loaded">
-      <Button variant="secondary" on:click={retryAvailability}>Retry warming data</Button>
+      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry warming data</Button>
     </Message>
   {/if}
 {/if}

@@ -75,11 +75,12 @@ const fetchMultiple = (store, configs) => {
   // Create object/array of url string used to retrieve data either from cache or api
   const urls = reduce(
     configs,
-    (acc, { endpoint, params }, keyOrIndex) => {
+    (acc, { endpoint, params, base, arrayFormat }, keyOrIndex) => {
       const query = qs.stringify(params, {
         encodeValuesOnly: true,
+        arrayFormat: arrayFormat ?? 'indices',
       });
-      const url = `${import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`;
+      const url = `${base ?? import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`;
       acc[keyOrIndex] = url;
       return acc;
     },

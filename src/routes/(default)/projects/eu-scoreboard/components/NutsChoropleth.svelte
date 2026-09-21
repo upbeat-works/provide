@@ -4,13 +4,18 @@
 
 <script>
   import { createEventDispatcher, getContext, onDestroy } from 'svelte';
-  import { colorFor, countryFillColor, countryFilter, scoredCountryFilter, uidForCode, COUNTRY_CODE_PROPERTY, WORLDVIEW_FILTER } from './choropleth.js';
+  import { countryFillColor, countryFilter, scoredCountryFilter, scoredUids, COUNTRY_CODE_PROPERTY } from './choropleth.js';
 
-  // A country choropleth drawn straight from Mapbox's `country-boundaries-v1`
-  // tileset: vector tiles at the basemap's own resolution, so borders and
-  // coastlines stay sharp at every zoom instead of going blocky the way a
-  // simplified geojson does. Lives inside MapProvider — the map comes from its
-  // context.
+  // A country choropleth drawn from the NUTS country level (level 0) of IIASA's
+  // `scse-geojson`, the same source the R9 map uses. The features are stamped at
+  // build time with the alpha-3 `geoId` the catalog keys countries on, so the
+  // join is on the id `/scoreboard/map` already returns. Lives inside
+  // MapProvider — the map comes from its context.
+  //
+  // `shape` is the parsed collection rather than a URL: the map band needs the
+  // geometry anyway to frame the selection, and handing it over means the file
+  // is fetched once instead of once per purpose.
+  export let shape;
   export let values = [];
   export let classes = [];
   export let fillOpacity = 0.8;
@@ -26,7 +31,7 @@
   const theme = getContext('theme');
   const dispatch = createEventDispatcher();
 
-  const sourceId = `country-boundaries-${instance}`;
+  const sourceId = `nuts0-countries-${instance}`;
   const fillLayerId = `country-choropleth-fill-${instance}`;
   const lineLayerId = `country-choropleth-line-${instance}`;
   const highlightLayerId = `country-choropleth-highlight-${instance}`;
@@ -50,7 +55,11 @@
   }
 
   if (!$map.getSource(sourceId)) {
-    $map.addSource(sourceId, { type: 'vector', url: 'mapbox://mapbox.country-boundaries-v1' });
+    $map.addSource(sourceId, {
+      type: 'geojson',
+      data: shape ?? { type: 'FeatureCollection', features: [] },
+      attribution: '© IIASA Scenario Services team; boundaries © EuroGeographics / EUROSTAT (NUTS 2024, CC BY 4.0)',
+    });
   }
 
   const before = firstSymbolLayer();
@@ -61,8 +70,6 @@
         id: fillLayerId,
         type: 'fill',
         source: sourceId,
-        'source-layer': 'country_boundaries',
-        filter: WORLDVIEW_FILTER,
         paint: {
           'fill-color': countryFillColor(values, classes),
           'fill-opacity': fillOpacity,
@@ -79,7 +86,6 @@
         id: lineLayerId,
         type: 'line',
         source: sourceId,
-        'source-layer': 'country_boundaries',
         filter: scoredCountryFilter(values, classes),
         layout: { 'line-join': 'round' },
         paint: {
@@ -98,7 +104,6 @@
         id: highlightLayerId,
         type: 'line',
         source: sourceId,
-        'source-layer': 'country_boundaries',
         filter: countryFilter(highlight ? [highlight] : []),
         layout: { 'line-join': 'round' },
         paint: {
@@ -121,23 +126,26 @@
   haloLabels();
 
   // Only the countries this map has a colour for can be opened — the rest of the
-  // world is basemap the scoreboard says nothing about. Read from the values
+  // coverage is basemap the scoreboard says nothing about. Read from the values
   // rather than from a separate list so the clickable countries are exactly the
   // painted ones.
-  $: scoredUids = values.flatMap((entry) => (colorFor(entry.value, classes) ? [entry.uid] : []));
+  $: clickable = new Set(scoredUids(values, classes));
 
   const codeOf = (feature) => feature?.properties?.[COUNTRY_CODE_PROPERTY];
+  const uidAt = (features) => {
+    const code = codeOf(features?.[0]);
+    return clickable.has(code) ? code : undefined;
+  };
 
   function handleClick({ features }) {
-    const uid = uidForCode(codeOf(features?.[0]), scoredUids);
+    const uid = uidAt(features);
     if (uid) dispatch('select', { uid });
   }
 
-  // The fill layer covers every country, so the cursor has to follow what is
-  // actually scored rather than the layer as a whole.
+  // The fill layer covers every country in the source, so the cursor has to
+  // follow what is actually scored rather than the layer as a whole.
   function handleMove({ features }) {
-    const uid = uidForCode(codeOf(features?.[0]), scoredUids);
-    $map.getCanvas().style.cursor = uid ? 'pointer' : '';
+    $map.getCanvas().style.cursor = uidAt(features) ? 'pointer' : '';
   }
 
   function clearCursor() {
@@ -160,7 +168,7 @@
   }
 
   // Repaint rather than rebuild when the selection changes: the geometry is the
-  // same tiles, only the colour each country takes is different.
+  // same features, only the colour each country takes is different.
   $: if ($map.getLayer(fillLayerId)) {
     $map.setPaintProperty(fillLayerId, 'fill-color', countryFillColor(values, classes));
     $map.setFilter(lineLayerId, scoredCountryFilter(values, classes));

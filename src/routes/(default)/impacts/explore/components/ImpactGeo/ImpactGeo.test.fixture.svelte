@@ -3,40 +3,61 @@
   import ImpactGeo from './ImpactGeo.svelte';
 
   export let year = 2050;
+  export let staticMode = false;
+  export let compare = false;
+  export let displayOption = 'side-by-side';
+  export let alternateComparison = false;
+  export let unitComparison = false;
 
   const scenario = { uid: 'Low Demand', label: 'Low Demand', color: '#126782' };
-  const chartContext = {
+  const comparisonScenario = { uid: '2020 Climate Policies', label: '2020 Climate Policies', color: '#9b2226' };
+  const alternateScenario = { uid: 'Delayed Transition', label: 'Delayed Transition', color: '#9b2226' };
+  const unitScenario = { uid: 'Current Policies', label: 'Current Policies', color: '#9b2226' };
+  let selectedComparison;
+  $: {
+    selectedComparison = comparisonScenario;
+    if (alternateComparison) selectedComparison = alternateScenario;
+    if (unitComparison) selectedComparison = unitScenario;
+  }
+  $: scenarios = compare ? [scenario, selectedComparison] : [scenario];
+  $: chartContext = {
     view: {
       status: 'ready',
-      legacyUrlParams: {
-        geography: 'AFG',
-        'geography-type': 'admin0',
-        indicator: 'terclim-txx',
-        time: 'annual',
+      years: [2050, 2100],
+      selection: {
+        geography: 'Cameroon',
+        indicator: 'Mean Temperature',
+        instance: 'provide-internal',
+        reference: '2011-2020 (Present Day)',
+        time: 'Annual',
+        spatial: 'Area',
+        scenarios: scenarios.map(({ uid }) => uid),
       },
-      scenarioPairs: [{ scenario, legacyUid: 'ld' }],
     },
-    geography: { uid: 'Afghanistan', label: 'Afghanistan', geoId: 'AFG', geographyType: 'admin0' },
+    availableYears: [2050, 2100],
+    geography: { uid: 'Cameroon', label: 'Cameroon', geoId: 'CMR', geographyType: 'admin0' },
     indicator: {
-      uid: 'Annual Maximum Temperature',
-      label: 'Annual Maximum Temperature',
+      uid: 'Mean Temperature',
+      label: 'Mean Temperature',
       instance: 'provide-internal',
       unit: { uid: 'degrees-celsius', label: '°C' },
       colorScale: 'default',
       direction: 1,
     },
-    scenarios: [scenario],
-    parameters: { time: 'Annual' },
+    scenarios,
+    parameters: { time: 'Annual', reference: '2011-2020 (Present Day)', spatial: 'Area' },
     urlParams: {
-      indicator: 'Annual Maximum Temperature',
+      indicator: 'Mean Temperature',
       instance: 'provide-internal',
-      geography: 'Afghanistan',
+      geography: 'Cameroon',
       time: 'Annual',
+      reference: '2011-2020 (Present Day)',
+      spatial: 'Area',
     },
-    static: true,
+    static: staticMode,
   };
 </script>
 
 <ThemeProvider>
-  <ImpactGeo {chartContext} {year} />
+  <ImpactGeo {chartContext} {year} {displayOption} />
 </ThemeProvider>

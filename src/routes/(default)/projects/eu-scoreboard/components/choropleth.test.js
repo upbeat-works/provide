@@ -1,5 +1,20 @@
-import { describe, test, expect } from 'bun:test';
-import { classOf, colorFor, countryBounds, countryFillColor, countryFilter, scoredCountryFilter, legendOf, uidForCode, COUNTRY_CODE } from './choropleth.js';
+import { describe, test, expect } from 'vitest';
+import {
+  boundsForGeography,
+  classOf,
+  colorFor,
+  countriesBounds,
+  countryFillColor,
+  countryFilter,
+  scoredCountryFilter,
+  scoredUids,
+  legendOf,
+  numericClasses,
+  r9FillColor,
+  r9Filter,
+  COUNTRY_CODE,
+  R9_REGION,
+} from './choropleth.js';
 import { indicatorValuesFor, RISK_CLASSES, riskRankingFor, riskValues } from './scores.js';
 
 describe('classOf', () => {
@@ -18,33 +33,17 @@ describe('classOf', () => {
   });
 });
 
-describe('uidForCode', () => {
-  test('reads a clicked feature back to the geo id the scoreboard keys on', () => {
-    expect(uidForCode('ITA', ['ESP', 'ITA'])).toBe('ITA');
-    // Kosovo ships under both spellings; either has to find the same country.
-    expect(uidForCode('XKX', ['KOS'])).toBe('KOS');
-    expect(uidForCode('KOS', ['KOS'])).toBe('KOS');
-  });
-
-  test('has no country for a code outside the coverage', () => {
-    // Clicking Morocco is a click on the basemap, not on a scoreboard country.
-    expect(uidForCode('MAR', ['ESP', 'ITA'])).toBeUndefined();
-    expect(uidForCode(undefined, ['ESP'])).toBeUndefined();
-    expect(uidForCode('ITA', [])).toBeUndefined();
-  });
-});
-
 describe('countryFillColor', () => {
-  test('matches each country on its alpha-3 code', () => {
+  test('matches each country on the alpha-3 geo id the NUTS features carry', () => {
     const values = [
       { uid: 'ITA', value: 88 },
       { uid: 'IRL', value: 34 },
     ];
-    expect(countryFillColor(values, RISK_CLASSES)).toEqual(['match', COUNTRY_CODE, ['ITA'], '#5A0F6B', ['IRL'], '#EEBF5E', 'transparent']);
-  });
-
-  test('matches the codes the tileset uses where they differ from ours', () => {
-    expect(countryFillColor([{ uid: 'KOS', value: 74 }], RISK_CLASSES)[2]).toEqual(['KOS', 'XKX']);
+    // Colours read off the classes, not repeated here: the ramp is allowed to be
+    // restyled, the join key and the shape of the expression are not.
+    const high = classOf(88, RISK_CLASSES).color;
+    const veryLow = classOf(34, RISK_CLASSES).color;
+    expect(countryFillColor(values, RISK_CLASSES)).toEqual(['match', COUNTRY_CODE, 'ITA', high, 'IRL', veryLow, 'transparent']);
   });
 
   test('leaves unscored countries to the basemap', () => {
@@ -56,47 +55,64 @@ describe('countryFillColor', () => {
 });
 
 describe('scoredCountryFilter', () => {
-  test('draws borders around the scored countries only, one worldview each', () => {
-    const filter = scoredCountryFilter([{ uid: 'ITA', value: 88 }], RISK_CLASSES);
-    expect(filter[0]).toBe('all');
-    expect(filter[2]).toEqual(['in', COUNTRY_CODE, ['literal', ['ITA']]]);
+  test('draws borders around the scored countries only', () => {
+    expect(scoredCountryFilter([{ uid: 'ITA', value: 88 }], RISK_CLASSES)).toEqual(['in', COUNTRY_CODE, ['literal', ['ITA']]]);
   });
 
-  test('covers every country the fill colours', () => {
+  test('covers exactly the countries the fill colours', () => {
     const [, , codes] = scoredCountryFilter(riskValues, RISK_CLASSES);
-    expect(codes[2][1]).toHaveLength(riskValues.length + 1); // Kosovo contributes both spellings
+    expect(codes[1]).toEqual(scoredUids(riskValues, RISK_CLASSES));
+    expect(codes[1]).toHaveLength(riskValues.length);
+  });
+
+  test('has no id for a value no class covers, so it is neither drawn nor clickable', () => {
+    expect(scoredUids([{ uid: 'ITA', value: undefined }], RISK_CLASSES)).toEqual([]);
   });
 });
 
 describe('countryFilter', () => {
-  const box = (uid, x) => ({
-    type: 'Feature',
-    properties: { uid },
-    geometry: {
-      type: 'Polygon',
-      coordinates: [
-        [
-          [x, 0],
-          [x + 1, 0],
-          [x + 1, 2],
-          [x, 2],
-          [x, 0],
-        ],
-      ],
-    },
-  });
-  const shapes = { type: 'FeatureCollection', features: [box('ESP', 4), box('KOS', 9)] };
-
   test('matches nothing when nothing is passed, so a layer can be switched off', () => {
-    const [, , codes] = countryFilter([]);
-    expect(codes).toEqual(['in', COUNTRY_CODE, ['literal', []]]);
+    expect(countryFilter([])).toEqual(['in', COUNTRY_CODE, ['literal', []]]);
   });
+});
+
+describe('countriesBounds', () => {
+  const ring = (west, south, east, north) => [
+    [
+      [west, south],
+      [east, south],
+      [east, north],
+      [west, north],
+      [west, south],
+    ],
+  ];
+  const country = (geoId, ...boxes) => ({
+    type: 'Feature',
+    properties: { geoId },
+    geometry: boxes.length > 1 ? { type: 'MultiPolygon', coordinates: boxes.map((box) => ring(...box)) } : { type: 'Polygon', coordinates: ring(...boxes[0]) },
+  });
+  // France as NUTS has it: mainland plus French Guiana and Réunion.
+  const shapes = {
+    type: 'FeatureCollection',
+    features: [country('ESP', [-9, 36, 4, 44]), country('FRA', [-5, 41, 9, 51], [-54, 2, -51, 6], [55, -21, 56, -20])],
+  };
 
   test('measures a country for framing, and knows nothing of one it has no shape for', () => {
-    expect(countryBounds(shapes, 'ESP')).toEqual([4, 0, 5, 2]);
-    expect(countryBounds(shapes, 'KOS')).toEqual([9, 0, 10, 2]); // matched by its alias too
-    expect(countryBounds(shapes, 'MAR')).toBeUndefined();
-    expect(countryBounds(undefined, 'ESP')).toBeUndefined();
+    expect(countriesBounds(shapes, ['ESP'])).toEqual([-9, 36, 4, 44]);
+    expect(countriesBounds(shapes, ['MAR'])).toBeUndefined();
+    expect(countriesBounds(undefined, ['ESP'])).toBeUndefined();
+  });
+
+  test('frames the continental part of a country, not its outermost regions', () => {
+    // The whole of France spans the Atlantic to the Indian Ocean; framing on
+    // that would leave Europe a smudge in the corner.
+    expect(countriesBounds(shapes, ['FRA'])).toEqual([-5, 41, 9, 51]);
+    expect(countriesBounds(shapes, ['ESP', 'FRA'])).toEqual([-9, 36, 9, 51]);
+  });
+
+  test('falls back to the true extent when nothing is continental', () => {
+    const overseas = { type: 'FeatureCollection', features: [country('GUF', [-54, 2, -51, 6])] };
+    expect(countriesBounds(overseas, ['GUF'])).toEqual([-54, 2, -51, 6]);
   });
 });
 
@@ -136,7 +152,32 @@ describe('legendOf', () => {
   test('reads low to high by default, high first for the ranking panel', () => {
     expect(legendOf(RISK_CLASSES).labels).toEqual(['Very Low', 'Low', 'Medium', 'High']);
     expect(legendOf(RISK_CLASSES, { highestFirst: true }).labels).toEqual(['High', 'Medium', 'Low', 'Very Low']);
-    expect(legendOf(RISK_CLASSES, { highestFirst: true }).scale[0]).toBe('#5A0F6B');
+    expect(legendOf(RISK_CLASSES, { highestFirst: true }).scale[0]).toBe(RISK_CLASSES.at(-1).color);
+  });
+});
+
+describe('numeric indicator map scale', () => {
+  test('includes zero and negative values in readable numeric classes', () => {
+    const classes = numericClasses([{ value: -2 }, { value: 0 }, { value: 8 }, { value: null }], 'K');
+    expect(classes).toHaveLength(5);
+    expect(classOf(-2, classes)).toBe(classes[0]);
+    expect(classOf(0, classes)).toBeDefined();
+    expect(classes.every(({ label }) => label.includes('K'))).toBe(true);
+  });
+
+  test('uses one honest class for equal values and none for missing values', () => {
+    expect(numericClasses([{ value: 0 }, { value: 0 }], '%')).toEqual([{ min: 0, label: '0 %', color: '#ee9f3f' }]);
+    expect(numericClasses([{ value: null }])).toEqual([]);
+  });
+
+  test('builds the R9 match expression and keeps empty overlays transparent', () => {
+    const classes = numericClasses([{ value: 4 }]);
+    expect(r9FillColor([{ uid: 'European Union (R9)', value: 4 }], classes)).toEqual(['match', R9_REGION, 'European Union (R9)', '#ee9f3f', 'transparent']);
+    expect(r9FillColor([], classes)).toBe('transparent');
+    expect(r9Filter([], classes)).toEqual(['in', R9_REGION, ['literal', []]]);
+    expect(boundsForGeography('r9')).toEqual([-180, -60, 180, 85]);
+    // The country map draws NUTS, so it opens on Europe rather than the world.
+    expect(boundsForGeography('admin0')).toEqual([-12, 34, 34, 61]);
   });
 });
 

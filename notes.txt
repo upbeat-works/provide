@@ -1,0 +1,14 @@
+Chart config notes
+
+Stacked bars: segment values or cumulative totals?
+Decision: direct segment values, stacked in array order.
+
+Data checks:
+- Each variable reference contains variable, model and unit.
+- Variable names do not all follow the same structure.
+
+caseStudyId is optional; omit it when there is no linked study.
+
+stacked_bar and bubble use the selected year; line charts show all available years.
+The shared ixmp4 query layer always selects default runs; this is not a chart field.
+Full decisions: docs/eu-scoreboard-chart-config.md

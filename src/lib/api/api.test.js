@@ -24,6 +24,18 @@ function request(endpoint) {
 }
 
 describe('chart requests', () => {
+  test('uses each grouped request base and repeated array format', async () => {
+    let requested;
+    server.use(http.get('https://maps.example/impact-geo/', ({ request }) => {
+      requested = new URL(request.url);
+      return HttpResponse.json({ values: [1] });
+    }));
+    const store = writable();
+    fetchData(store, [{ base: 'https://maps.example', endpoint: 'impact-geo', arrayFormat: 'repeat', params: { scenarios: ['A', 'B'] } }]);
+    await vi.waitFor(() => expect(get(store)[0].status).toBe('success'));
+    expect(requested.searchParams.getAll('scenarios')).toEqual(['A', 'B']);
+  });
+
   test('finishes a group of requests and retries its failed part', async () => {
     let attempts = 0;
     const delayed = deferred();

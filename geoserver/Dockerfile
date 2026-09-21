@@ -1,0 +1,2 @@
+ARG GEOSERVER_VERSION=2.28.4
+FROM docker.osgeo.org/geoserver:${GEOSERVER_VERSION}

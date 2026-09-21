@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { http, HttpResponse } from 'msw';
-import type { ScenarioDetailsResponse } from '../catalog/contracts';
+import type { MethodologyScenarioResponse } from '../catalog/contracts';
 import { api } from '../index';
 import { instances } from '../instances';
 import { createTestEnv, emptyIxmp4Handlers, listEnvelope, server, tabulateEnvelope, testInstance } from '../test-helpers';
@@ -12,7 +12,7 @@ afterEach(() => {
   instances.splice(initialInstanceCount);
 });
 
-function useSource(instance: Ixmp4Instance, scenario: string, median: number, yearEnd: 2100 | 2300) {
+function useSource(instance: Ixmp4Instance, scenario: string, median: number, yearEnd: 2100 | 2300, emissions2050: number) {
   server.use(
     http.patch(`${instance.url}/runs/`, () =>
       HttpResponse.json(
@@ -29,6 +29,9 @@ function useSource(instance: Ixmp4Instance, scenario: string, median: number, ye
     ),
     http.patch(`${instance.url}/iamc/datapoints/`, async ({ request }) => {
       const body = (await request.json()) as { region?: { name?: string }; variable?: { name?: string } };
+      if (body.variable?.name === 'Emissions|Kyoto Gases') {
+        return HttpResponse.json(tabulateEnvelope(['model', 'scenario', 'region', 'unit', '2050', '2075', '2100'], [['FaIR', scenario, 'World', 'Mt CO2-equiv/yr', emissions2050, null, -1_000]]));
+      }
       if (!body.variable?.name?.startsWith('Global Mean Temperature|')) {
         return HttpResponse.json({ error: 'Impact data are not available' }, { status: 500 });
       }
@@ -58,11 +61,11 @@ describe('GET /api/methodology-scenarios', () => {
       managerUrl: 'https://second.example/v1',
     };
     instances.push(second);
-    useSource(testInstance, 'Shared Scenario', 1.6, 2100);
-    useSource(second, 'Shared Scenario', 2.4, 2300);
+    useSource(testInstance, 'Shared Scenario', 1.6, 2100, 20_000);
+    useSource(second, 'Shared Scenario', 2.4, 2300, 40_000);
 
     const res = await api.request('/api/methodology-scenarios', {}, await createTestEnv());
-    const json = (await res.json()) as ScenarioDetailsResponse[];
+    const json = (await res.json()) as MethodologyScenarioResponse[];
 
     expect(res.status).toBe(200);
     expect(json).toHaveLength(2);
@@ -71,12 +74,28 @@ describe('GET /api/methodology-scenarios', () => {
       { id: 'Shared Scenario', instance: second.slug },
     ]);
     expect(json.map(({ gmt }) => gmt?.data.at(-1)?.[1])).toEqual([1.6, 2.4]);
+    expect(json.map(({ emissions }) => emissions?.data)).toEqual([
+      [
+        { year: 2050, value: 20 },
+        { year: 2075, value: null },
+        { year: 2100, value: -1 },
+      ],
+      [
+        { year: 2050, value: 40 },
+        { year: 2075, value: null },
+        { year: 2100, value: -1 },
+      ],
+    ]);
+    expect(json.map(({ characteristics }) => characteristics)).toEqual([
+      expect.objectContaining({ emissions2050: 20, emissions2100: -1 }),
+      expect.objectContaining({ emissions2050: 40, emissions2100: -1 }),
+    ]);
     expect(json.map(({ yearStart, yearStep, yearEnd }) => ({ yearStart, yearStep, yearEnd }))).toEqual([
       { yearStart: 2020, yearStep: 80, yearEnd: 2100 },
       { yearStart: 2020, yearStep: 280, yearEnd: 2300 },
     ]);
     for (const entry of json) {
-      expect(Object.keys(entry).sort()).toEqual(['characteristics', 'gmt', 'id', 'instance', 'label', 'yearEnd', 'yearStart', 'yearStep']);
+      expect(Object.keys(entry).sort()).toEqual(['characteristics', 'emissions', 'gmt', 'id', 'instance', 'label', 'yearEnd', 'yearStart', 'yearStep']);
       expect(entry).not.toHaveProperty('description');
       expect(entry).not.toHaveProperty('uid');
     }
@@ -98,6 +117,7 @@ describe('GET /api/methodology-scenarios', () => {
           variable?: { name?: string };
         };
         if (body.variable) {
+          if (body.variable.name === 'Emissions|Kyoto Gases') return HttpResponse.json(tabulateEnvelope([], []));
           return HttpResponse.json(tabulateEnvelope(['model', 'scenario', 'unit', '2100'], [['FaIR', 'Valid', '°C', 1.5]]));
         }
         if (body.scenario?.name__ilike === 'Valid') {
@@ -108,7 +128,7 @@ describe('GET /api/methodology-scenarios', () => {
     );
 
     const res = await api.request('/api/methodology-scenarios', {}, await createTestEnv());
-    const json = (await res.json()) as ScenarioDetailsResponse[];
+    const json = (await res.json()) as MethodologyScenarioResponse[];
 
     expect(res.status).toBe(200);
     expect(json.map(({ id }) => id)).toEqual(['Valid']);

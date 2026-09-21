@@ -1,21 +1,21 @@
 <script>
-  import { chartBySlug, charts } from './catalog.js';
+  import ChartRenderer from './ChartRenderer.svelte';
+  import { isChartVisible } from './adapter.js';
 
-  // One scoreboard chart on its own, for `/embed/eu-scoreboard-chart?chart=<slug>`.
-  // This is what the graph download screenshots, so it carries the heading the
-  // section around the chart would otherwise supply.
-  export let chart = undefined;
+  export let result;
+  export let selection = {};
+  export let sector = undefined;
   export let staticMode = false;
 
-  $: entry = chartBySlug(chart) ?? charts[0];
+  $: visible = result && isChartVisible(result, selection);
 </script>
 
-{#if entry}
-  <div class="flex flex-col gap-4">
-    <header class="max-w-prose">
-      <h1 class="mb-3 text-2xl font-normal">{entry.title}</h1>
-      <p class="leading-relaxed">{entry.description}</p>
-    </header>
-    <svelte:component this={entry.component} {...entry.props} chartInfo={entry.info} {staticMode} />
-  </div>
+{#if visible}
+  <header class="mb-4 max-w-prose">
+    <h1 class="mb-3 text-2xl font-normal">{result.definition.title}</h1>
+    <p class="leading-relaxed">{result.definition.description}</p>
+  </header>
+  <ChartRenderer {result} {selection} {sector} {staticMode} />
+{:else if !result}
+  <p role="alert">The chart URL is incomplete.</p>
 {/if}

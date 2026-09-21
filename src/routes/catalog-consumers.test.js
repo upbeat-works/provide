@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { get } from 'svelte/store';
 import { createRuntimeCatalog } from '$stores/runtime-catalog.js';
 import { createCatalogFlow } from '$stores/catalog-flow.js';
-import { createOwnedIndicatorIndexRequest } from '$stores/owned-indicator-index.js';
 import { parseCatalogUrlSelection } from '$lib/utils/url.js';
+
+vi.mock('$app/stores', async () => {
+  const { readable } = await import('svelte/store');
+  return { page: readable({ url: new URL('https://provide.example/') }), navigating: readable(null), updated: readable(false) };
+});
 
 const API_ORIGIN = 'https://catalog.example';
 const APP_ORIGIN = 'https://provide.example';
@@ -25,12 +28,12 @@ afterEach(() => {
   vi.resetModules();
 });
 
-function scenarioDetails(description) {
+function scenarioDetails(description, instance = 'provide-internal') {
   return [
     {
       id: 'Low Demand',
       label: 'Low Demand',
-      instance: 'provide-internal',
+      instance,
       yearStart: 2020,
       yearStep: 10,
       yearEnd: 2100,
@@ -79,7 +82,15 @@ function createLoaderFetch({
     if (url.origin === API_ORIGIN && path === '/api/geographies/types') {
       return Response.json([{ id: 'cities', label: 'Cities', labelSingular: 'City', isSelectable: true }]);
     }
-    if (url.origin === API_ORIGIN && path === '/api/methodology-scenarios') return Response.json(scenarioDetails(scenarioTechnicalDescription));
+    if (url.origin === API_ORIGIN && path === '/api/methodology-scenarios') return Response.json(scenarioDetails(scenarioTechnicalDescription, url.searchParams.get('instance') ?? 'provide-internal'));
+    if (url.origin === API_ORIGIN && path === '/api/scoreboard/options') {
+      const scenario = { uid: 'Low Demand', label: 'Low Demand' };
+      const region = { uid: 'European Union (R9)', label: 'European Union (R9)' };
+      const year = { uid: '2050', label: '2050' };
+      return Response.json({ status: 'ready', scenarios: [scenario], regions: [region], years: [year], selection: { scenario, region } });
+    }
+    if (url.origin === API_ORIGIN && path === '/api/scoreboard/map') return Response.json({ status: 'empty', values: [] });
+    if (url.origin === API_ORIGIN && path.startsWith('/api/scoreboard/charts/')) return Response.json({ status: 'empty', data: [] });
     if (url.origin === API_ORIGIN && path === '/api/study-locations') return Response.json({ studyLocations });
     if (url.origin === API_ORIGIN && path === '/api/likelihoods') return Response.json({ likelihoods });
     if (url.origin === API_ORIGIN && path === '/api/catalog') {
@@ -229,42 +240,25 @@ describe('focused catalog consumers', () => {
     expect(apiPaths(requests)).toEqual([]);
   });
 
-  test('scoreboard pages request only the indexes used by each view', async () => {
+  test.each(['heat-stress', 'testing'])('scoreboard %s server loads only shared choices', async (sector) => {
     const { loaderFetch, requests } = createLoaderFetch();
     const [{ load: loadLayout }, { load: loadRanking }, { load: loadIndicators }] = await Promise.all([
       import('./(default)/projects/eu-scoreboard/+layout.server.js'),
       import('./(default)/projects/eu-scoreboard/+page.server.js'),
-      import('./(default)/projects/eu-scoreboard/indicators/+page.server.js'),
+      import('./(default)/projects/eu-scoreboard/indicators/+page.js'),
     ]);
-
-    expect(await loadLayout({ fetch: loaderFetch })).toEqual({});
-    const ranking = await loadRanking({ fetch: loaderFetch });
-    expect(apiPaths(requests)).toEqual(['/api/methodology-scenarios']);
-    expect(ranking.scenarios[0]).toMatchObject({ uid: 'Low Demand', instance: 'provide-internal' });
-
-    requests.length = 0;
-    const indicators = await loadIndicators({ fetch: loaderFetch });
-    expect(apiPaths(requests).sort()).toEqual(['/api/geographies', '/api/geographies/types', '/api/indicators', '/api/methodology-scenarios'].sort());
-    expect(indicators.indicatorIndex.indicators[0]).toMatchObject({ uid: 'Heat', instance: 'provide-internal' });
-    expect(indicators.geographies.cities[0]).toMatchObject({ uid: 'lisbon', label: 'Lisbon' });
-    expect(indicators.scenarios[0]).toMatchObject({ uid: 'Low Demand', instance: 'provide-internal' });
-  });
-
-  test('scoreboard indicator retry reloads only its owned index', async () => {
-    const { loaderFetch, requests } = createLoaderFetch();
-    const { loadIndicatorIndex } = await import('$utils/apis.js');
-    const request = createOwnedIndicatorIndexRequest({
-      initialIndex: { indicators: [], failedInstances: [{ instance: 'failed-source' }] },
-      load: () => loadIndicatorIndex(loaderFetch),
-    });
-
-    await request.retry();
-
-    expect(apiPaths(requests)).toEqual(['/api/indicators']);
-    expect(get(request.state)).toMatchObject({
-      status: 'success',
-      data: { indicators: [{ uid: 'Heat', instance: 'provide-internal' }] },
-    });
+    const url = new URL(`${APP_ORIGIN}/projects/eu-scoreboard?sector=${sector}&instance=provide-internal`);
+    const layout = await loadLayout({ url, fetch: loaderFetch, depends: () => {} });
+    await loadRanking({ fetch: loaderFetch, url, parent: async () => layout });
+    expect(apiPaths(requests)).toEqual(['/api/scoreboard/options']);
+    const selection = { ...layout.scoreboardOptions.selection, year: layout.scoreboardOptions.years[0] };
+    const indicators = await loadIndicators({ fetch: loaderFetch, url, parent: async () => ({ ...layout, selection }) });
+    await Promise.all([indicators.map, ...indicators.charts.map(({ result }) => result)]);
+    expect(apiPaths(requests).filter((path) => path === '/api/scoreboard/options')).toHaveLength(1);
+    expect(apiPaths(requests)).toEqual(['/api/scoreboard/options']);
+    expect(apiPaths(requests).filter((path) => path.startsWith('/api/scoreboard/charts/'))).toHaveLength(0);
+    expect(requests.every((request) => !request.searchParams.has('instance'))).toBe(true);
+    expect(requests.every((request) => request.origin === API_ORIGIN)).toBe(true);
   });
 
   test('case-study list and detail request separate focused data', async () => {
@@ -441,5 +435,4 @@ describe('focused catalog consumers', () => {
     expect(failure.status).toBe(503);
     expect(failure.body).toEqual({ message: 'Case study indicator data is temporarily unavailable.' });
   });
-
 });

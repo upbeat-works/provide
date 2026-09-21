@@ -1,92 +1,27 @@
 <script>
   import ScoreboardLayout from '$lib/components/layouts/ScoreboardLayout.svelte';
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
-  import SelectionButton from '$lib/components/controls/components/SelectionButton.svelte';
-  import ScenarioSelection from '$lib/components/controls/ScenarioSelection/ScenarioSelection.svelte';
-  import { CURRENT_SCENARIOS } from '$stores/state.js';
+  import ScoreboardMap from './components/ScoreboardMap.svelte';
+  import RankingPanel from './components/RankingPanel.svelte';
+  import ScoreboardFilters from './components/ScoreboardFilters.svelte';
+  import SectionIndex from './components/SectionIndex.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
-  import CompareMenu from './components/CompareMenu.svelte';
-  import ScoreboardMap from './components/ScoreboardMap.svelte';
-  import RankingPanel from './components/RankingPanel.svelte';
-  import SectionIndex from './components/SectionIndex.svelte';
-  import FilterSelect from './components/FilterSelect.svelte';
-  import { DEFAULT_YEAR, YEARS } from './components/filters.js';
-  import { RISK_CLASSES, riskRankingFor, riskValuesFor } from './components/scores.js';
-  import { comparisonViews, seedComparison } from './components/comparison.js';
   import { goto } from '$app/navigation';
-  import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS, URL_PATH_GEOGRAPHY } from '$config';
+  import { page } from '$app/stores';
+  import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS } from '$config';
+  import { RISK_CLASSES, riskRankingFor, riskValuesFor } from './components/scores.js';
 
   export let data;
 
-  // Scoreboard ranking view. Structure-only: there are no scoreboard endpoints
-  // yet, so the controls and the scores are placeholders — what's real here is
-  // the layout, the explainer copy, and the choropleth those scores are drawn
-  // into.
-  const indicatorsHref = `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators`;
-  const hazard = 'Heat Stress';
-
-  // Whole of Europe, unlike the indicators view which frames a single country.
   const europeBounds = [-24, 34, 42, 68];
-
-  let year = DEFAULT_YEAR;
-  $: scenario = $CURRENT_SCENARIOS[0];
-
-  // The ranking is Europe-wide by definition, so there is no geography to
-  // compare — only the two dimensions the bar actually offers a list for.
-  const dimensions = [
-    { uid: 'scenario', label: 'Scenario' },
-    { uid: 'year', label: 'Year' },
-  ];
-  let compareBy;
-  // The compared dimension's value per map; only read while comparing.
-  let sides = [];
-
-  const optionsFor = (uid) => ({ scenario: data.scenarios, year: YEARS })[uid] ?? [];
-  const valueFor = (uid) => ({ scenario, year })[uid];
-
-  // Seed only when the compared dimension changes. `sides` must not be read
-  // here: this statement would then depend on it, and choosing a value on a map
-  // would re-seed the pair straight back to what it opened with.
-  let seededFor;
-  $: if (compareBy?.uid !== seededFor) {
-    seededFor = compareBy?.uid;
-    sides = compareBy ? seedComparison(optionsFor(compareBy.uid), valueFor(compareBy.uid)) : [];
-  }
-
-  $: views = comparisonViews(compareBy?.uid, sides, { scenario, year });
-
-  // Each card names its selection, with the compared part picked out — that is
-  // what tells two rankings side by side apart.
-  const cardParts = (view, compared) => [
-    { label: view.scenario?.label ?? 'No scenario', accent: compared === 'scenario' },
-    { label: String(view.year?.label ?? ''), accent: compared === 'year' },
-  ];
-
-  // Both ways into a country lead to the same place: the indicators view,
-  // already scoped to it. The geo id is what that view reads back.
-  const countryHref = (uid) => `${indicatorsHref}?${URL_PATH_GEOGRAPHY}=${encodeURIComponent(uid)}`;
-
-  // The leaderboard is the top of the same table the map is coloured from, so a
-  // dark country on the map is a country at the top of this list.
-  const rankingFor = (view) =>
-    riskRankingFor(view)
-      .slice(0, 5)
-      .map((entry) => ({ ...entry, href: countryHref(entry.uid) }));
-
-  // The index reads differently from the headings — the last section's heading
-  // names the hazard, the index just promises more data — so it's written out
-  // rather than scraped from the h2s.
   const sections = [
     { slug: 'what-the-scoreboard-shows', title: 'What the scoreboard shows' },
     { slug: 'how-the-score-is-built', title: 'How the score is built' },
     { slug: 'scenarios-explained', title: 'Scenarios explained' },
     { slug: 'indicators', title: 'More data available' },
   ];
-
-  // Tag colours: grass/sky/orange come from the palette; there is no red token,
-  // so the high pathway borrows the map scale's red.
   const scenarios = [
     {
       tag: 'Reference',
@@ -113,7 +48,6 @@
       description: 'Fossil-fuelled development. The highest pathway, used as an upper bound rather than a likely future.',
     },
   ];
-
   const indicators = [
     'Annual Maximum Temperature',
     'Annual Mean Temperature (MESMER)',
@@ -123,90 +57,63 @@
     'Cooling Degree Days',
     'Population Exposed to Extreme Heat',
   ];
-
   let contentRef;
   let activeSlug;
+  $: hazard = data.scoreboard.sector.label;
+  $: chartDefinitions = data.scoreboard.definitions;
+  $: indicatorsHref = `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators${$page.url.search}`;
+  $: rankingView = { scenario: data.selection?.scenario, year: data.selection?.year };
+  $: mapValues = riskValuesFor(rankingView);
+  // The whole ranking — the panel pages through it rather than being handed a
+  // single page of five.
+  $: rankingEntries = riskRankingFor(rankingView).map((entry) => ({ ...entry, href: countryHref(entry.label) }));
+
+  function selectionParams(data, region) {
+    const params = new URLSearchParams({ sector: data.scoreboard.sector.uid });
+    for (const key of ['scenario', 'region', 'year']) {
+      let value = data.selection?.[key]?.uid;
+      if (key === 'region' && region) value = region;
+      if (value !== undefined && value !== null) params.set(key, value);
+    }
+    return params;
+  }
+
+  const countryHref = (label) => `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators?${selectionParams(data, label)}`;
+
+  function selectCountry(uid) {
+    const country = mapValues.find((entry) => entry.uid === uid);
+    if (country) void goto(countryHref(country.label));
+  }
 </script>
 
 <ScoreboardLayout>
   <svelte:fragment slot="filters">
-    <SelectionButton label="Hazard/Sector" buttonLabel={hazard} wrapperClass="min-w-[10rem]" buttonClass="mt-1 text-sm" />
-    <!-- The scoreboard has no indicator selection to scope availability by, so
-         it offers the whole scenario universe, and one scenario at a time —
-         every view here is tied to a single pathway. -->
-    {#if compareBy?.uid !== 'scenario'}
-      <ScenarioSelection scenarios={data.scenarios} multiple={false} wrapperClass="min-w-[10rem]" labelClass="" buttonClass="mt-1 text-sm" />
-    {/if}
-    {#if compareBy?.uid !== 'year'}
-      <FilterSelect label="Year" options={YEARS} bind:selected={year} />
-    {/if}
-  </svelte:fragment>
-
-  <svelte:fragment slot="actions">
-    <CompareMenu {dimensions} bind:selected={compareBy} />
+    <ScoreboardFilters {data} filters={['sector', 'scenario', 'year']} />
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
-    <!-- Keyed on the number of maps: a mapbox instance does not re-fit when its
-         container is resized under it, so splitting the band has to build the
-         maps afresh rather than squeeze the existing one into half the width. -->
-    {#key views.length}
-      <div class="flex" class:gap-px={compareBy}>
-        {#each views as view, i (i)}
-          <div class="relative min-w-0 flex-1">
-            <!-- Clicking a country is the map's version of clicking its row in
-                 the ranking beside it, so both open the same view. -->
-            <ScoreboardMap
-              bounds={europeBounds}
-              height="h-[560px]"
-              values={riskValuesFor(view)}
-              classes={RISK_CLASSES}
-              selectable={true}
-              on:select={({ detail }) => goto(countryHref(detail.uid))}
-            />
-
-            <!-- Overlays sit on the map they belong to. With one map the inner
-                 max-w-7xl keeps the panel on the same left edge as the content
-                 below; side by side, each panel belongs to its own half. Both
-                 are anchored to the foot of the map so they grow upwards as
-                 rows are added. -->
-            <div class="pointer-events-none absolute inset-0 {compareBy ? '' : 'mx-auto max-w-7xl px-6'}">
-              {#if compareBy}
-                <div class="pointer-events-auto absolute left-6 top-6">
-                  <FilterSelect
-                    label={compareBy.label}
-                    options={optionsFor(compareBy.uid)}
-                    bind:selected={sides[i]}
-                    labelClass="sr-only"
-                    wrapperClass="min-w-[12rem]"
-                    buttonClass="rounded border border-contour-weakest bg-surface-base px-3 py-2 text-sm shadow-sm"
-                  />
-                </div>
-              {/if}
-              <div class="pointer-events-auto absolute bottom-6 left-6">
-                <RankingPanel parts={cardParts(view, compareBy?.uid)} {hazard} entries={rankingFor(view)} />
-              </div>
-            </div>
-          </div>
-        {/each}
+    <ScoreboardMap bounds={europeBounds} height="h-[560px]" values={mapValues} classes={RISK_CLASSES} selectable={true} on:select={({ detail }) => selectCountry(detail.uid)} />
+    <div class="pointer-events-none absolute inset-0 mx-auto max-w-7xl px-6">
+      <div class="pointer-events-auto absolute bottom-6 left-6">
+        <RankingPanel {hazard} entries={rankingEntries} />
       </div>
-    {/key}
-
-    {#if !compareBy}
-      <div class="absolute inset-x-0 bottom-6 flex justify-center">
-        <Button href="#{sections[0].slug}">
-          How to read this scoreboard
-          <span class="inline-flex rotate-90"><LinkArrow /></span>
-        </Button>
-      </div>
-    {/if}
+    </div>
+    <!-- A full-width strip laid over the map to centre one button. Without
+         `pointer-events-none` the empty rest of it sits on top of the ranking
+         card and swallows clicks meant for the controls at the card's foot. -->
+    <div class="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
+      <Button class="pointer-events-auto" href={`#${sections[0].slug}`}>
+        How to read this scoreboard
+        <span class="inline-flex rotate-90"><LinkArrow /></span>
+      </Button>
+    </div>
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
     <SectionIndex {sections} {contentRef} bind:activeSlug />
     <div class="mt-8 flex flex-col items-start gap-5">
       <CopyLink />
-      <Button href="/{PATH_DOCUMENTATION}" variant="secondary" class="w-full justify-between text-left">
+      <Button href={`/${PATH_DOCUMENTATION}`} variant="secondary" class="w-full justify-between text-left">
         Learn more about the methodology
         <LinkArrow />
       </Button>
@@ -256,7 +163,7 @@
     <ScoreboardSection
       eyebrow="Indicators"
       slug="indicators"
-      title="{hazard} indicators for Europe and individual countries"
+      title={`${hazard} indicators for Europe and individual countries`}
       description="The scoreboard compares countries on one score. To see the indicators behind that score, and how each one changes over time, switch to Explore indicators and choose Europe or a single country."
       accent={activeSlug === 'indicators'}
       divider={false}
@@ -270,11 +177,18 @@
         {/each}
       </ul>
 
+      {#if chartDefinitions.length}
+        <ul class="mt-6 flex max-w-3xl flex-col gap-3">
+          {#each chartDefinitions as definition (definition.chartId)}
+            <li>
+              <a class="font-semibold text-theme-base" href={`${indicatorsHref}#${definition.chartId}`}>{definition.title}</a>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+
       <div class="mt-4 flex flex-wrap items-center gap-4">
-        <Button href={indicatorsHref}>
-          Explore {hazard} indicators
-          <LinkArrow />
-        </Button>
+        <Button href={indicatorsHref}>Explore {hazard} indicators <LinkArrow /></Button>
         <p class="text-sm text-text-weaker">or select any country in the ranking to open it directly</p>
       </div>
     </ScoreboardSection>
