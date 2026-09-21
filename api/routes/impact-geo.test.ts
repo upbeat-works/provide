@@ -12,19 +12,15 @@ const env = {
   GEOSERVER_PASSWORD: 'secret',
 } as Env['Bindings'];
 let availabilitySpy: ReturnType<typeof spyOn<typeof view, 'fetchImpactGeoAvailability'>>;
-let gridSpy: ReturnType<typeof spyOn<typeof view, 'fetchImpactGeoGrid'>>;
+let rasterSpy: ReturnType<typeof spyOn<typeof view, 'fetchImpactGeoRaster'>>;
 let downloadSpy: ReturnType<typeof spyOn<typeof view, 'fetchImpactGeoDownload'>>;
 
 beforeEach(() => {
   availabilitySpy = spyOn(view, 'fetchImpactGeoAvailability').mockResolvedValue({
     '2020 Climate Policies': [2030, 2050], Low: [],
   });
-  gridSpy = spyOn(view, 'fetchImpactGeoGrid').mockResolvedValue({
-    coordinatesOrigin: [9, 3], resolution: 2, resolutions: [2], data: [[0.8]],
-    parameters: { indicator: 'Mean Temperature', geography: 'Cameroon', reference: '2011-2020 (Present Day)',
-      time: 'Annual', spatial: 'Area', scenario: '2020 Climate Policies', frequency: 0.5 },
-    formats: ['netcdf', 'geotiff'], year: 2030, showDifference: false,
-  });
+  rasterSpy = spyOn(view, 'fetchImpactGeoRaster').mockImplementation(async () =>
+    new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'image/tiff' } }));
   downloadSpy = spyOn(view, 'fetchImpactGeoDownload').mockImplementation(async (_config, _params, format) => {
     const contentType = format === 'netcdf' ? 'application/x-netcdf' : 'image/tiff';
     return new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': contentType } });
@@ -33,7 +29,7 @@ beforeEach(() => {
 
 afterEach(() => {
   availabilitySpy.mockRestore();
-  gridSpy.mockRestore();
+  rasterSpy.mockRestore();
   downloadSpy.mockRestore();
 });
 
@@ -54,16 +50,35 @@ describe('GET /api/impact-geo/availability', () => {
 });
 
 describe('GET /api/impact-geo', () => {
-  test('returns the grid and forwards the canonical selection', async () => {
+  test('streams a raster for the browser and forwards the canonical selection', async () => {
     const response = await api.request(`/api/impact-geo?${gridQuery}&frequency=0.5`, {}, env);
     expect(response.status).toBe(200);
-    expect((await response.json() as { year: number }).year).toBe(2030);
-    expect(gridSpy).toHaveBeenCalledWith({
+    expect(response.headers.get('content-type')).toContain('image/tiff');
+    expect(response.headers.has('content-disposition')).toBe(false);
+    expect(rasterSpy).toHaveBeenCalledWith({
       url: env.GEOSERVER_URL,
       workspace: 'climate-risk-dashboard',
       username: 'map-reader',
       password: 'secret',
     }, expect.objectContaining({ scenario: '2020 Climate Policies', year: 2030 }));
+  });
+
+  test('passes raster chunks through before the upstream download finishes', async () => {
+    let upstream: ReadableStreamDefaultController<Uint8Array>;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        upstream = controller;
+        controller.enqueue(new Uint8Array([1, 2]));
+      },
+    });
+    rasterSpy.mockResolvedValueOnce(new Response(stream, { headers: { 'content-type': 'image/tiff' } }));
+    const response = await api.request(`/api/impact-geo?${gridQuery}`, {}, env);
+    const reader = response.body!.getReader();
+    expect(await reader.read()).toEqual({ done: false, value: new Uint8Array([1, 2]) });
+    upstream!.enqueue(new Uint8Array([3, 4]));
+    upstream!.close();
+    expect(await reader.read()).toEqual({ done: false, value: new Uint8Array([3, 4]) });
+    expect((await reader.read()).done).toBe(true);
   });
 
   test('streams a GeoTIFF attachment from the same selection', async () => {
@@ -88,28 +103,28 @@ describe('GET /api/impact-geo', () => {
       const response = await api.request(`/api/impact-geo?${query}`, {}, env);
       expect([400, 404]).toContain(response.status);
     }
-    expect(gridSpy).not.toHaveBeenCalled();
+    expect(rasterSpy).not.toHaveBeenCalled();
   });
 
   test('maps missing configuration, missing coverage, and upstream failure', async () => {
     expect((await api.request(`/api/impact-geo?${gridQuery}`, {}, { ...env, GEOSERVER_URL: undefined })).status).toBe(503);
-    gridSpy.mockRejectedValueOnce(new view.ImpactGeoCoverageNotFoundError('missing'));
+    rasterSpy.mockRejectedValueOnce(new view.ImpactGeoCoverageNotFoundError('missing'));
     const missing = await api.request(`/api/impact-geo?${gridQuery}`, {}, env);
     expect(missing.status).toBe(404);
     expect(await missing.json()).toEqual({ message: 'missing', isExpected: true });
-    gridSpy.mockRejectedValueOnce(new view.ImpactGeoUpstreamError('broken'));
+    rasterSpy.mockRejectedValueOnce(new view.ImpactGeoUpstreamError('broken'));
     expect((await api.request(`/api/impact-geo?${gridQuery}`, {}, env)).status).toBe(502);
   });
 
   test('allows anonymous GeoServer configuration and rejects partial credentials safely', async () => {
     const anonymous = { ...env, GEOSERVER_WORKSPACE: undefined, GEOSERVER_USERNAME: undefined, GEOSERVER_PASSWORD: undefined };
     expect((await api.request(`/api/impact-geo?${gridQuery}`, {}, anonymous)).status).toBe(200);
-    expect(gridSpy).toHaveBeenLastCalledWith(expect.objectContaining({ workspace: 'provide', username: undefined, password: undefined }), expect.anything());
+    expect(rasterSpy).toHaveBeenLastCalledWith(expect.objectContaining({ workspace: 'provide', username: undefined, password: undefined }), expect.anything());
 
     const partial = { ...env, GEOSERVER_USERNAME: 'map-reader', GEOSERVER_PASSWORD: undefined };
     const response = await api.request(`/api/impact-geo?${gridQuery}`, {}, partial);
     expect(response.status).toBe(503);
     expect(JSON.stringify(await response.json())).not.toContain('map-reader');
-    expect(gridSpy).toHaveBeenCalledTimes(1);
+    expect(rasterSpy).toHaveBeenCalledTimes(1);
   });
 });

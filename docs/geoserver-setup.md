@@ -73,7 +73,7 @@ repository.
 The current GeoServer NetCDF reader does not expose the source variable unit or
 global model/source attributes in WCS `DescribeCoverage` or the returned TIFF.
 Files must therefore already use the indicator's display unit. Check the source
-unit, extent, cell size, missing value, and values before publication. The JSON
+unit, extent, cell size, missing value, and values before publication. The browser
 grid omits `unit`, `model`, and `source` when WCS cannot supply them; the browser
 uses the selected ixmp4 indicator unit. No map registry or database metadata is
 used.
@@ -97,7 +97,12 @@ Availability reads capabilities once for all repeated `scenarios` query keys:
 }
 ```
 
-The grid route fetches its coverage directly and returns longitude-major data:
+The map route fetches its coverage directly and streams GeoTIFF (`image/tiff`).
+The API does not decode the raster or build a JSON grid. GeoServer credentials
+stay on the API server.
+
+A browser worker fetches and decodes the raster into longitude-major data for
+map rendering, colours, and scenario differences:
 
 ```json
 {
@@ -119,6 +124,12 @@ The grid route fetches its coverage directly and returns longitude-major data:
   "showDifference": false
 }
 ```
+
+Each map uses one decoding worker, loading selected scenarios in order. A change
+of selection or removal of the map stops its worker; completed workers are also
+released. Map grids stay with the current view instead of entering the shared
+response cache. The browser still holds full grids and builds map geometry, so
+large datasets still need browser memory.
 
 Add `format=netcdf` or `format=geotiff` to stream the same WCS coverage as an
 `.nc` or `.tif` attachment. Downloads accept an omitted resolution or

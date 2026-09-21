@@ -1,4 +1,3 @@
-import { fromArrayBuffer } from 'geotiff';
 import { REPRESENTATIVE_VALUE } from '../conventions';
 
 export interface ImpactGeoSelection {
@@ -19,20 +18,6 @@ export interface GeoServerConfig {
 export interface ImpactGeoParams extends ImpactGeoSelection {
   scenario: string;
   year: number;
-}
-
-export interface ImpactGeoGrid {
-  coordinatesOrigin: [number, number];
-  resolution: number;
-  resolutions: number[];
-  data: Array<Array<number | null>>;
-  parameters: Omit<ImpactGeoParams, 'year'> & { frequency: number };
-  formats: ['netcdf', 'geotiff'];
-  year: number;
-  showDifference: false;
-  unit?: string;
-  model?: string;
-  source?: string;
 }
 
 export type ImpactGeoDownloadFormat = 'netcdf' | 'geotiff';
@@ -176,45 +161,4 @@ export async function fetchImpactGeoDownload(
   fetcher: typeof fetch = fetch,
 ): Promise<Response> {
   return fetchImpactGeoCoverage(config, params, format, fetcher);
-}
-
-function isNoData(value: number, noData?: number): boolean {
-  return Number.isNaN(value) || (noData != null && value === noData);
-}
-
-export async function fetchImpactGeoGrid(
-  config: GeoServerConfig, params: ImpactGeoParams, fetcher: typeof fetch = fetch,
-): Promise<ImpactGeoGrid> {
-  const response = await fetchImpactGeoRaster(config, params, fetcher);
-  const tiff = await fromArrayBuffer(await response.arrayBuffer());
-  const image = await tiff.getImage();
-  const width = image.getWidth();
-  const height = image.getHeight();
-  const boundingBox = image.getBoundingBox();
-  const resolutionX = (boundingBox[2] - boundingBox[0]) / width;
-  const resolutionY = (boundingBox[3] - boundingBox[1]) / height;
-  if (Math.abs(resolutionX - resolutionY) > 1e-9) {
-    throw new ImpactGeoUpstreamError('GeoServer returned non-square impact-geo cells');
-  }
-  const values = await image.readRasters({ interleave: true, samples: [0] });
-  if (values.length !== width * height) {
-    throw new ImpactGeoUpstreamError('GeoServer returned an unexpected raster size');
-  }
-  const rawNoData = image.getGDALNoData();
-  const noData = rawNoData == null ? undefined : Number(rawNoData);
-  const data = Array.from({ length: width }, () => Array<number | null>(height).fill(null));
-  for (let row = 0; row < height; row += 1) {
-    const latitude = height - row - 1;
-    for (let column = 0; column < width; column += 1) {
-      const value = Number(values[row * width + column]);
-      data[column][latitude] = isNoData(value, noData) ? null : value;
-    }
-  }
-  return {
-    coordinatesOrigin: [boundingBox[0] + resolutionX / 2, boundingBox[1] + resolutionY / 2],
-    resolution: resolutionX, resolutions: [resolutionX], data,
-    parameters: { indicator: params.indicator, geography: params.geography, reference: params.reference,
-      time: params.time, spatial: params.spatial, scenario: params.scenario, frequency: 0.5 },
-    formats: ['netcdf', 'geotiff'], year: params.year, showDifference: false,
-  };
 }

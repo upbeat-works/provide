@@ -13,6 +13,9 @@
     COLOR_SCALES,
   } from '$config';
   import { writable } from 'svelte/store';
+  import { onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
+  import { startMapGridLoad } from '$lib/maps/map-grid-loader.js';
   import { fetchData } from '$lib/api/api';
   import { mapGridRequests } from '$lib/catalog/map-request.js';
 
@@ -65,15 +68,25 @@
     },
   } : undefined;
 
-  $: if (impactGeoRequests) {
-    fetchData(IMPACT_GEO_DATA, impactGeoRequests.data);
+  let cancelGridLoad;
+  let loadedRequest;
+  onDestroy(() => cancelGridLoad?.());
 
-    fetchData(GEO_SHAPE_DATA, impactGeoRequests.shape);
+  $: loadMap(impactGeoRequests);
+
+  function loadMap(requests) {
+    const requestKey = JSON.stringify(requests);
+    if (requestKey === loadedRequest) return;
+    loadedRequest = requestKey;
+    cancelGridLoad?.();
+    if (!browser || !requests) return;
+    cancelGridLoad = startMapGridLoad(requests.data, IMPACT_GEO_DATA.set);
+    fetchData(GEO_SHAPE_DATA, requests.shape);
   }
 
   function retryMapRequest() {
-    fetchData(IMPACT_GEO_DATA, impactGeoRequests.data);
-    fetchData(GEO_SHAPE_DATA, impactGeoRequests.shape);
+    loadedRequest = undefined;
+    loadMap(impactGeoRequests);
   }
 
   $: process = ({ data, shape }, { scenarios, indicator, urlParams, geography, legacyGeography: geoId }) => {

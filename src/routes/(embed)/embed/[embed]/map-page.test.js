@@ -3,6 +3,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { readable, writable } from 'svelte/store';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { writeArrayBuffer } from 'geotiff';
+import { processMapRequests } from '$lib/maps/impact-geo-grid.js';
 
 const state = vi.hoisted(() => ({ page: undefined, invalidateAll: vi.fn() }));
 
@@ -16,6 +18,15 @@ vi.mock('mapbox-gl', () => ({ Map: class { constructor() { this.scrollZoom = thi
 vi.mock('@mapbox/mapbox-gl-sync-move', () => ({ default: vi.fn() }));
 vi.mock('$workers/geomask.js?worker', () => ({ default: class { postMessage({ geoData }) { queueMicrotask(() => this.onmessage?.({ data: { status: 'finished', data: geoData.map(({ features, label }) => ({ label, data: { type: 'FeatureCollection', features } })) } })); } terminate() {} } }));
 
+vi.mock('$lib/workers/impact-geo.js?worker', () => ({
+  default: class {
+    postMessage(requests) {
+      processMapRequests(requests, (data) => this.onmessage?.({ data }));
+    }
+    terminate() {}
+  },
+}));
+
 await import('$app/stores');
 
 const embedUrl = new URL('https://provide.example/embed/impact-geo?indicator=Mean%20Temperature&indicatorLabel=Mean%20Temperature&unit=degrees-celsius&colorScale=default&direction=1&instance=provide-internal&geography=Cameroon&geographyLabel=Cameroon&geoId=CMR&geographyType=admin0&reference=Present&time=Annual&spatial=Area&scenarios[0]=Low%20Demand&year=2040');
@@ -27,7 +38,13 @@ beforeEach(() => {
   vi.stubEnv('VITE_DATA_API_URL', 'https://data.example/api');
   vi.stubGlobal('fetch', vi.fn(async (input) => {
     const url = new URL(String(input));
-    if (url.pathname === '/api/impact-geo/') return Response.json({ data: [[1, 2], [3, 4]], coordinatesOrigin: [0, 0], resolution: 1, resolutions: [1], formats: ['geotiff'], title: `Map ${url.searchParams.get('year')}` });
+    if (url.pathname === '/api/impact-geo/') {
+      const tiff = writeArrayBuffer(new Float32Array([1, 2, 3, 4]), {
+        width: 2, height: 2, ModelPixelScale: [1, 1, 0], ModelTiepoint: [0, 0, 0, -0.5, 1.5, 0],
+        GeographicTypeGeoKey: 4326, GTModelTypeGeoKey: 2, GTRasterTypeGeoKey: 1,
+      });
+      return new Response(tiff, { headers: { 'content-type': 'image/tiff' } });
+    }
     if (url.pathname === '/api/geo-shape/') return Response.json({ data: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { uid: 'CMR' }, geometry: { type: 'Polygon', coordinates: [[[0, 0], [2, 0], [0, 0]]] } }] } });
     throw new Error(`Unexpected request: ${url}`);
   }));
@@ -47,7 +64,7 @@ afterEach(() => {
 test('uses server-discovered years when a ready map embed loads its grid', async () => {
   const { default: Fixture } = await import('./map-page.test.fixture.svelte');
   render(Fixture, { data: { mapView: { status: 'ready', years: [2030, 2050], selection: { indicator: 'Mean Temperature', instance: 'provide-internal', geography: 'Cameroon', reference: 'Present', time: 'Annual', spatial: 'Area', scenarios: ['Low Demand'] } } } });
-  await screen.findByRole('heading', { name: 'Map 2030' });
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2030' });
   const request = globalThis.fetch.mock.calls.map(([input]) => new URL(String(input))).find((url) => url.pathname === '/api/impact-geo/');
   expect(request.searchParams.get('year')).toBe('2030');
 });

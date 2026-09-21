@@ -5,7 +5,7 @@ import {
   coverageIdSegment,
   fetchImpactGeoAvailability,
   fetchImpactGeoDownload,
-  fetchImpactGeoGrid,
+  fetchImpactGeoRaster,
   ImpactGeoCoverageNotFoundError,
   ImpactGeoConfigurationError,
   type ImpactGeoParams,
@@ -125,7 +125,10 @@ impactGeo.get('/', async (c) => {
         },
       });
     }
-    return c.json(await fetchImpactGeoGrid(config, params));
+    const raster = await fetchImpactGeoRaster(config, params);
+    return new Response(raster.body, {
+      headers: { 'content-type': raster.headers.get('content-type') ?? 'image/tiff' },
+    });
   } catch (error) {
     return errorResponse(c, error);
   }

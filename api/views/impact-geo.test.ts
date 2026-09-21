@@ -7,7 +7,6 @@ import {
   coverageIdSegment,
   fetchImpactGeoDownload,
   fetchImpactGeoAvailability,
-  fetchImpactGeoGrid,
   fetchImpactGeoRaster,
   ImpactGeoCoverageNotFoundError,
   ImpactGeoUpstreamError,
@@ -143,24 +142,6 @@ describe('WCS raster boundary', () => {
     GTModelTypeGeoKey: 2,
     GTRasterTypeGeoKey: 1,
     GDAL_NODATA: '-9999',
-  });
-
-  test('turns north-up TIFF rows into longitude/latitude cells with nodata', async () => {
-    const requested: string[] = [];
-    const fetcher = (async (input: RequestInfo | URL) => {
-      requested.push(String(input));
-      return new Response(tiff, { headers: { 'content-type': 'image/tiff' } });
-    }) as typeof fetch;
-    const grid = await fetchImpactGeoGrid(geoserver, params, fetcher);
-    expect(requested).toHaveLength(1);
-    expect(new URL(requested[0]).searchParams.get('coverageId')).toBe(`climate-risk-dashboard__${expectedId}`);
-    expect(grid).toMatchObject({
-      coordinatesOrigin: [11, 21],
-      resolution: 2,
-      data: [[1, 3], [2, null]],
-      year: 2030,
-      formats: ['netcdf', 'geotiff'],
-    });
   });
 
   test('returns the same raster response for download without capabilities', async () => {

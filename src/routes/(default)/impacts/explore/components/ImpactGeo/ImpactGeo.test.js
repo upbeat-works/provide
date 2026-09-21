@@ -2,6 +2,8 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { writeArrayBuffer } from 'geotiff';
+import { processMapRequests } from '$lib/maps/impact-geo-grid.js';
 
 vi.mock('$app/environment', () => ({ browser: true }));
 
@@ -31,6 +33,7 @@ const worker = { posts: 0 };
 let requests = [];
 let mismatchComparison = false;
 let rasterUnit;
+let failMapRequests = false;
 
 vi.mock('$workers/geomask.js?worker', () => ({
   default: class {
@@ -47,19 +50,17 @@ vi.mock('$workers/geomask.js?worker', () => ({
   },
 }));
 
-function mapData(year) {
-  return {
-    data: [[year, year + 1], [year + 2, year + 3]],
-    coordinatesOrigin: [0, 0],
-    resolution: 1,
-    model: 'Test model',
-    source: 'Test source',
-    resolutions: [1],
-    formats: ['netcdf', 'geotiff'],
-    title: `Temperature map ${year}`,
-    selectableYears: [2050, 2100],
-  };
-}
+vi.mock('$lib/workers/impact-geo.js?worker', () => ({
+  default: class {
+    postMessage(requests) {
+      processMapRequests(requests, (data) => {
+        if (rasterUnit && data.result.data) data.result.data.unit = rasterUnit;
+        this.onmessage?.({ data });
+      });
+    }
+    terminate() {}
+  },
+}));
 
 beforeEach(() => {
   vi.stubEnv('VITE_DATA_API_URL', 'https://data.example/api');
@@ -68,10 +69,15 @@ beforeEach(() => {
     const url = new URL(String(input));
     requests.push(url);
     if (url.pathname === '/api/impact-geo/') {
-      const data = mapData(Number(url.searchParams.get('year')));
-      if (rasterUnit) data.unit = rasterUnit;
-      if (mismatchComparison && url.searchParams.get('scenario') === 'Delayed Transition') data.coordinatesOrigin = [1, 0];
-      return Response.json(data);
+      if (failMapRequests) return Response.json({ error: 'GeoServer unavailable' }, { status: 502 });
+      const year = Number(url.searchParams.get('year'));
+      let longitude = -0.5;
+      if (mismatchComparison && url.searchParams.get('scenario') === 'Delayed Transition') longitude = 0.5;
+      const tiff = writeArrayBuffer(new Float32Array([year, year + 1, year + 2, year + 3]), {
+        width: 2, height: 2, ModelPixelScale: [1, 1, 0], ModelTiepoint: [0, 0, 0, longitude, 1.5, 0],
+        GeographicTypeGeoKey: 4326, GTModelTypeGeoKey: 2, GTRasterTypeGeoKey: 1,
+      });
+      return new Response(tiff, { headers: { 'content-type': 'image/tiff' } });
     }
     if (url.pathname === '/api/geo-shape/') {
       return Response.json({
@@ -100,6 +106,7 @@ afterEach(() => {
   requests = [];
   mismatchComparison = false;
   rasterUnit = undefined;
+  failMapRequests = false;
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -109,7 +116,7 @@ test('settles map processing after the request and a year change', async () => {
   const { default: Fixture } = await import('./ImpactGeo.test.fixture.svelte');
   const view = render(Fixture, { year: 2050 });
 
-  await screen.findByRole('heading', { name: 'Temperature map 2050' });
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2050' });
   await waitFor(() => expect(worker.posts).toBeGreaterThan(0));
   await waitFor(() => expect(screen.getByRole('figure').getAttribute('aria-busy')).toBe('false'));
   const firstRuns = worker.posts;
@@ -118,7 +125,7 @@ test('settles map processing after the request and a year change', async () => {
 
   await view.rerender({ year: 2100 });
 
-  await screen.findByRole('heading', { name: 'Temperature map 2100' });
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2100' });
   await waitFor(() => expect(worker.posts).toBeGreaterThan(firstRuns));
   await waitFor(() => expect(screen.getByRole('figure').getAttribute('aria-busy')).toBe('false'));
   const secondRuns = worker.posts;
@@ -131,14 +138,14 @@ test('settles map processing after the request and a year change', async () => {
 test('uses the first shared year when the requested year is unavailable', async () => {
   const { default: Fixture } = await import('./ImpactGeo.test.fixture.svelte');
   render(Fixture, { year: 2040 });
-  await screen.findByRole('heading', { name: 'Temperature map 2050' });
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2050' });
   expect(screen.getByRole('combobox', { name: 'Year' }).value).toBe('2050');
 });
 
 test('downloads the selected map in NetCDF or GeoTIFF at its native resolution', async () => {
   const { default: Fixture } = await import('./ImpactGeo.test.fixture.svelte');
   render(Fixture, { year: 2050, staticMode: false });
-  await screen.findByRole('heading', { name: 'Temperature map 2050' });
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2050' });
   await waitFor(() => expect(screen.getByRole('figure').getAttribute('aria-busy')).toBe('false'));
   await fireEvent.click(screen.getByRole('button', { name: 'Download data' }));
   const dataLink = await screen.findByRole('link', { name: 'Download data' });
@@ -182,4 +189,17 @@ test('labels a side-by-side raster unit error as a map failure', async () => {
   render(Fixture, { year: 2050, compare: true, unitComparison: true });
   await screen.findByText('Map unavailable');
   expect(screen.queryByText('Map comparison is not available')).toBeNull();
+});
+
+
+test('retries a failed raster request and displays the selected map', async () => {
+  failMapRequests = true;
+  const { default: Fixture } = await import('./ImpactGeo.test.fixture.svelte');
+  render(Fixture, { year: 2050 });
+  await screen.findByText('GeoServer unavailable');
+  failMapRequests = false;
+  await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2050' });
+  await waitFor(() => expect(screen.getByRole('figure').getAttribute('aria-busy')).toBe('false'));
+  expect(requests.filter((url) => url.pathname === '/api/impact-geo/')).toHaveLength(2);
 });
