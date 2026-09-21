@@ -173,11 +173,13 @@ export function parseVariable(name: string): ParsedVariable {
   const parsed: ParsedVariable = { raw: name, indicator: segments[0], kind: 'global' };
   // Standard five-segment grammar: Indicator|Period|Temporal|Spatial|Value.
   if (segments.length === 5) {
+    const value = parseValue(segments[4]);
+    if (!value || segments.some((segment) => !segment.trim())) return parsed;
     parsed.kind = 'faceted';
     parsed.period = segments[1];
     parsed.temporal = segments[2];
     parsed.spatial = segments[3];
-    parsed.value = parseValue(segments[4]);
+    parsed.value = value;
   } else if (segments.length === 2) {
     // `Indicator|Value` — a global trajectory. The value axis is the same one the
     // faceted grammar uses, so parseValue recovers the percentile here too;

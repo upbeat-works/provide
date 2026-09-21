@@ -85,6 +85,17 @@ describe('composeVariable', () => {
 });
 
 describe('indicatorsFromVariables', () => {
+  test.each([
+    'Land Cover|Cropland|Energy Crops|Irrigated|Other',
+    'Heat|2011-2020 (Present Day)|Annual|Area|Average',
+    'Heat||Annual|Area|50th Percentile',
+    'Heat|2011-2020 (Present Day)| |Area|50th Percentile',
+    'Heat|2011-2020 (Present Day)|Annual||50th Percentile',
+    ' |2011-2020 (Present Day)|Annual|Area|50th Percentile',
+  ])('excludes names outside the indicator convention: %s', (name) => {
+    expect(indicatorsFromVariables([name])).toEqual([]);
+  });
+
   const names = [
     'Mean Temperature|2011-2020 (Present Day)|Annual|Area|50th Percentile',
     'Mean Temperature|2011-2020 (Present Day)|Annual|Area|5th Percentile',

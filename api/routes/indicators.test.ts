@@ -140,6 +140,21 @@ describe('GET /api/indicators', () => {
     expect(json.indicators.map(({ id }) => id)).toEqual(['Heat']);
   });
 
+  test('excludes unrelated five-part IAM names from the catalog', async () => {
+    server.use(http.patch(`${instance.url}/iamc/variables/`, () => HttpResponse.json(listEnvelope([
+      { id: 1, name: 'Land Cover|Cropland|Energy Crops|Irrigated|Other' },
+      variable(2, 'Heat'),
+    ]))));
+    useUnit(instance, 'days');
+
+    const res = await api.request('/api/indicators', {}, await createTestEnv());
+    const json = (await res.json()) as IndicatorIndexResponse;
+
+    expect(res.status).toBe(200);
+    expect(json.indicators.map(({ id }) => id)).toEqual(['Heat']);
+    expect(json.failedInstances).toEqual([]);
+  });
+
   test('keeps equal indicator IDs from different instances as separate entries', async () => {
     await useInstances([instance, secondInstance], async () => {
       server.use(
