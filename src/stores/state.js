@@ -5,10 +5,10 @@ import { get, keyBy, reduce } from 'lodash-es';
 import { derived, writable } from 'svelte/store';
 import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
 import { ciGet } from '$lib/utils/case-insensitive.js';
-import { extractEndYear, extractStartYear } from '$utils/meta.js';
 import { selectionUrlParams } from '$lib/catalog/selection-url.js';
-import { legacyMapView } from '$lib/catalog/legacy-map-request.js';
+import { canonicalMapSelection, startMapAvailability } from '$lib/catalog/map-request.js';
 import { colorScenarios } from '$lib/charts/scenarios.js';
+import { browser } from '$app/environment';
 
 import { FACETS_INITIAL, GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_SCENARIOS, GEOGRAPHIES, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
 import { activeFacetGroupCount } from './facet-selection.js';
@@ -348,24 +348,6 @@ export const AVAILABLE_TIMEFRAMES = derived([AVAILABLE_SCENARIOS, SELECTABLE_SCE
   return extractEndYearFromScenarios($available ?? [], $selectable ?? []);
 });
 
-export const AVAILABLE_IMPACT_GEO_YEARS = derived([CURRENT_INDICATOR, CURRENT_SCENARIOS, CURRENT_INDICATOR_OPTIONS], ([$indicator, $scenarios, $options]) => {
-  return get($indicator, 'selectableYears', [])
-    .filter((year) => year <= extractEndYear($scenarios[0]) && year >= extractStartYear($scenarios[0]))
-    .filter((year) => {
-      // All years are available for non-absolute reference periods
-      if ($options?.reference?.uid !== 'absolute') {
-        return true;
-      }
-
-      // If the reference is absolute, the year 2020 is not available
-      if ($options?.reference?.uid === 'absolute' && year === 2020) {
-        return false;
-      }
-      // All other years are available for absolute reference periods
-      return true;
-    });
-});
-
 /* UTILITIES */
 export const IS_EMPTY_SCENARIO = derived([CURRENT_SCENARIOS_UID, IS_AVOID_PAGE], ([$scenarios, $isAvoidPage]) => {
   if ($isAvoidPage) return false; // The Avoid page does not need any selected scenarios
@@ -405,6 +387,8 @@ export const WARMING_CHART_VIEW = derived(
     })
 );
 
+const MAP_AVAILABILITY_REVISION = writable(0);
+
 export const MAP_CHART_VIEW = derived(
   [
     IS_COMBINATION_AVAILABLE,
@@ -416,22 +400,37 @@ export const MAP_CHART_VIEW = derived(
     CURRENT_INDICATOR,
     CURRENT_SCENARIOS,
     CURRENT_INDICATOR_OPTION_VALUES,
+    MAP_AVAILABILITY_REVISION,
   ],
-  ([$combinationAvailable, $availability, $indicatorScopeRequest, $indicatorScopeContext, $selection, $geography, $indicator, $scenarios, $optionValues]) =>
-    legacyMapView({
-      chartView: percentileChartView({
-        combinationAvailable: $combinationAvailable,
-        availability: $availability,
-        indicatorScopeRequest: $indicatorScopeRequest,
-        indicatorScopeContext: $indicatorScopeContext,
-        selection: $selection,
-      }),
-      geography: $geography,
-      indicator: $indicator,
-      scenarios: $scenarios,
-      optionValues: $optionValues,
-    })
+  ([$combinationAvailable, $availability, $indicatorScopeRequest, $indicatorScopeContext, $selection, $geography, $indicator, $scenarios, $optionValues], set) => {
+    const chartView = percentileChartView({
+      combinationAvailable: $combinationAvailable,
+      availability: $availability,
+      indicatorScopeRequest: $indicatorScopeRequest,
+      indicatorScopeContext: $indicatorScopeContext,
+      selection: $selection,
+    });
+    if (chartView.status !== 'ready') {
+      set(chartView);
+      return;
+    }
+    const mapSelection = canonicalMapSelection({ indicator: $indicator, geography: $geography, scenarios: $scenarios, parameters: $optionValues });
+    if (!mapSelection) {
+      set({ status: 'empty' });
+      return;
+    }
+    if (!browser) {
+      set({ status: 'loading', selection: mapSelection });
+      return;
+    }
+    return startMapAvailability(mapSelection, set);
+  },
+  { status: 'loading' }
 );
+
+export function retryMapAvailability() {
+  MAP_AVAILABILITY_REVISION.update((revision) => revision + 1);
+}
 
 export const TEMPLATE_PROPS = derived(
   [CURRENT_GEOGRAPHY, CURRENT_INDICATOR, CURRENT_SCENARIOS, CURRENT_INDICATOR_OPTIONS, CURRENT_INDICATOR_UNIT, CURRENT_INDICATOR_LABEL],

@@ -136,6 +136,11 @@ function gmtSeries(gmt) {
   }));
 }
 
+function emissionsSeries(emissions) {
+  if (!emissions) return undefined;
+  return emissions.data.map(({ year, value }) => ({ year, value }));
+}
+
 export const loadMethodologyScenarios = async function (svelteFetch = fetch, { instance } = {}) {
   let url = apiUrl('methodology-scenarios');
   if (instance !== undefined) url += `?instance=${encodeURIComponent(instance)}`;
@@ -146,6 +151,7 @@ export const loadMethodologyScenarios = async function (svelteFetch = fetch, { i
     startYear: scenario.yearStart,
     endYear: scenario.yearEnd,
     gmt: gmtSeries(scenario.gmt),
+    emissions: emissionsSeries(scenario.emissions),
   }));
 };
 

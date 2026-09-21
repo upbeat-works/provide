@@ -1,5 +1,5 @@
 import { parse } from 'qs';
-import { legacyMapView } from '$lib/catalog/legacy-map-request.js';
+import { canonicalMapSelection } from '$lib/catalog/map-request.js';
 import { colorScenarios } from './scenarios.js';
 import { MAX_NUMBER_SELECTABLE_SCENARIOS } from '$config';
 import { formatReadableList } from '$lib/utils/utils.js';
@@ -65,8 +65,8 @@ export function embedChartContext(params, colors) {
     view: indicator && geography && scenarios.length ? { status: 'ready' } : { status: 'empty' },
   };
   context.scenarioList = formatReadableList(scenarios, 'label');
-  context.mapView = legacyMapView({ chartView: { status: 'ready' }, geography, indicator, scenarios, optionValues: parameters });
-  if (!geography?.geoId || !geography.geographyType || !indicator?.unit) context.mapView = { status: 'empty' };
+  const mapSelection = canonicalMapSelection({ geography, indicator, scenarios, parameters });
+  context.mapView = mapSelection ? { status: 'loading', selection: mapSelection } : { status: 'empty' };
   const warmingReady = context.view.status === 'ready' && allScenarios.length && Number.isFinite(params.timeframe);
   context.warmingView = warmingReady ? { status: 'ready' } : { status: 'empty' };
   return context;

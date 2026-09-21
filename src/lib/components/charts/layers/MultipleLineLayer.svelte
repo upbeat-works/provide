@@ -7,7 +7,7 @@
 
   const { data, xGet, yGet } = getContext('LayerCake');
 
-  $: path = line().x($xGet).y($yGet);
+  $: path = line().defined((d) => Number.isFinite($yGet(d))).x($xGet).y($yGet);
   $: curve && path.curve(curve);
 
   // `dash` is an SVG stroke-dasharray, set per series where the lines have to

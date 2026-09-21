@@ -30,7 +30,7 @@
       });
       return memo;
     }, [])
-    .filter((d) => d.value !== undefined);
+    .filter((d) => Number.isFinite(d.value));
 
   $: formatTickY = (d) => formatValue(d, unit);
   $: chartData = sortBy(data, ['isHighlighted', 'isSelected']).map((series) => {

@@ -2,9 +2,10 @@ import type { Platform } from '@iiasa/ixmp4-ts';
 import { createPlatform } from '../platform';
 import { representativeVariable, composeVariable, indicatorsFromVariables, FACET_DEFAULTS, BASELINE_SCENARIO } from '../conventions';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
-import type { ScenarioDetailsResponse, ScenarioGmtBand } from '../catalog/contracts';
+import type { MethodologyScenarioResponse, ScenarioDetailsResponse, ScenarioGmtBand } from '../catalog/contracts';
 import type { Ixmp4Instance } from '../types';
 import { fetchGmtScenario, fetchGmtSeriesStrict, type GmtByScenario } from './gmt';
+import { fetchEmissionsSeries } from './emissions';
 
 export interface ScenarioAvailability {
   id: string;
@@ -18,7 +19,12 @@ function publicGmtBand([min, value, max]: [number, number, number]): ScenarioGmt
   return [finiteOrNull(min), finiteOrNull(value), finiteOrNull(max)];
 }
 
-export function scenarioDetailsFromSources(instance: string, scenarioNames: string[], timeframes: Map<string, ScenarioTimeframe>, gmt: GmtByScenario): ScenarioDetailsResponse[] {
+export function scenarioDetailsFromSources(
+  instance: string,
+  scenarioNames: string[],
+  timeframes: Map<string, ScenarioTimeframe>,
+  gmt: GmtByScenario
+): ScenarioDetailsResponse[] {
   const names = new Map<string, string>();
   for (const name of scenarioNames) {
     const key = name.toLowerCase();
@@ -83,9 +89,9 @@ export async function fetchScenarioDetail(instance: Ixmp4Instance, creds: { user
   return scenarioDetailsFromSources(instance.slug, scenarioNames, timeframes, gmt)[0] ?? null;
 }
 
-export async function fetchMethodologyScenarioDetails(instance: Ixmp4Instance, creds: { username: string; password: string }): Promise<ScenarioDetailsResponse[]> {
+export async function fetchMethodologyScenarioDetails(instance: Ixmp4Instance, creds: { username: string; password: string }): Promise<MethodologyScenarioResponse[]> {
   const platform = await createPlatform(instance, creds.username, creds.password);
-  const [runs, gmt] = await Promise.all([platform.runs.list(), fetchGmtSeriesStrict(platform)]);
+  const [runs, gmt, emissions] = await Promise.all([platform.runs.list(), fetchGmtSeriesStrict(platform), fetchEmissionsSeries(platform)]);
   const gmtModel = [...gmt.values()][0]?.model;
   const names = new Map<string, string>();
   for (const run of runs) {
@@ -97,7 +103,22 @@ export async function fetchMethodologyScenarioDetails(instance: Ixmp4Instance, c
   const scenarioNames = [...names.values()];
   const scenarioKeys = new Set(names.keys());
   const scenarioGmt = new Map([...gmt].filter(([key]) => scenarioKeys.has(key)));
-  return scenarioDetailsFromSources(instance.slug, scenarioNames, new Map(), scenarioGmt);
+  return scenarioDetailsFromSources(instance.slug, scenarioNames, new Map(), scenarioGmt).map((scenario) => {
+    const emissionsSeries = emissions.get(scenario.id.toLowerCase());
+    if (!emissionsSeries) return scenario;
+    return {
+      ...scenario,
+      emissions: {
+        data: emissionsSeries.data,
+        unit: emissionsSeries.unit,
+        ...(emissionsSeries.model ? { model: emissionsSeries.model } : {}),
+      },
+      characteristics: {
+        ...scenario.characteristics,
+        ...emissionsSeries.characteristics,
+      },
+    };
+  });
 }
 
 // Which value axis to probe availability against. The percentile axis is the

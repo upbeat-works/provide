@@ -2,13 +2,10 @@
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
 
   import {
-    URL_PATH_SCENARIO,
-    URL_PATH_YEAR,
     IMPACT_GEO_DISPLAY_OPTIONS,
     END_GEO_SHAPE,
     END_IMPACT_GEO,
     URL_PATH_GEOGRAPHY,
-    URL_PATH_SCENARIOS,
     IMPACT_GEO_KEY_DIFFERENCE,
     IMPACT_GEO_KEY_SIDE_BY_SIDE,
     DEFAULT_IMPACT_GEO_YEAR,
@@ -17,6 +14,7 @@
   } from '$config';
   import { writable } from 'svelte/store';
   import { fetchData } from '$lib/api/api';
+  import { mapGridRequests } from '$lib/catalog/map-request.js';
 
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
 
@@ -42,63 +40,23 @@
   let IMPACT_GEO_DATA = writable([]);
   let GEO_SHAPE_DATA = writable({});
 
-  // `AVAILABLE_IMPACT_GEO_YEARS` reads `selectableYears` off the indicator, which
-  // was legacy curation the convention catalog doesn't carry — so it is empty and
-  // the Year control would render with no options. The response reports the years
-  // its grid holds, but the response is keyed on the year, so naively feeding them
-  // back closes a year → request → response → year loop that re-enters the fetch
-  // and keeps restarting the map masking worker.
-  //
-  // Latching breaks it: adopt a year list only when a non-empty, genuinely
-  // different one arrives, and never clear it while a request is in flight. The
-  // reads live inside the function so they aren't dependencies of the reactive
-  // statement, and the no-op early returns mean an unchanged response invalidates
-  // nothing.
-  let latchedYears = [];
-  let latchedYearsKey = '';
-  function latchYears(store) {
-    const years = store?.[0]?.data?.selectableYears;
-    if (!years?.length) return;
-    const key = years.join(',');
-    if (key === latchedYearsKey) return;
-    latchedYearsKey = key;
-    latchedYears = years.map(Number).filter(Number.isFinite);
-  }
-  $: latchYears($IMPACT_GEO_DATA);
-
-  $: yearOptions = chartContext.availableYears?.length ? chartContext.availableYears : latchedYears;
+  $: yearOptions = chartContext.availableYears ?? [];
   $: defaultYear = yearOptions.includes(DEFAULT_IMPACT_GEO_YEAR) ? DEFAULT_IMPACT_GEO_YEAR : yearOptions[0];
 
-  // Only reset once options exist — clearing `year` mid-request would change the
-  // request that produces the options.
   $: if (yearOptions.length && !yearOptions.includes(year)) {
     year = defaultYear;
   }
 
   $: mapView = chartContext.view;
-  $: legacyUrlParams = mapView.legacyUrlParams ?? {};
-  $: legacyGeography = legacyUrlParams[URL_PATH_GEOGRAPHY];
-  $: scenarioPairs = mapView.scenarioPairs ?? [];
-  $: legacyScenarios = scenarioPairs.map(({ legacyUid }) => legacyUid);
+  $: legacyGeography = chartContext.geography?.geoId;
   $: loadingProps = {
     ...chartContext,
-    scenarios: scenarioPairs.map(({ scenario }) => scenario),
-    legacyScenarios,
     year,
     urlParams: chartContext.urlParams,
-    legacyUrlParams,
     legacyGeography,
   };
   $: impactGeoRequests = mapView.status === 'ready' ? {
-    data: legacyScenarios.map((scenario) => ({
-      endpoint: END_IMPACT_GEO,
-      params: {
-        ...legacyUrlParams,
-        [URL_PATH_SCENARIO]: scenario,
-        [URL_PATH_SCENARIOS]: legacyScenarios,
-        [URL_PATH_YEAR]: year,
-      },
-    })),
+    data: mapGridRequests(mapView.selection, year),
     shape: {
       endpoint: END_GEO_SHAPE,
       params: {
@@ -118,7 +76,7 @@
     fetchData(GEO_SHAPE_DATA, impactGeoRequests.shape);
   }
 
-  $: process = ({ data, shape }, { scenarios, legacyScenarios, indicator, urlParams, legacyUrlParams, geography, legacyGeography: geoId }) => {
+  $: process = ({ data, shape }, { scenarios, indicator, urlParams, geography, legacyGeography: geoId }) => {
     const showDifference = data.length === 2 && displayOption === IMPACT_GEO_KEY_DIFFERENCE;
     const isMultipMap = data.length > 1 && !showDifference;
 
@@ -129,9 +87,19 @@
       showSatelliteOption = true;
     }
 
+    const invalidRasterUnit = data.map(({ data: grid }) => grid.unit).filter(Boolean)
+      .find((unit) => unit !== indicator.unit?.uid && unit !== indicator.unit?.label);
+    let processingError = invalidRasterUnit
+      ? `Raster unit ${invalidRasterUnit} does not match ${indicator.unit?.label ?? indicator.unit?.uid}`
+      : undefined;
     let renderedData;
     if (showDifference) {
-      renderedData = [calculateDifference(data)];
+      try {
+        renderedData = [calculateDifference(data)];
+      } catch (error) {
+        processingError = error instanceof Error ? error.message : String(error);
+        renderedData = data.map((d, i) => ({ ...scenarios[i], ...d.data }));
+      }
     } else {
       renderedData = data.map((d, i) => {
         let scenario = {};
@@ -173,20 +141,18 @@
         label: 'Spatial resolution',
         value: `${formattedResolution} × ${formattedResolution}°`,
       },
-    ];
+    ].filter(({ value }) => value !== undefined && value !== '');
 
     const dataDownloadOptions = [
       {
         uid: 'scenario',
-        // The download is a legacy-API request, so the value has to be the
-        // legacy scenario uid — only the label stays the convention one.
         label: 'Scenario',
-        options: scenarios.map(({ label }, i) => ({ uid: legacyScenarios[i], label })),
+        options: scenarios.map(({ uid, label }) => ({ uid, label })),
       },
       {
         uid: 'resolution',
         label: 'Resolution',
-        options: data[0].data.resolutions.map((uid) => ({ label: uid, uid })),
+        options: [{ uid: 'native', label: `${formattedResolution}°` }],
       },
       {
         uid: 'format',
@@ -195,15 +161,12 @@
       },
     ];
 
-    // Data download → the legacy API, so legacy ids throughout.
+    const { scenarios: _selectionScenarios, ...selectionParams } = mapView.selection;
     const dataDownloadParams = {
-      ...legacyUrlParams,
-      displayOption,
+      ...selectionParams,
       year,
     };
 
-    // Graph download → an `/embed/…` link back into this app, which reads the
-    // convention id space. Deliberately NOT built from dataDownloadParams.
     const graphDownloadParams = {
       ...urlParams,
       displayOption,
@@ -235,13 +198,15 @@
       showDifference,
       geoData,
       geoShape,
-      title: data[0].data.title,
+      title: data[0].data.title ?? `${indicator.label} map ${year}`,
       description,
       colorScale,
       chartInfo,
       dataDownloadParams,
       dataDownloadOptions,
       graphDownloadParams,
+      processingError,
+      processingHeadline: showDifference ? 'Map comparison is not available' : 'Map unavailable',
     };
   };
 </script>
@@ -262,6 +227,8 @@
       description={asyncProps.description}
       dataDownloadOptions={asyncProps.dataDownloadOptions}
       dataDownloadParams={asyncProps.dataDownloadParams}
+      dataDownloadBase={import.meta.env.VITE_API_URL}
+      dataDownloadArrayFormat="repeat"
       graphDownloadParams={asyncProps.graphDownloadParams}
       graphDownloadSettings={{
         formats: ['png'],
@@ -277,7 +244,16 @@
       <svelte:fragment slot="controls">
         <Controls scenarios={props.scenarios} {yearOptions} displayOptions={IMPACT_GEO_DISPLAY_OPTIONS} {showSatelliteOption} staticMode={chartContext.static} bind:showSatellite bind:displayOption bind:year />
       </svelte:fragment>
-      <Maps bind:isProcessing unit={props.indicator.unit} geographyType={props.geography.geographyType} geoData={asyncProps.geoData} geoShape={asyncProps.geoShape} colorScale={asyncProps.colorScale} {showSatellite} staticMode={chartContext.static} />
+      {#if asyncProps.processingError}
+        <Message headline={asyncProps.processingHeadline}>
+          <span>{asyncProps.processingError}</span>
+          {#if displayOption === IMPACT_GEO_KEY_DIFFERENCE}
+            <div class="mt-4"><Button variant="secondary" on:click={() => displayOption = IMPACT_GEO_KEY_SIDE_BY_SIDE}>Show side by side</Button></div>
+          {/if}
+        </Message>
+      {:else}
+        <Maps bind:isProcessing unit={props.indicator.unit} geographyType={props.geography.geographyType} geoData={asyncProps.geoData} geoShape={asyncProps.geoShape} colorScale={asyncProps.colorScale} {showSatellite} staticMode={chartContext.static} />
+      {/if}
     </ChartFrame>
     <LoadingPlaceholder slot="placeholder" />
   </LoadingWrapper>
@@ -286,11 +262,11 @@
 {:else if mapView.status === 'failure'}
   {#if mapView.failedRequest === 'indicatorScope'}
     <Message headline="Indicators could not be loaded for this selection">
-      <Button variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
+      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
     </Message>
   {:else}
     <Message headline="Scenario availability could not be loaded">
-      <Button variant="secondary" on:click={retryAvailability}>Retry map scenarios</Button>
+      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry map scenarios</Button>
     </Message>
   {/if}
 {/if}

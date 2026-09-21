@@ -3,6 +3,11 @@ import { createRuntimeCatalog } from '$stores/runtime-catalog.js';
 import { createCatalogFlow } from '$stores/catalog-flow.js';
 import { parseCatalogUrlSelection } from '$lib/utils/url.js';
 
+vi.mock('$app/stores', async () => {
+  const { readable } = await import('svelte/store');
+  return { page: readable({ url: new URL('https://provide.example/') }), navigating: readable(null), updated: readable(false) };
+});
+
 const API_ORIGIN = 'https://catalog.example';
 const APP_ORIGIN = 'https://provide.example';
 const CMS_ORIGIN = 'https://cms.example';

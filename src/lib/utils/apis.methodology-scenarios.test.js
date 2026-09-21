@@ -59,6 +59,14 @@ describe('methodology scenario loader', () => {
                 [2, 3, 4],
               ],
             },
+            emissions: {
+              unit: 'GtCO2eq/yr',
+              data: [
+                { year: 2020, value: 40 },
+                { year: 2035, value: null },
+                { year: 2040, value: -2 },
+              ],
+            },
           },
         ])
       )
@@ -73,6 +81,11 @@ describe('methodology scenario loader', () => {
       gmt: [
         { year: 2020, min: 1, value: 2, max: 3 },
         { year: 2040, min: 2, value: 3, max: 4 },
+      ],
+      emissions: [
+        { year: 2020, value: 40 },
+        { year: 2035, value: null },
+        { year: 2040, value: -2 },
       ],
     });
   });

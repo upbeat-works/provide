@@ -42,9 +42,22 @@ export const getColorScale = (data, { NEGATIVE_RANGE, POSITIVE_RANGE, DIVERGING_
 
 export const calculateDifference = (data) => {
   const [grid1, grid2] = data;
+  const first = grid1.data;
+  const second = grid2.data;
+  const sameOrigin = first.coordinatesOrigin?.length === second.coordinatesOrigin?.length
+    && first.coordinatesOrigin?.every((value, index) => value === second.coordinatesOrigin[index]);
+  const sameDimensions = first.data.length === second.data.length
+    && first.data.every((row, index) => row.length === second.data[index]?.length);
+  const sameUnit = !first.unit || !second.unit || first.unit === second.unit;
+  if (!sameOrigin || !sameDimensions || first.resolution !== second.resolution || !sameUnit) {
+    throw new Error('Map grids cannot be compared');
+  }
   return {
-    ...grid1.data,
-    data: grid1.data.data.map((row, lngIndex) => row.map((value, latIndex) => (value === null ? null : grid2.data.data[lngIndex][latIndex] - value))),
+    ...first,
+    data: first.data.map((row, lngIndex) => row.map((value, latIndex) => {
+      const comparison = second.data[lngIndex][latIndex];
+      return value === null || comparison === null ? null : comparison - value;
+    })),
   };
 };
 

@@ -1,7 +1,12 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { parseCatalogUrlSelection } from '$lib/utils/url.js';
 import { buildURL } from '$utils/url.js';
 import { methodologyExplorerParams } from './cross-link.js';
+
+vi.mock('$app/stores', async () => {
+  const { readable } = await import('svelte/store');
+  return { page: readable({ url: new URL('https://provide.example/methodology/key-terms') }), navigating: readable(null), updated: readable(false) };
+});
 
 describe('methodology explorer link', () => {
   test('carries selected scenarios without leaking a previous Explore context', () => {

@@ -89,6 +89,18 @@ export type ScenarioDetailsResponse = {
   characteristics: ScenarioCharacteristics;
 };
 
+export type MethodologyScenarioResponse = Omit<ScenarioDetailsResponse, 'characteristics'> & {
+  emissions?: {
+    data: Array<{ year: number; value: number | null }>;
+    unit: 'GtCO2eq/yr';
+    model?: string;
+  };
+  characteristics: ScenarioCharacteristics & {
+    emissions2050?: number;
+    emissions2100?: number;
+  };
+};
+
 export type ExploreDefaultsResponse = {
   indicator: { id: string; instance: string };
   geography: string;

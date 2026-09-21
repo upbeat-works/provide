@@ -30,6 +30,7 @@ await import('$app/stores');
 
 vi.mock('$app/navigation', () => ({
   goto: vi.fn(),
+  invalidateAll: vi.fn(),
 }));
 
 

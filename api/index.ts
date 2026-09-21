@@ -15,6 +15,7 @@ import { scenarioDetails } from './routes/scenario-details';
 import { tags } from './routes/tags';
 import { exploreDefaults } from './routes/explore-defaults';
 import { scoreboard } from './routes/scoreboard';
+import { impactGeo } from './routes/impact-geo';
 
 // strict: false makes /foo and /foo/ both match the same handler. The legacy
 // Climate Analytics API used trailing slashes (e.g. `/api/meta/`), so we keep
@@ -37,6 +38,7 @@ api.route('/scenario-details', scenarioDetails);
 api.route('/tags', tags);
 api.route('/explore-defaults', exploreDefaults);
 api.route('/scoreboard', scoreboard);
+api.route('/impact-geo', impactGeo);
 
 api.get('/', (c) => {
   return c.json({ name: 'PROVIDE API', version: '0.1.0' });

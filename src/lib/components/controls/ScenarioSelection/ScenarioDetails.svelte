@@ -12,8 +12,6 @@
     2300: [0, 4],
   }[currentFilterUid] ?? [1, 3];
 
-  // GMT (scenario[MEAN_TEMPERATURE_UID]) is curated/global data we don't have for
-  // convention scenarios yet — tolerate its absence instead of crashing.
   $: chartData = scenarios.map((scenario) => {
     const values = scenario[MEAN_TEMPERATURE_UID] ?? [];
     return {

@@ -17,9 +17,9 @@
     PERCENTILE_SCENARIO_AVAILABILITY_REQUEST,
     ACTIVE_INDICATOR_SCOPE_REQUEST,
     ACTIVE_INDICATOR_SCOPE_CONTEXT,
-    AVAILABLE_IMPACT_GEO_YEARS,
     SELECTABLE_WARMING_SCENARIOS,
     CURRENT_INDICATOR_UNIT_UID,
+    retryMapAvailability as retryMapAvailabilityRequest,
   } from '$stores/state';
   import VisData from '$lib/components/icons/VisData.svelte';
   import { PATH_AVOID, GEOGRAPHY_TYPE_CITY } from '$config';
@@ -136,7 +136,7 @@
   $: impactGeoContext = {
     ...sharedChartContext,
     view: $MAP_CHART_VIEW,
-    availableYears: $AVAILABLE_IMPACT_GEO_YEARS,
+    availableYears: $MAP_CHART_VIEW.years ?? [],
   };
   $: warmingScenarios = withScenarioTimeframe(
     $CURRENT_SCENARIOS.map(({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe }) => ({ uid, label, color, [KEY_SCENARIO_ENDYEAR]: timeframe })),
@@ -156,7 +156,10 @@
   }
 
   function retryMapAvailability() {
-    return retryPercentileChartRequest({ view: $MAP_CHART_VIEW, flow: catalogFlow, indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT });
+    if ($MAP_CHART_VIEW.failedRequest) {
+      return retryPercentileChartRequest({ view: $MAP_CHART_VIEW, flow: catalogFlow, indicatorScopeContext: $ACTIVE_INDICATOR_SCOPE_CONTEXT });
+    }
+    return retryMapAvailabilityRequest();
   }
 
   function retryWarmingAvailability() {
