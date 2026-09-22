@@ -90,3 +90,40 @@ test('rekeys comparison requests when indicator or sector changes', async () => 
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
   expect(fetcher.mock.calls[1][0]).toContain('sector=energy&indicator=Mean+Air+Temperature');
 });
+
+test('stops comparison requests and keeps the country outline when the next sector has no map', async () => {
+  let finishComparison;
+  const fetcher = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        finishComparison = resolve;
+      })
+  );
+  vi.stubGlobal('fetch', fetcher);
+  const other = option('1.5C');
+  const comparison = {
+    compareBy: option('scenario'),
+    sides: [selection.scenario, other],
+    optionsFor: () => [selection.scenario, other],
+  };
+  const { rerender } = render(MapPanel, { ...props, result: result('ready', [{ region: 'AT11', value: 1 }]), ...comparison });
+  await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+
+  await rerender({
+    ...props,
+    definition: undefined,
+    result: undefined,
+    selection: { ...selection, indicator: undefined },
+    sector: 'socioeconomic',
+    ...comparison,
+  });
+
+  expect(fetcher).toHaveBeenCalledOnce();
+  expect(screen.getAllByRole('img', { name: 'Regional scoreboard map' })[0].dataset.country).toBe('Austria');
+  expect(screen.getAllByText('Regional map data is not available for this sector.')).toHaveLength(2);
+  finishComparison(Response.json(result('ready', [{ region: 'AT11', value: 99 }])));
+  await Promise.resolve();
+  for (const map of screen.getAllByRole('img', { name: 'Regional scoreboard map' })) {
+    expect(JSON.parse(map.dataset.values)).toEqual([]);
+  }
+});

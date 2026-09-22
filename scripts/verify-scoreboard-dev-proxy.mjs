@@ -7,6 +7,7 @@ const modules = [
   ['/api/scoreboard/controller.js'],
   ['/api/scoreboard/heat-stress.json?import'],
   ['/api/scoreboard/testing.json?import'],
+  ['/api/scoreboard/socioeconomic.json?import'],
   ['/api/db/import/country-iso3.ts'],
 ];
 

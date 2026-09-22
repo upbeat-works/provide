@@ -23,6 +23,10 @@ Each role holds one exact variable reference:
 { "variable": "<full ixmp4 name>", "model": "<model>", "unit": "<unit>" }
 ```
 
+A reference may also set `label` for chart axes, legends and tooltips. It changes
+only the displayed name; queries still use the exact `variable`, `model` and
+`unit`. Without a label, the chart derives one from the variable name.
+
 A line supplies yearly points. A range series groups its central line and bounds.
 Stacked bars use direct segment values in array order; segments must be separate
 parts with matching units. Stacked bars and bubbles use the selected year. Lines
@@ -141,3 +145,19 @@ bubble uses mean temperature for its horizontal position, maximum temperature
 for its vertical position and high heat risk days for its size. Country changes
 leave the fixed groups unchanged; scenario and year changes still apply. The
 line and range charts use the selected country.
+
+## Socioeconomic examples
+
+`api/scoreboard/socioeconomic.json` uses IMAGE 3.4 default runs for nine fixed
+R9 world regions. Its charts show rural and urban population, GDP at purchasing
+power parity, rural and urban population vulnerable to heat, and GDP against
+heat-vulnerable population with bubble size set by total population.
+
+Use **Socioeconomic / CurrentPolicies_SSP1 / 2050** to see all four charts.
+`CurrentPolicies_SSP2`, `1.5C_SSP1` and `1.5C_SSP2` also have data for 2020,
+2030, 2050 and 2100. Country selection does not change these fixed chart regions.
+Population units are millions; GDP uses billions of 2010 US dollars per year.
+
+The source has no population or GDP series matching the regional map query.
+The sector therefore has an empty `map.indicators` list, with scenarios and
+years still configured under `map` for the shared filters.

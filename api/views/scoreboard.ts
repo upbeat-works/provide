@@ -5,6 +5,7 @@ export interface ScoreboardVariableReference {
   variable: string;
   model: string;
   unit: string;
+  label?: string;
 }
 
 export interface ScoreboardSelection {

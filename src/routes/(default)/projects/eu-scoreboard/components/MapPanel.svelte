@@ -16,6 +16,7 @@
 
   const loading = () => ({ status: 'loading', values: [], metadata: null });
   const failed = () => ({ status: 'error', values: [], metadata: null, error: 'Map data could not be loaded.' });
+  const unavailable = () => ({ status: 'unavailable', values: [], metadata: null });
 
   let cache = new Map();
   let cacheScope;
@@ -28,7 +29,7 @@
   $: ownSelection = withIndicator(selection);
   $: ownKey = mapResourceKey(sector, ownSelection);
   $: syncOwn(ownKey, result);
-  $: maps = collect(views, ownKey, own, revision);
+  $: maps = definition ? collect(views, ownKey, own, revision) : views.map(unavailable);
   $: unit = maps.find((map) => map?.metadata?.unit)?.metadata.unit;
   $: classes = numericClasses(combinedValues(maps), unit);
   $: legend = legendOf(classes);
@@ -137,7 +138,11 @@
             </div>
           {/if}
 
-          {#if map.status === 'ready' && values.length}
+          {#if map.status === 'unavailable'}
+            <div class="pointer-events-auto absolute bottom-6 left-6 rounded bg-white px-5 py-4 text-sm text-text-weaker shadow-lg" role="status">
+              Regional map data is not available for this sector.
+            </div>
+          {:else if map.status === 'ready' && values.length}
             <div class="pointer-events-auto absolute bottom-6 left-6">
               <MapLegendPanel parts={legendParts(view, compareBy?.uid)} subtitle={legendSubtitle(map)} scale={legend.scale} labels={legend.labels} />
             </div>

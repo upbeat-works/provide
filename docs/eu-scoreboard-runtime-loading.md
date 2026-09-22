@@ -11,6 +11,10 @@ It uses the shared 40-country list for regions. It does not make an options API
 request. Optional scenario labels come from Strapi; missing content and Strapi
 failures fall back to the configured ID without blocking data requests.
 
+A sector with no configured map indicators keeps `map.indicators` empty.
+Its chart filters still work. The page shows the selected country outline and
+explains that regional map data is unavailable; it makes no map-data request.
+
 The page URL uses `sector`, `indicator`, `region`, `scenario`, and `year`.
 `indicator` stores the short map indicator name. `region` stores the country
 name because chart requests use that value. Invalid choices fall back to the

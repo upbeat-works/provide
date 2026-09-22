@@ -49,4 +49,17 @@ describe('scoreboard choices', () => {
       year: { uid: '2100', label: '2100' },
     });
   });
+
+  test('keeps chart choices when a sector has no regional map indicator', () => {
+    const chartsOnly = { ...scoreboard, map: { ...scoreboard.map, indicators: [] }, indicator: undefined };
+    const options = createScoreboardOptions(chartsOnly);
+
+    expect(options.indicators).toEqual([]);
+    expect(resolveSelection(chartsOnly, options, { scenario: '1.5C', region: 'Ukraine', year: '2100' })).toEqual({
+      indicator: undefined,
+      scenario: { uid: '1.5C', label: '1.5C' },
+      region: { uid: 'Ukraine', label: 'Ukraine' },
+      year: { uid: '2100', label: '2100' },
+    });
+  });
 });

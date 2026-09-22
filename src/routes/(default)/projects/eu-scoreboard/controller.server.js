@@ -28,6 +28,7 @@ export async function loadChart({ scoreboard, fetch, selections, chartId }) {
 }
 
 export async function loadMap({ scoreboard, fetch, selections }) {
+  if (!scoreboard.indicator) return { status: 'unavailable', values: [], metadata: null };
   const request = { sector: scoreboard.sector.uid, ...selections };
   if (!request.indicator) request.indicator = scoreboard.indicator.name;
   try {

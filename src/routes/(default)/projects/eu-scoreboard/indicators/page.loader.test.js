@@ -36,3 +36,19 @@ test('starts map and chart requests independently with their required choices', 
   finishFirstChart(Response.json({ status: 'ready', data: [] }));
   await expect(result.charts[0].result).resolves.toMatchObject({ status: 'ready' });
 });
+
+test('loads charts without requesting a map for a charts-only sector', async () => {
+  const chartsOnly = { ...scoreboard, map: { ...scoreboard.map, indicators: [] }, indicator: undefined };
+  const chartSelection = { ...selection, indicator: undefined };
+  const fetch = vi.fn(async (path) => {
+    if (path.includes('/map?')) throw new Error('Map data must not be requested');
+    return Response.json({ status: 'empty', data: [] });
+  });
+
+  const result = await load({ fetch, parent: async () => ({ scoreboard: chartsOnly, selection: chartSelection }) });
+
+  expect(result.map).toBeUndefined();
+  await expect(result.charts[0].result).resolves.toMatchObject({ status: 'empty' });
+  expect(fetch).toHaveBeenCalledTimes(chartsOnly.charts.length);
+  expect(fetch.mock.calls.every(([path]) => path.includes('/charts/'))).toBe(true);
+});

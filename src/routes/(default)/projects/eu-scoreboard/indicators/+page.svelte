@@ -26,6 +26,8 @@
   // comparing.
   let sides = [];
 
+  $: if (!data.scoreboard.indicator && compareBy) compareBy = undefined;
+
   const optionsFor = (uid) => ({ scenario: data.scenarios, region: data.regions, year: data.years })[uid] ?? [];
 
   // Seed only when the compared dimension changes. `sides` must not be read
@@ -37,7 +39,8 @@
     sides = compareBy ? seedComparison(optionsFor(compareBy.uid), data.selection?.[compareBy.uid]) : [];
   }
 
-  $: filters = ['sector', 'indicator', 'region', 'scenario', 'year'].filter((uid) => uid !== compareBy?.uid);
+  $: availableFilters = data.scoreboard.indicator ? ['sector', 'indicator', 'region', 'scenario', 'year'] : ['sector', 'region', 'scenario', 'year'];
+  $: filters = availableFilters.filter((uid) => uid !== compareBy?.uid);
 
   // The article column's index, and what the "view charts" button jumps to.
   $: sections = data.scoreboard.charts.map(({ chartId, title }) => ({ slug: chartId, title }));
@@ -50,7 +53,9 @@
   <svelte:fragment slot="filters"><ScoreboardFilters {data} {filters} /></svelte:fragment>
 
   <svelte:fragment slot="actions">
-    <CompareMenu {dimensions} bind:selected={compareBy} />
+    {#if data.scoreboard.indicator}
+      <CompareMenu {dimensions} bind:selected={compareBy} />
+    {/if}
   </svelte:fragment>
 
   <svelte:fragment slot="visual">

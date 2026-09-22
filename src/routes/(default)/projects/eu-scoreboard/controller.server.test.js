@@ -2,6 +2,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { loadFromStrapi, loadScoreboardChart, loadScoreboardMap } from '$utils/apis.js';
 import { loadChart, loadMap, selectionsFromUrl } from './controller.server.js';
 import { getScoreboard } from './controller.js';
+import { GET as getMap } from '../../../app/scoreboard/map/+server.js';
 
 vi.mock('$utils/apis.js', () => ({ loadScoreboardChart: vi.fn(), loadScoreboardMap: vi.fn(), loadFromStrapi: vi.fn() }));
 
@@ -59,4 +60,14 @@ test('reads the map indicator with the shared chart choices', () => {
   );
 
   expect(selectionsFromUrl(url)).toEqual(selections);
+});
+
+test.each(['', '&indicator=Mean%20Air%20Temperature'])('returns an unavailable map for a charts-only sector without an upstream request', async (indicator) => {
+  const url = new URL(`https://example.test/app/scoreboard/map?sector=socioeconomic&scenario=SSP2&region=Austria&year=2050${indicator}`);
+
+  const response = await getMap({ fetch: vi.fn(), url });
+
+  expect(response.status).toBe(200);
+  await expect(response.json()).resolves.toEqual({ status: 'unavailable', values: [], metadata: null });
+  expect(loadScoreboardMap).not.toHaveBeenCalled();
 });

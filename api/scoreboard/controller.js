@@ -1,14 +1,16 @@
 import heatStress from './heat-stress.json';
 import testing from './testing.json';
+import socioeconomic from './socioeconomic.json';
 import { SCOREBOARD_COUNTRIES, scoreboardCountry } from './countries.ts';
 
 export const SCOREBOARD_INSTANCE = 'sparccle-internal';
 export const SECTORS = [
   { uid: 'heat-stress', label: 'Heat stress' },
   { uid: 'testing', label: 'Testing' },
+  { uid: 'socioeconomic', label: 'Socioeconomic' },
 ];
 
-const definitionsBySector = { 'heat-stress': heatStress, testing };
+const definitionsBySector = { 'heat-stress': heatStress, testing, socioeconomic };
 
 export function getScoreboard(sectorId, indicatorName) {
   const sector = SECTORS.find(({ uid }) => uid === sectorId) ?? SECTORS[0];
@@ -34,7 +36,7 @@ export function resolveScoreboardChoices(scoreboard, requested = {}) {
   const defaultYear = scoreboard.map.years.includes(2050) ? 2050 : scoreboard.map.years[0];
   const year = scoreboard.map.years.includes(requestedYear) ? requestedYear : defaultYear;
   return {
-    indicator: indicator.name,
+    indicator: indicator?.name,
     scenario: scenario.id,
     region: region.name,
     year,

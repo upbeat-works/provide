@@ -199,3 +199,50 @@ regression check; the parent checks the browser and requests senior review.
 - The exact reported URL now displays its map and four charts in the browser.
   All five data requests return 200, with no browser errors.
 - Senior review approved with no required changes. Changes remain uncommitted.
+
+## Follow-up: socioeconomic examples
+
+Add `socioeconomic.json` and a Socioeconomic sector choice. Verify population,
+GDP and heat-vulnerability values against live default runs before selecting
+references, scenarios and years. Keep chart regions fixed and state their scope.
+
+No supported NUTS map series was found; use an empty map indicator list.
+Keep the selected country outline with a clear note, omit map requests and
+map-only controls, and continue loading the sector's charts. Do not configure
+a variable known to have no map values.
+
+Sol owns live data checks and chart config/tests. A second Sol worker owns the
+page and loader behavior for an empty map list. The parent owns registration,
+shared choice handling, the development proxy route, docs and browser checks.
+Review the combined change with the senior code reviewer before handoff.
+
+- Shared choice RED exposed a crash for an empty map indicator list. GREEN
+  passes all four controller tests after making indicator selection optional.
+- Live source checks found data for all seven IMAGE 3.4 variables, nine R9
+  regions, four SSP scenarios and 2020/2030/2050/2100. No population/GDP name
+  matches the current regional map query.
+- Registration RED exposed fallback to Heat stress; GREEN passes five
+  controller tests, including changing from climate to socioeconomic filters.
+- The new config file failed the proxy check before its exact route was added.
+  All eight shared modules and the backend validation request now pass.
+- All four saved chart definitions return ready data for nine regions through
+  the local API with CurrentPolicies_SSP1 / Austria / 2050.
+- Frontend RED found three failures: unwanted map requests, map-only controls,
+  and comparison requests after losing the indicator. GREEN passes 23 focused
+  tests, followed by 117 scoreboard web tests across 18 files.
+- The production build passes. The browser renders all four charts without
+  errors or map-data requests. Switching from an active Testing comparison to
+  Socioeconomic clears comparison and selects the valid SSP scenario.
+- Combined scoreboard API checks pass 29 tests with 105 assertions; the
+  standalone API package build also passes.
+- Senior review requested two fixes before handoff: return a controlled result
+  for direct map requests to a sector without indicators, and give the bubble
+  axes clear population/GDP labels. Sol workers own those fixes and regression
+  tests in separate server and chart files; review them again before completion.
+- Review fixes pass: nine server/controller route tests cover missing and stale
+  map indicators; 23 adapter tests cover optional display labels and fallback;
+  the two socioeconomic API tests still use the exact source references.
+  Both direct map requests return 200 with `unavailable` in the running app.
+- The final production build passes. A browser reload shows all four charts,
+  clear GDP and heat-vulnerable population axis labels, and no errors.
+- Senior re-review approved with no remaining findings. No commit was created.

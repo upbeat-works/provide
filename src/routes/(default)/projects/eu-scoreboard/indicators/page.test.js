@@ -81,6 +81,37 @@ test.each([false, true])('changes sector and keeps the full indicator selection 
   });
 });
 
+test('keeps charts and country context available for a sector without a regional map', async () => {
+  const chartsOnly = { ...scoreboard, map: { ...scoreboard.map, indicators: [] }, indicator: undefined };
+  const chartSelection = { ...common.selection, indicator: undefined };
+  render(Page, {
+    data: {
+      ...common,
+      scoreboard: chartsOnly,
+      indicators: [],
+      selection: chartSelection,
+      map: undefined,
+      charts: [{ definition, result: readyChart }],
+    },
+    url: new URL('http://localhost/projects/eu-scoreboard/indicators?sector=testing&region=Austria&scenario=scenario&year=2050'),
+  });
+
+  expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
+  expect(screen.getByRole('img', { name: 'Mock country map' }).dataset.country).toBe('Austria');
+  expect(screen.getByText('Regional map data is not available for this sector.')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /^Indicator:/ })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Compare' })).toBeNull();
+
+  await fireEvent.click(screen.getByRole('button', { name: /^Hazard\/Sector:/ }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Heat stress' }));
+  expect(Object.fromEntries(goto.mock.calls[0][0].searchParams)).toEqual({
+    sector: 'heat-stress',
+    region: 'Austria',
+    scenario: 'scenario',
+    year: '2050',
+  });
+});
+
 test('renders a map and a ready chart while another chart is still loading', async () => {
   let finish;
   const slow = new Promise((resolve) => {

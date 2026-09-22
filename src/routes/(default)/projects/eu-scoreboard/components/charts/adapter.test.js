@@ -159,6 +159,20 @@ describe('chart result adapter', () => {
     });
   });
 
+  test('uses trimmed display labels for bubble axes and tooltips with variable fallback', () => {
+    const x = { ...ref('GDP|PPP', 'billion USD/yr'), label: '  GDP (PPP)  ' };
+    const y = { ...ref('Population|Vulnerable|Heat', 'million'), label: 'Population vulnerable to heat' };
+    const size = { ...ref('Population|Exposed', 'million'), label: '   ' };
+    const adapted = adaptChartResult(result('bubble', [{ x, y, size }], [{ x: 100, y: 4, size: 500 }]));
+
+    expect(adapted.props).toMatchObject({
+      xLabel: 'GDP (PPP) (billion USD/yr)',
+      yLabel: 'Population vulnerable to heat (million)',
+      sizeLabel: 'Exposed (million)',
+      tooltipLabels: { x: 'GDP (PPP)', y: 'Population vulnerable to heat', size: 'Exposed' },
+    });
+  });
+
   test('renders complete regional bubbles with region labels and distinct values', () => {
     const grouped = result(
       'bubble',
