@@ -10,6 +10,7 @@
   export let subtitle;
   export let scale;
   export let labels;
+  export let ticks = [];
 </script>
 
 <div class="flex w-[19rem] max-w-full flex-col gap-3 rounded bg-white px-5 py-4 shadow-lg">
@@ -20,6 +21,6 @@
   </h2>
   <div class="flex flex-col gap-1.5">
     <p class="text-sm font-semibold">{subtitle}</p>
-    <RiskLegend {scale} {labels} />
+    <RiskLegend {scale} {labels} {ticks} />
   </div>
 </div>

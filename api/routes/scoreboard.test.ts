@@ -1,16 +1,24 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { writeArrayBuffer } from 'geotiff';
 import * as platformModule from '../platform';
 import { getScoreboard } from '../scoreboard/controller.js';
 
 const tabulate = vi.fn();
 let createPlatform;
 
-const env = { IXMP4_USERNAME: 'user', IXMP4_PASSWORD: 'secret', DB: {} as never };
+const env = {
+  IXMP4_USERNAME: 'user', IXMP4_PASSWORD: 'secret', DB: {} as never,
+  GEOSERVER_URL: 'http://geo.test/geoserver', GEOSERVER_WORKSPACE: 'provide',
+};
 const variable = 'Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile';
 const meanVariable = 'Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile';
 const highHeatRiskVariable = 'High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile';
 const mapPath = (overrides: Record<string, string> = {}) => {
   const values = { sector: 'testing', indicator: 'Maximum Air Temperature', scenario: 'CurrentPolicies', region: 'Austria', year: '2050', ...overrides };
+  return `/api/scoreboard/map?${new URLSearchParams(values)}`;
+};
+const rasterMapPath = (overrides: Record<string, string> = {}) => {
+  const values = { sector: 'heat-stress', indicator: 'Mean Temperature', scenario: 'CurrentPolicies', region: 'Germany', year: '2030', ...overrides };
   return `/api/scoreboard/map?${new URLSearchParams(values)}`;
 };
 const chartPath = (chartId: string, region = 'Austria', scenario = 'CurrentPolicies', year = 2050) =>
@@ -139,6 +147,51 @@ describe('scoreboard requests', () => {
       values: [],
       metadata: null,
     });
+  });
+
+  test('loads a configured GeoServer raster for the selected country and IAMC scenario', async () => {
+    const indicator = getScoreboard('heat-stress', 'Mean Temperature').indicator;
+    const tiff = writeArrayBuffer(new Float32Array([3, -9999, 1, 2]), {
+      width: 2, height: 2, ModelPixelScale: [2, 2, 0], ModelTiepoint: [0, 0, 0, 10, 24, 0],
+      GeographicTypeGeoKey: 4326, GTModelTypeGeoKey: 2, GTRasterTypeGeoKey: 1, GDAL_NODATA: '-9999',
+    });
+    const fetcher = vi.fn(async () => new Response(tiff, { headers: { 'content-type': 'image/tiff' } }));
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetcher as typeof fetch;
+
+    try {
+      const response = await request(rasterMapPath());
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        definition: indicator,
+        status: 'ready',
+        grid: { coordinatesOrigin: [11, 21], resolution: 2, data: [[1, 3], [2, null]] },
+        metadata: { unit: '°C' },
+      });
+      const url = new URL(String(fetcher.mock.calls[0][0]));
+      expect(url.searchParams.get('coverageId')).toBe(
+        'provide__current-policies_germany_mean-temperature-1850-1900-pre-industrial_annual_area_50th-percentile_2030'
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('returns an empty raster map when GeoServer has no matching coverage', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(
+      '<ows:ExceptionReport><ows:Exception exceptionCode="NoSuchCoverage"/></ows:ExceptionReport>',
+      { status: 400, headers: { 'content-type': 'application/xml' } },
+    )) as typeof fetch;
+
+    try {
+      const response = await request(rasterMapPath());
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ status: 'empty', values: [], grid: null, metadata: { unit: '°C' } });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test('accepts Ukraine when its boundary source has no regional features', async () => {

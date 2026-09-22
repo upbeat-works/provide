@@ -34,12 +34,13 @@ export function coverageIdSegment(value: string): string {
 }
 
 function coverageFamily(selection: ImpactGeoSelection, scenario: string): string {
-  return [selection.indicator, selection.reference, selection.time, selection.spatial,
-    REPRESENTATIVE_VALUE, scenario, selection.geography].map(coverageIdSegment).join('__');
+  const variable = `${selection.indicator} ${selection.reference}`;
+  return [scenario, selection.geography, variable, selection.time,
+    selection.spatial, REPRESENTATIVE_VALUE].map(coverageIdSegment).join('_');
 }
 
 export function coverageId(params: ImpactGeoParams): string {
-  return `${coverageFamily(params, params.scenario)}__${params.year}`;
+  return `${coverageFamily(params, params.scenario)}_${params.year}`;
 }
 
 function advertisedCoverageIds(xml: string): string[] {
@@ -55,7 +56,7 @@ export function availableYearsByScenario(xml: string, selection: ImpactGeoSelect
   return Object.fromEntries(scenarios.map((scenario) => {
     const family = coverageFamily(selection, scenario);
     const escaped = family.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern = new RegExp(`^${escapedWorkspace}(?::|__)${escaped}__(\\d{4})$`);
+    const pattern = new RegExp(`^${escapedWorkspace}(?::|__)${escaped}_(\\d{4})$`);
     const years = new Set<number>();
     for (const id of published) {
       const year = id.match(pattern)?.[1];

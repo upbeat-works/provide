@@ -3,7 +3,7 @@
   import MapLegendPanel from './MapLegendPanel.svelte';
   import FilterSelect from './FilterSelect.svelte';
   import { legendOf, numericClasses } from './choropleth.js';
-  import { combinedValues, comparisonViews, legendParts } from './comparison.js';
+  import { combinedValues, comparisonViews, legendParts, mapValues } from './comparison.js';
   import { loadResource, mapResourceKey } from './resource.js';
 
   export let definition;
@@ -32,7 +32,7 @@
   $: maps = definition ? collect(views, ownKey, own, revision) : views.map(unavailable);
   $: unit = maps.find((map) => map?.metadata?.unit)?.metadata.unit;
   $: classes = numericClasses(combinedValues(maps), unit);
-  $: legend = legendOf(classes);
+  $: legend = legendOf(classes, { labelMode: 'boundaries', unit });
   $: compareSelectProps = compareBy?.uid === 'region' ? { placeholder: 'Search region' } : {};
 
   function withIndicator(view) {
@@ -118,9 +118,10 @@
   <div class="flex" class:gap-px={compareBy}>
     {#each views as view, i (i)}
       {@const map = maps[i] ?? loading()}
-      {@const values = map.status === 'ready' ? map.values ?? [] : []}
+      {@const values = map.status === 'ready' ? mapValues(map) : []}
+      {@const grid = map.status === 'ready' ? map.grid : undefined}
       <div class="relative min-w-0 flex-1">
-        <ScoreboardMap height="h-[560px]" {values} {classes} countryName={view.region?.uid} level={definition?.level} />
+        <ScoreboardMap height="h-[560px]" {values} {grid} {classes} countryName={view.region?.uid} level={definition?.level} />
 
         <div class="pointer-events-none absolute inset-0 {compareBy ? '' : 'mx-auto max-w-7xl px-6'}">
           {#if compareBy}
@@ -144,7 +145,7 @@
             </div>
           {:else if map.status === 'ready' && values.length}
             <div class="pointer-events-auto absolute bottom-6 left-6">
-              <MapLegendPanel parts={legendParts(view, compareBy?.uid)} subtitle={legendSubtitle(map)} scale={legend.scale} labels={legend.labels} />
+              <MapLegendPanel parts={legendParts(view, compareBy?.uid)} subtitle={legendSubtitle(map)} scale={legend.scale} labels={legend.labels} ticks={legend.ticks} />
             </div>
           {:else if map.status === 'loading'}
             <div class="pointer-events-auto absolute bottom-6 left-6 rounded bg-white px-5 py-4 text-sm text-text-weaker shadow-lg" role="status">

@@ -7,8 +7,14 @@ import { getScoreboard, SCOREBOARD_INSTANCE, SECTORS } from '../scoreboard/contr
 import { scoreboardCountry } from '../scoreboard/countries';
 import { loadRegionalBoundaries, type NutsLevel } from '../scoreboard/boundaries';
 import { regionalMapResult } from '../scoreboard/maps';
+import { emptyRasterMapResult, rasterMapResult } from '../scoreboard/rasters';
 import { definitionGroupingError, loadScoreboardChart } from '../scoreboard/charts';
-import type { Definition, Selection } from '../scoreboard/types';
+import type { Definition, RasterMapIndicator, Selection } from '../scoreboard/types';
+import {
+  fetchImpactGeoRaster,
+  ImpactGeoCoverageNotFoundError,
+  type GeoServerConfig,
+} from '../views/impact-geo';
 
 const scoreboard = new Hono<Env>();
 
@@ -29,6 +35,21 @@ function selectionFromRequest(c: Context<Env>): Selection | null {
 function failure(c: Context<Env>, message: string, reason: unknown) {
   console.error(message, { path: c.req.path, sector: c.req.query('sector'), reasonName: reason instanceof Error ? reason.name : typeof reason });
   return c.json({ error: message }, 502);
+}
+
+function geoServerConfig(c: Context<Env>): GeoServerConfig | Response {
+  if (!c.env.GEOSERVER_URL) return c.json({ error: 'GEOSERVER_URL is not configured' }, 503);
+  const username = c.env.GEOSERVER_USERNAME || undefined;
+  const password = c.env.GEOSERVER_PASSWORD || undefined;
+  if (Boolean(username) !== Boolean(password)) {
+    return c.json({ error: 'GeoServer username and password must be configured together' }, 503);
+  }
+  return { url: c.env.GEOSERVER_URL, workspace: c.env.GEOSERVER_WORKSPACE || 'provide', username, password };
+}
+
+function validRasterIndicator(indicator: RasterMapIndicator) {
+  return [indicator.indicator, indicator.reference, indicator.time, indicator.spatial]
+    .every((value) => typeof value === 'string' && value.trim().length > 0);
 }
 
 scoreboard.get('/charts/:chartId', async (c) => {
@@ -60,9 +81,29 @@ scoreboard.get('/map', async (c) => {
   const country = scoreboardCountry(region);
   const year = Number(yearText);
   const validIndicator = map.indicators.some(({ name }) => name === indicatorName);
-  const validScenario = map.scenarios.some(({ id }) => id === scenario);
-  if (!validIndicator || !validScenario || !country || !map.years.includes(year)) {
+  const scenarioDefinition = map.scenarios.find(({ id }) => id === scenario);
+  if (!validIndicator || !scenarioDefinition || !country || !map.years.includes(year)) {
     return c.json({ error: 'Invalid scoreboard map selection' }, 400);
+  }
+  if (indicator.type === 'raster') {
+    if (!validRasterIndicator(indicator)) return c.json({ error: 'Invalid scoreboard map configuration' }, 400);
+    const config = geoServerConfig(c);
+    if (config instanceof Response) return config;
+    try {
+      const raster = await fetchImpactGeoRaster(config, {
+        indicator: indicator.indicator,
+        geography: country.name,
+        reference: indicator.reference,
+        time: indicator.time,
+        spatial: indicator.spatial,
+        scenario: scenarioDefinition.rasterName ?? scenario,
+        year,
+      });
+      return c.json(await rasterMapResult(raster, indicator));
+    } catch (reason) {
+      if (reason instanceof ImpactGeoCoverageNotFoundError) return c.json(emptyRasterMapResult(indicator));
+      return failure(c, 'Map data unavailable', reason);
+    }
   }
   if (indicator.type !== 'choropleth' || !indicator.level) return c.json({ error: 'Unsupported scoreboard map type' }, 400);
   if (typeof indicator.variable !== 'string' || indicator.variable.trim().length === 0) {

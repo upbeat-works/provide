@@ -226,11 +226,13 @@ GeoServer administration or credentials.
 Reuse the branch's coverage naming convention:
 
 ```text
-indicator__reference__time__spatial__50th-percentile__scenario__geography__year
+scenario_geography_variable_time_spatial_50th-percentile_year
 ```
 
 Its `coverageIdSegment` function lowercases each text segment, removes accents,
-and replaces runs of non-alphanumeric characters with a hyphen. WCS 2 requests
+and replaces runs of non-alphanumeric characters with a hyphen. The IAMC
+`variable` field combines the indicator and reference. Fields follow IAMC order
+and use one underscore as their separator. WCS 2 requests
 prefix the resulting ID with `provide__`. Discover published years by matching
 that coverage family in GeoServer capabilities. Publication and lookup must use
 the same convention; do not add a separate table of selection-to-coverage IDs.

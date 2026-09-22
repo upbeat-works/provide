@@ -3,6 +3,7 @@
   export let height;
   export let values;
   export let classes;
+  export let grid = undefined;
   export let selectable = false;
   export let fitCountries = [];
   export let geographyType = 'admin0';

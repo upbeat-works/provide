@@ -20,9 +20,10 @@ The page URL uses `sector`, `indicator`, `region`, `scenario`, and `year`.
 name because chart requests use that value. Invalid choices fall back to the
 first configured indicator and scenario, Austria, and 2050.
 
-Each choropleth indicator's `variable` is the exact ixmp4 query name. Its
-`name` remains the filter label and URL choice; the API does not derive query
-facets from it.
+Each choropleth indicator's `variable` is the exact ixmp4 query name. Raster
+indicators provide their GeoServer indicator, reference, time, spatial and unit
+fields. An optional scenario `rasterName` maps an ixmp4 scenario ID to its
+GeoServer name. An indicator's `name` remains the filter label and URL choice.
 
 Chart URLs and embeds keep their existing chart fields. They do not require an
 indicator. Moving between the overview and indicators views keeps valid choices.
@@ -73,7 +74,7 @@ Pass another origin as the first argument to check a different local address.
 
 ## Limits
 
-The overview scores are still mock data. Raster maps are deferred. The API
-assumes one ixmp4 model for each map variable and returns that model and unit as
-metadata. It adds no model choice, unit conversion, shared value cache, or
-stored catalog.
+The overview scores are still mock data. The API assumes one ixmp4 model for
+each choropleth variable and returns that model and unit as metadata. Raster
+units come from sector config. It adds no model choice, unit conversion, shared
+value cache, or stored catalog.

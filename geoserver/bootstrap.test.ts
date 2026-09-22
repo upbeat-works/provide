@@ -3,7 +3,7 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const coverage = 'mean-temperature__2011-2020-present-day__annual__area__50th-percentile__low-demand__cameroon__2030';
+const coverage = 'low-demand_cameroon_mean-temperature-2011-2020-present-day_annual_area_50th-percentile_2030';
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
@@ -39,7 +39,7 @@ done
 
 test('rejects a file outside the coverage naming convention before publication', async () => {
   const result = await runBootstrap(
-    'mean-temperature__2011-2020-present-day__annual__area__50th-percentile__Low Demand__cameroon__2030.nc',
+    'Low Demand_cameroon_mean-temperature-2011-2020-present-day_annual_area_50th-percentile_2030.nc',
     '',
   );
   expect(result.exitCode).not.toBe(0);

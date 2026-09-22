@@ -39,12 +39,29 @@ supply an optional localized `Label`; a missing label falls back to the ID.
 ixmp4 variable name. The API queries it directly without adding or changing
 facets. A plain variable name is also valid when it has matching regional data.
 
-`raster` is reserved as an indicator type. Raster loading and drawing are
-deferred. Map config has no model, unit, title, or indicator ID.
+Raster indicators name the GeoServer selection fields and display unit:
 
-The API reads the model and unit from ixmp4. The data is assumed to use one
-model for each variable. There is no model selector, unit conversion, or mixed
-model policy.
+```json
+{
+  "name": "Mean Temperature",
+  "type": "raster",
+  "indicator": "Mean Temperature",
+  "reference": "1850-1900 (Pre-industrial)",
+  "time": "Annual",
+  "spatial": "Area",
+  "unit": "°C"
+}
+```
+
+The API builds the coverage ID from the selected scenario, country and year.
+An optional `rasterName` on a configured scenario gives its GeoServer name when
+the ixmp4 ID differs. Raster fields follow the convention in
+[GeoServer setup](geoserver-setup.md). The API decodes the GeoTIFF and returns
+the cell grid; the browser colours finite cells and leaves missing cells empty.
+
+For choropleths, the API reads the model and unit from ixmp4. Raster units come
+from map config. There is no model selector, unit conversion, or mixed model
+policy.
 
 ## Data request and boundaries
 
@@ -68,7 +85,8 @@ They filter features by the country's
 }
 ```
 
-The browser joins each returned `region` to `NUTS_ID`. Missing regions stay
+The browser joins each choropleth `region` to `NUTS_ID`. Raster responses carry
+their origin, resolution and cell matrix. Missing regions and cells stay
 unpainted, and zero is a valid value. Empty data keeps the country outline.
 Failed boundary loads can be retried. Loaded data is reused through the module
 cache.

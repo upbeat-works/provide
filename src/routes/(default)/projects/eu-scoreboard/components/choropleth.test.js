@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'vitest';
+import bbox from '@turf/bbox';
 import {
   classOf,
   colorFor,
@@ -9,6 +10,7 @@ import {
   scoredUids,
   legendOf,
   numericClasses,
+  rasterFeatures,
   COUNTRY_CODE,
 } from './choropleth.js';
 import { RISK_CLASSES, riskRankingFor, riskValues } from './scores.js';
@@ -118,6 +120,14 @@ describe('legendOf', () => {
     expect(legendOf(RISK_CLASSES, { highestFirst: true }).labels).toEqual(['High', 'Medium', 'Low', 'Very Low']);
     expect(legendOf(RISK_CLASSES, { highestFirst: true }).scale[0]).toBe(RISK_CLASSES.at(-1).color);
   });
+
+  test('shows numeric class boundaries once instead of repeating interval ends', () => {
+    const classes = numericClasses([{ value: 1 }, { value: 3 }], '°C');
+
+    expect(legendOf(classes, { labelMode: 'boundaries', unit: '°C' }).ticks).toEqual([
+      '1', '1.4', '1.8', '2.2', '2.6', '3 °C',
+    ]);
+  });
 });
 
 describe('numeric indicator map scale', () => {
@@ -130,10 +140,48 @@ describe('numeric indicator map scale', () => {
   });
 
   test('uses one honest class for equal values and none for missing values', () => {
-    expect(numericClasses([{ value: 0 }, { value: 0 }], '%')).toEqual([{ min: 0, label: '0 %', color: '#ee9f3f' }]);
+    expect(numericClasses([{ value: 0 }, { value: 0 }], '%')).toEqual([{ min: 0, max: 0, label: '0 %', color: '#ee9f3f' }]);
     expect(numericClasses([{ value: null }])).toEqual([]);
   });
 
+});
+
+describe('rasterFeatures', () => {
+  test('turns finite raster cells into coloured map rectangles and leaves missing cells empty', () => {
+    const classes = numericClasses([{ value: 1 }, { value: 2 }, { value: 3 }], '°C');
+    const result = rasterFeatures({ coordinatesOrigin: [10, 50], resolution: 2, data: [[1, null], [2, 3]] }, classes);
+
+    expect(result.features).toHaveLength(3);
+    expect(result.features[0]).toEqual({
+      type: 'Feature',
+      properties: { value: 1, color: colorFor(1, classes) },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[[9, 49], [11, 49], [11, 51], [9, 51], [9, 49]]],
+      },
+    });
+    expect(result.features[2].properties).toEqual({ value: 3, color: colorFor(3, classes) });
+  });
+
+  test('returns no cells without a usable grid', () => {
+    expect(rasterFeatures(undefined, [])).toEqual({ type: 'FeatureCollection', features: [] });
+  });
+
+  test('clips painted cells to the selected country', () => {
+    const classes = numericClasses([{ value: 1 }], '°C');
+    const mask = {
+      type: 'Feature',
+      properties: { geoId: 'DEU' },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[[9.5, 49.5], [10.5, 49.5], [10.5, 50.5], [9.5, 50.5], [9.5, 49.5]]],
+      },
+    };
+    const result = rasterFeatures({ coordinatesOrigin: [10, 50], resolution: 2, data: [[1]] }, classes, mask);
+
+    expect(result.features).toHaveLength(1);
+    expect(bbox(result.features[0])).toEqual([9.5, 49.5, 10.5, 50.5]);
+  });
 });
 
 describe('riskRankingFor', () => {

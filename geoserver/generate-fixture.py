@@ -6,7 +6,7 @@ from scipy.io import netcdf_file
 
 
 OUTPUT = Path(__file__).parent / "fixtures"
-PREFIX = "mean-temperature__2011-2020-present-day__annual__area__50th-percentile"
+SUFFIX = "cameroon_mean-temperature-2011-2020-present-day_annual_area_50th-percentile"
 SCENARIOS = {
     "2020-climate-policies": {
         2030: [[0.8, 0.9, 1.0], [1.1, 1.2, 1.3]],
@@ -53,7 +53,7 @@ def main() -> None:
     OUTPUT.mkdir(exist_ok=True)
     for scenario, years in SCENARIOS.items():
         for year, values in years.items():
-            coverage = f"{PREFIX}__{scenario}__cameroon__{year}"
+            coverage = f"{scenario}_{SUFFIX}_{year}"
             write_fixture(OUTPUT / f"{coverage}.nc", values)
 
 

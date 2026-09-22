@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { comparisonViews, seedComparison } from './comparison.js';
+import { combinedValues, comparisonViews, mapValues, seedComparison } from './comparison.js';
 
 const options = [{ uid: 'a' }, { uid: 'b' }, { uid: 'c' }];
 
@@ -38,4 +38,12 @@ describe('comparisonViews', () => {
       { scenario: 's', year: 2026, geography: undefined },
     ]);
   });
+});
+
+test('uses finite raster cells when two maps share a colour scale', () => {
+  const raster = { grid: { data: [[1, null], [2, 3]] } };
+  expect(mapValues(raster)).toEqual([{ value: 1 }, { value: 2 }, { value: 3 }]);
+  expect(combinedValues([raster, { grid: { data: [[4]] } }])).toEqual([
+    { value: 1 }, { value: 2 }, { value: 3 }, { value: 4 },
+  ]);
 });

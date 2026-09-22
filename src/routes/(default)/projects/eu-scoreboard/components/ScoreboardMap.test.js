@@ -13,6 +13,7 @@ vi.mock('$lib/components/maps/MapboxMap/MapProvider.svelte', () => import('./Sco
 vi.mock('$lib/components/maps/MapboxMap/ZoomControl.svelte', () => import('./Empty.test.fixture.svelte'));
 vi.mock('./NutsChoropleth.svelte', () => import('./CountryMapLayer.test.fixture.svelte'));
 vi.mock('./RegionalChoropleth.svelte', () => import('./RegionalMapLayer.test.fixture.svelte'));
+vi.mock('./RasterGrid.svelte', () => import('./RasterGrid.test.fixture.svelte'));
 vi.mock('../../../../../../api/scoreboard/boundaries.ts', () => ({ loadRegionalBoundaries: vi.fn() }));
 
 afterEach(() => {
@@ -146,4 +147,19 @@ test('keeps the country map on a boundary failure and retries that request', asy
   await fireEvent.click(screen.getByRole('button', { name: 'Retry boundaries' }));
   await waitFor(() => expect(loadRegionalBoundaries).toHaveBeenCalledTimes(2));
   expect(screen.getByText('Country map')).toBeTruthy();
+});
+
+test('draws a raster grid inside the selected country frame without loading regional boundaries', async () => {
+  stubFetch(async () => Response.json(shapes));
+  const grid = { coordinatesOrigin: [10, 46], resolution: 1, data: [[1]] };
+  const classes = [{ min: 1, label: '1 °C', color: '#fff2cc' }];
+
+  render(ScoreboardMap, { countryName: 'Austria', grid, classes, values: [{ value: 1 }] });
+
+  await waitFor(() => expect(screen.getByRole('img', { name: 'Raster map layer' })).toBeTruthy());
+  const raster = screen.getByRole('img', { name: 'Raster map layer' });
+  expect(JSON.parse(raster.dataset.grid)).toEqual(grid);
+  expect(JSON.parse(raster.dataset.mask)).toEqual(country('AUT', [9, 46, 17, 49]));
+  expect(screen.getByTestId('country-outline').dataset.highlight).toBe('AUT');
+  expect(loadRegionalBoundaries).not.toHaveBeenCalled();
 });

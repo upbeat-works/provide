@@ -1,4 +1,5 @@
 import bbox from '@turf/bbox';
+import intersect from '@turf/intersect';
 
 export const COUNTRY_SOURCE = '/data/eu-scoreboard/nuts0_countries.geojson';
 
@@ -44,6 +45,41 @@ export function classOf(value, classes = []) {
 
 export const colorFor = (value, classes) => classOf(value, classes)?.color;
 
+export function rasterFeatures(grid, classes = [], mask = undefined) {
+  const features = [];
+  const [originX, originY] = grid?.coordinatesOrigin ?? [];
+  const resolution = grid?.resolution;
+  if (!Number.isFinite(originX) || !Number.isFinite(originY) || !Number.isFinite(resolution) || resolution <= 0 || !Array.isArray(grid?.data)) {
+    return { type: 'FeatureCollection', features };
+  }
+  const half = resolution / 2;
+  for (const [column, values] of grid.data.entries()) {
+    if (!Array.isArray(values)) continue;
+    for (const [row, value] of values.entries()) {
+      const color = colorFor(value, classes);
+      if (!color) continue;
+      const x = originX + column * resolution;
+      const y = originY + row * resolution;
+      const cell = {
+        type: 'Feature',
+        properties: { value, color },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [x - half, y - half], [x + half, y - half], [x + half, y + half],
+            [x - half, y + half], [x - half, y - half],
+          ]],
+        },
+      };
+      const feature = mask ? intersect(cell, mask) : cell;
+      if (!feature) continue;
+      feature.properties = { value, color };
+      features.push(feature);
+    }
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 const NUMERIC_COLORS = ['#fff2cc', '#f9d67a', '#ee9f3f', '#d75b2a', '#9f2727'];
 const formatNumber = (value) => new Intl.NumberFormat('en', { maximumFractionDigits: 2 }).format(value);
 
@@ -53,12 +89,12 @@ export function numericClasses(values = [], unit = undefined) {
   const minimum = Math.min(...finite);
   const maximum = Math.max(...finite);
   const suffix = unit ? ` ${unit}` : '';
-  if (minimum === maximum) return [{ min: minimum, label: `${formatNumber(minimum)}${suffix}`, color: NUMERIC_COLORS[2] }];
+  if (minimum === maximum) return [{ min: minimum, max: maximum, label: `${formatNumber(minimum)}${suffix}`, color: NUMERIC_COLORS[2] }];
   const step = (maximum - minimum) / NUMERIC_COLORS.length;
   return NUMERIC_COLORS.map((color, index) => {
     const start = minimum + step * index;
     const end = index === NUMERIC_COLORS.length - 1 ? maximum : minimum + step * (index + 1);
-    return { min: start, label: `${formatNumber(start)}–${formatNumber(end)}${suffix}`, color };
+    return { min: start, max: end, label: `${formatNumber(start)}–${formatNumber(end)}${suffix}`, color };
   });
 }
 
@@ -91,10 +127,23 @@ export const regionalFilter = (values, classes) => scoredFilter(NUTS_ID, regiona
 // The legend's ramp and its tick labels, drawn low to high unless the panel
 // reads the other way round (the ranking legend leads with High, to match the
 // leaderboard under it).
-export function legendOf(classes = [], { highestFirst = false } = {}) {
+function boundaryLabels(classes, highestFirst, unit) {
+  if (!classes.length || !classes.every(({ min, max }) => Number.isFinite(min) && Number.isFinite(max))) return [];
+  let boundaries = [classes[0].min, ...classes.map(({ max }) => max)];
+  if (highestFirst) boundaries = [classes[0].max, ...classes.map(({ min }) => min)];
+  if (boundaries.length === 2 && boundaries[0] === boundaries[1]) boundaries = [boundaries[0]];
+  return boundaries.map((value, index) => {
+    const suffix = unit && index === boundaries.length - 1 ? ` ${unit}` : '';
+    return `${formatNumber(value)}${suffix}`;
+  });
+}
+
+export function legendOf(classes = [], { highestFirst = false, labelMode = 'classes', unit = undefined } = {}) {
   const ordered = highestFirst ? [...classes].reverse() : classes;
-  return {
+  const legend = {
     scale: ordered.map(({ color }) => color),
     labels: ordered.map(({ label }) => label),
   };
+  if (labelMode === 'boundaries') legend.ticks = boundaryLabels(ordered, highestFirst, unit);
+  return legend;
 }

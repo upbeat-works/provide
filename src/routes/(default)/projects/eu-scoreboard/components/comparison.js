@@ -22,7 +22,14 @@ export function comparisonViews(compareBy, sides = [], shared = {}) {
 // Both maps in a comparison have to be read against the same ramp: classes
 // derived per map would give each side its own scale, and two maps coloured on
 // different scales cannot be compared by eye, which is the whole point.
-export const combinedValues = (results = []) => results.flatMap((result) => result?.values ?? []);
+export function mapValues(result = {}) {
+  if (Array.isArray(result.values)) return result.values;
+  return (result.grid?.data ?? []).flatMap((column) =>
+    column.flatMap((value) => Number.isFinite(value) ? [{ value }] : [])
+  );
+}
+
+export const combinedValues = (results = []) => results.flatMap(mapValues);
 
 // The label row on a map's legend card: the whole selection, so two cards side
 // by side say what makes them different, with the compared part picked out.

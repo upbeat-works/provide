@@ -48,6 +48,31 @@ test('retries a failed map with its full identity and treats zero as data', asyn
   expect(screen.getByText(/0 K/)).toBeTruthy();
 });
 
+test('passes a ready raster grid to the map and builds its legend from cell values', () => {
+  const rasterDefinition = { name: 'Mean Temperature', type: 'raster' };
+  const grid = { coordinatesOrigin: [11, 51], resolution: 0.5, data: [[1, null], [2, 3]] };
+  const rasterResult = {
+    definition: rasterDefinition,
+    status: 'ready',
+    grid,
+    metadata: { unit: '°C' },
+  };
+
+  render(MapPanel, {
+    ...props,
+    definition: rasterDefinition,
+    selection: { ...selection, indicator: option(rasterDefinition.name) },
+    result: rasterResult,
+  });
+
+  const map = screen.getByRole('img', { name: 'Regional scoreboard map' });
+  expect(JSON.parse(map.dataset.grid)).toEqual(grid);
+  expect(JSON.parse(map.dataset.classes)).toHaveLength(5);
+  expect(screen.getAllByText(/°C/)).toHaveLength(1);
+  expect(screen.getByText('1.4')).toBeTruthy();
+  expect(screen.getByText('3 °C')).toBeTruthy();
+});
+
 test('does not paint an old result after indicator and sector change', async () => {
   let finishOld;
   let finishCurrent;

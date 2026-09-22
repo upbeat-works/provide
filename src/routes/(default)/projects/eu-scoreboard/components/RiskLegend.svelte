@@ -7,6 +7,7 @@
   // color-tokens-light.json.
   export let scale = [];
   export let labels = [];
+  export let ticks = [];
 </script>
 
 <div class="flex flex-col gap-1.5">
@@ -17,9 +18,15 @@
       <div class="h-full flex-1" style="background-color: {color}" />
     {/each}
   </div>
-  <div class="flex text-xs text-theme-stronger">
-    {#each labels as label}
-      <span class="flex-1 text-center">{label}</span>
-    {/each}
-  </div>
+  {#if ticks.length}
+    <div class="flex justify-between text-xs tabular-nums text-theme-stronger" class:justify-center={ticks.length === 1}>
+      {#each ticks as tick}<span>{tick}</span>{/each}
+    </div>
+  {:else}
+    <div class="flex text-xs text-theme-stronger">
+      {#each labels as label}
+        <span class="flex-1 text-center">{label}</span>
+      {/each}
+    </div>
+  {/if}
 </div>

@@ -4,6 +4,7 @@
   import ZoomControl from '$lib/components/maps/MapboxMap/ZoomControl.svelte';
   import NutsChoropleth from './NutsChoropleth.svelte';
   import RegionalChoropleth from './RegionalChoropleth.svelte';
+  import RasterGrid from './RasterGrid.svelte';
   import { countriesBounds, COUNTRY_SOURCE } from './choropleth.js';
   import { loadRegionalBoundaries } from '../../../../../../api/scoreboard/boundaries.ts';
   import { scoreboardCountry } from '../../../../../../api/scoreboard/countries.ts';
@@ -20,6 +21,7 @@
   export let selectable = false;
   export let countryName = undefined;
   export let level = undefined;
+  export let grid = undefined;
 
   let shapes = start();
 
@@ -73,6 +75,7 @@
   $: selectedIso3 = country?.iso3 ?? highlight;
   $: framedCountries = selectedIso3 ? [selectedIso3] : fitCountries;
   $: regional = Boolean(country && level);
+  $: raster = Boolean(grid);
   const zoomRange = [-1, 14];
 </script>
 
@@ -81,15 +84,19 @@
     <MapLoading />
   {:then shape}
     {@const frame = (framedCountries.length && countriesBounds(shape, framedCountries)) || bounds}
+    {@const rasterMask = shape.features?.find(({ properties }) => properties?.geoId === selectedIso3)}
     <MapProvider bounds={frame} fitBoundsOptions={{ padding }} {zoomRange}>
       <ZoomControl />
       {#if regionalState.status === 'ready'}
         <RegionalChoropleth shape={regionalState.shape} {values} {classes} />
       {/if}
+      {#if raster}
+        <RasterGrid {grid} {classes} mask={rasterMask} />
+      {/if}
       <NutsChoropleth
         {shape}
-        values={regional ? [] : values}
-        classes={regional ? [] : classes}
+        values={regional || raster ? [] : values}
+        classes={regional || raster ? [] : classes}
         highlight={selectedIso3}
         {selectable}
         on:select

@@ -6,7 +6,7 @@ auth=${GEOSERVER_AUTH:-admin:geoserver}
 import_dir=${GEOSERVER_IMPORT_DIR:-/opt/geoserver_import}
 workspace=provide
 native_name=${GEOSERVER_NATIVE_NAME:-mean_temperature_change}
-pattern="$import_dir/mean-temperature__2011-2020-present-day__annual__area__50th-percentile__*__cameroon__????.nc"
+pattern="$import_dir/*_cameroon_mean-temperature-2011-2020-present-day_annual_area_50th-percentile_????.nc"
 
 found=false
 for file in $pattern; do
@@ -14,7 +14,7 @@ for file in $pattern; do
   found=true
   coverage=${file##*/}
   coverage=${coverage%.nc}
-  if ! printf '%s\n' "$coverage" | grep -Eq '^mean-temperature__2011-2020-present-day__annual__area__50th-percentile__[a-z0-9]+(-[a-z0-9]+)*__cameroon__[0-9]{4}$'; then
+  if ! printf '%s\n' "$coverage" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*_cameroon_mean-temperature-2011-2020-present-day_annual_area_50th-percentile_[0-9]{4}$'; then
     echo "Invalid coverage filename: $coverage.nc" >&2
     exit 1
   fi

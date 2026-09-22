@@ -28,7 +28,7 @@ const params: ImpactGeoParams = {
 };
 
 const expectedId =
-  'mean-temperature__2011-2020-present-day__annual__area__50th-percentile__2020-climate-policies__cameroon__2030';
+  '2020-climate-policies_cameroon_mean-temperature-2011-2020-present-day_annual_area_50th-percentile_2030';
 
 test('builds exact convention coverage ids and WCS 2 raster requests', () => {
   expect(coverageIdSegment('Stabilisation at 1.5 °C')).toBe('stabilisation-at-1-5-c');

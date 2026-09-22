@@ -48,11 +48,13 @@ pattern, native variable, and metadata first. Prepare one NetCDF file for each
 supported selection and year. Its filename without `.nc` must be the coverage ID:
 
 ```text
-indicator__reference__time__spatial__50th-percentile__scenario__geography__year
+scenario_geography_variable_time_spatial_50th-percentile_year
 ```
 
+The fields follow IAMC order. `variable` combines the indicator and reference.
 Every text part must use the API normalisation: lower case, accents removed,
-and each run of other characters changed to one hyphen. Check for duplicate
+and each run of other characters changed to one hyphen. Separate fields with
+one underscore. Check for duplicate
 names after normalisation before publication. The default native variable is
 `mean_temperature_change`; set `GEOSERVER_NATIVE_NAME` when a dataset uses a
 different variable.
