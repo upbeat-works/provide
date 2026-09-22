@@ -20,6 +20,10 @@ The page URL uses `sector`, `indicator`, `region`, `scenario`, and `year`.
 name because chart requests use that value. Invalid choices fall back to the
 first configured indicator and scenario, Austria, and 2050.
 
+Each choropleth indicator's `variable` is the exact ixmp4 query name. Its
+`name` remains the filter label and URL choice; the API does not derive query
+facets from it.
+
 Chart URLs and embeds keep their existing chart fields. They do not require an
 indicator. Moving between the overview and indicators views keeps valid choices.
 
@@ -41,9 +45,10 @@ cannot replace results after a filter change. Comparisons keep separate resource
 state for each side. Country fitting uses NUTS0 data and does not wait for the
 regional value request.
 
-Regional boundary loading is shared by the API and browser. It uses pinned
-NUTS1 and NUTS2 sources, filters by `CNTR_CODE` and level, and caches only
-successful full-file loads. The API joins values through `NUTS_ID`.
+Regional boundary loading is shared by the API and browser. It imports the
+requested NUTS level from `api/scoreboard/data/`, with no runtime GitHub request.
+The packaged files preserve the pinned source bytes. The loader filters by
+`CNTR_CODE` and level; the API joins values through `NUTS_ID`.
 
 Testing's stacked bar and bubble keep `groupBy: "region"`, but their config
 provides the fixed country names Austria, Germany and France. Country changes

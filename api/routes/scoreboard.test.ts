@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { http, HttpResponse } from 'msw';
 import * as platformModule from '../platform';
-import { boundarySource } from '../scoreboard/boundaries';
-import { server } from '../test-helpers';
+import { getScoreboard } from '../scoreboard/controller.js';
 
 const tabulate = vi.fn();
 let createPlatform;
@@ -35,16 +33,6 @@ function recordedFrame(query) {
   });
   return frame(rows);
 }
-const boundaries = {
-  type: 'FeatureCollection',
-  features: [
-    { type: 'Feature', properties: { NUTS_ID: 'AT11', CNTR_CODE: 'AT', LEVL_CODE: 2 }, geometry: null },
-    { type: 'Feature', properties: { NUTS_ID: 'AT12', CNTR_CODE: 'AT', LEVL_CODE: 2 }, geometry: null },
-    { type: 'Feature', properties: { NUTS_ID: 'AT1', CNTR_CODE: 'AT', LEVL_CODE: 1 }, geometry: null },
-    { type: 'Feature', properties: { NUTS_ID: 'FR10', CNTR_CODE: 'FR', LEVL_CODE: 2 }, geometry: null },
-  ],
-};
-
 beforeEach(() => {
   vi.clearAllMocks();
   createPlatform = vi.spyOn(platformModule, 'createPlatform');
@@ -55,7 +43,6 @@ beforeEach(() => {
       [variable, 'CurrentPolicies', 'AT12', 'RIME-X v1.0.0', '°C', 1, null, 2],
     ])
   );
-  server.use(http.get(boundarySource('NUTS2'), () => HttpResponse.json(boundaries)));
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -86,7 +73,7 @@ describe('scoreboard requests', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      definition: { name: 'Maximum Air Temperature', type: 'choropleth', level: 'NUTS2' },
+      definition: { name: 'Maximum Air Temperature', variable, type: 'choropleth', level: 'NUTS2' },
       status: 'ready',
       values: [{ region: 'AT11', value: 0 }],
       metadata: { variable, model: 'RIME-X v1.0.0', unit: '°C' },
@@ -95,17 +82,59 @@ describe('scoreboard requests', () => {
       variable: { name: variable },
       run: { defaultOnly: true },
       scenario: { name: 'CurrentPolicies' },
-      region: { name_in: ['AT11', 'AT12'] },
+      region: { name_in: ['AT12', 'AT13', 'AT21', 'AT22', 'AT31', 'AT32', 'AT33', 'AT34', 'AT11'] },
       stepYear: 2050,
       wide: true,
     });
+  });
+
+  test('uses the configured source variable when its display name is unrelated', async () => {
+    const indicator = { name: 'Population overview', variable: 'Population', type: 'choropleth', level: 'NUTS2' };
+    const indicators = getScoreboard('testing').map.indicators;
+    indicators.push(indicator);
+    tabulate.mockImplementation((query) => {
+      if (query.variable.name !== 'Population') return frame([]);
+      return frame([['Population', 'CurrentPolicies', 'AT11', 'Population model', 'million', null, 12, null]]);
+    });
+
+    try {
+      const response = await request(mapPath({ indicator: indicator.name }));
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        definition: indicator,
+        status: 'ready',
+        values: [{ region: 'AT11', value: 12 }],
+        metadata: { variable: 'Population', model: 'Population model', unit: 'million' },
+      });
+      expect(tabulate).toHaveBeenCalledWith(expect.objectContaining({ variable: { name: 'Population' } }));
+    } finally {
+      indicators.pop();
+    }
+  });
+
+  test('rejects a blank configured source variable before querying the source', async () => {
+    const indicator = { name: 'Broken map', variable: '   ', type: 'choropleth', level: 'NUTS2' };
+    const indicators = getScoreboard('testing').map.indicators;
+    indicators.push(indicator);
+
+    try {
+      const response = await request(mapPath({ indicator: indicator.name }));
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: 'Invalid scoreboard map configuration' });
+      expect(createPlatform).not.toHaveBeenCalled();
+      expect(tabulate).not.toHaveBeenCalled();
+    } finally {
+      indicators.pop();
+    }
   });
 
   test('returns an empty map when the configured query has no rows', async () => {
     tabulate.mockResolvedValue(frame([]));
 
     expect(await (await request(mapPath())).json()).toEqual({
-      definition: { name: 'Maximum Air Temperature', type: 'choropleth', level: 'NUTS2' },
+      definition: { name: 'Maximum Air Temperature', variable, type: 'choropleth', level: 'NUTS2' },
       status: 'empty',
       values: [],
       metadata: null,

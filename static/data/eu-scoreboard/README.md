@@ -20,7 +20,8 @@ into the single country the other 39 arrive as, for 40 in total. Moldova is in n
 is outside NUTS entirely and so cannot be drawn on this map.
 
 Use `geoId` to match overview scores and the selected country's ISO alpha-3 code. Regional
-map values use the separate pinned NUTS1 and NUTS2 sources. Boundaries are from EUROSTAT's
+map values use the packaged NUTS1 and NUTS2 files in
+[`api/scoreboard/data`](../../../api/scoreboard/data/README.md). Boundaries are from EUROSTAT's
 Territorial units for statistics (NUTS); reuse is authorised with due citation of the source.
 
 > Eurostat, _Statistical regions in the European Union and partner countries – NUTS and statistical

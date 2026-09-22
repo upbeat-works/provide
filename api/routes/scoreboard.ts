@@ -65,12 +65,14 @@ scoreboard.get('/map', async (c) => {
     return c.json({ error: 'Invalid scoreboard map selection' }, 400);
   }
   if (indicator.type !== 'choropleth' || !indicator.level) return c.json({ error: 'Unsupported scoreboard map type' }, 400);
+  if (typeof indicator.variable !== 'string' || indicator.variable.trim().length === 0) {
+    return c.json({ error: 'Invalid scoreboard map configuration' }, 400);
+  }
   try {
     const boundaries = await loadRegionalBoundaries(country.code, indicator.level as NutsLevel);
     const regionIds = [...new Set(boundaries.features.flatMap(({ properties }) => (typeof properties?.NUTS_ID === 'string' ? [properties.NUTS_ID] : [])))];
     if (!regionIds.length) return c.json(regionalMapResult([], indicator, scenario, year));
-    const variable = `${indicator.name}|Absolute Values (No Change)|Annual|Area|50th Percentile`;
-    const rows = await readScoreboardMapSeries(await source(c), variable, { scenario, regions: regionIds, year });
+    const rows = await readScoreboardMapSeries(await source(c), indicator.variable, { scenario, regions: regionIds, year });
     return c.json(regionalMapResult(rows, indicator, scenario, year));
   } catch (reason) {
     return failure(c, 'Map data unavailable', reason);

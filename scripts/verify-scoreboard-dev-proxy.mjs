@@ -8,6 +8,8 @@ const modules = [
   ['/api/scoreboard/heat-stress.json?import'],
   ['/api/scoreboard/testing.json?import'],
   ['/api/scoreboard/socioeconomic.json?import'],
+  ['/api/scoreboard/data/nuts1.json?import'],
+  ['/api/scoreboard/data/nuts2.json?import'],
   ['/api/db/import/country-iso3.ts'],
 ];
 

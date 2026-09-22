@@ -5,7 +5,12 @@ describe('scoreboard config', () => {
   test('selects a named map indicator and returns the sector charts', () => {
     const scoreboard = getScoreboard('testing', 'Mean Air Temperature');
 
-    expect(scoreboard.indicator).toEqual({ name: 'Mean Air Temperature', type: 'choropleth', level: 'NUTS2' });
+    expect(scoreboard.indicator).toEqual({
+      name: 'Mean Air Temperature',
+      variable: 'Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile',
+      type: 'choropleth',
+      level: 'NUTS2',
+    });
     expect(scoreboard.charts.map(({ chartId }) => chartId)).toContain('maximum-air-temperature-range');
   });
 

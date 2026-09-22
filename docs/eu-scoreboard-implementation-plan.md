@@ -8,15 +8,16 @@
   country or defaults to Austria. The map fits that country's NUTS0 bounds even
   while data loads or when it is absent.
 - Each sector has `map` and `charts` keys. Map indicators use `name`, `type` and,
-  for choropleths, `level` (`NUTS1` or `NUTS2`). No indicator ID, title, model,
-  variable or unit fields. Raster work is deferred.
-- Both sectors start with Maximum Air Temperature and Mean Air Temperature at
+  for choropleths, an exact `variable` and `level` (`NUTS1` or `NUTS2`). No
+  indicator ID, title, model or unit fields. Raster work is deferred.
+- Heat stress and Testing offer Maximum Air Temperature and Mean Air Temperature at
   NUTS2, scenarios CurrentPolicies and 1.5C, and years 2020, 2030, 2050, 2100.
   The default year is 2050. Scenario config stores IDs; optional localized Strapi
   labels fall back to IDs. Choices come from shared config, with no options API.
-- Map series use annual absolute values, area and the 50th percentile. Read
-  variable, model and unit from ixmp4. Assume one model per variable; add no
-  model selector, config field or mixed-model check (review issue 2 rejected).
+- Map queries use each indicator's configured `variable` directly. The climate
+  examples select annual absolute values, area and the 50th percentile. Read
+  model and unit from ixmp4. Assume one model per variable; add no model selector,
+  model config field or mixed-model check (review issue 2 rejected).
 - Use maintained, pinned NUTS files unchanged. Filter by CNTR_CODE and level;
   join ixmp4 `region` to NUTS_ID. Missing regions stay empty; zero is valid.
 - Keep country/scenario/year shared with charts. Testing's stacked bar and
@@ -246,3 +247,33 @@ Review the combined change with the senior code reviewer before handoff.
 - The final production build passes. A browser reload shows all four charts,
   clear GDP and heat-vulnerable population axis labels, and no errors.
 - Senior re-review approved with no remaining findings. No commit was created.
+
+## Follow-up: explicit map variables
+
+Keep `name` as the display and URL key. Require a separate `variable` for each
+choropleth indicator and query it directly. Sol owns config, types, route and
+regression tests; the parent updates current docs and checks the live request.
+Senior review follows the implementation. No socioeconomic map data or raster
+query rules are added as part of this change.
+
+- Variable and empty-config behavior failed before the fixes. The focused API,
+  controller, map and package checks now pass 20 tests with 72 assertions.
+  All 120 scoreboard web tests pass. The live map returns nine Austrian regions
+  using the configured variable. Senior review approved with no findings.
+
+## Follow-up: packaged regional boundaries
+
+After reviewing the explicit-variable change, replace runtime GitHub requests
+with local copies of the pinned NUTS1 and NUTS2 GeoJSON. Keep source bytes and
+properties unchanged, record provenance and license, and load only the needed
+level. Store the shared data inside `api` so the standalone API package includes
+it and Vite can build it into the frontend.
+
+Sol prepares the assets while the variable change finishes. Then it owns the
+boundary loader and tests; the parent owns development proxy routes, current
+docs, production build and browser checks. Senior review follows that phase.
+
+- Phase adjustment: the variable route is approved and its tests are complete.
+  Replace their remote boundary fixture with the real packaged geometry while
+  preserving their variable and value assertions. The assets match the pinned
+  source bytes: Austria has 3 NUTS1 and 9 NUTS2 regions; the UK has 12 and 41.

@@ -1,8 +1,18 @@
 {
   "map": {
     "indicators": [
-      { "name": "Maximum Air Temperature", "type": "choropleth", "level": "NUTS2" },
-      { "name": "Mean Air Temperature", "type": "choropleth", "level": "NUTS2" }
+      {
+        "name": "Maximum Air Temperature",
+        "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+        "type": "choropleth",
+        "level": "NUTS2"
+      },
+      {
+        "name": "Mean Air Temperature",
+        "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+        "type": "choropleth",
+        "level": "NUTS2"
+      }
     ],
     "scenarios": [{ "id": "CurrentPolicies" }, { "id": "1.5C" }],
     "years": [2020, 2030, 2050, 2100]

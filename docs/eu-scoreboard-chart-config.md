@@ -158,6 +158,6 @@ Use **Socioeconomic / CurrentPolicies_SSP1 / 2050** to see all four charts.
 2030, 2050 and 2100. Country selection does not change these fixed chart regions.
 Population units are millions; GDP uses billions of 2010 US dollars per year.
 
-The source has no population or GDP series matching the regional map query.
-The sector therefore has an empty `map.indicators` list, with scenarios and
-years still configured under `map` for the shared filters.
+These examples use R9 data. The sector has an empty `map.indicators` list, with
+scenarios and years under `map` for the shared filters. Adding a regional map
+requires checking NUTS data for the chosen variable.

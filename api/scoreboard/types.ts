@@ -2,7 +2,7 @@ import type { ScoreboardVariableReference } from '../views/scoreboard';
 
 export type Option = { uid: string; label: string };
 export type MapIndicator =
-  | { name: string; type: 'choropleth'; level: 'NUTS1' | 'NUTS2' }
+  | { name: string; variable: string; type: 'choropleth'; level: 'NUTS1' | 'NUTS2' }
   | { name: string; type: 'raster' };
 export type Definition = {
   chartId: string;
