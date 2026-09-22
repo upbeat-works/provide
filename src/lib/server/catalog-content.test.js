@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -22,6 +23,60 @@ afterEach(() => {
 afterAll(() => server.close());
 
 describe('catalog editorial clients', () => {
+  test('loads labels only for the configured scenario IDs', async () => {
+    server.use(
+      http.get('https://catalog-cms.example/api/scenarios', ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get('fields[0]')).toBe('UID');
+        expect(url.searchParams.get('fields[1]')).toBe('Label');
+        expect(url.searchParams.get('locale')).toBe('en');
+        expect(url.searchParams.get('pagination[limit]')).toBe('2');
+        expect(url.searchParams.get('filters[UID][$in][0]')).toBe('CurrentPolicies');
+        expect(url.searchParams.get('filters[UID][$in][1]')).toBe('1.5C');
+        return HttpResponse.json({
+          data: [
+            { id: 1, attributes: { UID: 'CurrentPolicies', Label: 'Current policies' } },
+            { id: 2, attributes: { UID: '1.5C', Label: null } },
+            { id: 3, attributes: { UID: 'Unrequested', Label: 'Do not use' } },
+          ],
+        });
+      })
+    );
+    const { loadScenarioLabels } = await import('./catalog-content.js');
+
+    await expect(loadScenarioLabels(fetch, { ids: ['CurrentPolicies', '1.5C'] })).resolves.toEqual({
+      CurrentPolicies: 'Current policies',
+      '1.5C': '1.5C',
+    });
+  });
+
+  test('falls back to scenario IDs when optional labels fail', async () => {
+    server.use(http.get('https://catalog-cms.example/api/scenarios', () => HttpResponse.json({}, { status: 503 })));
+    const { loadScenarioLabels } = await import('./catalog-content.js');
+
+    await expect(loadScenarioLabels(fetch, { ids: ['CurrentPolicies', '1.5C'], timeout: 20 })).resolves.toEqual({
+      CurrentPolicies: 'CurrentPolicies',
+      '1.5C': '1.5C',
+    });
+  });
+
+  test('bounds the full optional label response and aborts it on timeout', async () => {
+    vi.useFakeTimers();
+    let signal;
+    const request = vi.fn(async (_url, options) => {
+      signal = options.signal;
+      return { ok: true, json: () => new Promise(() => {}) };
+    });
+    const { loadScenarioLabels } = await import('./catalog-content.js');
+
+    const result = loadScenarioLabels(request, { ids: ['CurrentPolicies'], timeout: 20 });
+    await vi.advanceTimersByTimeAsync(20);
+
+    await expect(result).resolves.toEqual({ CurrentPolicies: 'CurrentPolicies' });
+    expect(signal.aborted).toBe(true);
+    vi.useRealTimers();
+  });
+
   test.each([
     ['indicator', 'indicators', 'Heat / wet?', 'Indicator text.', 'loadIndicatorDescription'],
     ['scenario', 'scenarios', 'SSP / 2?', 'Scenario text.', 'loadScenarioDescription'],

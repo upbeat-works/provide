@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { readDefaultRunSeries, selectScoreboardData } from './scoreboard';
+import { readDefaultRunSeries, readScoreboardMapSeries, selectScoreboardData } from './scoreboard';
 
 const reference = { variable: 'Temperature|Mean', model: 'MESMER', unit: 'K' };
 
@@ -8,6 +8,36 @@ function dataframe(rows: unknown[][]) {
 }
 
 describe('scoreboard default-run reader', () => {
+  test('queries a configured map variable without model or unit filters', async () => {
+    const calls: unknown[] = [];
+    const platform = {
+      iamc: {
+        tabulate: async (query: unknown) => {
+          calls.push(query);
+          return dataframe([['CurrentPolicies', 'AT11', 'RIME-X v1.0.0', '°C', null, 0]]);
+        },
+      },
+    };
+
+    const rows = await readScoreboardMapSeries(
+      platform,
+      'Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile',
+      { scenario: 'CurrentPolicies', regions: ['AT11'], year: 2050 }
+    );
+
+    expect(calls).toEqual([
+      {
+        variable: { name: 'Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile' },
+        run: { defaultOnly: true },
+        scenario: { name: 'CurrentPolicies' },
+        region: { name_in: ['AT11'] },
+        stepYear: 2050,
+        wide: true,
+      },
+    ]);
+    expect(rows[0]).toMatchObject({ region: 'AT11', model: 'RIME-X v1.0.0', unit: '°C', '2050': 0 });
+  });
+
   test('queries an exact reference from default runs and returns plain rows', async () => {
     const calls: unknown[] = [];
     const platform = {

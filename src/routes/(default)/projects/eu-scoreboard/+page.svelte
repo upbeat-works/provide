@@ -12,6 +12,7 @@
   import { page } from '$app/stores';
   import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS } from '$config';
   import { RISK_CLASSES, riskRankingFor, riskValuesFor } from './components/scores.js';
+  import { SCOREBOARD_COUNTRIES } from './controller.js';
 
   export let data;
 
@@ -48,29 +49,24 @@
       description: 'Fossil-fuelled development. The highest pathway, used as an upper bound rather than a likely future.',
     },
   ];
-  const indicators = [
-    'Annual Maximum Temperature',
-    'Annual Mean Temperature (MESMER)',
-    'Days Above 30 °C',
-    'Tropical Nights',
-    'Heatwave Duration',
-    'Cooling Degree Days',
-    'Population Exposed to Extreme Heat',
-  ];
+  const countriesByIso3 = new Map(SCOREBOARD_COUNTRIES.map((country) => [country.iso3, country]));
   let contentRef;
   let activeSlug;
   $: hazard = data.scoreboard.sector.label;
-  $: chartDefinitions = data.scoreboard.definitions;
+  $: chartDefinitions = data.scoreboard.charts;
+  $: indicators = data.scoreboard.map.indicators.map(({ name }) => name);
   $: indicatorsHref = `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators${$page.url.search}`;
   $: rankingView = { scenario: data.selection?.scenario, year: data.selection?.year };
   $: mapValues = riskValuesFor(rankingView);
-  // The whole ranking — the panel pages through it rather than being handed a
-  // single page of five.
-  $: rankingEntries = riskRankingFor(rankingView).map((entry) => ({ ...entry, href: countryHref(entry.label) }));
+  $: rankingEntries = riskRankingFor(rankingView).flatMap((entry) => {
+    const country = countriesByIso3.get(entry.uid);
+    if (!country) return [];
+    return [{ ...entry, label: country.name, href: countryHref(country.name) }];
+  });
 
   function selectionParams(data, region) {
     const params = new URLSearchParams({ sector: data.scoreboard.sector.uid });
-    for (const key of ['scenario', 'region', 'year']) {
+    for (const key of ['indicator', 'scenario', 'region', 'year']) {
       let value = data.selection?.[key]?.uid;
       if (key === 'region' && region) value = region;
       if (value !== undefined && value !== null) params.set(key, value);
@@ -81,8 +77,8 @@
   const countryHref = (label) => `/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}/indicators?${selectionParams(data, label)}`;
 
   function selectCountry(uid) {
-    const country = mapValues.find((entry) => entry.uid === uid);
-    if (country) void goto(countryHref(country.label));
+    const country = countriesByIso3.get(uid);
+    if (country) void goto(countryHref(country.name));
   }
 </script>
 
@@ -138,7 +134,7 @@
     >
       <div class="max-w-3xl rounded bg-theme-50 px-5 py-4">
         <p class="text-sm font-semibold text-theme-stronger">Scores and indicator values are different scales</p>
-        <p class="mt-1 text-sm text-text-weaker">The 0–100 score only exists here. Under Explore indicators you see raw values such as ΔT °C. The two are not directly comparable.</p>
+        <p class="mt-1 text-sm text-text-weaker">The 0–100 score only exists here. Under Explore indicators you see raw values in each indicator's own unit. The two are not directly comparable.</p>
       </div>
     </ScoreboardSection>
 
@@ -164,7 +160,7 @@
       eyebrow="Indicators"
       slug="indicators"
       title={`${hazard} indicators for Europe and individual countries`}
-      description="The scoreboard compares countries on one score. To see the indicators behind that score, and how each one changes over time, switch to Explore indicators and choose Europe or a single country."
+      description="The scoreboard compares countries on one score. To see the indicators behind that score, and how each one changes over time, switch to Explore indicators and choose a country."
       accent={activeSlug === 'indicators'}
       divider={false}
     >

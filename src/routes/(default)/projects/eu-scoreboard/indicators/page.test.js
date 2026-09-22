@@ -4,36 +4,82 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Page from './page.ssr.fixture.svelte';
 import { getScoreboard } from '../controller.js';
 
-vi.mock('../components/ScoreboardMap.svelte', () => import('../components/Map.test.fixture.svelte'));
-vi.mock('$app/navigation', () => ({ goto: vi.fn(), invalidate: vi.fn(), invalidateAll: vi.fn() }));
+const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
+vi.mock('../components/ScoreboardMap.svelte', () => import('./map.test.fixture.svelte'));
+vi.mock('$app/navigation', () => ({ goto, invalidate: vi.fn(), invalidateAll: vi.fn() }));
 // The sidebar's index watches the article column, which needs an observer
 // jsdom does not implement.
-beforeEach(() =>
+beforeEach(() => {
+  goto.mockClear();
   vi.stubGlobal(
     'IntersectionObserver',
     class {
       observe() {}
       disconnect() {}
     }
-  )
-);
+  );
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
 const option = (uid) => ({ uid, label: uid });
 const scoreboard = getScoreboard('testing');
-const definition = scoreboard.definitions[0];
+const definition = scoreboard.charts[0];
 const readyChart = { definition, status: 'ready', data: [{ line: [{ year: 2050, value: 2 }] }] };
 const common = {
   scoreboard,
+  indicators: [option('Maximum Air Temperature'), option('Mean Air Temperature')],
   scenarios: [option('scenario')],
-  regions: [option('region')],
+  regions: [option('Austria')],
   years: [option('2050')],
-  selection: { scenario: option('scenario'), region: option('region'), year: option('2050') },
-  map: { definition: scoreboard.mapDefinition, status: 'ready', values: [{ uid: 'European Union (R9)', label: 'European Union (R9)', value: 12 }] },
+  selection: { indicator: option('Maximum Air Temperature'), scenario: option('scenario'), region: option('Austria'), year: option('2050') },
+  map: { definition: scoreboard.indicator, status: 'ready', values: [{ region: 'AT11', value: 12 }] },
   charts: [],
 };
+
+test('writes the indicator parameter without changing the sector', async () => {
+  render(Page, {
+    data: common,
+    url: new URL('http://localhost/projects/eu-scoreboard/indicators?sector=testing&indicator=Maximum%20Air%20Temperature'),
+  });
+
+  await fireEvent.click(screen.getByRole('button', { name: /^Indicator:/ }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Mean Air Temperature' }));
+
+  const url = goto.mock.calls[0][0];
+  expect(url.searchParams.get('sector')).toBe('testing');
+  expect(url.searchParams.get('indicator')).toBe('Mean Air Temperature');
+});
+
+test.each([false, true])('changes sector and keeps the full indicator selection while comparison is %s', async (comparing) => {
+  const fetcher = vi.fn().mockResolvedValue(Response.json({ ...common.map, values: [] }));
+  vi.stubGlobal('fetch', fetcher);
+  render(Page, {
+    data: { ...common, scenarios: [option('scenario'), option('other')] },
+    url: new URL(
+      'http://localhost/projects/eu-scoreboard/indicators?sector=testing&indicator=Maximum%20Air%20Temperature&region=Austria&scenario=scenario&year=2050'
+    ),
+  });
+  if (comparing) {
+    await fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Scenario' }));
+    await waitFor(() => expect(screen.getAllByRole('img', { name: 'Mock country map' })).toHaveLength(2));
+  }
+
+  await fireEvent.click(screen.getByRole('button', { name: /^Hazard\/Sector:/ }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Heat stress' }));
+
+  const url = goto.mock.calls[0][0];
+  expect(url.pathname).toBe('/projects/eu-scoreboard/indicators');
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    sector: 'heat-stress',
+    indicator: 'Maximum Air Temperature',
+    region: 'Austria',
+    scenario: 'scenario',
+    year: '2050',
+  });
+});
 
 test('renders a map and a ready chart while another chart is still loading', async () => {
   let finish;
@@ -45,16 +91,16 @@ test('renders a map and a ready chart while another chart is still loading', asy
       ...common,
       charts: [
         { definition, result: readyChart },
-        { definition: scoreboard.definitions[1], result: slow },
+        { definition: scoreboard.charts[1], result: slow },
       ],
     },
   });
   expect(screen.getByRole('img', { name: 'Mock country map' })).toBeTruthy();
   expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
-  expect(screen.getByRole('status').textContent).toContain(scoreboard.definitions[1].title);
-  finish({ definition: scoreboard.definitions[1], status: 'empty', data: [] });
+  expect(screen.getByRole('status').textContent).toContain(scoreboard.charts[1].title);
+  finish({ definition: scoreboard.charts[1], status: 'empty', data: [] });
   await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
-  expect(screen.queryByRole('heading', { name: scoreboard.definitions[1].title })).toBeNull();
+  expect(screen.queryByRole('heading', { name: scoreboard.charts[1].title })).toBeNull();
 });
 
 test('ignores an old map result after the selection changes', async () => {
@@ -79,7 +125,13 @@ test('retries only the failed map and keeps a ready chart visible', async () => 
   await fireEvent.click(screen.getByRole('button', { name: 'Retry map' }));
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
   expect(fetcher).toHaveBeenCalledOnce();
-  expect(fetcher.mock.calls[0][0]).toBe('/app/scoreboard/map?sector=testing&scenario=scenario&region=region&year=2050');
+  expect(Object.fromEntries(new URL(fetcher.mock.calls[0][0], 'https://example.test').searchParams)).toEqual({
+    sector: 'testing',
+    indicator: 'Maximum Air Temperature',
+    region: 'Austria',
+    scenario: 'scenario',
+    year: '2050',
+  });
   expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
 });
 
@@ -91,7 +143,9 @@ test('retries only the failed chart and leaves the map in place', async () => {
   await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
   expect(fetcher).toHaveBeenCalledOnce();
-  expect(fetcher.mock.calls[0][0]).toBe(`/app/scoreboard/charts/${definition.chartId}?sector=testing&scenario=scenario&region=region&year=2050`);
+  const url = new URL(fetcher.mock.calls[0][0], 'https://example.test');
+  expect(url.pathname).toBe(`/app/scoreboard/charts/${definition.chartId}`);
+  expect(Object.fromEntries(url.searchParams)).toEqual({ sector: 'testing', region: 'Austria', scenario: 'scenario', year: '2050' });
   expect(screen.getByRole('img', { name: 'Mock country map' })).toBe(map);
 });
 

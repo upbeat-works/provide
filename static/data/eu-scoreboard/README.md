@@ -1,6 +1,6 @@
-# Scoreboard map sources
+# Scoreboard map source
 
-Both files come from IIASA's [`scse-geojson`](https://github.com/iiasa/scse-geojson) repository.
+The file comes from IIASA's [`scse-geojson`](https://github.com/iiasa/scse-geojson) repository.
 The boundaries are provided under CC BY 4.0. Copyright 2025 IIASA Scenario Services team.
 
 ## `nuts0_countries.geojson`
@@ -19,16 +19,9 @@ dissolves the 12 UK NUTS 1 regions from
 into the single country the other 39 arrive as, for 40 in total. Moldova is in neither source: it
 is outside NUTS entirely and so cannot be drawn on this map.
 
-Use `geoId` to match the `uid` of a `/scoreboard/map` value. Boundaries are from EUROSTAT's
+Use `geoId` to match overview scores and the selected country's ISO alpha-3 code. Regional
+map values use the separate pinned NUTS1 and NUTS2 sources. Boundaries are from EUROSTAT's
 Territorial units for statistics (NUTS); reuse is authorised with due citation of the source.
 
 > Eurostat, _Statistical regions in the European Union and partner countries – NUTS and statistical
 > regions 2021 – 2022 edition_, Publications Office of the European Union, 2022.
-
-## `r9_regions.geojson`
-
-The R9 map, taken verbatim from
-[`common/r9_regions.geojson`](https://github.com/iiasa/scse-geojson/blob/main/common/r9_regions.geojson),
-commit `5d699fd91847a45d2757b71fe8da4dc97fc1d75f`.
-
-Use `I_REGION` to match ixmp4 region names. These boundaries are made with Natural Earth.

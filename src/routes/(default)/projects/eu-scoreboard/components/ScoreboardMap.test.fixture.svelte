@@ -5,3 +5,4 @@
 </script>
 
 <div data-zoom-range={JSON.stringify(zoomRange)} data-bounds={JSON.stringify(bounds)}>Country map</div>
+<slot />

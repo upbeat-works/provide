@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { adaptChartResult, isChartVisible, paddedDomain, radiusForArea, sampledTicks, splitLineAtGaps } from './adapter.js';
 
 const ref = (variable, unit = 'K') => ({ variable, model: 'Model', unit });
+const faceted = (indicator) => `${indicator}|Absolute Values (No Change)|Annual|Area|50th Percentile`;
 const result = (chartType, definitionData, data) => ({
   status: 'ready',
   definition: { chartId: `example-${chartType}`, title: 'Example', description: 'Description', chartType, data: { series: definitionData } },
@@ -45,6 +46,18 @@ describe('chart result adapter', () => {
     expect(adapted.props.series[0].values).toEqual([{ year: 2030, value: 2 }]);
     expect(adapted.props.yDomain[0]).toBeLessThan(2);
     expect(adapted.props.yDomain[1]).toBeGreaterThan(2);
+  });
+
+  test('labels faceted line series by indicator', () => {
+    const adapted = adaptChartResult(
+      result(
+        'line',
+        [{ line: ref(faceted('Mean Air Temperature'), '°C') }, { line: ref(faceted('Maximum Air Temperature'), '°C') }],
+        [{ line: [{ year: 2050, value: 18 }] }, { line: [{ year: 2050, value: 31 }] }]
+      )
+    );
+
+    expect(adapted.props.series.map(({ label }) => label)).toEqual(['Mean Air Temperature', 'Maximum Air Temperature']);
   });
 
   test('stacks direct segment values in config order without treating them as totals', () => {
@@ -121,6 +134,29 @@ describe('chart result adapter', () => {
     expect(adapted.props.xLabel).toBe('Score (index)');
     expect(adapted.props.yLabel).toBe('Growth (%)');
     expect(adapted.props.sizeLabel).toBe('Exposed (people)');
+  });
+
+  test('labels faceted bubble axes and size by indicator', () => {
+    const adapted = adaptChartResult(
+      result(
+        'bubble',
+        [
+          {
+            x: ref(faceted('Mean Air Temperature'), '°C'),
+            y: ref(faceted('Maximum Air Temperature'), '°C'),
+            size: ref(faceted('High Heat Risk Days'), 'days'),
+          },
+        ],
+        [{ x: 18, y: 31, size: 42 }]
+      )
+    );
+
+    expect(adapted.props).toMatchObject({
+      xLabel: 'Mean Air Temperature (°C)',
+      yLabel: 'Maximum Air Temperature (°C)',
+      sizeLabel: 'High Heat Risk Days (days)',
+      tooltipLabels: { x: 'Mean Air Temperature', y: 'Maximum Air Temperature', size: 'High Heat Risk Days' },
+    });
   });
 
   test('renders complete regional bubbles with region labels and distinct values', () => {

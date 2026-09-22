@@ -1,9 +1,0 @@
-{
-  "title": "Population vulnerable to heat",
-  "geographyType": "r9",
-  "data": {
-    "variable": "Population|Vulnerable|Heat",
-    "model": "IMAGE 3.4",
-    "unit": "million"
-  }
-}

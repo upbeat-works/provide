@@ -16,6 +16,14 @@
     }
   },
   "attributes": {
+    "Label": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
     "Description": {
       "type": "text",
       "pluginOptions": {

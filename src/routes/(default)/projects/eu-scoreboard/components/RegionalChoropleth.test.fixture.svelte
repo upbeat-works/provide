@@ -5,19 +5,23 @@
 <script>
   import { setContext } from 'svelte';
   import { readable } from 'svelte/store';
-  import R9Choropleth from './R9Choropleth.svelte';
+  import RegionalChoropleth from './RegionalChoropleth.svelte';
 
+  export let shape;
   export let values = [];
   export let classes = [];
+
   const layers = new Set();
-  const sources = new Set();
+  const sources = new Map();
   const map = {
     getStyle: () => ({ layers: [] }),
     addSource: (id, source) => {
-      sources.add(id);
+      sources.set(id, {
+        setData: (data) => calls.push(['setData', id, data]),
+      });
       calls.push(['addSource', id, source]);
     },
-    getSource: (id) => sources.has(id),
+    getSource: (id) => sources.get(id),
     removeSource: (id) => sources.delete(id),
     addLayer: (layer) => {
       layers.add(layer.id);
@@ -28,8 +32,9 @@
     setPaintProperty: (...args) => calls.push(['setPaintProperty', ...args]),
     setFilter: (...args) => calls.push(['setFilter', ...args]),
   };
+
   setContext('mapbox', { map: readable(map) });
   setContext('theme', readable({ color: { surface: { base: '#fff' } } }));
 </script>
 
-<R9Choropleth {values} {classes} />
+<RegionalChoropleth {shape} {values} {classes} />

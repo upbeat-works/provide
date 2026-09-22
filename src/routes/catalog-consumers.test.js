@@ -83,12 +83,6 @@ function createLoaderFetch({
       return Response.json([{ id: 'cities', label: 'Cities', labelSingular: 'City', isSelectable: true }]);
     }
     if (url.origin === API_ORIGIN && path === '/api/methodology-scenarios') return Response.json(scenarioDetails(scenarioTechnicalDescription, url.searchParams.get('instance') ?? 'provide-internal'));
-    if (url.origin === API_ORIGIN && path === '/api/scoreboard/options') {
-      const scenario = { uid: 'Low Demand', label: 'Low Demand' };
-      const region = { uid: 'European Union (R9)', label: 'European Union (R9)' };
-      const year = { uid: '2050', label: '2050' };
-      return Response.json({ status: 'ready', scenarios: [scenario], regions: [region], years: [year], selection: { scenario, region } });
-    }
     if (url.origin === API_ORIGIN && path === '/api/scoreboard/map') return Response.json({ status: 'empty', values: [] });
     if (url.origin === API_ORIGIN && path.startsWith('/api/scoreboard/charts/')) return Response.json({ status: 'empty', data: [] });
     if (url.origin === API_ORIGIN && path === '/api/study-locations') return Response.json({ studyLocations });
@@ -240,25 +234,29 @@ describe('focused catalog consumers', () => {
     expect(apiPaths(requests)).toEqual([]);
   });
 
-  test.each(['heat-stress', 'testing'])('scoreboard %s server loads only shared choices', async (sector) => {
+  test.each(['heat-stress', 'testing'])('scoreboard %s builds local choices and only requests optional labels', async (sector) => {
     const { loaderFetch, requests } = createLoaderFetch();
-    const [{ load: loadLayout }, { load: loadRanking }, { load: loadIndicators }] = await Promise.all([
+    const [{ load: loadServerLayout }, { load: loadClientLayout }, { load: loadRanking }, { load: loadIndicators }] = await Promise.all([
       import('./(default)/projects/eu-scoreboard/+layout.server.js'),
+      import('./(default)/projects/eu-scoreboard/+layout.js'),
       import('./(default)/projects/eu-scoreboard/+page.server.js'),
       import('./(default)/projects/eu-scoreboard/indicators/+page.js'),
     ]);
     const url = new URL(`${APP_ORIGIN}/projects/eu-scoreboard?sector=${sector}&instance=provide-internal`);
-    const layout = await loadLayout({ url, fetch: loaderFetch, depends: () => {} });
+    const serverLayout = await loadServerLayout({ url, fetch: loaderFetch });
+    const layout = loadClientLayout({ data: serverLayout, url });
     await loadRanking({ fetch: loaderFetch, url, parent: async () => layout });
-    expect(apiPaths(requests)).toEqual(['/api/scoreboard/options']);
-    const selection = { ...layout.scoreboardOptions.selection, year: layout.scoreboardOptions.years[0] };
-    const indicators = await loadIndicators({ fetch: loaderFetch, url, parent: async () => ({ ...layout, selection }) });
+    expect(apiPaths(requests)).toEqual([]);
+    expect(layout.selection.region.uid).toBe('Austria');
+    expect(layout.selection.year.uid).toBe('2050');
+    const indicators = await loadIndicators({ fetch: loaderFetch, url, parent: async () => layout });
     await Promise.all([indicators.map, ...indicators.charts.map(({ result }) => result)]);
-    expect(apiPaths(requests).filter((path) => path === '/api/scoreboard/options')).toHaveLength(1);
-    expect(apiPaths(requests)).toEqual(['/api/scoreboard/options']);
-    expect(apiPaths(requests).filter((path) => path.startsWith('/api/scoreboard/charts/'))).toHaveLength(0);
+    expect(apiPaths(requests)).toEqual([]);
     expect(requests.every((request) => !request.searchParams.has('instance'))).toBe(true);
-    expect(requests.every((request) => request.origin === API_ORIGIN)).toBe(true);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].origin).toBe(CMS_ORIGIN);
+    expect(requests[0].searchParams.get('filters[UID][$in][0]')).toBe('CurrentPolicies');
+    expect(requests[0].searchParams.get('filters[UID][$in][1]')).toBe('1.5C');
   });
 
   test('case-study list and detail request separate focused data', async () => {

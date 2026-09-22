@@ -1,6 +1,5 @@
 import { describe, test, expect } from 'vitest';
 import {
-  boundsForGeography,
   classOf,
   colorFor,
   countriesBounds,
@@ -10,12 +9,9 @@ import {
   scoredUids,
   legendOf,
   numericClasses,
-  r9FillColor,
-  r9Filter,
   COUNTRY_CODE,
-  R9_REGION,
 } from './choropleth.js';
-import { indicatorValuesFor, RISK_CLASSES, riskRankingFor, riskValues } from './scores.js';
+import { RISK_CLASSES, riskRankingFor, riskValues } from './scores.js';
 
 describe('classOf', () => {
   test('picks the last class the value reaches', () => {
@@ -116,38 +112,6 @@ describe('countriesBounds', () => {
   });
 });
 
-describe('indicatorValuesFor', () => {
-  const valueOf = (values, uid) => values.find((entry) => entry.uid === uid).value;
-
-  test('gives a comparison two sides that differ', () => {
-    const policies = indicatorValuesFor({ scenario: '2020 Climate Policies', year: 2025 });
-    const targets = indicatorValuesFor({ scenario: '2020 Climate Targets', year: 2025 });
-    expect(valueOf(policies, 'ESP')).not.toBe(valueOf(targets, 'ESP'));
-    expect(indicatorValuesFor({ year: 2025 })).not.toEqual(indicatorValuesFor({ year: 2026 }));
-  });
-
-  test('reads the selection whether it arrives as an id or as an option object', () => {
-    // The pages hold the selection as { uid, label }; passing that must not
-    // collapse every scenario onto the same nudge.
-    const asObjects = indicatorValuesFor({ scenario: { uid: 'SSP1-1.9' }, year: { uid: 2030 } });
-    expect(asObjects).toEqual(indicatorValuesFor({ scenario: 'SSP1-1.9', year: 2030 }));
-  });
-
-  test('keeps every pair of scenarios apart, not just most of them', () => {
-    // A weak hash collides, and two scenarios that collide hand a comparison
-    // two identical maps.
-    const uids = ['2020 Climate Policies', '2020 Climate Targets', 'SSP1-1.9', 'SSP5-3.4-Overshoot', 'Low Demand', 'High Renewables', 'Shifting Pathway'];
-    const drawn = uids.map((scenario) => JSON.stringify(indicatorValuesFor({ scenario, year: 2025 })));
-    expect(new Set(drawn).size).toBe(uids.length);
-  });
-
-  test('is deterministic, and covers the same countries as the base values', () => {
-    const once = indicatorValuesFor({ scenario: 'SSP1-1.9', year: 2018 });
-    expect(once).toEqual(indicatorValuesFor({ scenario: 'SSP1-1.9', year: 2018 }));
-    expect(once.map((entry) => entry.uid)).toEqual(riskValues.map((entry) => entry.uid));
-  });
-});
-
 describe('legendOf', () => {
   test('reads low to high by default, high first for the ranking panel', () => {
     expect(legendOf(RISK_CLASSES).labels).toEqual(['Very Low', 'Low', 'Medium', 'High']);
@@ -170,15 +134,6 @@ describe('numeric indicator map scale', () => {
     expect(numericClasses([{ value: null }])).toEqual([]);
   });
 
-  test('builds the R9 match expression and keeps empty overlays transparent', () => {
-    const classes = numericClasses([{ value: 4 }]);
-    expect(r9FillColor([{ uid: 'European Union (R9)', value: 4 }], classes)).toEqual(['match', R9_REGION, 'European Union (R9)', '#ee9f3f', 'transparent']);
-    expect(r9FillColor([], classes)).toBe('transparent');
-    expect(r9Filter([], classes)).toEqual(['in', R9_REGION, ['literal', []]]);
-    expect(boundsForGeography('r9')).toEqual([-180, -60, 180, 85]);
-    // The country map draws NUTS, so it opens on Europe rather than the world.
-    expect(boundsForGeography('admin0')).toEqual([-12, 34, 34, 61]);
-  });
 });
 
 describe('riskRankingFor', () => {

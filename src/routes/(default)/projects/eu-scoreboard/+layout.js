@@ -1,7 +1,7 @@
-import { resolveSelection } from './selection.js';
+import { createScoreboardOptions, resolveSelection } from './selection.js';
 
 export const load = ({ data, url }) => {
-  const { scoreboardOptions: options } = data;
-  const requested = Object.fromEntries(['scenario', 'region', 'year'].map((key) => [key, url.searchParams.get(key)]));
-  return { ...data, ...options, selection: resolveSelection(options, requested) };
+  const options = createScoreboardOptions(data.scoreboard, data.scenarioLabels);
+  const requested = Object.fromEntries(['indicator', 'scenario', 'region', 'year'].map((key) => [key, url.searchParams.get(key) ?? undefined]));
+  return { ...data, ...options, selection: resolveSelection(data.scoreboard, options, requested) };
 };

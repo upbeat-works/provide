@@ -1,17 +1,11 @@
 import bbox from '@turf/bbox';
 
-// Both choropleths are geojson from IIASA's `scse-geojson` (see the source
-// README next to the files), so both join the same way: a feature property
-// holding the id the scoreboard keys a value on. Countries are NUTS country
-// level stamped with their alpha-3 `geoId`; R9 regions carry the ixmp4 region
-// name in `I_REGION`.
 export const COUNTRY_SOURCE = '/data/eu-scoreboard/nuts0_countries.geojson';
-export const R9_SOURCE = '/data/eu-scoreboard/r9_regions.geojson';
 
 export const COUNTRY_CODE_PROPERTY = 'geoId';
 export const COUNTRY_CODE = ['get', COUNTRY_CODE_PROPERTY];
-export const R9_REGION_PROPERTY = 'I_REGION';
-export const R9_REGION = ['get', R9_REGION_PROPERTY];
+export const NUTS_ID_PROPERTY = 'NUTS_ID';
+export const NUTS_ID = ['get', NUTS_ID_PROPERTY];
 
 // NUTS covers each member state in full, so France reaches French Guiana and
 // Réunion, Spain the Canaries, Portugal the Azores. Their bounding box spans
@@ -68,23 +62,9 @@ export function numericClasses(values = [], unit = undefined) {
   });
 }
 
-// The country map draws NUTS, which stops at Europe, so it opens on Europe
-// rather than on a world view mostly made of basemap. R9 is global.
-const MAP_BOUNDS = {
-  admin0: [-12, 34, 34, 61],
-  r9: [-180, -60, 180, 85],
-};
-
-export const boundsForGeography = (geographyType) => MAP_BOUNDS[geographyType] ?? MAP_BOUNDS.admin0;
-
-// The ids a set of values actually paints. Anything without a class has no
-// colour, so it is not drawn and not clickable either.
+// The ids a set of values actually paints.
 export const scoredUids = (values = [], classes = []) => values.flatMap((entry) => (colorFor(entry.value, classes) ? [entry.uid] : []));
 
-// `values` is `[{ uid, value }]` keyed on whatever the layer's property holds
-// (`ITA` for countries, `European Union (R9)` for R9). Anything it has no value
-// for falls through to the default and stays transparent — outside the
-// scoreboard's coverage reads better as plain basemap than as a null class.
 export function fillColor(property, values = [], classes = []) {
   const cases = values.flatMap((entry) => {
     const color = colorFor(entry.value, classes);
@@ -104,8 +84,9 @@ export const scoredFilter = (property, values = [], classes = []) => idFilter(pr
 export const countryFillColor = (values, classes) => fillColor(COUNTRY_CODE, values, classes);
 export const countryFilter = (uids) => idFilter(COUNTRY_CODE, uids);
 export const scoredCountryFilter = (values, classes) => scoredFilter(COUNTRY_CODE, values, classes);
-export const r9FillColor = (values, classes) => fillColor(R9_REGION, values, classes);
-export const r9Filter = (values, classes) => scoredFilter(R9_REGION, values, classes);
+const regionalValues = (values = []) => values.map(({ region, value }) => ({ uid: region, value }));
+export const regionalFillColor = (values, classes) => fillColor(NUTS_ID, regionalValues(values), classes);
+export const regionalFilter = (values, classes) => scoredFilter(NUTS_ID, regionalValues(values), classes);
 
 // The legend's ramp and its tick labels, drawn low to high unless the panel
 // reads the other way round (the ranking legend leads with High, to match the

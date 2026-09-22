@@ -1,1 +1,11 @@
-[]
+{
+  "map": {
+    "indicators": [
+      { "name": "Maximum Air Temperature", "type": "choropleth", "level": "NUTS2" },
+      { "name": "Mean Air Temperature", "type": "choropleth", "level": "NUTS2" }
+    ],
+    "scenarios": [{ "id": "CurrentPolicies" }, { "id": "1.5C" }],
+    "years": [2020, 2030, 2050, 2100]
+  },
+  "charts": []
+}

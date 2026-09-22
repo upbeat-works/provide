@@ -2,13 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let loadMethodologyScenarios;
 let loadScoreboardChart;
+let loadScoreboardMap;
 
 afterEach(() => vi.unstubAllEnvs());
 
 beforeEach(async () => {
   vi.resetModules();
   vi.stubEnv('VITE_API_URL', 'https://catalog.example/api');
-  ({ loadMethodologyScenarios, loadScoreboardChart } = await import('./apis.js'));
+  ({ loadMethodologyScenarios, loadScoreboardChart, loadScoreboardMap } = await import('./apis.js'));
 });
 
 describe('scoreboard loader', () => {
@@ -16,6 +17,7 @@ describe('scoreboard loader', () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ charts: [] })));
     await loadScoreboardChart(fetch, {
       sector: 'heat-stress',
+      indicator: 'Maximum Air Temperature',
       scenario: 'CurrentPolicies',
       region: 'AT11',
       year: '2050',
@@ -29,6 +31,27 @@ describe('scoreboard loader', () => {
       scenario: 'CurrentPolicies',
       region: 'AT11',
       year: '2050',
+    });
+  });
+
+  it('includes the selected indicator only in map requests', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ status: 'ready', values: [] }));
+
+    await loadScoreboardMap(fetch, {
+      sector: 'testing',
+      indicator: 'Mean Air Temperature',
+      scenario: '1.5C',
+      region: 'Austria',
+      year: '2100',
+    });
+
+    const url = new URL(fetch.mock.calls[0][0]);
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      sector: 'testing',
+      indicator: 'Mean Air Temperature',
+      scenario: '1.5C',
+      region: 'Austria',
+      year: '2100',
     });
   });
 

@@ -1,56 +1,78 @@
 # Scoreboard maps
 
+This document describes the implemented map behavior. The accepted review
+decisions remain in [the architecture review](architecture-review.md#eu-scoreboard-plan-review).
+
 ## Overview
 
-Keep the mocked country ranking map and its top-five panel. Both use the same
-scores. Show it in every sector, even when no charts are configured. Keep a short
-mock-data label. A real combined score has not been defined.
+The overview draws the existing 40 NUTS0 country polygons and the mock ranking.
+Every polygon can open the indicators view. Ranking rows need both a score and a
+country boundary, so countries without scores remain available through the map.
+Country links keep the current sector and filters.
 
-## Indicator page
+The NUTS0 boundary sets the selected country's map bounds. This is independent
+of regional values, so the outline remains visible while data loads, when the
+request fails, and when the selected country has no regional data. A missing or
+invalid country defaults to Austria.
 
-Use ixmp4 values for the selected scenario and year. Map country values to country
-boundaries and regional values to matching regional boundaries. Do not spread an
-area total across countries. Keep the base map when no values match.
+## Regional indicator map
 
-Stakeholders define one fixed map variable per sector. Users only change the
-available scenario, region and year filters. Keep this definition separate from
-the chart array.
+Each sector JSON file has a `map` object with `indicators`, `scenarios`, and
+`years`. An indicator has `name`, `type`, and, for a choropleth, `level`:
 
-Definitions live in `api/scoreboard/heat-stress-map.json` and
-`api/scoreboard/testing-map.json`, registered as `mapDefinition` by the sector
-controller.
+```json
+{
+  "name": "Maximum Air Temperature",
+  "type": "choropleth",
+  "level": "NUTS2"
+}
+```
 
-Each map definition has `title`, `geographyType` (`admin0` or `r9`) and `data`
-containing an exact `variable`, `model` and `unit` reference. Testing maps IMAGE
-heat-vulnerable population over R9 regions; Heat stress maps RIME-X maximum air
-temperature over countries. Heat stress keeps its empty chart array.
+Both current sectors offer Maximum Air Temperature and Mean Air Temperature at
+NUTS2. They offer CurrentPolicies and 1.5C, and the years 2020, 2030, 2050, and
+2100. The default year is 2050. Scenario config stores the ixmp4 ID. Strapi may
+supply an optional localized `Label`; a missing label falls back to the ID.
 
-The initial definitions are:
+`raster` is reserved as an indicator type. Raster loading and drawing are
+deferred. There is no variable, model, unit, title, or indicator ID in map
+config. For a choropleth, the API builds this ixmp4 variable name:
 
-| Sector | Geography | Variable | Model | Unit |
-| --- | --- | --- | --- | --- |
-| Testing | `r9` | `Population\|Vulnerable\|Heat` | `IMAGE 3.4` | `million` |
-| Heat stress | `admin0` | `Maximum Air Temperature\|Absolute Values (No Change)\|Annual\|Area\|50th Percentile` | `RIME-X v1.0.0` | `°C` |
+```text
+<indicator name>|Absolute Values (No Change)|Annual|Area|50th Percentile
+```
 
-These choices belong to stakeholders and are not inferred from the chart list.
-The UI has no variable picker.
+The API reads the model and unit from ixmp4. The data is assumed to use one
+model for each variable. There is no model selector, unit conversion, or mixed
+model policy.
 
-The API returns `map: { definition, status, values, error? }`, where each value is
-`{ uid, label, value }`. Country UIDs are ISO alpha-3; R9 UIDs are exact region
-names. Values use default runs and the selected scenario and year. The selected
-area limits the mapped regions. Missing values stay unpainted. Errors are visible
-and logged safely. Chart embeds do not request map data.
+## Data request and boundaries
 
-The legend shows numeric values and units, not invented risk thresholds. Bundle
-R9 boundaries from IIASA's scse-geojson repository with source attribution.
+`GET /api/scoreboard/map` requires `sector`, `indicator`, `region`, `scenario`,
+and a four-digit `year`. `region` is the country name used by chart requests;
+`indicator` is a separate map choice. Invalid configured choices return 400.
 
-## Workstreams
+The API and browser load the same maintained NUTS1 or NUTS2 file pinned to a
+specific `scse-geojson` commit. They filter features by the country's
+`CNTR_CODE` and the indicator level. The API queries only the resulting
+`NUTS_ID` values, then returns:
 
-| Owner | Work |
-| --- | --- |
-| Sol: overview | Restore the ranking map and top-five panel; test selection and links. |
-| Sol: data | Query the chosen map variable from default runs; resolve geography IDs and test missing values. |
-| Sol: map | Render matching boundaries, values, units and legend; test selection changes. |
-| Main | Confirm the indicator-map choice, verify live coverage and check the Docker pages. |
+```js
+{
+  definition,
+  status: 'ready' | 'empty',
+  values: [{ region, value }],
+  metadata: { variable, model, unit } | null
+}
+```
 
-No commits. Keep existing changes and the agreed chart behavior.
+The browser joins each returned `region` to `NUTS_ID`. Missing regions stay
+unpainted, and zero is a valid value. Empty data keeps the country outline.
+Failed boundary loads can be retried; only successful boundary files are cached.
+
+Map data loads separately from charts. Old responses cannot replace a newer
+indicator, country, scenario, year, or sector selection. Comparison maps use
+the current indicator for both sides and share their numeric colour range.
+Chart embeds do not need an indicator and do not request map data.
+
+The earlier static R9 map was removed. R9 names remain in Testing's fixed chart
+groups; those charts do not use an R9 boundary file.

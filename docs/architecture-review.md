@@ -403,3 +403,175 @@ above. The reduction should remove repetition, not checks that protect values.
 
 No application tests were run for this document review. All agreed outcomes are
 recorded in the port plan; application implementation has not started.
+
+---
+
+# EU scoreboard: plan review
+
+**Review date:** 22 September 2026
+
+**Subject:** The revised scoreboard plan in this conversation
+
+**Method:** GPT-5.6 Sol and GPT-6 Astra reviewed the plan against the code;
+their findings were challenged, checked and combined using
+[paranoid bunch](../../../aku-aku/quality-loops.md). Earlier decisions above are
+unchanged. Scoreboard 1 is accepted; Scoreboard 2 is rejected;
+Scoreboard 3 is accepted with comments.
+
+## Finding
+
+The main flow is clear. The largest avoidable cost is an HTTP request for choices
+already held in the page's imported config. Choices will now be read locally,
+and each variable is assumed to use one model. Testing's two grouped charts will
+use fixed regions from their config.
+
+Keep the agreed indicator names, Strapi labels, four years, Austria default,
+40-country coverage and shared chart selections. This review does not reopen
+those choices.
+
+## Data flow in three paragraphs
+
+The sector config supplies indicators, scenario IDs, years and chart definitions.
+The SvelteKit layout resolves URL choices and adds optional scenario labels from
+Strapi, falling back to IDs. Choices are read locally through the shared config
+function, with no options request.
+
+The ranking view draws the NUTS0 countries with the existing mock scores.
+Polygon, ranking and tab links open the indicators view for a country, using
+Austria by default. Its NUTS0 shape sets the bounds independently of data loading.
+Countries without regional data remain selectable.
+
+For the selected indicator, the API and browser read the same pinned NUTS level
+file and select the country through CNTR_CODE. The API queries ixmp4 for those
+region IDs, the chosen scenario and year, and the agreed annual absolute median
+series. The browser joins returned regions to NUTS_ID and draws the values with
+their unit. Chart requests remain separate and use the shared country, scenario
+and year, except that Testing's two grouped charts use configured regions instead
+of the country. Compared maps pool values for one colour scale.
+
+## Issues and decisions
+
+### Scoreboard 1. Remove the static choices HTTP request and its failure states
+
+**Priority:** Medium
+
+**Decision:** Accepted — user: “accept.” Read choices locally through the shared
+config function. Remove the options endpoint and its loading, error and retry
+code. Keep the optional Strapi label request and the map and chart data requests.
+
+The page already imports the API's config controller directly
+([controller](../src/routes/(default)/projects/eu-scoreboard/controller.js#L1)).
+It then requests choices over HTTP
+([server controller](../src/routes/(default)/projects/eu-scoreboard/controller.server.js#L8)).
+A failed request prevents map and chart loading
+([indicator loader](../src/routes/(default)/projects/eu-scoreboard/indicators/+page.js#L9)).
+That dependency buys nothing once choices come from bundled config.
+
+**Recommendation:** Build choices and resolve selections through one shared
+function called locally. Remove `/api/scoreboard/options`, its client helper,
+ixmp4 availability discovery, year-error states and “Retry choices” control.
+Keep the optional Strapi label request separate from whether choices are usable.
+No other live caller was found in this repository.
+
+**Different views:** Astra would keep a thin endpoint for possible standalone
+API users. A separately packaged API does not itself prove that such a caller
+exists. Keeping the endpoint would be justified by a named current use, not by
+backwards compatibility alone.
+
+### Scoreboard 2. Separate unit checks from the model policy
+
+**Priority:** High
+
+**Decision:** Rejected — user correction: “for the previous one i meant to
+reject.” Assume each variable uses one model and read its name from the ixmp4
+response. Add no model config field, selector or mixed-model check. The review
+recommendation below is not accepted.
+
+The reviewed draft proposed rejecting mixed models and units within each response. But comparison
+results are pooled before drawing one scale
+([combined values](../src/routes/(default)/projects/eu-scoreboard/components/comparison.js#L25),
+[map legend](../src/routes/(default)/projects/eu-scoreboard/components/MapPanel.svelte#L103)).
+Each response could pass its own checks while the two responses use different
+units. The legend also currently reads its unit from config, which the new map
+config will no longer contain.
+
+**Recommendation (rejected):** Take legend units from the response and require the same
+quantity and unit before sharing a scale. Keep duplicate-region errors and one
+model per individual map for this change. Allow different models across the two
+maps when the quantity and unit match, showing each model's name. Add no unit
+conversion or model picker.
+
+**Different views:** Sol would also allow several models within one map when
+they supply different regions, returning their names. Astra favors keeping each
+map tied to one model. Both agree that different model names alone do not make a
+shared numeric scale invalid. The choice is whether one country map may combine
+models; it is not a reason to restore model fields to config.
+
+### Scoreboard 3. Keep Testing's grouped charts on fixed regions
+
+**Priority:** Medium
+
+**Decision:** Accepted with comments — user: “keep those charts regions fixed
+instead of depending on the selection.” Keep the stacked bar and bubble charts
+visible when data exists by defining their regions in chart config. Use an
+explicit `data.regions` list with the existing nine R9 regions for both charts.
+Keep `groupBy: "region"`; the configured list supplies the groups without looking
+up children of the selected country. Scenario and year still follow the filters.
+Other charts keep their existing selection rules.
+
+Show the fixed scope in each chart's description so it is clear that these
+charts cover R9 regions. Test that changing country leaves their queried regions
+unchanged, while scenario and year changes still reach the query.
+
+Testing's stacked bar and bubble use region grouping
+([definitions](../api/scoreboard/testing.json#L41)). The chart reader asks for
+children of the selected area, but that helper supports continents and World,
+not individual countries
+([chart reader](../api/scoreboard/charts.ts#L18),
+[region helper](../api/scoreboard/regions.ts#L21)). Both charts will therefore be
+empty for every country the new filters offer. Keeping their JSON does not keep
+them visible.
+
+**Original recommendation (superseded):** Accept the empty charts under country
+selection and choose replacement data in separate work. The chosen fixed regions
+keep these examples useful without World/R9 filter choices or another selector.
+
+## Suggestions checked but not carried forward
+
+- **Split the boundary loader into browser and API adapters:** Sol suggested
+  this because the current NUTS0 file uses a relative browser URL. The new
+  regional loader can use the same absolute, pinned IIASA URLs in both runtimes.
+  Keep NUTS0 loading separate and share only the regional loader and country
+  rules. A cache of the two successful level files is small; failed loads must
+  remain retryable. Add no cache service, expiry rules or general fetch framework.
+  Shared code does not mean shared memory between the browser and API.
+- **Change the country URL key to CNTR_CODE:** Charts still query country names.
+  Changing that key moves the translation elsewhere and widens this change.
+  Keep `region=Austria` and one country lookup for the external shape codes.
+  This serves current chart requests; it is not an old-URL compatibility layer.
+- **Assume ixmp4 rows cannot contain `variable`:** The test fixture omits it,
+  but [WideRow](../api/tabulate.ts#L11) accepts arbitrary columns and `dfToRows`
+  preserves them. The installed SDK's wide conversion also retains non-time
+  columns. That fixture does not establish a missing field in real responses.
+- **Add an indicator URL field:** Already part of the plan. Apply it to requests
+  and stale-result keys without adding another selection system. Map-only fields
+  must not become required chart-embed inputs.
+
+## Implementation limits
+
+Use the scoreboard's agreed absolute-value period explicitly; the general
+[facet default](../api/conventions.ts#L72) is present-day change data. Do not
+change that global default to make the scoreboard work.
+
+Remove the replaced map config and R9 map path rather than retaining both map
+systems. Keep R9 chart grouping while existing chart definitions and embeds use
+it. Reserving the raster type does not require a raster loader or fallback now.
+
+Reuse the existing behavior tests. Add cases at the boundary that owns the
+behavior, with one browser check of navigation and fitting. Do not repeat the
+same cases across helpers, routes, components and browser tests or test Mapbox,
+GeoJSON, or ixmp4 internals.
+
+No application files were changed and no application tests were run for this
+review. Record each reply above as accepted (with any comments), deferred or
+rejected, one issue at a time.

@@ -11,13 +11,14 @@ vi.mock('$routes/(default)/projects/eu-scoreboard/controller.server.js', async (
 
 test('loads the chart named by graph embed parameters', async () => {
   const scoreboard = getScoreboard('testing');
-  const definition = scoreboard.definitions[0];
+  const definition = scoreboard.charts[0];
   const selection = {
     scenario: { uid: '1.5C_SSP1' },
     region: { uid: 'European Union (R9)' },
     year: { uid: '2050' },
   };
   const params = new URLSearchParams(graphParamsFor(definition, 'testing', selection));
+  expect(params.has('indicator')).toBe(false);
   const chart = { definition, status: 'ready', data: [] };
   loadChart.mockResolvedValue(chart);
 

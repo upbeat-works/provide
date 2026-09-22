@@ -33,7 +33,7 @@ test('outlines the country the view is scoped to', () => {
   expect(highlightLayer.filter).toEqual(['in', COUNTRY_CODE, ['literal', ['ITA']]]);
 });
 
-test('only opens a country the map actually painted', async () => {
+test('opens every country in the supplied coverage, including one without a score', async () => {
   const selected = vi.fn();
   const { component } = render(Fixture, { shape, values, classes, selectable: true });
   component.$on('select', ({ detail }) => selected(detail.uid));
@@ -41,9 +41,8 @@ test('only opens a country the map actually painted', async () => {
   component.fire('click', { features: [{ properties: { geoId: 'ITA' } }] });
   expect(selected).toHaveBeenCalledWith('ITA');
 
-  // Morocco is basemap under the same fill layer, not a scoreboard country.
   component.fire('click', { features: [{ properties: { geoId: 'MAR' } }] });
-  expect(selected).toHaveBeenCalledTimes(1);
+  expect(selected).toHaveBeenCalledWith('MAR');
 });
 
 test('promises a click only where one is handled', async () => {

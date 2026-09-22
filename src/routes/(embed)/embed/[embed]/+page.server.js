@@ -22,7 +22,8 @@ export const load = async ({ fetch, params, url }) => {
   if (params.embed !== EMBED_UID) return {};
   const scoreboard = getScoreboard(url.searchParams.get('sector'));
   const chartId = url.searchParams.get('chartId');
-  const selections = selectionsFromUrl(url);
+  const { scenario, region, year } = selectionsFromUrl(url);
+  const selections = { scenario, region, year };
   const selection = Object.fromEntries(Object.entries(selections).map(([key, uid]) => [key, uid ? { uid, label: uid } : null]));
   if (!chartId || Object.values(selection).some((value) => !value)) return { scoreboard, scoreboardChart: undefined, selection };
   return { scoreboard, scoreboardChart: await loadChart({ scoreboard, fetch, selections, chartId }), selection };

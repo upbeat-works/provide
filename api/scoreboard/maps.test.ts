@@ -1,27 +1,30 @@
 import { describe, expect, test } from 'vitest';
-import { countryMapValues, r9MapValues } from './maps';
+import { regionalMapResult } from './maps';
 
-const rows = [
-  { scenario: 's', region: 'Austria', '2050': 0 },
-  { scenario: 's', region: 'France', '2050': 2 },
-  { scenario: 's', region: 'European Union (R9)', '2050': 3 },
-  { scenario: 's', region: 'Other (R9)', '2050': 4 },
-];
+const indicator = { name: 'Maximum Air Temperature', type: 'choropleth', level: 'NUTS2' } as const;
+const variable = 'Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile';
 
-describe('scoreboard map values', () => {
-  test('maps country names to alpha-3 IDs and keeps zero', () => {
-    const geographies = [
-      { id: 'Austria', label: 'Austria', geographyType: 'admin0', geoId: 'AUT' },
-      { id: 'France', label: 'France', geographyType: 'admin0', geoId: 'FRA' },
+describe('regional map result', () => {
+  test('joins by row region, keeps zero and reports response metadata', () => {
+    const rows = [
+      { variable, scenario: 'CurrentPolicies', region: 'AT11', model: 'RIME-X', unit: '°C', '2050': 0 },
+      { variable, scenario: 'CurrentPolicies', region: 'AT12', model: 'RIME-X', unit: '°C', '2050': null },
     ];
-    expect(countryMapValues(rows, geographies, 's', 2050, new Set(['Austria', 'France']))).toEqual([
-      { uid: 'AUT', label: 'Austria', value: 0 }, { uid: 'FRA', label: 'France', value: 2 },
-    ]);
+
+    expect(regionalMapResult(rows, indicator, 'CurrentPolicies', 2050)).toEqual({
+      definition: indicator,
+      status: 'ready',
+      values: [{ region: 'AT11', value: 0 }],
+      metadata: { variable, model: 'RIME-X', unit: '°C' },
+    });
   });
 
-  test('maps only exact common R9 regions', () => {
-    expect(r9MapValues(rows, 's', 2050, new Set(['European Union (R9)', 'Other (R9)']))).toEqual([
-      { uid: 'European Union (R9)', label: 'European Union (R9)', value: 3 },
-    ]);
+  test('rejects two finite values for one region', () => {
+    const rows = [
+      { variable, scenario: 'CurrentPolicies', region: 'AT11', model: 'RIME-X', unit: '°C', '2050': 1 },
+      { variable, scenario: 'CurrentPolicies', region: 'AT11', model: 'RIME-X', unit: '°C', '2050': 2 },
+    ];
+
+    expect(() => regionalMapResult(rows, indicator, 'CurrentPolicies', 2050)).toThrow('Ambiguous regional map rows');
   });
 });

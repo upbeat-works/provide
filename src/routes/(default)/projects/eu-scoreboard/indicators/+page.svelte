@@ -37,13 +37,10 @@
     sides = compareBy ? seedComparison(optionsFor(compareBy.uid), data.selection?.[compareBy.uid]) : [];
   }
 
-  // The bar keeps everything the comparison has not taken over. The hazard
-  // behind the indicator is not this view's concern — the indicator picker
-  // carries the same choice.
-  $: filters = ['indicator', 'region', 'scenario', 'year'].filter((uid) => uid !== compareBy?.uid);
+  $: filters = ['sector', 'indicator', 'region', 'scenario', 'year'].filter((uid) => uid !== compareBy?.uid);
 
   // The article column's index, and what the "view charts" button jumps to.
-  $: sections = (data.scoreboard.definitions ?? []).map(({ chartId, title }) => ({ slug: chartId, title }));
+  $: sections = data.scoreboard.charts.map(({ chartId, title }) => ({ slug: chartId, title }));
 
   let contentRef;
   let activeSlug;
@@ -57,7 +54,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="visual">
-    <MapPanel definition={data.scoreboard.mapDefinition} result={data.map} selection={data.selection} sector={data.scoreboard.sector.uid} {compareBy} bind:sides {optionsFor} />
+    <MapPanel definition={data.scoreboard.indicator} result={data.map} selection={data.selection} sector={data.scoreboard.sector.uid} {compareBy} bind:sides {optionsFor} />
     {#if !compareBy && sections.length}
       <!-- A full-width strip laid over the map to centre one button, so it must
            not take clicks meant for the legend card underneath it. -->

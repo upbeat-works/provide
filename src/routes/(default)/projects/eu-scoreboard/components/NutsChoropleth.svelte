@@ -4,27 +4,13 @@
 
 <script>
   import { createEventDispatcher, getContext, onDestroy } from 'svelte';
-  import { countryFillColor, countryFilter, scoredCountryFilter, scoredUids, COUNTRY_CODE_PROPERTY } from './choropleth.js';
+  import { countryFillColor, countryFilter, scoredCountryFilter, COUNTRY_CODE_PROPERTY } from './choropleth.js';
 
-  // A country choropleth drawn from the NUTS country level (level 0) of IIASA's
-  // `scse-geojson`, the same source the R9 map uses. The features are stamped at
-  // build time with the alpha-3 `geoId` the catalog keys countries on, so the
-  // join is on the id `/scoreboard/map` already returns. Lives inside
-  // MapProvider — the map comes from its context.
-  //
-  // `shape` is the parsed collection rather than a URL: the map band needs the
-  // geometry anyway to frame the selection, and handing it over means the file
-  // is fetched once instead of once per purpose.
   export let shape;
   export let values = [];
   export let classes = [];
   export let fillOpacity = 0.8;
-  // Geo id of the country the view is scoped to, outlined so the selection is
-  // visible on a map that is otherwise all one choropleth.
   export let highlight = undefined;
-  // Whether a country can be clicked. Only set it where the `select` event is
-  // acted on: it is what puts the pointer cursor on the map, and a cursor that
-  // promises a click nothing handles is worse than no cursor at all.
   export let selectable = false;
 
   const { map } = getContext('mapbox');
@@ -37,8 +23,6 @@
   const highlightLayerId = `country-choropleth-highlight-${instance}`;
   instance++;
 
-  // Under the basemap's labels, over its land and water, so place names stay
-  // readable on top of the fill.
   const symbolLayers = () => $map.getStyle().layers.filter(({ type }) => type === 'symbol');
   const firstSymbolLayer = () => symbolLayers()[0]?.id;
 
@@ -97,7 +81,6 @@
     );
   }
 
-  // Over the choropleth's own borders, still under the labels.
   if (!$map.getLayer(highlightLayerId)) {
     $map.addLayer(
       {
@@ -125,25 +108,14 @@
   showCountryLabels();
   haloLabels();
 
-  // Only the countries this map has a colour for can be opened — the rest of the
-  // coverage is basemap the scoreboard says nothing about. Read from the values
-  // rather than from a separate list so the clickable countries are exactly the
-  // painted ones.
-  $: clickable = new Set(scoredUids(values, classes));
-
   const codeOf = (feature) => feature?.properties?.[COUNTRY_CODE_PROPERTY];
-  const uidAt = (features) => {
-    const code = codeOf(features?.[0]);
-    return clickable.has(code) ? code : undefined;
-  };
+  const uidAt = (features) => codeOf(features?.[0]);
 
   function handleClick({ features }) {
     const uid = uidAt(features);
     if (uid) dispatch('select', { uid });
   }
 
-  // The fill layer covers every country in the source, so the cursor has to
-  // follow what is actually scored rather than the layer as a whole.
   function handleMove({ features }) {
     $map.getCanvas().style.cursor = uidAt(features) ? 'pointer' : '';
   }
@@ -153,8 +125,6 @@
   }
 
   $: if ($map.getLayer(fillLayerId)) {
-    // Re-attached rather than guarded inside the handlers, so a map that is not
-    // selectable carries no listeners at all.
     $map.off('click', fillLayerId, handleClick);
     $map.off('mousemove', fillLayerId, handleMove);
     $map.off('mouseleave', fillLayerId, clearCursor);
@@ -167,8 +137,6 @@
     }
   }
 
-  // Repaint rather than rebuild when the selection changes: the geometry is the
-  // same features, only the colour each country takes is different.
   $: if ($map.getLayer(fillLayerId)) {
     $map.setPaintProperty(fillLayerId, 'fill-color', countryFillColor(values, classes));
     $map.setFilter(lineLayerId, scoredCountryFilter(values, classes));

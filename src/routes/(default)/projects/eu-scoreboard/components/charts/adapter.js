@@ -1,6 +1,14 @@
+import { parseVariable } from '../../../../../../../api/conventions.ts';
+
 const COLORS = ['#006c78', '#e76f00', '#65832e', '#b07b00', '#a63d68', '#4d6cb3'];
 
-const variableLabel = (reference) => reference?.variable?.split('|').at(-1)?.trim() || 'Value';
+const variableLabel = (reference) => {
+  const variable = reference?.variable;
+  if (!variable) return 'Value';
+  const parsed = parseVariable(variable);
+  if (parsed.kind === 'faceted') return parsed.indicator;
+  return variable.split('|').at(-1)?.trim() || 'Value';
+};
 const seriesDefinitions = (definition) => definition.data?.series;
 const roleReference = (definition, role) => seriesDefinitions(definition)?.find((entry) => entry[role])?.[role];
 const axisLabel = (reference) => {

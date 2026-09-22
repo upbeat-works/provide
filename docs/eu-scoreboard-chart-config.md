@@ -1,7 +1,8 @@
 # Chart config decisions
 
-Each sector selects a JSON array of charts. Sector stays outside the config. The
-config is reusable across sectors and does not name rendering components.
+Each sector JSON file has a `charts` array. Sector stays outside each chart
+definition. The chart config is reusable across sectors and does not name
+rendering components.
 
 A chart has `chartId`, `title`, `description`, `chartType`, optional
 `caseStudyId`, and `data`. `caseStudyId` is the CMS record ID for a linked case
@@ -27,18 +28,20 @@ Stacked bars use direct segment values in array order; segments must be separate
 parts with matching units. Stacked bars and bubbles use the selected year. Lines
 and ranges show all available years.
 
-`data.groupBy` has these possible values:
+`data.groupBy` has these possible values. A region-grouped chart may also set
+`data.regions` to an explicit array of region IDs:
 
 | Value | Meaning |
 | --- | --- |
 | omitted | Resolve the series for the selected region itself. |
-| `"region"` | Resolve one mark per known region within the selected area. Supported only for `stacked_bar` and `bubble`. |
+| `"region"` | Resolve one mark per configured `data.regions` entry. Without that list, resolve known regions within the selected area. Supported only for `stacked_bar` and `bubble`. |
 | `"scenario"` | Resolve one mark per matching scenario at the selected region and year. Supported only for `stacked_bar` and `bubble`. |
 
 No other value is valid. Grouping by model or year is not supported. Every role
-continues to name one exact model. Region membership comes from known geography
-links. The controller must not infer it from name prefixes or mix an area total
-with its child regions.
+continues to name one exact model. An explicit region list is fixed and does not
+follow the selected country. Without that list, region membership comes from
+known geography links. The controller must not infer it from name prefixes or
+mix an area total with its child regions.
 
 Grouped results use `data: [{ "region": { "uid", "label" }, "series": [...] }]`.
 Scenario-grouped results replace `region` with
@@ -50,8 +53,9 @@ is empty. Empty charts are omitted from the page, including their title,
 description, frame and spacing.
 
 The EU scoreboard fixes the instance to `sparccle-internal`; controls supply the
-scenario, region and year. The shared query layer selects default runs. Run
-version selection stays outside this config. No unit conversion or silent model
+country, scenario and year. The map indicator is a separate choice and does not
+change chart config. The shared query layer selects default runs. Run version
+selection stays outside this config. No unit conversion or silent model
 selection is added.
 
 ## Examples
@@ -61,18 +65,17 @@ Values in `<…>` are placeholders. `caseStudyId` is optional for every chart ty
 ```json
 [
   {
-    "chartId": "example-line",
-    "title": "Line chart",
-    "description": "Values over time.",
+    "chartId": "mean-air-temperature",
+    "title": "Mean air temperature",
+    "description": "Annual mean air temperature over time for the selected country and scenario.",
     "chartType": "line",
-    "caseStudyId": "<case-study ID>",
     "data": {
       "series": [
         {
           "line": {
-            "variable": "<variable name>",
-            "model": "<model>",
-            "unit": "<unit>"
+            "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+            "model": "RIME-X v1.0.0",
+            "unit": "°C"
           }
         }
       ]
@@ -94,33 +97,47 @@ Values in `<…>` are placeholders. `caseStudyId` is optional for every chart ty
     }
   },
   {
-    "chartId": "example-scenario-stacked-bar",
-    "title": "Scenario stacked bars",
-    "description": "Parts of a total for each matching scenario.",
+    "chartId": "high-heat-risk-by-country",
+    "title": "High heat risk by country",
+    "description": "Annual high heat risk days for Austria, Germany and France in the selected scenario and year.",
     "chartType": "stacked_bar",
     "data": {
-      "groupBy": "scenario",
+      "groupBy": "region",
+      "regions": ["Austria", "Germany", "France"],
       "series": [
-        { "segment": { "variable": "<first part>", "model": "<model>", "unit": "<unit>" } },
-        { "segment": { "variable": "<second part>", "model": "<model>", "unit": "<unit>" } }
+        {
+          "segment": {
+            "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+            "model": "RIME-X v1.0.0",
+            "unit": "days/yr"
+          }
+        }
       ]
     }
   },
   {
-    "chartId": "example-regional-bubble",
-    "title": "Regional bubbles",
-    "description": "One bubble for each known region in the selected area.",
+    "chartId": "temperature-and-heat-risk",
+    "title": "Temperature and heat risk",
+    "description": "Mean air temperature is shown on the horizontal axis, maximum air temperature on the vertical axis, and high heat risk days by bubble size for Austria, Germany and France in the selected scenario and year.",
     "chartType": "bubble",
     "data": {
       "groupBy": "region",
+      "regions": ["Austria", "Germany", "France"],
       "series": [
         {
-          "x": { "variable": "<horizontal variable>", "model": "<model>", "unit": "<x unit>" },
-          "y": { "variable": "<vertical variable>", "model": "<model>", "unit": "<y unit>" },
-          "size": { "variable": "<size variable>", "model": "<model>", "unit": "<size unit>" }
+          "x": { "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile", "model": "RIME-X v1.0.0", "unit": "°C" },
+          "y": { "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile", "model": "RIME-X v1.0.0", "unit": "°C" },
+          "size": { "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile", "model": "RIME-X v1.0.0", "unit": "days/yr" }
         }
       ]
     }
   }
 ]
 ```
+
+Testing's stacked bar and bubble use Austria, Germany and France in
+`data.regions`. The bar has one positive quantity: high heat risk days. The
+bubble uses mean temperature for its horizontal position, maximum temperature
+for its vertical position and high heat risk days for its size. Country changes
+leave the fixed groups unchanged; scenario and year changes still apply. The
+line and range charts use the selected country.

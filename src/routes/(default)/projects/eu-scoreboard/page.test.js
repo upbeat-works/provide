@@ -6,7 +6,7 @@ import { getScoreboard } from './controller.js';
 
 const { goto, invalidate } = vi.hoisted(() => ({ goto: vi.fn(), invalidate: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto, invalidate }));
-vi.mock('./components/ScoreboardMap.svelte', () => import('./components/Map.test.fixture.svelte'));
+vi.mock('./components/ScoreboardMap.svelte', () => import('./page-map.test.fixture.svelte'));
 
 beforeEach(() => {
   goto.mockClear();
@@ -28,27 +28,28 @@ const option = (uid, label = uid) => ({ uid, label });
 const dataFor = (status = 'empty') => {
   const data = {
     scoreboard: getScoreboard(status === 'empty' ? 'heat-stress' : 'testing'),
+    indicators: [option('Maximum Air Temperature'), option('Mean Air Temperature')],
     scenarios: [option('CurrentPolicies')],
-    regions: [option('AT11', 'Eastern Austria')],
+    regions: [option('Austria')],
     years: [option('2050')],
-    selection: { scenario: option('CurrentPolicies'), region: option('AT11'), year: option('2050') },
+    selection: { indicator: option('Maximum Air Temperature'), scenario: option('CurrentPolicies'), region: option('Austria'), year: option('2050') },
     charts: [],
   };
   if (status === 'empty') return data;
   if (status === 'adapter-empty') {
-    data.charts = [{ definition: getScoreboard('testing').definitions[0], status: 'ready', data: [{ line: [{ year: 2050, value: null }] }] }];
+    data.charts = [{ definition: getScoreboard('testing').charts[0], status: 'ready', data: [{ line: [{ year: 2050, value: null }] }] }];
     return data;
   }
-  data.charts = [{ definition: getScoreboard('testing').definitions[0], status, data: [], error: 'failed' }];
+  data.charts = [{ definition: getScoreboard('testing').charts[0], status, data: [], error: 'failed' }];
   return data;
 };
 
-test('lists the configured indicators without loading their values', () => {
+test('lists the configured map indicators without loading their values', () => {
   const data = dataFor('empty');
   data.scoreboard = getScoreboard('testing');
   render(Page, { data });
-  for (const definition of data.scoreboard.definitions) {
-    expect(screen.getByRole('link', { name: definition.title })).toBeTruthy();
+  for (const definition of data.scoreboard.map.indicators) {
+    expect(screen.getByText(definition.name)).toBeTruthy();
   }
 });
 
@@ -74,6 +75,7 @@ test('shows a five-country mock ranking from the same values as the map', () => 
     expect(row.textContent).toContain(String(value.value));
     const url = new URL(link.href);
     expect(url.searchParams.get('region')).toBe(value.label);
+    expect(url.searchParams.get('indicator')).toBe('Maximum Air Temperature');
     expect(url.searchParams.get('sector')).toBe('heat-stress');
     expect(url.searchParams.get('scenario')).toBe('CurrentPolicies');
     expect(url.searchParams.get('year')).toBe('2050');
@@ -109,6 +111,20 @@ test('stops at the end of the ranking rather than paging past it', async () => {
   expect(next.disabled).toBe(true);
   expect(rankingRows().length).toBeGreaterThan(0);
   expect(rankingRows().length).toBeLessThanOrEqual(5);
+});
+
+test('ranks only countries covered by the shared boundary list', async () => {
+  render(Page, { data: dataFor('empty') });
+  const labels = [];
+  const next = screen.getByRole('button', { name: 'Next countries' });
+  while (true) {
+    labels.push(...rankingRows().map((row) => row.querySelector('a').textContent));
+    if (next.disabled) break;
+    await fireEvent.click(next);
+  }
+
+  expect(labels).toContain('Ukraine');
+  expect(labels).not.toContain('Moldova');
 });
 
 test('reverses the ranking from the sort control, keeping each country its rank', async () => {
@@ -153,7 +169,8 @@ test('indicator links carry the resolved selection', () => {
   const link = screen.getByRole('link', { name: /Explore Heat stress indicators/ });
   const url = new URL(link.href);
   expect(url.searchParams.get('sector')).toBe('heat-stress');
-  expect(url.searchParams.get('region')).toBe('AT11');
+  expect(url.searchParams.get('region')).toBe('Austria');
+  expect(url.searchParams.get('indicator')).toBe('Maximum Air Temperature');
   expect(url.searchParams.get('year')).toBe('2050');
 });
 
@@ -179,13 +196,27 @@ test('the overview index links to each explanatory section', () => {
   }
 });
 
-test('view tabs carry the resolved selection', () => {
-  render(Page, { data: dataFor('error') });
+test('view tabs add the resolved default country and keep the indicator', () => {
+  render(Page, { data: dataFor('error'), url: new URL('http://localhost/projects/eu-scoreboard?sector=testing') });
   const indicators = screen.getByRole('link', { name: 'Indicators' });
   const url = new URL(indicators.href);
   expect(url.searchParams.get('scenario')).toBe('CurrentPolicies');
-  expect(url.searchParams.get('region')).toBe('AT11');
+  expect(url.searchParams.get('region')).toBe('Austria');
+  expect(url.searchParams.get('indicator')).toBe('Maximum Air Temperature');
   expect(url.searchParams.get('year')).toBe('2050');
+});
+
+test('view tabs retain a valid country', () => {
+  const data = dataFor('empty');
+  data.selection.region = option('Ukraine');
+  render(Page, {
+    data,
+    url: new URL(
+      'http://localhost/projects/eu-scoreboard?sector=heat-stress&indicator=Maximum%20Air%20Temperature&scenario=CurrentPolicies&region=Ukraine&year=2050'
+    ),
+  });
+
+  expect(new URL(screen.getByRole('link', { name: 'Indicators' }).href).searchParams.get('region')).toBe('Ukraine');
 });
 
 test('sector choices come from server-loaded scoreboard data', async () => {
@@ -201,18 +232,11 @@ test('sector choices come from server-loaded scoreboard data', async () => {
   expect(screen.getAllByRole('button', { name: 'Custom' })).toHaveLength(1);
 });
 
-test('keeps the selected year visible and other choices usable after a year lookup failure', async () => {
-  const data = dataFor();
-  data.selection.year = option('2070');
-  data.scoreboardOptions = { status: 'ready', yearStatus: 'error', yearError: 'Years could not be loaded.' };
-  render(Page, { data });
-  // The year the options no longer cover still names itself rather than being
-  // silently swapped for another.
-  expect(filterButton('Year').textContent).toContain('2070');
-  expect(filterButton('Scenario')).toBeTruthy();
-  // The ranking view always draws the whole of Europe, so it offers no region.
-  expect(filterButton('Region')).toBeNull();
-  expect(screen.getByRole('alert').textContent).toContain('Years could not be loaded.');
-  await fireEvent.click(screen.getByRole('button', { name: 'Retry choices' }));
-  expect(invalidate).toHaveBeenCalledWith('scoreboard:options');
+test('opens an unscored country polygon using the shared country list', async () => {
+  render(Page, { data: dataFor('empty') });
+
+  await fireEvent.click(screen.getByRole('button', { name: 'Select Turkey' }));
+
+  expect(goto).toHaveBeenCalledOnce();
+  expect(new URL(goto.mock.calls[0][0], 'http://localhost').searchParams.get('region')).toBe('Turkey');
 });

@@ -1,10 +1,19 @@
-const option = (uid) => (uid ? { uid, label: uid } : null);
+import { resolveScoreboardChoices, SCOREBOARD_COUNTRIES } from './controller.js';
 
-export function resolveSelection(options, requested) {
-  if (options.status === 'error') {
-    return { scenario: option(requested.scenario), region: option(requested.region), year: option(requested.year) };
-  }
-  if (options.yearStatus === 'error' && requested.year) return { ...options.selection, year: option(requested.year) };
-  const year = options.years.find(({ uid }) => uid === requested.year) ?? options.years.find(({ uid }) => uid === '2050') ?? options.years[0] ?? null;
-  return { ...options.selection, year };
+const option = (uid, label = uid) => ({ uid: String(uid), label: String(label) });
+
+export function createScoreboardOptions(scoreboard, scenarioLabels = {}) {
+  return {
+    indicators: scoreboard.map.indicators.map(({ name }) => option(name)),
+    scenarios: scoreboard.map.scenarios.map(({ id }) => option(id, scenarioLabels[id] ?? id)),
+    regions: SCOREBOARD_COUNTRIES.map(({ name }) => option(name)),
+    years: scoreboard.map.years.map((year) => option(year)),
+  };
+}
+
+export function resolveSelection(scoreboard, options, requested) {
+  const resolved = resolveScoreboardChoices(scoreboard, requested);
+  return Object.fromEntries(
+    Object.entries(resolved).map(([key, uid]) => [key, options[`${key}s`].find((candidate) => candidate.uid === String(uid))])
+  );
 }

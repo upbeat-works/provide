@@ -1,7 +1,6 @@
 import heatStress from './heat-stress.json';
 import testing from './testing.json';
-import heatStressMap from './heat-stress-map.json';
-import testingMap from './testing-map.json';
+import { SCOREBOARD_COUNTRIES, scoreboardCountry } from './countries.ts';
 
 export const SCOREBOARD_INSTANCE = 'sparccle-internal';
 export const SECTORS = [
@@ -9,24 +8,35 @@ export const SECTORS = [
   { uid: 'testing', label: 'Testing' },
 ];
 
-const mapDefinitionsBySector = { 'heat-stress': heatStressMap, testing: testingMap };
 const definitionsBySector = { 'heat-stress': heatStress, testing };
 
-// A sector's map names the indicator it is drawn from, and that is what the
-// indicators view asks the reader to choose — the hazard is a way of grouping
-// indicators, not something that view acts on. Same `sector` behind both, so
-// the two views stay one selection.
-const indicatorOf = ({ uid, label }) => ({ uid, label: mapDefinitionsBySector[uid]?.title ?? label });
-
-export function getScoreboard(sectorId) {
+export function getScoreboard(sectorId, indicatorName) {
   const sector = SECTORS.find(({ uid }) => uid === sectorId) ?? SECTORS[0];
+  const definition = definitionsBySector[sector.uid];
+  const indicator = definition.map.indicators.find(({ name }) => name === indicatorName) ?? definition.map.indicators[0];
   return {
     instance: SCOREBOARD_INSTANCE,
     sectors: SECTORS,
     sector,
-    indicators: SECTORS.map(indicatorOf),
-    indicator: indicatorOf(sector),
-    definitions: definitionsBySector[sector.uid],
-    mapDefinition: mapDefinitionsBySector[sector.uid],
+    map: definition.map,
+    charts: definition.charts,
+    indicator,
+  };
+}
+
+export { SCOREBOARD_COUNTRIES };
+
+export function resolveScoreboardChoices(scoreboard, requested = {}) {
+  const indicator = scoreboard.map.indicators.find(({ name }) => name === requested.indicator) ?? scoreboard.map.indicators[0];
+  const scenario = scoreboard.map.scenarios.find(({ id }) => id === requested.scenario) ?? scoreboard.map.scenarios[0];
+  const region = scoreboardCountry(requested.region) ?? scoreboardCountry('Austria');
+  const requestedYear = Number(requested.year);
+  const defaultYear = scoreboard.map.years.includes(2050) ? 2050 : scoreboard.map.years[0];
+  const year = scoreboard.map.years.includes(requestedYear) ? requestedYear : defaultYear;
+  return {
+    indicator: indicator.name,
+    scenario: scenario.id,
+    region: region.name,
+    year,
   };
 }

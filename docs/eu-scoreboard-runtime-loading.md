@@ -1,50 +1,70 @@
 # Scoreboard runtime loading
 
-The scoreboard keeps its own controller and fixed `sparccle-internal` source.
-It uses the catalog review's rule: each request loads only what its use case needs.
+The scoreboard uses its own controller and the fixed `sparccle-internal` source.
+Sector config is bundled with both the API and web app. `getScoreboard(sector,
+indicator)` returns the selected sector's `map`, `charts`, and `indicator`.
+
+## Choices and URL state
+
+The layout reads indicators, scenario IDs, and years from local sector config.
+It uses the shared 40-country list for regions. It does not make an options API
+request. Optional scenario labels come from Strapi; missing content and Strapi
+failures fall back to the configured ID without blocking data requests.
+
+The page URL uses `sector`, `indicator`, `region`, `scenario`, and `year`.
+`indicator` stores the short map indicator name. `region` stores the country
+name because chart requests use that value. Invalid choices fall back to the
+first configured indicator and scenario, Austria, and 2050.
+
+Chart URLs and embeds keep their existing chart fields. They do not require an
+indicator. Moving between the overview and indicators views keeps valid choices.
+
+## Requests
 
 | Request | Work |
 | --- | --- |
-| `/api/scoreboard/options` | Scenario and region metadata; available years for the selected scope. |
-| `/api/scoreboard/map` | One map variable, selected scenario, member regions and year. |
-| `/api/scoreboard/charts/:chartId` | One chart's variables for its selected scope. |
+| `/api/scoreboard/map` | Load one configured regional map for the selected indicator, country, scenario, and year. |
+| `/api/scoreboard/charts/:chartId` | Load one configured chart for the selected country, scenario, and year. |
+| `/app/scoreboard/map` and `/app/scoreboard/charts/:chartId` | Same-origin SvelteKit routes that call the matching API request and return its result. |
 
-Line charts read all years for the selected scenario and region. Bars and bubbles
-read only the selected year. Region groups read the area's members. Scenario
-groups read all scenarios for the selected region and year.
+The overview loads no map values or chart values. Its country shape comes from
+the local NUTS0 file. The indicators page starts the map and each chart request
+independently in the browser. Ready results remain visible while another request
+loads or fails. Retry repeats only the failed resource.
 
-The shared SvelteKit layout owns control options. Its server loader depends on
-sector, scenario and region, so changing the year or switching views reuses those
-options. View links preserve the current URL parameters, including omitted defaults,
-so moving between views does not invalidate the shared options.
-A failed options request keeps URL choices pending and offers a retry; only a
-successful response can replace an invalid choice. If year discovery fails, scenario
-and region choices remain available, and the requested year is kept until a retry succeeds.
+Request identity includes every choice that affects that resource. Old promises
+cannot replace results after a filter change. Comparisons keep separate resource
+state for each side. Country fitting uses NUTS0 data and does not wait for the
+regional value request.
 
-The ranking page loads no map or chart values. Its indicator links come from the
-sector definitions. The indicator page starts separate browser requests for the map and
-each chart. It reuses parent data in its universal loader; a child server loader
-calling `parent()` would run the parent server loader again. Ready results render while other requests are pending. Empty charts
-remain hidden. A retry calls only the matching same-origin `/app/scoreboard`
-endpoint. Old promises cannot replace results for a newer selection.
+Regional boundary loading is shared by the API and browser. It uses pinned
+NUTS1 and NUTS2 sources, filters by `CNTR_CODE` and level, and caches only
+successful full-file loads. The API joins values through `NUTS_ID`.
 
-Embeds await only their requested chart. Optional case-study content stays on the
-server and is requested by record ID. A CMS error does not remove chart data.
+Testing's stacked bar and bubble keep `groupBy: "region"`, but their config
+provides the fixed country names Austria, Germany and France. Country changes
+do not change those groups. Scenario and year changes still change their
+requests.
+
+Optional case-study content is loaded only for a ready chart that names a CMS
+record. A CMS failure does not remove chart data. Map errors and chart errors
+are reported without exposing credentials or upstream response bodies.
+
+## Local proxy check
+
+Vite serves shared scoreboard source files under `/api/`. The development proxy
+routes those exact files to Vite and sends API requests to the backend.
+With `docker compose up` running, check both routes with:
+
+```sh
+node scripts/verify-scoreboard-dev-proxy.mjs
+```
+
+Pass another origin as the first argument to check a different local address.
 
 ## Limits
 
-The installed ixmp4 client has no year-only query. Finding available years still
-reads datapoints, limited to the selected scenario and area and references with
-matching region metadata. The response contains year options, not those values.
-A later year-index resource could remove this extra read. No shared value cache
-or stored catalog is added.
-
-Country maps fit the countries returned by the selected area. Shape loading uses
-the existing external map boundary and its browser cache.
-
-## Checks
-
-API tests cover query scope, defaults, missing values, grouped charts, failures
-and fixed-source ownership. Browser component tests cover independent loading,
-individual retries, stale responses, selection links and map bounds. Server tests
-cover ranking requests, independent results, embeds and optional CMS failure.
+The overview scores are still mock data. Raster maps are deferred. The API
+assumes one ixmp4 model for each map variable and returns that model and unit as
+metadata. It adds no model choice, unit conversion, shared value cache, or
+stored catalog.

@@ -16,7 +16,8 @@ export async function loadScoreboardChart(platform: Platform, db: Db, definition
   const { groupBy, series } = definition.data;
   let groups = [option(selection.region)];
   if (groupBy === 'region') {
-    if (selection.region === 'World') groups = worldR9Regions();
+    if (definition.data.regions) groups = definition.data.regions.map(option);
+    else if (selection.region === 'World') groups = worldR9Regions();
     else groups = childRegions(selection.region, await loadRegionCatalog(db));
   }
   const references = new Map(series.flatMap((entry) => Object.values(entry).map((reference) => [referenceKey(reference), reference] as const)));

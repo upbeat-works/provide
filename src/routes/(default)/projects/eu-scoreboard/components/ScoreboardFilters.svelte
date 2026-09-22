@@ -1,7 +1,6 @@
 <script>
-  import { goto, invalidate } from '$app/navigation';
+  import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import Button from '$lib/components/ui/Button.svelte';
   import FilterSelect from './FilterSelect.svelte';
 
   // The scoreboard's control bar, built from the same popover pickers the rest
@@ -9,17 +8,11 @@
   // only where a choice goes: the scoreboard's selection lives in the URL and
   // drives the server load, so a pick navigates rather than setting a store.
   export let data;
-  // Which choices this view offers, in this order. The ranking view compares
-  // hazards and always draws the whole of Europe; the indicators view names the
-  // indicator instead of the hazard behind it, and drops whichever dimension a
-  // comparison has taken over.
   export let filters = ['indicator', 'region', 'scenario', 'year'];
 
-  // `indicator` and `sector` are the same choice named two ways — both write
-  // the sector the page loads from.
   const FIELDS = {
     sector: { label: 'Hazard/Sector', param: 'sector', options: (d) => d.scoreboard.sectors, selected: (d) => d.scoreboard.sector },
-    indicator: { label: 'Indicator', param: 'sector', options: (d) => d.scoreboard.indicators ?? [], selected: (d) => d.scoreboard.indicator },
+    indicator: { label: 'Indicator', param: 'indicator', options: (d) => d.indicators ?? [], selected: (d) => d.selection?.indicator },
     region: { label: 'Geography', param: 'region', options: (d) => d.regions ?? [], selected: (d) => d.selection?.region, placeholder: 'Search geography' },
     scenario: { label: 'Scenario', param: 'scenario', options: (d) => d.scenarios ?? [], selected: (d) => d.selection?.scenario },
     year: { label: 'Year', param: 'year', options: (d) => d.years ?? [], selected: (d) => d.selection?.year },
@@ -51,9 +44,3 @@
     on:change={({ detail }) => select(filter.param, detail)}
   />
 {/each}
-{#if data.scoreboardOptions?.status === 'error' || data.scoreboardOptions?.yearStatus === 'error'}
-  <div role="alert" class="flex flex-col items-start gap-1 text-sm">
-    <p>{data.scoreboardOptions.error ?? data.scoreboardOptions.yearError}</p>
-    <Button variant="secondary" size="sm" on:click={() => invalidate('scoreboard:options')}>Retry choices</Button>
-  </div>
-{/if}

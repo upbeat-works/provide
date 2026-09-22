@@ -1,5 +1,10 @@
 # Chart grouping
 
+> Historical implementation plan. The final contract allows fixed
+> `data.regions` for region-grouped charts. See
+> [Chart config decisions](eu-scoreboard-chart-config.md). The review decision
+> is preserved in [the architecture review](architecture-review.md#scoreboard-3-keep-testings-grouped-charts-on-fixed-regions).
+
 Stakeholders choose grouping in the chart config. The scoreboard supplies the
 selected area, scenario and year. The controller finds regions within an area or
 matching scenarios for a selected region.

@@ -11,7 +11,7 @@ test('shows only charts with visible results', async () => {
   const page = await vite.ssrLoadModule('/src/routes/(default)/projects/eu-scoreboard/indicators/page.ssr.fixture.svelte');
   const { getScoreboard } = await vite.ssrLoadModule('/src/routes/(default)/projects/eu-scoreboard/controller.js');
   const scoreboard = getScoreboard('testing');
-  const definition = scoreboard.definitions[0];
+  const definition = scoreboard.charts[0];
   const data = {
     scoreboard,
     scenarios: [],

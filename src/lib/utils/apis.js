@@ -30,6 +30,17 @@ export const catalogContentUrl = (collection, id) => {
   return `${joinUrl(ENV_URL_CONTENT, `api/${collection}`)}?${query}`;
 };
 
+export const catalogScenarioLabelsUrl = (ids) => {
+  if (!ENV_URL_CONTENT) throw new TypeError('Content URL is not configured');
+  const query = new URLSearchParams();
+  query.set('fields[0]', 'UID');
+  query.set('fields[1]', 'Label');
+  query.set('locale', localCode);
+  query.set('pagination[limit]', String(ids.length));
+  ids.forEach((id, index) => query.set(`filters[UID][$in][${index}]`, id));
+  return `${joinUrl(ENV_URL_CONTENT, 'api/scenarios')}?${query}`;
+};
+
 export const loadFromStrapi = function (path, fetch, populate = 'populate=*', qs) {
   return new Promise(async (resolve, reject) => {
     if (typeof ENV_URL_CONTENT === 'undefined') {
@@ -155,17 +166,19 @@ export const loadMethodologyScenarios = async function (svelteFetch = fetch, { i
   }));
 };
 
-async function scoreboardResource(resource, svelteFetch, selections) {
+async function scoreboardResource(resource, svelteFetch, selections, fields) {
   const params = new URLSearchParams();
-  for (const key of ['sector', 'scenario', 'region', 'year']) {
+  for (const key of fields) {
     if (selections[key] !== undefined) params.set(key, selections[key]);
   }
   return getJSON(`${apiUrl(`scoreboard/${resource}`)}?${params}`, svelteFetch);
 }
 
-export const loadScoreboardOptions = (svelteFetch = fetch, selections = {}) => scoreboardResource('options', svelteFetch, selections);
-export const loadScoreboardMap = (svelteFetch = fetch, selections = {}) => scoreboardResource('map', svelteFetch, selections);
-export const loadScoreboardChart = (svelteFetch = fetch, selections = {}) => scoreboardResource(`charts/${encodeURIComponent(selections.chartId)}`, svelteFetch, selections);
+const SCOREBOARD_SHARED_FIELDS = ['sector', 'scenario', 'region', 'year'];
+
+export const loadScoreboardMap = (svelteFetch = fetch, selections = {}) => scoreboardResource('map', svelteFetch, selections, ['sector', 'indicator', 'scenario', 'region', 'year']);
+export const loadScoreboardChart = (svelteFetch = fetch, selections = {}) =>
+  scoreboardResource(`charts/${encodeURIComponent(selections.chartId)}`, svelteFetch, selections, SCOREBOARD_SHARED_FIELDS);
 
 // Curation slice — the transitional study-locations + likelihoods remnants not
 // yet derivable from conventions. Tiny static data; loaded only by the sections

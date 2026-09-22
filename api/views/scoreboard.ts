@@ -33,6 +33,23 @@ export async function readDefaultRunSeries(platform: Pick<Platform, 'iamc'>, ref
   return dfToRows(df as DataFrameLike);
 }
 
+export async function readScoreboardMapSeries(
+  platform: Pick<Platform, 'iamc'>,
+  variable: string,
+  scope: Required<Pick<ScoreboardScope, 'scenario' | 'regions' | 'year'>>
+): Promise<WideRow[]> {
+  if (!scope.regions.length) return [];
+  const df = await platform.iamc.tabulate({
+    variable: { name: variable },
+    run: { defaultOnly: true },
+    scenario: { name: scope.scenario },
+    region: { name_in: scope.regions },
+    stepYear: scope.year,
+    wide: true,
+  });
+  return dfToRows(df as DataFrameLike);
+}
+
 export function selectScoreboardData(rows: WideRow[], selection: ScoreboardSelection): Array<{ year: number; value: number | null }> {
   const matches = rows.filter((row) => row.scenario === selection.scenario && row.region === selection.region);
   if (matches.length > 1) throw new Error('Ambiguous default-run rows');

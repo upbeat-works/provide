@@ -5,8 +5,9 @@
   import Page from './+page.svelte';
 
   export let data;
+  export let url = new URL('http://localhost/projects/eu-scoreboard/indicators');
   setContext('__svelte__', {
-    page: readable({ url: new URL('http://localhost/projects/eu-scoreboard/indicators'), data }),
+    page: readable({ url, data }),
     navigating: readable(null),
     updated: readable(false),
   });
