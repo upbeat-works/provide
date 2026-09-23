@@ -5,8 +5,6 @@ describe('scoreboard sector selection', () => {
   test.each([undefined, 'unknown', 'heat-stress'])('opens Heat stress for %s', (sector) => {
     const scoreboard = getScoreboard(sector);
     expect(scoreboard.sector.uid).toBe('heat-stress');
-    expect(scoreboard.charts).toEqual([]);
-    expect(scoreboard.indicator.name).toBe('Maximum Air Temperature');
   });
 
   test('selects chart definitions for Testing', () => {

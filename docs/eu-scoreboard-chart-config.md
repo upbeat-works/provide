@@ -62,6 +62,39 @@ change chart config. The shared query layer selects default runs. Run version
 selection stays outside this config. No unit conversion or silent model
 selection is added.
 
+## Map defaults and ranking
+
+`map.defaultIndicator` names an entry in `map.indicators`. It is used when
+the URL has no indicator or names an unknown one. Without a matching default,
+the first indicator is used.
+Use `null` when the sector has no map indicators.
+
+`map.ranking` names the variable used to rank countries and the upper limits
+of its colour bands:
+
+```json
+{
+  "defaultIndicator": "High Heat Risk",
+  "ranking": {
+    "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+    "bins": [2, 6, 23]
+  }
+}
+```
+
+Bins are increasing numeric upper limits, included in their band. Three limits
+define four bands: ≤2, >2–6, >6–23, and >23. Values are not rounded before being
+placed in a band. Bins hold no unit; the variable's data supplies it. The ranking
+variable is independent of the selected map indicator.
+
+Testing uses maximum air temperature with provisional limits of 25, 30 and 35.
+Socioeconomic uses heat-vulnerable population with provisional limits of 1, 5
+and 10; its source values are in millions. These limits are examples, not
+validated risk bands. Socioeconomic has no default map indicator because its
+map indicator list is empty.
+
+The ranking view currently uses mock scores; it does not yet read `map.ranking`.
+
 ## Examples
 
 Values in `<…>` are placeholders. `caseStudyId` is optional for every chart type.

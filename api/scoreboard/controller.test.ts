@@ -2,6 +2,21 @@ import { describe, expect, test } from 'vitest';
 import { getScoreboard, resolveScoreboardChoices, SCOREBOARD_COUNTRIES } from './controller.js';
 
 describe('scoreboard config', () => {
+  test('uses the configured default indicator unless a valid indicator is requested', () => {
+    const scoreboard = {
+      map: {
+        defaultIndicator: 'Heat risk',
+        indicators: [{ name: 'Temperature' }, { name: 'Heat risk' }],
+        scenarios: [{ id: 'Scenario' }],
+        years: [2050],
+      },
+    };
+
+    expect(resolveScoreboardChoices(scoreboard).indicator).toBe('Heat risk');
+    expect(resolveScoreboardChoices(scoreboard, { indicator: 'Missing' }).indicator).toBe('Heat risk');
+    expect(resolveScoreboardChoices(scoreboard, { indicator: 'Temperature' }).indicator).toBe('Temperature');
+  });
+
   test('selects a named map indicator and returns the sector charts', () => {
     const scoreboard = getScoreboard('testing', 'Mean Air Temperature');
 

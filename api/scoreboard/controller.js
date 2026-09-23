@@ -12,10 +12,16 @@ export const SECTORS = [
 
 const definitionsBySector = { 'heat-stress': heatStress, testing, socioeconomic };
 
+function selectMapIndicator(map, indicatorName) {
+  const requested = map.indicators.find(({ name }) => name === indicatorName);
+  if (requested) return requested;
+  return map.indicators.find(({ name }) => name === map.defaultIndicator) ?? map.indicators[0];
+}
+
 export function getScoreboard(sectorId, indicatorName) {
   const sector = SECTORS.find(({ uid }) => uid === sectorId) ?? SECTORS[0];
   const definition = definitionsBySector[sector.uid];
-  const indicator = definition.map.indicators.find(({ name }) => name === indicatorName) ?? definition.map.indicators[0];
+  const indicator = selectMapIndicator(definition.map, indicatorName);
   return {
     instance: SCOREBOARD_INSTANCE,
     sectors: SECTORS,
@@ -29,7 +35,7 @@ export function getScoreboard(sectorId, indicatorName) {
 export { SCOREBOARD_COUNTRIES };
 
 export function resolveScoreboardChoices(scoreboard, requested = {}) {
-  const indicator = scoreboard.map.indicators.find(({ name }) => name === requested.indicator) ?? scoreboard.map.indicators[0];
+  const indicator = selectMapIndicator(scoreboard.map, requested.indicator);
   const scenario = scoreboard.map.scenarios.find(({ id }) => id === requested.scenario) ?? scoreboard.map.scenarios[0];
   const region = scoreboardCountry(requested.region) ?? scoreboardCountry('Austria');
   const requestedYear = Number(requested.year);

@@ -1,5 +1,10 @@
 {
   "map": {
+    "defaultIndicator": null,
+    "ranking": {
+      "variable": "Population|Vulnerable|Heat",
+      "bins": [1, 5, 10]
+    },
     "indicators": [],
     "scenarios": [
       { "id": "CurrentPolicies_SSP1" },

@@ -1,5 +1,10 @@
 {
   "map": {
+    "defaultIndicator": "Maximum Air Temperature",
+    "ranking": {
+      "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+      "bins": [25, 30, 35]
+    },
     "indicators": [
       {
         "name": "Maximum Air Temperature",
@@ -12,9 +17,26 @@
         "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
         "type": "choropleth",
         "level": "NUTS2"
+      },
+      {
+        "name": "Mean Temperature",
+        "type": "raster",
+        "indicator": "Mean Temperature",
+        "reference": "1850-1900 (Pre-industrial)",
+        "time": "Annual",
+        "spatial": "Area",
+        "unit": "°C"
       }
     ],
-    "scenarios": [{ "id": "CurrentPolicies" }, { "id": "1.5C" }],
+    "scenarios": [
+      {
+        "id": "CurrentPolicies",
+        "rasterName": "Current Policies"
+      },
+      {
+        "id": "1.5C"
+      }
+    ],
     "years": [2020, 2030, 2050, 2100]
   },
   "charts": [

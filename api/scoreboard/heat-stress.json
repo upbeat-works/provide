@@ -1,9 +1,14 @@
 {
   "map": {
+    "defaultIndicator": "High Heat Risk",
+    "ranking": {
+      "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+      "bins": [2, 6, 23]
+    },
     "indicators": [
       {
-        "name": "Maximum Air Temperature",
-        "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+        "name": "High Heat Risk",
+        "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
         "type": "choropleth",
         "level": "NUTS2"
       },
@@ -14,17 +19,103 @@
         "level": "NUTS2"
       },
       {
-        "name": "Mean Temperature",
-        "type": "raster",
-        "indicator": "Mean Temperature",
-        "reference": "1850-1900 (Pre-industrial)",
-        "time": "Annual",
-        "spatial": "Area",
-        "unit": "°C"
+        "name": "Maximum Air Temperature",
+        "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+        "type": "choropleth",
+        "level": "NUTS2"
       }
     ],
-    "scenarios": [{ "id": "CurrentPolicies", "rasterName": "Current Policies" }, { "id": "1.5C" }],
+    "scenarios": [
+      {
+        "id": "CurrentPolicies"
+      },
+      {
+        "id": "1.5C"
+      }
+    ],
     "years": [2020, 2030, 2050, 2100]
   },
-  "charts": []
+  "charts": [
+    {
+      "chartId": "high-heat-risk-range",
+      "title": "High heat risk",
+      "description": "Annual high heat risk over time for the selected country and scenario, showing the 50th percentile with the 5th to 95th percentile range.",
+      "chartType": "line_with_range",
+      "data": {
+        "series": [
+          {
+            "line": {
+              "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+              "model": "RIME-X v1.0.0",
+              "unit": "days/yr"
+            },
+            "rangeLow": {
+              "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|5th Percentile",
+              "model": "RIME-X v1.0.0",
+              "unit": "days/yr"
+            },
+            "rangeHigh": {
+              "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|95th Percentile",
+              "model": "RIME-X v1.0.0",
+              "unit": "days/yr"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "chartId": "mean-air-temperature-range",
+      "title": "Mean air temperature",
+      "description": "Annual mean air temperature over time for the selected country and scenario, showing the 50th percentile with the 5th to 95th percentile range.",
+      "chartType": "line_with_range",
+      "data": {
+        "series": [
+          {
+            "line": {
+              "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+              "model": "RIME-X v1.0.0",
+              "unit": "°C"
+            },
+            "rangeLow": {
+              "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
+              "model": "RIME-X v1.0.0",
+              "unit": "°C"
+            },
+            "rangeHigh": {
+              "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile",
+              "model": "RIME-X v1.0.0",
+              "unit": "°C"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "chartId": "maximum-air-temperature-range",
+      "title": "Maximum air temperature",
+      "description": "Annual maximum air temperature over time for the selected country and scenario, showing the 50th percentile with the 5th to 95th percentile range.",
+      "chartType": "line_with_range",
+      "data": {
+        "series": [
+          {
+            "line": {
+              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+              "model": "RIME-X v1.0.0",
+              "unit": "°C"
+            },
+            "rangeLow": {
+              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
+              "model": "RIME-X v1.0.0",
+              "unit": "°C"
+            },
+            "rangeHigh": {
+              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile",
+              "model": "RIME-X v1.0.0",
+              "unit": "°C"
+            }
+          }
+        ]
+      }
+    }
+  ]
 }
