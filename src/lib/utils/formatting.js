@@ -83,6 +83,8 @@ export const formatValue = (value, indicatorId = DEFAULT_FORMAT_UID, { addSuffix
   return suffix ? str + suffix : str;
 };
 
+export const formatPercentPoints = (value) => `${formatValue(value, 'percent-in-range')} %`;
+
 // A unit id that the format registry knows nothing about is treated as a
 // natural-language unit — its string is used verbatim as the display suffix.
 function isNaturalLanguageUnit(id) {

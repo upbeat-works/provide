@@ -11,7 +11,7 @@
 
   $: sameYearGap = differentYears ? 0 : 1; // This gets added and subtracted from the bar size to have a small gap if the years are the same.
 
-  const PARALLEL_SWITCH = 0.3;
+  const PARALLEL_SWITCH = 30;
 
   function calculatePositions(ticks) {
     const [unavoidableTick, avoidableTick] = ticks;
@@ -43,9 +43,9 @@
         };
       }
     }
-    const unavoidableLeft = avoidableTick.min < 0.2 && avoidableTick.max > 0.5 ? 10 : avoidableTick.min <= unavoidableTick.min ? 10 : 0;
+    const unavoidableLeft = avoidableTick.min < 20 && avoidableTick.max > 50 ? 10 : avoidableTick.min <= unavoidableTick.min ? 10 : 0;
     const unavoidableAlignment = unavoidableTick.hasNoRange && !avoidableTick.hasNoRange ? 'items-start' : 'items-end';
-    const avoidableAlignment = avoidableTick.max > 0.5 ? 'items-start' : 'items-end';
+    const avoidableAlignment = avoidableTick.max > 50 ? 'items-start' : 'items-end';
     return {
       left: [unavoidableLeft, 0],
       alignment: [unavoidableAlignment, avoidableAlignment],
@@ -61,7 +61,7 @@
   <Bar color={unavoidableTick.bar} y2={unavoidableTick.y2 + sameYearGap} totalHeight={unavoidableTick.height} hasNoRange={unavoidableTick.hasNoRange} />
   <Label
     fullHeight={avoidableTick.max < PARALLEL_SWITCH && !unavoidableTick.hasNoRange ? fullHeight - avoidableHeight - 20 : fullHeight}
-    hasNoRange={unavoidableTick.hasNoRange && avoidableTick.max > 0.8}
+    hasNoRange={unavoidableTick.hasNoRange && avoidableTick.max > 80}
     {differentYears}
     latest={unavoidableTick.latest}
     label={unavoidableTick.label}

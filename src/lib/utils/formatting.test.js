@@ -1,5 +1,5 @@
-import { describe, test, expect } from 'bun:test';
-import { formatValue } from './formatting.js';
+import { describe, test, expect } from 'vitest';
+import { formatPercentPoints, formatValue } from './formatting.js';
 
 describe('formatValue with natural-language units', () => {
   test('appends a natural-language unit (not in the registry) as a suffix', () => {
@@ -10,5 +10,11 @@ describe('formatValue with natural-language units', () => {
   test('does not append registry ids or sentinels', () => {
     expect(formatValue(1.53, 'float', { decimals: 1 })).toBe('1.5'); // registry id
     expect(formatValue(1.53, 'no unit', { decimals: 1 })).toBe('1.5'); // UID_NO_UNIT
+  });
+});
+
+describe('formatPercentPoints', () => {
+  test('formats percentage-point values without scaling them', () => {
+    expect(formatPercentPoints(25)).toBe('25 %');
   });
 });

@@ -4,7 +4,7 @@
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import { min } from 'd3-array';
-  import { formatValue, findDecimalsForDistinctValues } from '$lib/utils/formatting';
+  import { formatPercentPoints, formatValue, findDecimalsForDistinctValues } from '$lib/utils/formatting';
   import { URL_PATH_SCENARIOS, END_UN_AVOIDABLE_RISK, UNAVOIDABLE_UID, KEY_MODEL, KEY_SOURCE, KEY_SCENARIO_ENDYEAR } from '$src/config.js';
   import { sortBy, reverse, find, without, isObject, isString, has } from 'lodash-es';
   import { fetchData } from '$lib/api/api';
@@ -94,7 +94,7 @@
           return {
             year,
             value,
-            formattedValue: formatValue(value, 'percent'),
+            formattedValue: formatPercentPoints(value),
           };
         });
         return {
@@ -112,14 +112,14 @@
       return {
         year,
         value,
-        formattedValue: formatValue(value, 'percent'),
+        formattedValue: formatPercentPoints(value),
       };
     });
 
     unavoidableValues.unshift({
       year: 'Today’s risk',
       value: data.today[thresholdIndex],
-      formattedValue: formatValue(data.today[thresholdIndex], 'percent'),
+      formattedValue: formatPercentPoints(data.today[thresholdIndex]),
     });
 
     const xDomain = unavoidableValues.map(({ year }) => year);

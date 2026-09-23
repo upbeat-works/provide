@@ -69,7 +69,7 @@
       bar: 'border-theme-stronger/20',
       text: 'text-theme-stronger/60',
       hasRange: lastYearUnavoidableValue !== lastYearAvoidableValue,
-      baseY: 1,
+      baseY: 100,
       latest: latestAvoidable
         ? {
             year: latestAvoidable.year,

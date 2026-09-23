@@ -1,5 +1,5 @@
 <script>
-  import { formatValue } from '$lib/utils/formatting';
+  import { formatPercentPoints } from '$lib/utils/formatting';
   export let fullHeight;
   export let hasNoRange;
   export let differentYears;
@@ -20,8 +20,8 @@
   <div class="tick-label pl-2 leading-tight flex flex-col" bind:clientHeight={height}>
       {#if latest}
         <span class="text-xs {text} leading-none pb-1">
-          {#if displayRange && !hasNoRange}Between {formatValue(latest.range[0] * 100, 'percent-in-range')} and
-          {/if}{formatValue(latest.range[1], 'percent')} in <span class:font-bold={differentYears}>{latest.year}</span>
+          {#if displayRange && !hasNoRange}Between {formatPercentPoints(latest.range[0])} and
+          {/if}{formatPercentPoints(latest.range[1])} in <span class:font-bold={differentYears}>{latest.year}</span>
         </span>
       {/if}
     <span

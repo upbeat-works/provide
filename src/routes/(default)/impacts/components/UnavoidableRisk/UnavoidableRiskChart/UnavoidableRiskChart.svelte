@@ -1,5 +1,5 @@
 <script>
-  import { formatValue } from '$lib/utils/formatting';
+  import { formatPercentPoints, formatValue } from '$lib/utils/formatting';
   import { Html, LayerCake, Svg } from 'layercake';
   import { scaleBand } from 'd3-scale';
   import AxisX from '$lib/components/charts/axes/AxisX.svelte';
@@ -12,11 +12,10 @@
   export let xDomain;
   export let currentScenarios;
 
-  const unit = 'percent';
   const xKey = 'year';
   const yKey = 'value';
   const padding = { top: 5, right: 0, bottom: 20, left: 42 };
-  const yDomain = [0, 1];
+  const yDomain = [0, 100];
 
   $: formatTickX = (d) => (typeof d === 'string' ? d : formatValue(d, 'year'));
 
@@ -30,14 +29,14 @@
     <LayerCake {data} x={xKey} y={yKey} {xDomain} {padding} {yDomain} xScale={scaleBand().paddingOuter(0.2).paddingInner(0.15)} {flatData}>
       <Svg>
         <AxisX showTickLines={false} {padding} formatTick={formatTickX} />
-        <AxisY ticksHighlighted={yDomain} {unit} />
+        <AxisY ticksHighlighted={yDomain} formatTick={formatPercentPoints} />
         <RiskRanges />
         <RiskLevels {currentScenarios} />
       </Svg>
     </LayerCake>
   </div>
   <div class="h-full w-4/12">
-    <LayerCake {padding} {data} x={xKey} y={yKey} yDomain={[0, 1]} {flatData}>
+    <LayerCake {padding} {data} x={xKey} y={yKey} yDomain={yDomain} {flatData}>
       <Html>
         <RiskLabels />
       </Html>
