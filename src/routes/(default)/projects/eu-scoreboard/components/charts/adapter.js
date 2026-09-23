@@ -1,4 +1,3 @@
-import { interpolateLab, piecewise } from 'd3-interpolate';
 import colorTokens from '$styles/color-tokens-light.json';
 import { parseVariable } from '../../../../../../../api/conventions.ts';
 
@@ -12,11 +11,11 @@ const CATEGORY_COUNT = Object.keys(CATEGORY.base).length;
 const seriesColor = (index) => CATEGORY.base[index % CATEGORY_COUNT];
 
 // A stack's segments are cumulative bands of one quantity rather than unrelated
-// series, so they shade one hue instead of taking several. That is the ramp
-// explore gives a corridor — colorScenarios builds the same weakest/base/
-// strongest interpolator for its bands.
-const stackRamp = piecewise(interpolateLab, [CATEGORY.weakest[0], CATEGORY.base[0], CATEGORY.strongest[0]]);
-const stackColor = (index, count) => stackRamp(count < 2 ? 1 : index / (count - 1));
+// series, so they step through the theme's blue ramp light-to-dark instead of
+// taking several hues. Read off the tokens rather than written out, so the two
+// cannot drift; sampled evenly, so any number of segments spans the ramp.
+const STACK_RAMP = ['100', '200', '300', '400', '500', '600', '700', '800'].map((step) => colorTokens.theme[step]);
+const stackColor = (index, count) => STACK_RAMP[count < 2 ? STACK_RAMP.length - 1 : Math.round((index * (STACK_RAMP.length - 1)) / (count - 1))];
 
 const variableLabel = (reference) => {
   const label = reference?.label?.trim();
