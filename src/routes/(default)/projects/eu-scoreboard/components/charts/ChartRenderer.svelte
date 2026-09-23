@@ -17,6 +17,7 @@
     line_with_range: LineChart,
     stacked_bar: StackedBarChart,
     bubble: BubbleChart,
+    scatter: BubbleChart,
   };
 
   $: chart = adaptChartResult(result, selection);

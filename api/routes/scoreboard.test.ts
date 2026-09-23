@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { writeArrayBuffer } from 'geotiff';
 import * as platformModule from '../platform';
 import { getScoreboard } from '../scoreboard/controller.js';
+import * as controller from '../scoreboard/controller.js';
 
 const tabulate = vi.fn();
 let createPlatform;
@@ -32,7 +33,7 @@ const recorded2050 = {
 
 function recordedFrame(query) {
   const source = recorded2050[query.variable.name];
-  const exactReference = query.model?.name === 'RIME-X v1.0.0' && query.unit?.name === source?.unit;
+  const exactReference = (!query.unit || query.unit.name === source?.unit);
   const requestedRecordedYear = query.stepYear === undefined || query.stepYear === 2050;
   if (!source || !exactReference || !requestedRecordedYear || query.scenario?.name !== 'CurrentPolicies') return frame([]);
   const rows = query.region.name_in.flatMap((region) => {
@@ -55,6 +56,18 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 const request = async (path: string) => (await import('../index')).api.request(path, {}, env);
+
+function configureRaster() {
+  const indicator = {
+    name: 'Mean Temperature', type: 'raster', indicator: 'mean-temperature',
+    reference: '1850-1900-pre-industrial', time: 'annual', spatial: 'area', unit: '°C',
+  };
+  vi.spyOn(controller, 'getScoreboard').mockReturnValue({
+    indicator,
+    map: { indicators: [indicator], scenarios: [{ id: 'CurrentPolicies', rasterName: 'current-policies' }], years: [2030] },
+  } as never);
+  return indicator;
+}
 
 describe('scoreboard requests', () => {
   test('does not expose the removed options endpoint', async () => {
@@ -150,7 +163,7 @@ describe('scoreboard requests', () => {
   });
 
   test('loads a configured GeoServer raster for the selected country and IAMC scenario', async () => {
-    const indicator = getScoreboard('heat-stress', 'Mean Temperature').indicator;
+    const indicator = configureRaster();
     const tiff = writeArrayBuffer(new Float32Array([3, -9999, 1, 2]), {
       width: 2, height: 2, ModelPixelScale: [2, 2, 0], ModelTiepoint: [0, 0, 0, 10, 24, 0],
       GeographicTypeGeoKey: 4326, GTModelTypeGeoKey: 2, GTRasterTypeGeoKey: 1, GDAL_NODATA: '-9999',
@@ -179,6 +192,7 @@ describe('scoreboard requests', () => {
   });
 
   test('returns an empty raster map when GeoServer has no matching coverage', async () => {
+    configureRaster();
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async () => new Response(
       '<ows:ExceptionReport><ows:Exception exceptionCode="NoSuchCoverage"/></ows:ExceptionReport>',
@@ -260,13 +274,12 @@ describe('scoreboard requests', () => {
     expect(tabulate).toHaveBeenCalledTimes(3);
     for (const [query] of tabulate.mock.calls) {
       expect(query).toMatchObject({
-        model: { name: 'RIME-X v1.0.0' },
-        unit: { name: '°C' },
         run: { defaultOnly: true },
         scenario: { name: 'CurrentPolicies' },
         region: { name_in: ['Austria'] },
       });
       expect(query).not.toHaveProperty('stepYear');
+      expect(query).not.toHaveProperty('model');
     }
   });
 });

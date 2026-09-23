@@ -68,18 +68,24 @@ describe('scoreboard config', () => {
     });
   });
 
-  test('switches from climate filters to the socioeconomic scenario choices', () => {
-    const scoreboard = getScoreboard('socioeconomic', 'Mean Air Temperature');
+  test('defaults choices from another sector to the configured indicator and scenario', () => {
+    const scoreboard = {
+      map: {
+        defaultIndicator: 'Population',
+        indicators: [{ name: 'Population' }],
+        scenarios: [{ id: 'Scenario A' }, { id: 'Scenario B' }],
+        years: [2050, 2100],
+      },
+    };
 
-    expect(scoreboard.sector.uid).toBe('socioeconomic');
-    expect(resolveScoreboardChoices(scoreboard, { indicator: 'Mean Air Temperature', scenario: 'CurrentPolicies', region: 'Germany', year: '2050' })).toEqual({
-      indicator: undefined,
-      scenario: 'CurrentPolicies_SSP1',
+    expect(resolveScoreboardChoices(scoreboard, { indicator: 'Temperature', scenario: 'Climate scenario', region: 'Germany', year: '2050' })).toEqual({
+      indicator: 'Population',
+      scenario: 'Scenario A',
       region: 'Germany',
       year: 2050,
     });
-    expect(resolveScoreboardChoices(scoreboard, { scenario: '1.5C_SSP2', region: 'France', year: '2100' })).toMatchObject({
-      scenario: '1.5C_SSP2',
+    expect(resolveScoreboardChoices(scoreboard, { scenario: 'Scenario B', region: 'France', year: '2100' })).toMatchObject({
+      scenario: 'Scenario B',
       region: 'France',
       year: 2100,
     });

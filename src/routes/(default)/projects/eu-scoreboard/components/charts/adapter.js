@@ -1,4 +1,5 @@
 import { parseVariable } from '../../../../../../../api/conventions.ts';
+import { barSeriesIndices, chartSeries } from '../../../../../../../api/scoreboard/series.ts';
 
 const COLORS = ['#006c78', '#e76f00', '#65832e', '#b07b00', '#a63d68', '#4d6cb3'];
 
@@ -11,7 +12,7 @@ const variableLabel = (reference) => {
   if (parsed.kind === 'faceted') return parsed.indicator;
   return variable.split('|').at(-1)?.trim() || 'Value';
 };
-const seriesDefinitions = (definition) => definition.data?.series;
+const seriesDefinitions = (definition) => definition.series ?? chartSeries(definition.data, definition.chartType);
 const roleReference = (definition, role) => seriesDefinitions(definition)?.find((entry) => entry[role])?.[role];
 const axisLabel = (reference) => {
   const label = variableLabel(reference);
@@ -88,11 +89,12 @@ function lineProps(definition, data) {
 
 function stackedRow(region, data, layers) {
   let total = 0;
-  const values = data.map((entry, index) => {
+  const values = data.flatMap((entry, index) => {
     const value = entry?.segment;
+    if (!Number.isFinite(value)) return [];
     const start = total;
     total += value;
-    return { ...layers[index], name: layers[index].label, value, start, end: total };
+    return [{ ...layers[index], name: layers[index].label, value, start, end: total }];
   });
   return { uid: region?.uid ?? 'selection', label: region?.label ?? 'Selected region', total, values };
 }
@@ -113,17 +115,39 @@ const isGrouped = (groupBy) => groupBy === 'region' || groupBy === 'scenario';
 
 function stackedBarProps(definition, data, selection) {
   const definitions = seriesDefinitions(definition);
-  const layers = definitions.map((entry, index) => ({ uid: String(index), label: variableLabel(entry.segment), color: COLORS[index % COLORS.length] }));
+  const labels = definition.data.stacks ?? definitions.map((entry) => variableLabel(entry.segment));
+  const layers = labels.map((label, index) => ({ uid: String(index), label, color: COLORS[index % COLORS.length] }));
   let rows;
   const groupBy = definition.data.groupBy;
   if (isGrouped(groupBy)) {
     rows = data
-      .filter(({ series }) => Array.isArray(series) && series.length === definitions.length && series.every(({ segment }) => Number.isFinite(segment)))
+      .filter(({ series }) => Array.isArray(series) && series.length === definitions.length && series.some(({ segment }) => Number.isFinite(segment)))
       .map((entry) => stackedRow(groupFor(entry, groupBy), entry.series, layers));
+  } else if (definition.data.bars) {
+    rows = barSeriesIndices(definition.data).map((indices, index) => {
+      const name = definition.data.bars[index];
+      return stackedRow({ uid: name, label: name }, indices.map((index) => data[index]), layers);
+    });
   } else {
     rows = [stackedRow(selection?.region, data, layers)];
   }
-  const unit = roleReference(definition, 'segment')?.unit;
+  let unit = roleReference(definition, 'segment')?.unit;
+  if (definition.data.stackMode === 'percent') {
+    rows = rows.map((row) => {
+      if (row.total === 0) return { ...row, values: [] };
+      return {
+        ...row,
+        total: 100,
+        values: row.values.map((segment) => ({
+          ...segment,
+          value: segment.value / row.total * 100,
+          start: segment.start / row.total * 100,
+          end: segment.end / row.total * 100,
+        })),
+      };
+    });
+    unit = '%';
+  }
   return {
     rows,
     layers,
@@ -135,6 +159,7 @@ function stackedBarProps(definition, data, selection) {
 }
 
 function bubbleProps(definition, data) {
+  const scatter = definition.chartType === 'scatter';
   const x = roleReference(definition, 'x');
   const y = roleReference(definition, 'y');
   const size = roleReference(definition, 'size');
@@ -165,10 +190,11 @@ function bubbleProps(definition, data) {
     points = definitions.map((entry, index) => pointFor(entry, data[index], undefined, index));
   }
   return {
-    points: points.filter(({ x: xValue, y: yValue, size: sizeValue }) => Number.isFinite(xValue) && Number.isFinite(yValue) && Number.isFinite(sizeValue) && sizeValue > 0),
+    points: points.filter(({ x: xValue, y: yValue, size: sizeValue }) => Number.isFinite(xValue) && Number.isFinite(yValue) && (scatter || (Number.isFinite(sizeValue) && sizeValue > 0))),
+    pointMode: definition.chartType,
     xLabel: axisLabel(x),
     yLabel: axisLabel(y),
-    sizeLabel: axisLabel(size),
+    sizeLabel: scatter ? undefined : axisLabel(size),
     xUnit: x?.unit,
     yUnit: y?.unit,
     sizeUnit: size?.unit,
@@ -179,18 +205,33 @@ function bubbleProps(definition, data) {
 export function adaptChartResult(result, selection = {}) {
   const base = { definition: result.definition, status: result.status, error: result.error };
   if (result.status === 'error') return base;
-  const { definition, data = [] } = result;
-  const definitions = seriesDefinitions(definition);
+  const { data = [] } = result;
+  const definition = { ...result.definition, series: result.series };
+  let definitions;
+  try {
+    definitions = seriesDefinitions(definition);
+  } catch (error) {
+    return { ...base, status: 'error', error: error.message };
+  }
   if (!Array.isArray(definitions)) return { ...base, status: 'error', error: 'Chart data configuration is invalid.' };
   const groupBy = definition.data.groupBy;
+  if (definition.data.bars) {
+    if (definition.chartType !== 'stacked_bar' || groupBy !== undefined) return { ...base, status: 'error', error: 'Named bars and stacks require an ungrouped stacked bar chart.' };
+    try {
+      barSeriesIndices(definition.data);
+    } catch (error) {
+      return { ...base, status: 'error', error: error.message };
+    }
+  }
   if (groupBy !== undefined && !isGrouped(groupBy)) return { ...base, status: 'error', error: `Unsupported chart grouping: ${groupBy}` };
-  if (isGrouped(groupBy) && definition.chartType !== 'stacked_bar' && definition.chartType !== 'bubble') {
+  const pointChart = definition.chartType === 'bubble' || definition.chartType === 'scatter';
+  if (isGrouped(groupBy) && definition.chartType !== 'stacked_bar' && !pointChart) {
     return { ...base, status: 'error', error: `${groupBy} grouping is not supported for ${definition.chartType}.` };
   }
-  if (definition.chartType !== 'bubble' && unitsFor(definition).length > 1) {
+  if (!pointChart && unitsFor(definition).length > 1) {
     return { ...base, status: 'error', error: 'Chart series must use the same unit.' };
   }
-  if (definition.chartType === 'bubble' && !bubbleUnitsMatch(definition)) {
+  if (pointChart && !bubbleUnitsMatch(definition)) {
     return { ...base, status: 'error', error: 'Each bubble role must use one unit.' };
   }
   if (result.status === 'empty') return base;
@@ -200,9 +241,6 @@ export function adaptChartResult(result, selection = {}) {
   if (definition.chartType === 'bubble' && !isGrouped(groupBy) && !hasCompleteBubble(data)) {
     return { ...base, status: 'empty' };
   }
-  if (definition.chartType === 'stacked_bar' && !isGrouped(groupBy) && data.some(({ segment }) => !Number.isFinite(segment))) {
-    return { ...base, status: 'empty' };
-  }
   const scalarSeries = isGrouped(groupBy) ? data.flatMap(({ series = [] }) => series) : data;
   if (definition.chartType === 'stacked_bar' && scalarSeries.some(({ segment }) => Number.isFinite(segment) && segment < 0)) {
     return { ...base, status: 'error', error: 'Stacked bar segments cannot be negative.' };
@@ -210,9 +248,9 @@ export function adaptChartResult(result, selection = {}) {
   let props;
   if (definition.chartType === 'line' || definition.chartType === 'line_with_range') props = lineProps(definition, data);
   if (definition.chartType === 'stacked_bar') props = stackedBarProps(definition, data, selection);
-  if (definition.chartType === 'bubble') props = bubbleProps(definition, data);
+  if (pointChart) props = bubbleProps(definition, data);
   if (!props) return { ...base, status: 'error', error: `Unsupported chart type: ${definition.chartType}` };
-  if ((definition.chartType === 'stacked_bar' && !props.rows.length) || (definition.chartType === 'bubble' && !props.points.length)) return { ...base, status: 'empty' };
+  if ((definition.chartType === 'stacked_bar' && !props.rows.some(({ values }) => values.length)) || (pointChart && !props.points.length)) return { ...base, status: 'empty' };
   return { ...base, kind: definition.chartType, props, info: infoFor(definition) };
 }
 

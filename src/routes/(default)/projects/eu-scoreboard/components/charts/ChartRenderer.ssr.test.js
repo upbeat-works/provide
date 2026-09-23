@@ -12,13 +12,27 @@ const definition = {
   title: 'Temperature',
   description: 'Values over time.',
   chartType: 'line',
-  data: { series: [{ line: { variable: 'Temperature|Mean', model: 'Model', unit: 'K' } }] },
+  data: { variables: ['Temperature|Mean'] },
 };
 
 describe('chart renderer', () => {
+  test('renders scatter points without a bubble-size legend', async () => {
+    const fixture = await vite.ssrLoadModule('/src/routes/(default)/projects/eu-scoreboard/components/charts/ChartRenderer.test.fixture.svelte');
+    const result = {
+      status: 'ready',
+      definition: { chartId: 'education', chartType: 'scatter', data: { variables: ['Low', 'High'], x: 'Low', y: 'High' } },
+      series: [{ x: { variable: 'Low', model: 'Model', unit: 'people' }, y: { variable: 'High', model: 'Model', unit: 'people' } }],
+      data: [{ x: 20, y: 30 }],
+    };
+    const { html } = fixture.default.render({ result });
+    expect(html).toContain('<figure>');
+    expect(html).toContain('Low (people)');
+    expect(html).toContain('High (people)');
+    expect(html).not.toMatch(/role="alert"/);
+  });
   test('renders ready results through the chart component', async () => {
     const fixture = await vite.ssrLoadModule('/src/routes/(default)/projects/eu-scoreboard/components/charts/ChartRenderer.test.fixture.svelte');
-    const result = { definition, status: 'ready', data: [{ line: [{ year: 2030, value: 2 }] }] };
+    const result = { definition, status: 'ready', series: [{ line: { variable: 'Temperature|Mean', model: 'Source model', unit: 'K' } }], data: [{ line: [{ year: 2030, value: 2 }] }] };
     const { html } = fixture.default.render({ result });
     expect(html).toContain('<figure>');
     expect(html).toContain('About the data');

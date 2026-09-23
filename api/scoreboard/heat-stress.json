@@ -42,25 +42,14 @@
       "description": "Annual high heat risk over time for the selected country and scenario, showing the 50th percentile with the 5th to 95th percentile range.",
       "chartType": "line_with_range",
       "data": {
-        "series": [
-          {
-            "line": {
-              "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "days/yr"
-            },
-            "rangeLow": {
-              "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|5th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "days/yr"
-            },
-            "rangeHigh": {
-              "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|95th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "days/yr"
-            }
-          }
-        ]
+        "variables": [
+          "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+          "High Heat Risk|Absolute Values (No Change)|Annual|Area|5th Percentile",
+          "High Heat Risk|Absolute Values (No Change)|Annual|Area|95th Percentile"
+        ],
+        "line": "50th Percentile",
+        "rangeLow": "5th Percentile",
+        "rangeHigh": "95th Percentile"
       }
     },
     {
@@ -69,25 +58,14 @@
       "description": "Annual mean air temperature over time for the selected country and scenario, showing the 50th percentile with the 5th to 95th percentile range.",
       "chartType": "line_with_range",
       "data": {
-        "series": [
-          {
-            "line": {
-              "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            },
-            "rangeLow": {
-              "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            },
-            "rangeHigh": {
-              "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            }
-          }
-        ]
+        "variables": [
+          "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+          "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
+          "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile"
+        ],
+        "line": "50th Percentile",
+        "rangeLow": "5th Percentile",
+        "rangeHigh": "95th Percentile"
       }
     },
     {
@@ -96,25 +74,14 @@
       "description": "Annual maximum air temperature over time for the selected country and scenario, showing the 50th percentile with the 5th to 95th percentile range.",
       "chartType": "line_with_range",
       "data": {
-        "series": [
-          {
-            "line": {
-              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            },
-            "rangeLow": {
-              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            },
-            "rangeHigh": {
-              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            }
-          }
-        ]
+        "variables": [
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile"
+        ],
+        "line": "50th Percentile",
+        "rangeLow": "5th Percentile",
+        "rangeHigh": "95th Percentile"
       }
     }
   ]

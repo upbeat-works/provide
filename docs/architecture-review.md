@@ -575,3 +575,193 @@ GeoJSON, or ixmp4 internals.
 No application files were changed and no application tests were run for this
 review. Record each reply above as accepted (with any comments), deferred or
 rejected, one issue at a time.
+
+---
+
+# Socioeconomic charts: implementation review
+
+**Review date:** 23 September 2026
+**Scope:** The uncommitted socioeconomic chart changes and the shared chart path.
+**Method:** GPT-6 Astra and GPT-6 Sol reviewed independently, then challenged the
+case for removing features. Findings were checked and combined using
+[paranoid bunch](../../../aku-aku/quality-loops.md). Earlier decisions above remain unchanged.
+
+## Finding
+
+The config is still declarative, but several settings appear independent while
+silently overriding one another. That is the main threat to future authors.
+The answer is a small, clear set of supported chart forms, not a general chart
+language or support for every possible combination.
+
+Scatter plots and named bar groups have uses beyond this
+PDF. Source units and explicit variable references also earn their place.
+Scenario panels have been removed following decision 1: the PDF panels were
+examples, and each chart must follow the scenario filter.
+
+## Data flow in three paragraphs
+
+The sector JSON supplies map choices and chart definitions. The page resolves
+country, scenario and year from the URL and asks the API for each chart. The
+map has its own request. Each chart lists full variable names.
+Models and units come from ixmp4, with an explicit unit fallback when absent.
+
+The chart loader chooses either fixed regions, known child regions, or NUTS
+regions within the selected country. It reads each distinct variable reference,
+then selects regional values for the chosen scenario and year. It does not
+combine those values into a country total.
+
+The browser adapter builds bars, stacks, lines or points. It also groups bar
+categories and omits missing segments while keeping available values unchanged. The renderer
+chooses a chart component. Downloads open the
+chart's embed URL and load its data again; they do not capture the current figure.
+
+## Issues and decisions
+
+### Socioeconomic 1. Decide whether direct scenario comparison is required
+
+**Priority:** High
+**Decision:** Accepted with comments — user: “we dont need facets/panels ...
+the bar charts will update on scenario filter change.” Applied: removed panel
+config, loading, rendering and panel-only tests. Each of the two bar chart
+definitions now produces one chart for the selected scenario. The scatter plot
+also follows that selection.
+
+At review time, `data.scenarios` made the two bar charts ignore the selected
+scenario. Those definitions made 77 chart source calls per load: 50 for age/sex, 25 for
+age shares and 2 for education. Selected-scenario charts would make 17.
+This is a call count, not a measured latency claim.
+
+That version also had a download fault: each panel has a download control, but its embed
+request reloads the original chart definition and therefore all panels. Each
+panel also chooses its own axis range, which weakens comparison by bar length.
+See [panel loading](../api/scoreboard/charts.ts#L17),
+[panel rendering](../src/routes/(default)/projects/eu-scoreboard/components/charts/ChartRenderer.svelte#L33)
+and [axis range](../src/routes/(default)/projects/eu-scoreboard/components/charts/StackedBarChart.svelte#L21).
+
+**Choice:** Use the existing scenario selector for all three charts, removing
+panel config and the panel response/rendering branches; or keep panels because
+simultaneous comparison is a required task. If kept, use one download for the
+whole set and a shared scale where units match. Do not add per-panel export
+options unless needed.
+
+**Different views:** Removing panels saves real code and requests. Both reviewers
+challenged treating this as an automatic improvement: a selector cannot replace
+seeing scenarios together. Decide the task first. If panels stay, measure source
+cost before adding batching or caching.
+
+### Socioeconomic 2. Simplify regional chart requests
+
+**Priority:** High
+**Decision:** Accepted with comments — simplify instead of keeping the sum
+option and adding checks around it. User: “the country will be taken from the
+selected region” and “we dont need to sum them.” The selected country defines
+which NUTS regions to request for the regional charts; values stay regional.
+Removed the country-total sum branch and its config type. User clarified that
+the age-and-sex chart is broken down by age, not NUTS region. That chart now
+reads the selected region directly and draws age bars split by sex. It has no
+NUTS grouping or sum step.
+
+At review time, combining region grouping and the sum option repeated the
+country total under each region label. Removing the sum option removes that
+conflict and the line/sum conflict. Decision 1 removed scenario panels.
+The category/grouping rules still need to be clear; they do not justify adding
+a general config validation framework.
+
+### Socioeconomic 3. Define bars and stacks explicitly
+
+**Priority:** Medium
+**Decision:** Accepted with comments — user approved `variables`, `bars` and
+`stacks` arrays. Variables are full ixmp4 names, not a base used to build names.
+Bar and stack names match whole subsegments at any position, regardless of
+variable length, and also serve as labels. Array order sets display order.
+The source query keeps each full variable name unchanged.
+
+Applied to the age-and-sex chart. Removed the per-variable category mapping.
+Ordinary stacked charts keep a separate identity for each series even when
+display labels match. Named-bar charts share colours by the explicit stacks
+array. No name patterns, templates or variable-name construction were added.
+
+**Extension accepted:** Use this form across chart types. Plain lines need only
+`variables` and `model`; ranges use `line`, `rangeLow` and `rangeHigh`; scatter
+uses `x` and `y`; bubbles add `size`. Regional stacks use `stacks` with region
+grouping kept separate. Roles match whole subsegments. Removed nested authored
+series references and repeated model/unit fields. The API returns resolved
+references separately from the config. Tests cover parsing, loading and display,
+not the contents of sector files.
+
+**Model decision accepted:** Remove model selection from chart config. Read model
+names from ixmp4 for the data details. Keep rejecting multiple matching rows for
+one scenario and region instead of choosing a model.
+
+### Socioeconomic 4. Keep available age segments when another is missing
+
+**Priority:** Medium
+**Decision:** Accepted with comments — show available segments and omit only
+missing segments. Keep each named bar's place and label, even when all its
+segments are missing. Do not turn missing values into zero. Stack colours stay
+fixed when an earlier segment is absent.
+
+**Further decision accepted:** Percentages must come from the source. Removed
+percentage calculation and `stackMode`; source values stay unchanged when
+segments are missing. This applies to named, regional and scenario bars.
+Live checks of the five configured age variables in AT11–AT13, SSP1, 2050
+returned `million`, not percentages. The regional chart therefore shows counts
+unless its source variables are changed.
+
+**Final decision accepted:** Keep `stackMode: "percent"` after verifying that
+the age variables contain counts. Enable it for the regional age chart. The
+available segments make up 100% of each bar; missing segments are omitted and
+zero-total bars remain blank. Without this option, source values stay unchanged.
+
+### Socioeconomic 5. Remove climate-specific wording from shared bar tooltips
+
+**Priority:** Medium
+**Decision:** Awaiting user.
+
+The shared tooltip says “under the … pathway”, while the bar component supplies
+the segment name. These charts therefore call Female and Age 65+ pathways.
+This wording predates this work, but it shows real coupling in the shared chart
+path. The formatted value also includes the unit while the template adds it again.
+See [tooltip input](../src/routes/(default)/projects/eu-scoreboard/components/charts/StackedBarChart.svelte#L38)
+and [template](../src/routes/(default)/projects/eu-scoreboard/components/charts/popover-bar.html#L7).
+
+**Recommendation:** Show the bar label, segment label and value with its unit once.
+Keep scenario context in the page or panel heading. A generic bar should not
+need sector-specific prose or another config option for this.
+
+### Socioeconomic 6. Make the scatter smoke test's claim match its checks
+
+**Priority:** Low
+**Decision:** Awaiting user.
+
+The test named “renders scatter points without a bubble-size legend” checks a
+figure, axis labels and lack of an error. It checks neither points nor the legend.
+See [test](../src/routes/(default)/projects/eu-scoreboard/components/charts/ChartRenderer.ssr.test.js#L34).
+
+**Recommendation:** Rename it as a scatter rendering smoke test. Keep the useful
+loader and adapter tests. Cover accepted fixes at the boundary that owns them,
+without copying each case into every test layer or fixing config values in tests.
+The earlier 176 passing tests did not establish live source coverage or visual
+correctness.
+
+## Keep without expanding
+
+- Read source units, with the agreed fallback; reject mixed scales rather than
+  silently add values with different units. Add no conversion engine.
+- Keep the shared point renderer for scatter and bubbles, and percentage stacks
+  as a small display calculation.
+- Reuse NUTS membership for regional charts. Do not add a second region catalogue
+  just to make this EU feature appear more general.
+- Keep missing regional values missing and keep explicit variable references.
+  Repeated source names are easier to see than template or inheritance rules.
+- Leave earlier map-model decisions alone. No compatibility layer is needed.
+
+## Review checks
+
+Read the changed code, its callers, download path and tests. Ran direct probes
+through the chart loader and adapter for repeated regional sums, hidden complete
+categories and label collisions. The initial review changed only this report. Decision 1 was then applied to
+code, config and tests; the remaining decisions await the user.
+
+Record each user decision above as accepted (with any comments), deferred or
+rejected. Ask one issue at a time.

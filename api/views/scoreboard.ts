@@ -3,8 +3,9 @@ import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabu
 
 export interface ScoreboardVariableReference {
   variable: string;
-  model: string;
-  unit: string;
+  model?: string;
+  unit?: string;
+  unitFallback?: string;
   label?: string;
 }
 
@@ -23,8 +24,7 @@ export async function readDefaultRunSeries(platform: Pick<Platform, 'iamc'>, ref
   if (!scope.regions.length) return [];
   const df = await platform.iamc.tabulate({
     variable: { name: reference.variable },
-    model: { name: reference.model },
-    unit: { name: reference.unit },
+    ...(reference.unit ? { unit: { name: reference.unit } } : {}),
     run: { defaultOnly: true },
     region: { name_in: scope.regions },
     ...(scope.scenario ? { scenario: { name: scope.scenario } } : {}),

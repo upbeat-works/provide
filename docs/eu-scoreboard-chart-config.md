@@ -8,29 +8,31 @@ A chart has `chartId`, `title`, `description`, `chartType`, optional
 `caseStudyId`, and `data`. `caseStudyId` is the CMS record ID for a linked case
 study. Omit it when there is no linked study.
 
-`data.series` is an array. Each entry names the variable roles for one series:
+Every chart lists full ixmp4 names in `data.variables`. The loader queries
+those names unchanged. Model names and units come from ixmp4;
+`data.unitFallback` supplies a display unit only when the source has none.
+It does not filter or convert values. A variable with more than one source
+unit is rejected. Resolved references and units are returned in `series`,
+separate from the unchanged `definition`.
 
-| `chartType` | Roles per series entry |
+| `chartType` | Fields that assign variables |
 | --- | --- |
-| `line` | `line` |
+| `line` | None: each variable draws a line, in list order. |
 | `line_with_range` | `line`, `rangeLow`, `rangeHigh` |
-| `stacked_bar` | `segment` |
+| `stacked_bar` | `bars` and `stacks` for named bars; `stacks` alone for regional bars. Without either, each variable is a stack segment. |
+| `scatter` | `x`, `y` |
 | `bubble` | `x`, `y`, `size` |
 
-Each role holds one exact variable reference:
+Role names match exact `|`-separated subsegments, at any position. A role must
+match one variable; missing or unclear matches are errors. Every listed
+variable must be used. Role names also label axes and stacks. Plain lines
+and unnamed stacks derive labels from the variable names.
 
-```json
-{ "variable": "<full ixmp4 name>", "model": "<model>", "unit": "<unit>" }
-```
-
-A reference may also set `label` for chart axes, legends and tooltips. It changes
-only the displayed name; queries still use the exact `variable`, `model` and
-`unit`. Without a label, the chart derives one from the variable name.
-
-A line supplies yearly points. A range series groups its central line and bounds.
-Stacked bars use direct segment values in array order; segments must be separate
-parts with matching units. Stacked bars and bubbles use the selected year. Lines
-and ranges show all available years.
+A range chart has one central line and two bounds. A scatter or bubble chart
+has one set of coordinates per region or scenario. Stacked bars use direct
+segment values; segments must be separate parts with matching units.
+Stacked bars, bubbles and scatter plots use the selected year. Lines and
+ranges show all available years.
 
 `data.groupBy` has these possible values. A region-grouped chart may also set
 `data.regions` to an explicit array of region IDs:
@@ -38,11 +40,12 @@ and ranges show all available years.
 | Value | Meaning |
 | --- | --- |
 | omitted | Resolve the series for the selected region itself. |
-| `"region"` | Resolve one mark per configured `data.regions` entry. Without that list, resolve known regions within the selected area. Supported only for `stacked_bar` and `bubble`. |
-| `"scenario"` | Resolve one mark per matching scenario at the selected region and year. Supported only for `stacked_bar` and `bubble`. |
+| `"region"` | Resolve one mark per configured `data.regions` entry. Without that list, resolve known regions within the selected area. Supported for `stacked_bar`, `bubble` and `scatter`. |
+| `"scenario"` | Resolve one mark per matching scenario at the selected region and year. Supported for `stacked_bar`, `bubble` and `scatter`. |
 
-No other value is valid. Grouping by model or year is not supported. Every role
-continues to name one exact model. An explicit region list is fixed and does not
+No other value is valid. Grouping by model or year is not supported. Multiple
+matching rows for one scenario and region are rejected; the loader does not
+choose a model. An explicit region list is fixed and does not
 follow the selected country. Without that list, region membership comes from
 known geography links. The controller must not infer it from name prefixes or
 mix an area total with its child regions.
@@ -51,8 +54,8 @@ Grouped results use `data: [{ "region": { "uid", "label" }, "series": [...] }]`.
 Scenario-grouped results replace `region` with
 `"scenario": { "uid", "label" }`. The selected scenario does not filter a
 scenario-grouped chart. Ungrouped results keep the resolved role array. A grouped
-mark is excluded when a required value is missing. Missing values are not changed
-to zero, and partial stacked totals are not shown. A group with no matching data
+point is excluded when a required coordinate is missing. Bars omit missing
+segments and keep available values unchanged. A group with no matching data
 is empty. Empty charts are omitted from the page, including their title,
 description, frame and spacing.
 
@@ -61,6 +64,52 @@ country, scenario and year. The map indicator is a separate choice and does not
 change chart config. The shared query layer selects default runs. Run version
 selection stays outside this config. No unit conversion or silent model
 selection is added.
+
+## Named bars and stacks
+
+A stacked chart for the selected region can list full variables and name the
+bar and stack subsegments:
+
+```json
+{
+  "variables": [
+    "Population|Female|Age 0-14",
+    "Population|Male|Age 0-14",
+    "Population|Female|Age 15-24",
+    "Population|Male|Age 15-24"
+  ],
+  "unitFallback": "people",
+  "bars": ["Age 0-14", "Age 15-24"],
+  "stacks": ["Female", "Male"]
+}
+```
+
+These are the chart's `data` fields. Each name is both a displayed label and an
+exact `|`-separated subsegment. Position and variable length do not matter. The
+loader queries the listed variable names unchanged. The arrays set bar and stack
+order, independently of variable order. Each variable must match one bar and
+one stack; each pair must have one variable. This form has no `groupBy` or
+`series` list in the authored config. The response supplies a separate `series` list
+with source units for rendering.
+
+For named bars, missing segments are omitted while the other
+segments remain visible. Bar order and stack colours stay fixed. A bar with no
+available segments keeps its label and empty space. A chart with no data is
+still hidden.
+
+## Regional values
+
+Values and units come from ixmp4. By default, the chart displays them unchanged.
+Set `data.stackMode: "percent"` to show each available segment as a share of its
+bar’s available total. Those shares add up to 100%, even if a segment is missing.
+Missing segments are omitted; bars with a zero total stay blank. Source units
+remain in the data details, while the chart displays `%`.
+
+For regional charts, `data.regionLevel` selects NUTS1 or NUTS2 regions within
+the chosen country using the map boundary data. The country sets the query
+scope; returned regional values remain separate.
+
+Scatter plots use equal-size points and need no size variable.
 
 ## Map defaults and ranking
 
@@ -88,109 +137,94 @@ placed in a band. Bins hold no unit; the variable's data supplies it. The rankin
 variable is independent of the selected map indicator.
 
 Testing uses maximum air temperature with provisional limits of 25, 30 and 35.
-Socioeconomic uses heat-vulnerable population with provisional limits of 1, 5
-and 10; its source values are in millions. These limits are examples, not
-validated risk bands. Socioeconomic has no default map indicator because its
-map indicator list is empty.
+Socioeconomic uses `Population|Age 65+` as its default map and ranking variable.
+Its limits of 1, 5 and 10 need review against the indicator's units and data.
+These limits are examples, not validated risk bands.
 
 The ranking view currently uses mock scores; it does not yet read `map.ranking`.
 
 ## Examples
 
-Values in `<…>` are placeholders. `caseStudyId` is optional for every chart type.
+These are `data` objects. All chart types share the same variable list.
+
+A line chart:
 
 ```json
-[
-  {
-    "chartId": "mean-air-temperature",
-    "title": "Mean air temperature",
-    "description": "Annual mean air temperature over time for the selected country and scenario.",
-    "chartType": "line",
-    "data": {
-      "series": [
-        {
-          "line": {
-            "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
-            "model": "RIME-X v1.0.0",
-            "unit": "°C"
-          }
-        }
-      ]
-    }
-  },
-  {
-    "chartId": "example-line-with-range",
-    "title": "Line with range",
-    "description": "Values over time with lower and upper bounds.",
-    "chartType": "line_with_range",
-    "data": {
-      "series": [
-        {
-          "line": { "variable": "<central variable>", "model": "<model>", "unit": "<unit>" },
-          "rangeLow": { "variable": "<lower-bound variable>", "model": "<model>", "unit": "<unit>" },
-          "rangeHigh": { "variable": "<upper-bound variable>", "model": "<model>", "unit": "<unit>" }
-        }
-      ]
-    }
-  },
-  {
-    "chartId": "high-heat-risk-by-country",
-    "title": "High heat risk by country",
-    "description": "Annual high heat risk days for Austria, Germany and France in the selected scenario and year.",
-    "chartType": "stacked_bar",
-    "data": {
-      "groupBy": "region",
-      "regions": ["Austria", "Germany", "France"],
-      "series": [
-        {
-          "segment": {
-            "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
-            "model": "RIME-X v1.0.0",
-            "unit": "days/yr"
-          }
-        }
-      ]
-    }
-  },
-  {
-    "chartId": "temperature-and-heat-risk",
-    "title": "Temperature and heat risk",
-    "description": "Mean air temperature is shown on the horizontal axis, maximum air temperature on the vertical axis, and high heat risk days by bubble size for Austria, Germany and France in the selected scenario and year.",
-    "chartType": "bubble",
-    "data": {
-      "groupBy": "region",
-      "regions": ["Austria", "Germany", "France"],
-      "series": [
-        {
-          "x": { "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile", "model": "RIME-X v1.0.0", "unit": "°C" },
-          "y": { "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile", "model": "RIME-X v1.0.0", "unit": "°C" },
-          "size": { "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile", "model": "RIME-X v1.0.0", "unit": "days/yr" }
-        }
-      ]
-    }
-  }
-]
+{
+  "variables": ["Temperature|Mean"]
+}
 ```
 
-Testing's stacked bar and bubble use Austria, Germany and France in
-`data.regions`. The bar has one positive quantity: high heat risk days. The
-bubble uses mean temperature for its horizontal position, maximum temperature
-for its vertical position and high heat risk days for its size. Country changes
-leave the fixed groups unchanged; scenario and year changes still apply. The
-line and range charts use the selected country.
+A line with a range:
 
-## Socioeconomic examples
+```json
+{
+  "variables": ["Temperature|Mean", "Temperature|Low", "Temperature|High"],
+  "line": "Mean",
+  "rangeLow": "Low",
+  "rangeHigh": "High"
+}
+```
 
-`api/scoreboard/socioeconomic.json` uses IMAGE 3.4 default runs for nine fixed
-R9 world regions. Its charts show rural and urban population, GDP at purchasing
-power parity, rural and urban population vulnerable to heat, and GDP against
-heat-vulnerable population with bubble size set by total population.
+Regional bars, with stack order set independently of variable order:
 
-Use **Socioeconomic / CurrentPolicies_SSP1 / 2050** to see all four charts.
-`CurrentPolicies_SSP2`, `1.5C_SSP1` and `1.5C_SSP2` also have data for 2020,
-2030, 2050 and 2100. Country selection does not change these fixed chart regions.
-Population units are millions; GDP uses billions of 2010 US dollars per year.
+```json
+{
+  "variables": ["Population|Young", "Population|Old"],
+  "groupBy": "region",
+  "regionLevel": "NUTS2",
+  "stacks": ["Old", "Young"]
+}
+```
 
-These examples use R9 data. The sector has an empty `map.indicators` list, with
-scenarios and years under `map` for the shared filters. Adding a regional map
-requires checking NUTS data for the chosen variable.
+A scatter chart:
+
+```json
+{
+  "variables": [
+    "Population|Age 25-44|Educational Attainment Low",
+    "Population|Age 25-44|Educational Attainment High"
+  ],
+  "unitFallback": "people",
+  "groupBy": "region",
+  "regionLevel": "NUTS2",
+  "x": "Educational Attainment Low",
+  "y": "Educational Attainment High"
+}
+```
+
+A bubble chart:
+
+```json
+{
+  "variables": ["Temperature|Mean", "Temperature|Maximum", "Population|Exposed"],
+  "groupBy": "region",
+  "regions": ["Austria", "Germany", "France"],
+  "x": "Mean",
+  "y": "Maximum",
+  "size": "Exposed"
+}
+```
+
+## Socioeconomic charts
+
+`api/scoreboard/socioeconomic.json` defines:
+
+- Population by age and sex: five age-group bars, each split into female and
+  male population for the selected region. It reads those values directly,
+  without NUTS grouping or a country-total calculation.
+- Age distribution by region: one percentage stack per NUTS2 region, split into
+  ages 0–14, 15–24, 25–44, 45–64 and 65+.
+- Educational attainment, ages 25–44: one point per NUTS2 region, with low
+  attainment on X and high attainment on Y.
+
+Each chart follows the selected country, scenario and year. Models and units come from ixmp4,
+with `people` as the fallback. On 23 September 2026, live default-run queries
+for all five `Population|Age …` variables returned unit `million` for AT11, AT12
+and AT13 under SSP1 in 2050. For example, `Population|Age 65+` returned
+0.570025 for AT13. These variables supply counts, not percentages, so the regional age chart uses
+`stackMode: "percent"`. This check
+does not cover other scenarios, years or chart variables.
+
+The map uses `Population|Age 65+` at NUTS2 level. Scenario choices are SSP1–SSP5,
+with SSP1 as the default. Years are 2020, 2030, 2050 and 2100.

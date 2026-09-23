@@ -3,9 +3,6 @@
   import { sortBy } from 'lodash-es';
   import tooltip from '$lib/utils/tooltip';
 
-  // Points sized by a third value and named in place — Dots.svelte draws one
-  // fixed radius and labels only what is highlighted, which is the wrong shape
-  // for a chart where the size carries meaning and every point is identified.
   const { data, xGet, yGet } = getContext('LayerCake');
 
   // Radius in pixels, per datum: the size scale belongs to the chart, which is

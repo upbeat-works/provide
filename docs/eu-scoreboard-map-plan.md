@@ -96,5 +96,6 @@ indicator, country, scenario, year, or sector selection. Comparison maps use
 the current indicator for both sides and share their numeric colour range.
 Chart embeds do not need an indicator and do not request map data.
 
-Socioeconomic uses fixed R9 chart groups and has no configured map indicators.
-Those charts do not use an R9 boundary file.
+Socioeconomic uses `Population|Age 65+` for its map at NUTS2 level.
+Its regional charts use the same NUTS2 boundary data to select regions within
+the chosen country.

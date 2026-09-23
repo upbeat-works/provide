@@ -8,6 +8,7 @@
   import ChartFigure from './ChartFigure.svelte';
   import renderTemplate from '$utils/renderTemplate';
   import popoverTemplate from './popover-bubble.html?raw';
+  import scatterPopoverTemplate from './popover-scatter.html?raw';
 
   export let points = [];
   export let levels = [];
@@ -23,17 +24,18 @@
   export let formatSize = (d) => formatValue(d, sizeUnit);
   export let height = 'h-[460px]';
   export let tooltipLabels = {};
+  export let pointMode = 'bubble';
 
   const padding = { top: 10, right: 96, bottom: 34, left: 62 };
 
   $: colorFor = (risk) => levels.find(({ uid }) => uid === risk)?.color;
-  $: drawablePoints = points.filter(({ x, y, size }) => Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(size));
+  $: drawablePoints = points.filter(({ x, y, size }) => Number.isFinite(x) && Number.isFinite(y) && (pointMode === 'scatter' || Number.isFinite(size)));
   $: maximumSize = Math.max(0, ...drawablePoints.map(({ size }) => size));
   $: data = drawablePoints.map((point) => ({
     ...point,
     color: point.color ?? colorFor(point.risk),
-    r: radiusForArea(point.size, maximumSize),
-    popoverContent: renderTemplate(popoverTemplate, {
+    r: pointMode === 'scatter' ? 6 : radiusForArea(point.size, maximumSize),
+    popoverContent: renderTemplate(pointMode === 'scatter' ? scatterPopoverTemplate : popoverTemplate, {
       label: point.label,
       xLabel: tooltipLabels.x ?? xLabel ?? '',
       yLabel: tooltipLabels.y ?? yLabel ?? '',

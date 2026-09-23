@@ -5,11 +5,67 @@ const ref = (variable, unit = 'K') => ({ variable, model: 'Model', unit });
 const faceted = (indicator) => `${indicator}|Absolute Values (No Change)|Annual|Area|50th Percentile`;
 const result = (chartType, definitionData, data) => ({
   status: 'ready',
-  definition: { chartId: `example-${chartType}`, title: 'Example', description: 'Description', chartType, data: { series: definitionData } },
+  series: definitionData,
+  definition: { chartId: `example-${chartType}`, title: 'Example', description: 'Description', chartType, data: {} },
   data,
 });
 
 describe('chart result adapter', () => {
+  test('keeps distinct stack series separate when their labels match', () => {
+    const adapted = adaptChartResult(result('stacked_bar', [
+      { segment: ref('Urban|Female', 'people') },
+      { segment: ref('Rural|Female', 'people') },
+    ], [{ segment: 2 }, { segment: 3 }]));
+
+    expect(adapted.props.layers).toHaveLength(2);
+    expect(adapted.props.layers[0].uid).not.toBe(adapted.props.layers[1].uid);
+    expect(adapted.props.rows[0].values.map(({ value }) => value)).toEqual([2, 3]);
+    expect(adapted.props.layers[0].color).not.toBe(adapted.props.layers[1].color);
+  });
+
+  test('keeps source shares and zero values unchanged', () => {
+    const input = result('stacked_bar', [{ segment: ref('Young', '%') }, { segment: ref('Old', '%') }], [
+      { region: { uid: 'A', label: 'A' }, series: [{ segment: 10 }, { segment: 30 }] },
+      { region: { uid: 'B', label: 'B' }, series: [{ segment: 0 }, { segment: 0 }] },
+    ]);
+    input.definition.data = { ...input.definition.data, groupBy: 'region' };
+    const adapted = adaptChartResult(input);
+
+    expect(adapted.props.rows).toHaveLength(2);
+    expect(adapted.props.rows[0].values).toMatchObject([{ value: 10, start: 0, end: 10 }, { value: 30, start: 10, end: 40 }]);
+    expect(adapted.props.rows[1].values.map(({ value }) => value)).toEqual([0, 0]);
+    expect(adapted.props.unit).toBe('%');
+    expect(adapted.props.rows[0].total).toBe(40);
+  });
+
+  test('leaves a zero-total percentage bar blank beside a nonzero bar', () => {
+    const input = result('stacked_bar', [{ segment: ref('Count', 'people') }], [
+      { region: { uid: 'A', label: 'A' }, series: [{ segment: 0 }] },
+      { region: { uid: 'B', label: 'B' }, series: [{ segment: 5 }] },
+    ]);
+    input.definition.data = { groupBy: 'region', stackMode: 'percent' };
+    const adapted = adaptChartResult(input);
+    expect(adapted.status).toBe('ready');
+    expect(adapted.props.rows[0]).toMatchObject({ label: 'A', values: [] });
+    expect(adapted.props.rows[1].values).toMatchObject([{ value: 100, start: 0, end: 100 }]);
+  });
+
+  test('plots scatter coordinates without requiring or displaying bubble size', () => {
+    const input = result('scatter', [{ x: ref('Low', 'people'), y: ref('High', 'people') }], [
+      { region: { uid: 'A', label: 'Region A' }, series: [{ x: 0, y: 20 }] },
+      { region: { uid: 'B', label: 'Region B' }, series: [{ x: null, y: 30 }] },
+    ]);
+    input.definition.data.groupBy = 'region';
+    const adapted = adaptChartResult(input);
+
+    expect(adapted.status).toBe('ready');
+    expect(adapted.kind).toBe('scatter');
+    expect(adapted.props.points).toHaveLength(1);
+    expect(adapted.props.points[0]).toMatchObject({ label: 'Region A', x: 0, y: 20 });
+    expect(adapted.props.sizeLabel).toBeUndefined();
+    expect(adapted.props.pointMode).toBe('scatter');
+  });
+
   test('keeps line gaps and joins range values by year', () => {
     const adapted = adaptChartResult(
       result(
@@ -87,7 +143,7 @@ describe('chart result adapter', () => {
     ]);
   });
 
-  test('excludes an incomplete regional stack without dropping complete regions', () => {
+  test('keeps available segments in incomplete regional stacks', () => {
     const grouped = result(
       'stacked_bar',
       [{ segment: ref('A') }, { segment: ref('B') }],
@@ -98,7 +154,8 @@ describe('chart result adapter', () => {
     );
     grouped.definition.data.groupBy = 'region';
     const adapted = adaptChartResult(grouped);
-    expect(adapted.props.rows.map(({ uid }) => uid)).toEqual(['BE']);
+    expect(adapted.props.rows.map(({ uid }) => uid)).toEqual(['AT', 'BE']);
+    expect(adapted.props.rows[0].values).toMatchObject([{ label: 'B', value: 3 }]);
   });
 
   test('uses scenario labels for scenario-grouped stacks', () => {
@@ -117,10 +174,10 @@ describe('chart result adapter', () => {
     ]);
   });
 
-  test('does not show a partial total when a direct segment is missing', () => {
+  test('omits a missing direct segment without hiding the available segment', () => {
     const adapted = adaptChartResult(result('stacked_bar', [{ segment: ref('A', 'people') }, { segment: ref('B', 'people') }], [{ segment: null }, { segment: 7 }]));
-    expect(adapted.status).toBe('empty');
-    expect(adapted.props).toBeUndefined();
+    expect(adapted.status).toBe('ready');
+    expect(adapted.props.rows[0].values).toMatchObject([{ label: 'B', value: 7 }]);
   });
 
   test('rejects negative segments instead of clipping a misleading stack', () => {
@@ -279,7 +336,7 @@ test('samples readable year ticks while retaining both ends', () => {
 });
 
 test('chart visibility includes errors and excludes API and adapter-derived empty results', () => {
-  const definition = { chartId: 'line', chartType: 'line', data: { series: [{ line: ref('line') }] } };
+  const definition = { chartId: 'line', chartType: 'line', data: { variables: ['line'] } };
   expect(isChartVisible({ definition, status: 'empty', data: [] })).toBe(false);
   expect(isChartVisible({ definition, status: 'ready', data: [{ line: [{ year: 2050, value: null }] }] })).toBe(false);
   expect(isChartVisible({ definition, status: 'error', error: 'Failed', data: [] })).toBe(true);

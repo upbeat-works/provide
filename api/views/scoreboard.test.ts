@@ -1,13 +1,25 @@
 import { describe, expect, test } from 'vitest';
 import { readDefaultRunSeries, readScoreboardMapSeries, selectScoreboardData } from './scoreboard';
 
-const reference = { variable: 'Temperature|Mean', model: 'MESMER', unit: 'K' };
+const reference = { variable: 'Temperature|Mean', unit: 'K' };
 
 function dataframe(rows: unknown[][]) {
   return { columns: ['scenario', 'region', 'model', 'unit', '2040', '2050'], values: rows };
 }
 
 describe('scoreboard default-run reader', () => {
+  test('reads the source unit when the reference has no unit filter', async () => {
+    let query;
+    const platform = { iamc: { tabulate: async (request) => {
+      query = request;
+      return dataframe([['Scenario', 'Austria', 'Model', 'thousand people', null, 12]]);
+    } } };
+
+    const rows = await readDefaultRunSeries(platform, { variable: 'Population' }, { scenario: 'Scenario', regions: ['Austria'], year: 2050 });
+
+    expect(query).not.toHaveProperty('unit');
+    expect(rows[0]).toMatchObject({ unit: 'thousand people', '2050': 12 });
+  });
   test('queries a configured map variable without model or unit filters', async () => {
     const calls: unknown[] = [];
     const platform = {
@@ -54,7 +66,6 @@ describe('scoreboard default-run reader', () => {
     expect(calls).toEqual([
       {
         variable: { name: 'Temperature|Mean' },
-        model: { name: 'MESMER' },
         unit: { name: 'K' },
         run: { defaultOnly: true },
         scenario: { name: 'Current Policies' },

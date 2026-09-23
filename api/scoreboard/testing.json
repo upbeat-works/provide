@@ -46,14 +46,8 @@
       "description": "Annual mean air temperature over time for the selected country and scenario.",
       "chartType": "line",
       "data": {
-        "series": [
-          {
-            "line": {
-              "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            }
-          }
+        "variables": [
+          "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile"
         ]
       }
     },
@@ -63,17 +57,18 @@
       "description": "Annual high heat risk days for Austria, Germany and France in the selected scenario and year.",
       "chartType": "stacked_bar",
       "data": {
-        "series": [
-          {
-            "segment": {
-              "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "days/yr"
-            }
-          }
-        ],
         "groupBy": "region",
-        "regions": ["Austria", "Germany", "France"]
+        "regions": [
+          "Austria",
+          "Germany",
+          "France"
+        ],
+        "variables": [
+          "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile"
+        ],
+        "stacks": [
+          "High Heat Risk"
+        ]
       }
     },
     {
@@ -82,27 +77,20 @@
       "description": "Mean air temperature is shown on the horizontal axis, maximum air temperature on the vertical axis, and high heat risk days by bubble size for Austria, Germany and France in the selected scenario and year.",
       "chartType": "bubble",
       "data": {
-        "series": [
-          {
-            "x": {
-              "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            },
-            "y": {
-              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            },
-            "size": {
-              "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "days/yr"
-            }
-          }
-        ],
         "groupBy": "region",
-        "regions": ["Austria", "Germany", "France"]
+        "regions": [
+          "Austria",
+          "Germany",
+          "France"
+        ],
+        "variables": [
+          "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+          "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile"
+        ],
+        "x": "Mean Air Temperature",
+        "y": "Maximum Air Temperature",
+        "size": "High Heat Risk"
       }
     },
     {
@@ -111,25 +99,14 @@
       "description": "Annual maximum air temperature with the 5th to 95th percentile range.",
       "chartType": "line_with_range",
       "data": {
-        "series": [
-          {
-            "line": {
-              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            },
-            "rangeLow": {
-              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            },
-            "rangeHigh": {
-              "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile",
-              "model": "RIME-X v1.0.0",
-              "unit": "°C"
-            }
-          }
-        ]
+        "variables": [
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile"
+        ],
+        "line": "50th Percentile",
+        "rangeLow": "5th Percentile",
+        "rangeHigh": "95th Percentile"
       }
     }
   ]

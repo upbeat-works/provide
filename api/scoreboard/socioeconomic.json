@@ -1,160 +1,120 @@
 {
   "map": {
-    "defaultIndicator": null,
+    "defaultIndicator": "Population|Age 65+",
     "ranking": {
-      "variable": "Population|Vulnerable|Heat",
-      "bins": [1, 5, 10]
+      "variable": "Population|Age 65+",
+      "bins": [
+        1,
+        5,
+        10
+      ]
     },
-    "indicators": [],
-    "scenarios": [
-      { "id": "CurrentPolicies_SSP1" },
-      { "id": "CurrentPolicies_SSP2" },
-      { "id": "1.5C_SSP1" },
-      { "id": "1.5C_SSP2" }
+    "indicators": [
+      {
+        "name": "Population|Age 65+",
+        "variable": "Population|Age 65+",
+        "type": "choropleth",
+        "level": "NUTS2"
+      }
     ],
-    "years": [2020, 2030, 2050, 2100]
+    "scenarios": [
+      {
+        "id": "SSP1"
+      },
+      {
+        "id": "SSP2"
+      },
+      {
+        "id": "SSP3"
+      },
+      {
+        "id": "SSP4"
+      },
+      {
+        "id": "SSP5"
+      }
+    ],
+    "years": [
+      2020,
+      2030,
+      2050,
+      2100
+    ]
   },
   "charts": [
     {
-      "chartId": "population-by-region",
-      "title": "Population by region",
-      "description": "Rural and urban population in nine fixed world regions for the selected scenario and year. The country choice does not change these regions.",
+      "chartId": "population-by-age-and-sex",
+      "title": "Population by age and sex",
+      "description": "Female and male population in each age group for the selected country, scenario and year.",
       "chartType": "stacked_bar",
       "data": {
-        "series": [
-          {
-            "segment": {
-              "variable": "Population|Rural",
-              "model": "IMAGE 3.4",
-              "unit": "million"
-            }
-          },
-          {
-            "segment": {
-              "variable": "Population|Urban",
-              "model": "IMAGE 3.4",
-              "unit": "million"
-            }
-          }
+        "variables": [
+          "Population|Female|Age 0-14",
+          "Population|Male|Age 0-14",
+          "Population|Female|Age 15-24",
+          "Population|Male|Age 15-24",
+          "Population|Female|Age 25-44",
+          "Population|Male|Age 25-44",
+          "Population|Female|Age 45-64",
+          "Population|Male|Age 45-64",
+          "Population|Female|Age 65+",
+          "Population|Male|Age 65+"
         ],
-        "groupBy": "region",
-        "regions": [
-          "China (R9)",
-          "European Union (R9)",
-          "India (R9)",
-          "Latin America (R9)",
-          "Middle East & Africa (R9)",
-          "Other Asia (R9)",
-          "Other OECD (R9)",
-          "Reforming Economies (R9)",
-          "USA (R9)"
+        "unitFallback": "people",
+        "bars": [
+          "Age 0-14",
+          "Age 15-24",
+          "Age 25-44",
+          "Age 45-64",
+          "Age 65+"
+        ],
+        "stacks": [
+          "Female",
+          "Male"
         ]
       }
     },
     {
-      "chartId": "gdp-by-region",
-      "title": "GDP by region",
-      "description": "GDP at purchasing power parity in nine fixed world regions for the selected scenario and year. The country choice does not change these regions.",
+      "chartId": "age-distribution-by-region",
+      "title": "Age distribution by region",
+      "description": "Share of the available population data in each age group within each NUTS2 region of the selected country, scenario and year.",
       "chartType": "stacked_bar",
       "data": {
-        "series": [
-          {
-            "segment": {
-              "variable": "GDP|PPP",
-              "model": "IMAGE 3.4",
-              "unit": "billion USD_2010/yr"
-            }
-          }
-        ],
         "groupBy": "region",
-        "regions": [
-          "China (R9)",
-          "European Union (R9)",
-          "India (R9)",
-          "Latin America (R9)",
-          "Middle East & Africa (R9)",
-          "Other Asia (R9)",
-          "Other OECD (R9)",
-          "Reforming Economies (R9)",
-          "USA (R9)"
+        "regionLevel": "NUTS2",
+        "stackMode": "percent",
+        "variables": [
+          "Population|Age 0-14",
+          "Population|Age 15-24",
+          "Population|Age 25-44",
+          "Population|Age 45-64",
+          "Population|Age 65+"
+        ],
+        "unitFallback": "people",
+        "stacks": [
+          "Age 0-14",
+          "Age 15-24",
+          "Age 25-44",
+          "Age 45-64",
+          "Age 65+"
         ]
       }
     },
     {
-      "chartId": "vulnerable-population-heat-by-region",
-      "title": "Population vulnerable to heat by region",
-      "description": "Rural and urban population vulnerable to heat in nine fixed world regions for the selected scenario and year. The country choice does not change these regions.",
-      "chartType": "stacked_bar",
+      "chartId": "education-by-region",
+      "title": "Educational attainment, ages 25–44",
+      "description": "Population aged 25–44 with low educational attainment on the horizontal axis and high educational attainment on the vertical axis. Each point represents a NUTS2 region in the selected country, scenario and year.",
+      "chartType": "scatter",
       "data": {
-        "series": [
-          {
-            "segment": {
-              "variable": "Population|Vulnerable|Heat|Rural",
-              "model": "IMAGE 3.4",
-              "unit": "million"
-            }
-          },
-          {
-            "segment": {
-              "variable": "Population|Vulnerable|Heat|Urban",
-              "model": "IMAGE 3.4",
-              "unit": "million"
-            }
-          }
-        ],
         "groupBy": "region",
-        "regions": [
-          "China (R9)",
-          "European Union (R9)",
-          "India (R9)",
-          "Latin America (R9)",
-          "Middle East & Africa (R9)",
-          "Other Asia (R9)",
-          "Other OECD (R9)",
-          "Reforming Economies (R9)",
-          "USA (R9)"
-        ]
-      }
-    },
-    {
-      "chartId": "gdp-population-heat-risk",
-      "title": "GDP, population and heat vulnerability",
-      "description": "GDP at purchasing power parity is shown on the horizontal axis, heat-vulnerable population on the vertical axis, and total population by bubble size in nine fixed world regions for the selected scenario and year. The country choice does not change these regions.",
-      "chartType": "bubble",
-      "data": {
-        "series": [
-          {
-            "x": {
-              "variable": "GDP|PPP",
-              "model": "IMAGE 3.4",
-              "unit": "billion USD_2010/yr",
-              "label": "GDP (PPP)"
-            },
-            "y": {
-              "variable": "Population|Vulnerable|Heat",
-              "model": "IMAGE 3.4",
-              "unit": "million",
-              "label": "Population vulnerable to heat"
-            },
-            "size": {
-              "variable": "Population",
-              "model": "IMAGE 3.4",
-              "unit": "million"
-            }
-          }
+        "regionLevel": "NUTS2",
+        "variables": [
+          "Population|Age 25-44|Educational Attainment Low",
+          "Population|Age 25-44|Educational Attainment High"
         ],
-        "groupBy": "region",
-        "regions": [
-          "China (R9)",
-          "European Union (R9)",
-          "India (R9)",
-          "Latin America (R9)",
-          "Middle East & Africa (R9)",
-          "Other Asia (R9)",
-          "Other OECD (R9)",
-          "Reforming Economies (R9)",
-          "USA (R9)"
-        ]
+        "unitFallback": "people",
+        "x": "Educational Attainment Low",
+        "y": "Educational Attainment High"
       }
     }
   ]

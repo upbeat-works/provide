@@ -2,7 +2,6 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { loadFromStrapi, loadScoreboardChart, loadScoreboardMap } from '$utils/apis.js';
 import { loadChart, loadMap, selectionsFromUrl } from './controller.server.js';
 import { getScoreboard } from './controller.js';
-import { GET as getMap } from '../../../app/scoreboard/map/+server.js';
 
 vi.mock('$utils/apis.js', () => ({ loadScoreboardChart: vi.fn(), loadScoreboardMap: vi.fn(), loadFromStrapi: vi.fn() }));
 
@@ -62,12 +61,21 @@ test('reads the map indicator with the shared chart choices', () => {
   expect(selectionsFromUrl(url)).toEqual(selections);
 });
 
-test.each(['', '&indicator=Mean%20Air%20Temperature'])('returns an unavailable map for a charts-only sector without an upstream request', async (indicator) => {
-  const url = new URL(`https://example.test/app/scoreboard/map?sector=socioeconomic&scenario=SSP2&region=Austria&year=2050${indicator}`);
+test('returns an unavailable map for a charts-only sector without an upstream request', async () => {
+  const chartsOnly = { ...scoreboard, indicator: undefined };
 
-  const response = await getMap({ fetch: vi.fn(), url });
-
-  expect(response.status).toBe(200);
-  await expect(response.json()).resolves.toEqual({ status: 'unavailable', values: [], metadata: null });
+  await expect(loadMap({ scoreboard: chartsOnly, selections, fetch: vi.fn() })).resolves.toEqual({ status: 'unavailable', values: [], metadata: null });
   expect(loadScoreboardMap).not.toHaveBeenCalled();
+});
+
+test('uses the configured map indicator when the request omits it', async () => {
+  const configured = { sector: { uid: 'example' }, indicator: { name: 'Population' } };
+  const fetch = vi.fn();
+  const choices = { scenario: 'Scenario B', region: 'Austria', year: '2050' };
+  loadScoreboardMap.mockResolvedValue({ status: 'ready', values: [{ region: 'AT11', value: 12 }] });
+
+  await expect(loadMap({ scoreboard: configured, selections: choices, fetch })).resolves.toMatchObject({ status: 'ready' });
+  expect(loadScoreboardMap).toHaveBeenCalledWith(fetch, {
+    sector: 'example', indicator: 'Population', ...choices,
+  });
 });

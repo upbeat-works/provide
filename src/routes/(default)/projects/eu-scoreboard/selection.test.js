@@ -1,9 +1,15 @@
 import { describe, expect, test } from 'vitest';
-import { getScoreboard } from './controller.js';
 import { createScoreboardOptions, resolveSelection } from './selection.js';
 
 describe('scoreboard choices', () => {
-  const scoreboard = getScoreboard('testing');
+  const scoreboard = {
+    map: {
+      defaultIndicator: 'Maximum Air Temperature',
+      indicators: [{ name: 'Maximum Air Temperature' }, { name: 'Mean Air Temperature' }],
+      scenarios: [{ id: 'CurrentPolicies' }, { id: '1.5C' }],
+      years: [2020, 2030, 2050, 2100],
+    },
+  };
 
   test('builds choices from the selected sector and shared country list', () => {
     const options = createScoreboardOptions(scoreboard, { CurrentPolicies: 'Current policies' });

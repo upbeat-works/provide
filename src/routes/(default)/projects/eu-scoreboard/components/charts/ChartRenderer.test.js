@@ -44,7 +44,7 @@ test.each([
     },
   ],
 ])('hides an empty %s chart without showing an error', (chartType, series) => {
-  const result = { definition: { chartId: `empty-${chartType}`, chartType, data: { series: [series] } }, status: 'empty', data: [] };
+  const result = { definition: { chartId: `empty-${chartType}`, chartType, data: {} }, status: 'empty', series: [series], data: [] };
   const { container } = render(ChartRenderer, { result });
   expect(container.querySelector('figure')).toBeNull();
   expect(screen.queryByRole('alert')).toBeNull();
