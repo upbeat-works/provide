@@ -12,7 +12,7 @@
   import { page } from '$app/stores';
   import { PATH_DOCUMENTATION, PATH_EU_SCOREBOARD, PATH_PROJECTS } from '$config';
   import { RISK_CLASSES, riskRankingFor, riskValuesFor } from './components/scores.js';
-  import { SCOREBOARD_COUNTRIES } from './controller.js';
+  import { resolveScoreboardChoices, SCOREBOARD_COUNTRIES } from './controller.js';
 
   export let data;
 
@@ -66,8 +66,10 @@
 
   function selectionParams(data, region) {
     const params = new URLSearchParams({ sector: data.scoreboard.sector.uid });
+    const defaultIndicator = resolveScoreboardChoices(data.scoreboard).indicator;
     for (const key of ['indicator', 'scenario', 'region', 'year']) {
       let value = data.selection?.[key]?.uid;
+      if (key === 'indicator') value = defaultIndicator;
       if (key === 'region' && region) value = region;
       if (value !== undefined && value !== null) params.set(key, value);
     }

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Page from './page.test.fixture.svelte';
 import { getScoreboard } from './controller.js';
+import { load } from './+layout.js';
 
 const { goto, invalidate } = vi.hoisted(() => ({ goto: vi.fn(), invalidate: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto, invalidate }));
@@ -75,7 +76,7 @@ test('shows a five-country mock ranking from the same values as the map', () => 
     expect(row.textContent).toContain(String(value.value));
     const url = new URL(link.href);
     expect(url.searchParams.get('region')).toBe(value.label);
-    expect(url.searchParams.get('indicator')).toBe('Maximum Air Temperature');
+    expect(url.searchParams.get('indicator')).toBe('High Heat Risk');
     expect(url.searchParams.get('sector')).toBe('heat-stress');
     expect(url.searchParams.get('scenario')).toBe('CurrentPolicies');
     expect(url.searchParams.get('year')).toBe('2050');
@@ -239,4 +240,26 @@ test('opens an unscored country polygon using the shared country list', async ()
 
   expect(goto).toHaveBeenCalledOnce();
   expect(new URL(goto.mock.calls[0][0], 'http://localhost').searchParams.get('region')).toBe('Turkey');
+});
+
+test('country navigation from ranking resets a previously selected indicator', async () => {
+  const scoreboard = getScoreboard('testing', 'Mean Air Temperature');
+  const data = load({
+    data: { scoreboard },
+    url: new URL('http://localhost/projects/eu-scoreboard?sector=testing&indicator=Mean%20Air%20Temperature&scenario=1.5C&region=Austria&year=2100'),
+  });
+  render(Page, { data });
+
+  await fireEvent.click(screen.getByRole('button', { name: 'Select Turkey' }));
+
+  const mapUrl = new URL(goto.mock.calls[0][0], 'http://localhost');
+  const rankingLink = rankingRows()[0].querySelector('a');
+  for (const [url, country] of [[mapUrl, 'Turkey'], [new URL(rankingLink.href), rankingLink.textContent]]) {
+    const destination = load({ data: { scoreboard }, url });
+    expect(destination.selection.indicator.uid).toBe('Maximum Air Temperature');
+    expect(destination.selection.region.uid).toBe(country);
+    expect(destination.selection.scenario.uid).toBe('1.5C');
+    expect(destination.selection.year.uid).toBe('2100');
+    expect(url.searchParams.get('sector')).toBe('testing');
+  }
 });
