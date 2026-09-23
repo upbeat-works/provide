@@ -21,10 +21,10 @@
     { uid: 'highest', label: 'Highest risk countries' },
     { uid: 'lowest', label: 'Lowest ranked countries' },
   ];
-  // The map's own classes, read High -> very low so the ramp runs the same way
-  // as the leaderboard under it. Same source as the choropleth, so the two
-  // cannot drift apart.
-  const legend = legendOf(RISK_CLASSES, { highestFirst: true });
+  // The map's own classes, read low -> high so the ramp runs pale to deep, the
+  // way a scale is read. Same source as the choropleth, so the two cannot drift
+  // apart.
+  const legend = legendOf(RISK_CLASSES);
   export let scale = legend.scale;
   export let scaleLabels = legend.labels;
 
@@ -70,7 +70,7 @@
   {#if open}
     <div class="flex flex-col gap-5 px-6 pb-5 pt-3">
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-semibold text-theme-stronger">{hazard}</p>
+        <p class="text-lg font-bold text-theme-stronger">{hazard}</p>
         <RiskLegend {scale} labels={scaleLabels} />
       </div>
 

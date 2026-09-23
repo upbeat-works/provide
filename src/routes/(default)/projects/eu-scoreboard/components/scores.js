@@ -1,12 +1,13 @@
 // The overview's mock scores drive both its map and ranking.
 
-// Composite risk score, 0–100. Classes ascending; the colours are the ones the
-// ranking panel's ramp already used (they are not in color-tokens-light.json).
+// Composite risk score, 0–100. Classes ascending; a yellow-to-orange ramp, so
+// the legend reads as one warm run rather than crossing into red and purple
+// (they are not in color-tokens-light.json).
 export const RISK_CLASSES = [
   { min: 0, label: 'Very Low', color: '#FBD95A' },
-  { min: 40, label: 'Low', color: '#F2AF4B' },
-  { min: 60, label: 'Medium', color: '#DC6360' },
-  { min: 80, label: 'High', color: '#8A55BF' },
+  { min: 40, label: 'Low', color: '#F5C152' },
+  { min: 60, label: 'Medium', color: '#F2AF4B' },
+  { min: 80, label: 'High', color: '#E8903F' },
 ];
 
 // Keyed on the alpha-3 geo id the NUTS country features carry. Covers the

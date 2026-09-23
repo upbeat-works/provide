@@ -1,6 +1,22 @@
+import { interpolateLab, piecewise } from 'd3-interpolate';
+import colorTokens from '$styles/color-tokens-light.json';
 import { parseVariable } from '../../../../../../../api/conventions.ts';
 
-const COLORS = ['#006c78', '#e76f00', '#65832e', '#b07b00', '#a63d68', '#4d6cb3'];
+// The palette explore's charts use: `$THEME.color.category` is this token file's
+// `category` (see ThemeProvider), so importing it here puts both views' charts
+// on one set of hues rather than a second, private list.
+const CATEGORY = colorTokens.category;
+const CATEGORY_COUNT = Object.keys(CATEGORY.base).length;
+
+// One hue per series, in order — the same rule colorScenarios applies in explore.
+const seriesColor = (index) => CATEGORY.base[index % CATEGORY_COUNT];
+
+// A stack's segments are cumulative bands of one quantity rather than unrelated
+// series, so they shade one hue instead of taking several. That is the ramp
+// explore gives a corridor — colorScenarios builds the same weakest/base/
+// strongest interpolator for its bands.
+const stackRamp = piecewise(interpolateLab, [CATEGORY.weakest[0], CATEGORY.base[0], CATEGORY.strongest[0]]);
+const stackColor = (index, count) => stackRamp(count < 2 ? 1 : index / (count - 1));
 
 const variableLabel = (reference) => {
   const label = reference?.label?.trim();
@@ -70,7 +86,7 @@ function lineProps(definition, data) {
     return {
       uid: String(index),
       label: variableLabel(entry.line),
-      color: COLORS[index % COLORS.length],
+      color: seriesColor(index),
       values: values.map(({ year, value }) => {
         const point = { year, value };
         const min = lows.get(year);
@@ -97,10 +113,13 @@ function stackedRow(region, data, layers) {
   return { uid: region?.uid ?? 'selection', label: region?.label ?? 'Selected region', total, values };
 }
 
+// Height sets the band step, and the step sets both the bar and the gap between
+// rows — so a shorter chart thins the bars and closes the spacing together,
+// which paddingInner alone cannot do (it trades one against the other).
 function barHeight(rows) {
-  if (rows.length <= 5) return 'h-[420px]';
-  if (rows.length <= 10) return 'h-[560px]';
-  return 'h-[720px]';
+  if (rows.length <= 5) return 'h-[300px]';
+  if (rows.length <= 10) return 'h-[420px]';
+  return 'h-[560px]';
 }
 
 function groupFor(entry, groupBy) {
@@ -113,7 +132,7 @@ const isGrouped = (groupBy) => groupBy === 'region' || groupBy === 'scenario';
 
 function stackedBarProps(definition, data, selection) {
   const definitions = seriesDefinitions(definition);
-  const layers = definitions.map((entry, index) => ({ uid: String(index), label: variableLabel(entry.segment), color: COLORS[index % COLORS.length] }));
+  const layers = definitions.map((entry, index) => ({ uid: String(index), label: variableLabel(entry.segment), color: stackColor(index, definitions.length) }));
   let rows;
   const groupBy = definition.data.groupBy;
   if (isGrouped(groupBy)) {
@@ -154,7 +173,8 @@ function bubbleProps(definition, data) {
       x: values?.x ?? null,
       y: values?.y ?? null,
       size: values?.size ?? null,
-      color: COLORS[index % COLORS.length],
+      // Same ramp the stacked bar uses, so the two charts' legends match.
+      color: stackColor(index, definitions.length),
     };
   };
   let points;
@@ -166,6 +186,9 @@ function bubbleProps(definition, data) {
   }
   return {
     points: points.filter(({ x: xValue, y: yValue, size: sizeValue }) => Number.isFinite(xValue) && Number.isFinite(yValue) && Number.isFinite(sizeValue) && sizeValue > 0),
+    // One swatch per series, the way the stacked bar lists its segments — the
+    // legend otherwise showed only the dot-size note and never the colours.
+    levels: definitions.map((entry, index) => ({ uid: String(index), label: variableLabel(entry.x), color: stackColor(index, definitions.length) })),
     xLabel: axisLabel(x),
     yLabel: axisLabel(y),
     sizeLabel: axisLabel(size),

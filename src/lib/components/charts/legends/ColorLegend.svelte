@@ -24,7 +24,7 @@
           {:else if kind === 'note'}
             <i title={label} class="block h-1.5 w-1.5 rounded-full bg-contour-weakest" />
           {:else}
-            <i title={label} style:width="10px" style:height="14px" class="block bg-surface-weakest" style:background-color={color} />
+            <i title={label} style:width="12px" style:height="12px" class="block rounded-sm bg-surface-weakest" style:background-color={color} />
           {/if}
         </dt>
         <dd><span class="{kind === 'note' ? 'text-contour-weak' : labelClass} {textSize}">{label}</span></dd>

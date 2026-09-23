@@ -4,13 +4,19 @@ import socioeconomic from './socioeconomic.json';
 import { SCOREBOARD_COUNTRIES, scoreboardCountry } from './countries.ts';
 
 export const SCOREBOARD_INSTANCE = 'sparccle-internal';
-export const SECTORS = [
-  { uid: 'heat-stress', label: 'Heat stress' },
-  { uid: 'testing', label: 'Testing' },
-  { uid: 'socioeconomic', label: 'Socioeconomic' },
+
+// One list pairs each sector with its definition, so a sector cannot reach
+// getScoreboard without one — the two used to be declared separately and a
+// sector added to SECTORS alone crashed every scoreboard page load.
+const SECTOR_DEFINITIONS = [
+  { uid: 'heat-stress', label: 'Heat stress', definition: heatStress },
+  { uid: 'testing', label: 'Testing', definition: testing },
+  { uid: 'socioeconomic', label: 'Socioeconomic', definition: socioeconomic },
 ];
 
-const definitionsBySector = { 'heat-stress': heatStress, testing, socioeconomic };
+export const SECTORS = SECTOR_DEFINITIONS.map(({ uid, label }) => ({ uid, label }));
+
+const definitionsBySector = Object.fromEntries(SECTOR_DEFINITIONS.map(({ uid, definition }) => [uid, definition]));
 
 export function getScoreboard(sectorId, indicatorName) {
   const sector = SECTORS.find(({ uid }) => uid === sectorId) ?? SECTORS[0];

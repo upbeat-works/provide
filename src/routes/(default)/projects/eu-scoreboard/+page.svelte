@@ -51,7 +51,6 @@
   ];
   const countriesByIso3 = new Map(SCOREBOARD_COUNTRIES.map((country) => [country.iso3, country]));
   let contentRef;
-  let activeSlug;
   $: hazard = data.scoreboard.sector.label;
   $: chartDefinitions = data.scoreboard.charts;
   $: indicators = data.scoreboard.map.indicators.map(({ name }) => name);
@@ -106,7 +105,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
-    <SectionIndex {sections} {contentRef} bind:activeSlug />
+    <SectionIndex {sections} {contentRef} />
     <div class="mt-8 flex flex-col items-start gap-5">
       <CopyLink />
       <Button href={`/${PATH_DOCUMENTATION}`} variant="secondary" class="w-full justify-between text-left">
@@ -122,7 +121,6 @@
       slug="what-the-scoreboard-shows"
       title="What the scoreboard shows"
       description="A single, comparable picture of climate risk across Europe. Countries are ranked for the hazard, scenario and year you select, so the view answers one question: where is risk highest?"
-      accent={activeSlug === 'what-the-scoreboard-shows'}
     />
 
     <ScoreboardSection
@@ -130,7 +128,6 @@
       slug="how-the-score-is-built"
       title="How the score is built"
       description="Each country receives a composite score from 0 to 100 for the selected hazard. The score combines that hazard's underlying indicators into one number so countries can be placed on the same scale."
-      accent={activeSlug === 'how-the-score-is-built'}
     >
       <div class="max-w-3xl rounded bg-theme-50 px-5 py-4">
         <p class="text-sm font-semibold text-theme-stronger">Scores and indicator values are different scales</p>
@@ -143,7 +140,6 @@
       slug="scenarios-explained"
       title="Scenarios explained"
       description="Every view is tied to one scenario. Switching scenario changes the assumptions about future emissions, not the way the score is calculated."
-      accent={activeSlug === 'scenarios-explained'}
     >
       <div class="grid max-w-3xl gap-4 sm:grid-cols-2">
         {#each scenarios as { tag, tagClass, title, description }}
@@ -161,7 +157,6 @@
       slug="indicators"
       title={`${hazard} indicators for Europe and individual countries`}
       description="The scoreboard compares countries on one score. To see the indicators behind that score, and how each one changes over time, switch to Explore indicators and choose a country."
-      accent={activeSlug === 'indicators'}
       divider={false}
     >
       <ul class="flex max-w-3xl flex-wrap gap-2">

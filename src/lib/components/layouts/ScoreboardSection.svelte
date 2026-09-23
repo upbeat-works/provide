@@ -2,14 +2,14 @@
   import { kebabCase } from 'lodash-es';
 
   // One section of a scoreboard view's article column: eyebrow + heading above
-  // the content, with the index nav beside it in the layout's sidebar. `accent`
-  // marks the section the index is currently pointing at.
+  // the content, with the index nav beside it in the layout's sidebar. Which
+  // section is in view is marked on the index itself, the way the site's other
+  // side navs do it — not with a rule beside the heading.
   export let title = undefined;
   export let description = undefined;
   export let eyebrow = undefined;
   export let slug = undefined;
   export let divider = true;
-  export let accent = false;
 
   $: id = slug ?? (title ? kebabCase(title) : undefined);
 </script>
@@ -19,7 +19,7 @@
     <p class="text-xs uppercase tracking-widest font-semibold text-contour-weak">{eyebrow}</p>
   {/if}
   {#if title}
-    <h2 class="text-2xl leading-snug text-theme-stronger border-l-2 pl-4 -ml-4 transition-colors" class:border-theme-base={accent} class:border-transparent={!accent}>{title}</h2>
+    <h2 class="text-2xl leading-snug text-theme-stronger">{title}</h2>
   {/if}
   {#if description}
     <p class="text-sm leading-relaxed text-text-weaker max-w-3xl">{description}</p>

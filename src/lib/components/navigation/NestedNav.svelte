@@ -8,6 +8,9 @@
   export let contentRef;
   export let activeIndex = 0;
   export let title = '';
+  // Static mode has no scroll spy of its own — a caller that owns one is told
+  // about a click, so the marker can be pinned through the smooth scroll.
+  export let onNavigate = undefined;
 
   // Holds key/values for all open sections
   let openSections = {};
@@ -25,6 +28,10 @@
   let dynamicNavSections;
 
   function handleNavClick(targetIndex) {
+    if (onNavigate) {
+      onNavigate(targetIndex);
+      return;
+    }
     spy?.click(targetIndex);
   }
 

@@ -18,9 +18,13 @@
   export let yUnit = undefined;
   export let sizeUnit = undefined;
   export let xDomain = undefined;
+  // Tooltips name each value, so they carry the unit; the axes already caption
+  // it, so their ticks are bare numbers rather than repeating it on every one.
   export let formatX = (d) => formatValue(d, xUnit);
   export let formatY = (d) => formatValue(d, yUnit);
   export let formatSize = (d) => formatValue(d, sizeUnit);
+  export let formatXTick = (d) => formatValue(d, xUnit, { addSuffix: false });
+  export let formatYTick = (d) => formatValue(d, yUnit, { addSuffix: false });
   export let height = 'h-[460px]';
   export let tooltipLabels = {};
 
@@ -54,8 +58,8 @@
   <div class="h-full w-full animate-defer-visibility">
     <LayerCake {padding} x="x" y="y" {data} xDomain={resolvedXDomain} {yDomain}>
       <Svg>
-        <AxisX ticks={5} formatTick={formatX} snapTicks={true} />
-        <AxisY ticks={8} formatTick={formatY} ticksHighlighted={[]} labelX={14} />
+        <AxisX ticks={5} formatTick={formatXTick} snapTicks={true} />
+        <AxisY ticks={8} formatTick={formatYTick} ticksHighlighted={[]} labelX={14} />
         <BubbleLayer />
       </Svg>
     </LayerCake>
