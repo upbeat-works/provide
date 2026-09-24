@@ -64,14 +64,21 @@ export function splitLineAtGaps(entry) {
 }
 
 function lineProps(definition, data) {
-  const series = seriesDefinitions(definition).map((entry, index) => {
-    const values = data[index]?.line ?? [];
-    const lows = rangeByYear(data[index]?.rangeLow);
-    const highs = rangeByYear(data[index]?.rangeHigh);
+  const definitions = seriesDefinitions(definition);
+  const groupBy = definition.data.groupBy;
+  const entries = isGrouped(groupBy)
+    ? data.flatMap((group) => definitions.map((entry, index) => ({ entry, values: group.series?.[index], group: groupFor(group, groupBy), index })))
+    : definitions.map((entry, index) => ({ entry, values: data[index], index }));
+  const series = entries.map(({ entry, values: entryValues, group, index }, seriesIndex) => {
+    const values = entryValues?.line ?? [];
+    const lows = rangeByYear(entryValues?.rangeLow);
+    const highs = rangeByYear(entryValues?.rangeHigh);
+    let label = variableLabel(entry.line);
+    if (group) label = definitions.length === 1 ? group.label : `${group.label} — ${label}`;
     return {
-      uid: String(index),
-      label: variableLabel(entry.line),
-      color: COLORS[index % COLORS.length],
+      uid: group ? `${group.uid}-${index}` : String(index),
+      label,
+      color: COLORS[seriesIndex % COLORS.length],
       values: values.map(({ year, value }) => {
         const point = { year, value };
         const min = lows.get(year);
@@ -81,7 +88,7 @@ function lineProps(definition, data) {
         return point;
       }),
     };
-  });
+  }).filter(({ values }) => values.some(({ value }) => Number.isFinite(value)));
   const domainValues = series.flatMap(({ values }) => values.flatMap(({ value, min, max }) => [value, min, max]));
   const unit = roleReference(definition, 'line')?.unit;
   return { series, yLabel: unit, unit, yDomain: paddedDomain(domainValues, 0.06, 0.06) };
@@ -225,7 +232,7 @@ export function adaptChartResult(result, selection = {}) {
   }
   if (groupBy !== undefined && !isGrouped(groupBy)) return { ...base, status: 'error', error: `Unsupported chart grouping: ${groupBy}` };
   const pointChart = definition.chartType === 'bubble' || definition.chartType === 'scatter';
-  if (isGrouped(groupBy) && definition.chartType !== 'stacked_bar' && !pointChart) {
+  if (isGrouped(groupBy) && definition.chartType !== 'stacked_bar' && !pointChart && !(groupBy === 'region' && definition.chartType === 'line')) {
     return { ...base, status: 'error', error: `${groupBy} grouping is not supported for ${definition.chartType}.` };
   }
   if (!pointChart && unitsFor(definition).length > 1) {
@@ -235,7 +242,7 @@ export function adaptChartResult(result, selection = {}) {
     return { ...base, status: 'error', error: 'Each bubble role must use one unit.' };
   }
   if (result.status === 'empty') return base;
-  if ((definition.chartType === 'line' || definition.chartType === 'line_with_range') && !hasFiniteLineValue(data)) {
+  if ((definition.chartType === 'line' || definition.chartType === 'line_with_range') && !hasFiniteLineValue(isGrouped(groupBy) ? data.flatMap(({ series = [] }) => series) : data)) {
     return { ...base, status: 'empty' };
   }
   if (definition.chartType === 'bubble' && !isGrouped(groupBy) && !hasCompleteBubble(data)) {

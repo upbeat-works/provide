@@ -24,6 +24,7 @@ export async function readDefaultRunSeries(platform: Pick<Platform, 'iamc'>, ref
   if (!scope.regions.length) return [];
   const df = await platform.iamc.tabulate({
     variable: { name: reference.variable },
+    ...(reference.model ? { model: { name: reference.model } } : {}),
     ...(reference.unit ? { unit: { name: reference.unit } } : {}),
     run: { defaultOnly: true },
     region: { name_in: scope.regions },

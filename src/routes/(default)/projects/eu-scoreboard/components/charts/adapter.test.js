@@ -104,6 +104,22 @@ describe('chart result adapter', () => {
     expect(adapted.props.yDomain[1]).toBeGreaterThan(2);
   });
 
+  test('shows one line per region and leaves out regions with no values', () => {
+    const input = result('line', [{ line: ref('Vulnerability|Fatalities|Heat Waves|Return Period|1 Year', 'people') }], [
+      { region: { uid: 'AT11', label: 'Mittelburgenland' }, series: [{ line: [{ year: 2030, value: 1 }, { year: 2050, value: 2 }] }] },
+      { region: { uid: 'AT12', label: 'Nordburgenland' }, series: [{ line: [{ year: 2030, value: null }] }] },
+      { region: { uid: 'AT13', label: 'Wien' }, series: [{ line: [{ year: 2030, value: 0 }] }] },
+    ]);
+    input.definition.data.groupBy = 'region';
+    const adapted = adaptChartResult(input);
+
+    expect(adapted.status).toBe('ready');
+    expect(adapted.props.series).toEqual([
+      expect.objectContaining({ uid: 'AT11-0', label: 'Mittelburgenland', values: [{ year: 2030, value: 1 }, { year: 2050, value: 2 }] }),
+      expect.objectContaining({ uid: 'AT13-0', label: 'Wien', values: [{ year: 2030, value: 0 }] }),
+    ]);
+  });
+
   test('labels faceted line series by indicator', () => {
     const adapted = adaptChartResult(
       result(
@@ -299,7 +315,7 @@ describe('chart result adapter', () => {
     const value = result('bubble', [{ x: ref('x'), y: ref('y'), size: ref('size') }], []);
     value.definition.data.groupBy = 'model';
     expect(adaptChartResult(value)).toMatchObject({ status: 'error', error: expect.stringContaining('Unsupported chart grouping') });
-    const type = result('line', [{ line: ref('line') }], []);
+    const type = result('line_with_range', [{ line: ref('line'), rangeLow: ref('low'), rangeHigh: ref('high') }], []);
     type.definition.data.groupBy = 'region';
     expect(adaptChartResult(type)).toMatchObject({ status: 'error', error: expect.stringContaining('not supported') });
   });

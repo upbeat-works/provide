@@ -222,4 +222,22 @@ describe('chart config usage', () => {
       expect(query.region.name_in.every((region) => /^AT\d{2}$/.test(region))).toBe(true);
     }
   });
+
+  test('loads a time series for each NUTS2 region in the selected country', async () => {
+    const variable = 'Vulnerability|Fatalities|Heat Waves|Return Period|1 Year';
+    const platform = { iamc: { tabulate: vi.fn(async (query) => ({
+      columns: ['variable', 'scenario', 'region', 'model', 'unit', '2030', '2050'],
+      values: query.region.name_in.slice(0, 2).map((region, index) => [variable, 'Scenario A', region, 'Vulnerability Model v1.0.0', 'people', index + 1, index + 2]),
+    })) } };
+    const config = { chartId: 'heat-fatalities', chartType: 'line', data: { groupBy: 'region', regionLevel: 'NUTS2', model: 'Vulnerability Model v1.0.0', variables: [variable] } };
+    const result = await loadScoreboardChart(platform as never, {} as never, config, selection);
+
+    expect(result.status).toBe('ready');
+    expect(result.data).toEqual([
+      { region: expect.objectContaining({ uid: 'AT12' }), series: [{ line: [{ year: 2030, value: 1 }, { year: 2050, value: 2 }] }] },
+      { region: expect.objectContaining({ uid: 'AT13' }), series: [{ line: [{ year: 2030, value: 2 }, { year: 2050, value: 3 }] }] },
+    ]);
+    expect(platform.iamc.tabulate.mock.calls[0][0]).toMatchObject({ model: { name: 'Vulnerability Model v1.0.0' }, scenario: { name: 'Scenario A' } });
+    expect(platform.iamc.tabulate.mock.calls[0][0]).not.toHaveProperty('stepYear');
+  });
 });

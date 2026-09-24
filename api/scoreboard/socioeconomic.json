@@ -116,6 +116,34 @@
         "x": "Educational Attainment Low",
         "y": "Educational Attainment High"
       }
+    },
+    {
+      "chartId": "heat-wave-fatalities-by-region",
+      "title": "Heat wave fatalities by region",
+      "description": "Heat wave fatalities for a 1-year return period over time. Each line shows a NUTS2 region in the selected country and scenario.",
+      "chartType": "line",
+      "data": {
+        "groupBy": "region",
+        "regionLevel": "NUTS2",
+        "model": "Vulnerability Model v1.0.0",
+        "variables": [
+          "Vulnerability|Fatalities|Heat Waves|Return Period|1 Year"
+        ]
+      }
+    },
+    {
+      "chartId": "heat-wave-economic-losses-by-region",
+      "title": "Heat wave economic losses by region",
+      "description": "Heat wave economic losses for a 1-year return period over time. Each line shows a NUTS2 region in the selected country and scenario.",
+      "chartType": "line",
+      "data": {
+        "groupBy": "region",
+        "regionLevel": "NUTS2",
+        "model": "Vulnerability Model v1.0.0",
+        "variables": [
+          "Vulnerability|Economic Losses|Heat Waves|Return Period|1 Year"
+        ]
+      }
     }
   ]
 }

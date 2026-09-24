@@ -16,6 +16,7 @@ export type MapIndicator =
 export type ChartSeries = Array<Record<string, ScoreboardVariableReference>>;
 export type ChartData = {
   variables: string[];
+  model?: string;
   unitFallback?: string;
   bars?: string[];
   stacks?: string[];

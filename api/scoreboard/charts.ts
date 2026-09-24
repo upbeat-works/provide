@@ -10,7 +10,7 @@ import { type Definition, type Selection, option, referenceKey, uniqueSorted } f
 export function definitionGroupingError(definition: Definition): string | null {
   const groupBy = definition.data.groupBy;
   if (groupBy !== undefined && groupBy !== 'region' && groupBy !== 'scenario') return 'Unsupported chart grouping';
-  if (groupBy !== undefined && !['stacked_bar', 'bubble', 'scatter'].includes(definition.chartType)) return 'Unsupported chart grouping';
+  if (groupBy !== undefined && !['stacked_bar', 'bubble', 'scatter'].includes(definition.chartType) && !(groupBy === 'region' && definition.chartType === 'line')) return 'Unsupported chart grouping';
   try {
     chartSeries(definition.data, definition.chartType);
     return null;
@@ -71,7 +71,10 @@ export async function loadScoreboardChart(platform: Platform, db: Db, definition
   const hasValues = (entries: ReturnType<typeof resolveSeries>) => {
     if (definition.chartType === 'bubble') return entries.some(({ x, y, size }) => Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(size) && Number(size) > 0);
     if (definition.chartType === 'scatter') return entries.some(({ x, y }) => Number.isFinite(x) && Number.isFinite(y));
-    return entries.some((entry) => Object.values(entry).some((value) => typeof value === 'number' && Number.isFinite(value)));
+    return entries.some((entry) => Object.values(entry).some((value) => {
+      if (typeof value === 'number') return Number.isFinite(value);
+      return Array.isArray(value) && value.some((point) => Number.isFinite(point.value));
+    }));
   };
   if (groupBy === 'scenario') {
     const scenarios = uniqueSorted([...resolved.values()].flatMap((rows) => rows.map((row) => String(row.scenario))));

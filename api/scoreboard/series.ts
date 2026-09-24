@@ -6,6 +6,7 @@ export function chartSeries(data: Definition['data'], chartType: string): ChartS
   }
   const reference = (variable: string, label?: string) => ({
     variable,
+    ...(data.model ? { model: data.model } : {}),
     ...(data.unitFallback ? { unitFallback: data.unitFallback } : {}),
     ...(label ? { label } : {}),
   });
