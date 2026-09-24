@@ -1,10 +1,10 @@
 import { expect, test, vi } from 'vitest';
-import { graphParamsFor, EMBED_UID } from '$routes/(default)/projects/eu-scoreboard/components/charts/catalog.js';
-import { getScoreboard } from '$routes/(default)/projects/eu-scoreboard/controller.js';
-import { loadChart } from '$routes/(default)/projects/eu-scoreboard/controller.server.js';
+import { graphParamsFor, EMBED_UID } from '$routes/(default)/impacts/eu-scoreboard/components/charts/catalog.js';
+import { getScoreboard } from '$routes/(default)/impacts/eu-scoreboard/controller.js';
+import { loadChart } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
 import { load } from './+page.server.js';
 
-vi.mock('$routes/(default)/projects/eu-scoreboard/controller.server.js', async (source) => {
+vi.mock('$routes/(default)/impacts/eu-scoreboard/controller.server.js', async (source) => {
   const actual = await source();
   return { ...actual, loadChart: vi.fn() };
 });

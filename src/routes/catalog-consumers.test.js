@@ -237,12 +237,12 @@ describe('focused catalog consumers', () => {
   test.each(['heat-stress', 'testing'])('scoreboard %s builds local choices and only requests optional labels', async (sector) => {
     const { loaderFetch, requests } = createLoaderFetch();
     const [{ load: loadServerLayout }, { load: loadClientLayout }, { load: loadRanking }, { load: loadIndicators }] = await Promise.all([
-      import('./(default)/projects/eu-scoreboard/+layout.server.js'),
-      import('./(default)/projects/eu-scoreboard/+layout.js'),
-      import('./(default)/projects/eu-scoreboard/+page.server.js'),
-      import('./(default)/projects/eu-scoreboard/indicators/+page.js'),
+      import('./(default)/impacts/eu-scoreboard/+layout.server.js'),
+      import('./(default)/impacts/eu-scoreboard/+layout.js'),
+      import('./(default)/impacts/eu-scoreboard/+page.server.js'),
+      import('./(default)/impacts/eu-scoreboard/indicators/+page.js'),
     ]);
-    const url = new URL(`${APP_ORIGIN}/projects/eu-scoreboard?sector=${sector}&instance=provide-internal`);
+    const url = new URL(`${APP_ORIGIN}/impacts/eu-scoreboard?sector=${sector}&instance=provide-internal`);
     const serverLayout = await loadServerLayout({ url, fetch: loaderFetch });
     const layout = loadClientLayout({ data: serverLayout, url });
     await loadRanking({ fetch: loaderFetch, url, parent: async () => layout });

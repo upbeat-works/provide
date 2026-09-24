@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { loadScoreboardChart, definitionGroupingError } from './charts';
 import type { Definition } from './types';
-import { adaptChartResult } from '../../src/routes/(default)/projects/eu-scoreboard/components/charts/adapter.js';
+import { adaptChartResult } from '../../src/routes/(default)/impacts/eu-scoreboard/components/charts/adapter.js';
 
 const selection = { scenario: 'Scenario A', region: 'Austria', year: 2050 };
 const definition = (data = {}): Definition => ({ chartId: 'example', chartType: 'stacked_bar', data: { variables: ['Population'], unitFallback: 'people', ...data } });
@@ -217,6 +217,8 @@ describe('chart config usage', () => {
     expect(result.status).toBe('ready');
     expect(result.data).toHaveLength(9);
     expect(result.data).toContainEqual({ region: { uid: 'AT13', label: 'Wien' }, series: [{ x: 0, y: 0 }] });
+    const labels = result.data.map(({ region }) => region.label);
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b)));
     for (const [query] of platform.iamc.tabulate.mock.calls) {
       expect(query.region.name_in).not.toContain('Austria');
       expect(query.region.name_in.every((region) => /^AT\d{2}$/.test(region))).toBe(true);
@@ -233,9 +235,10 @@ describe('chart config usage', () => {
     const result = await loadScoreboardChart(platform as never, {} as never, config, selection);
 
     expect(result.status).toBe('ready');
+    const [firstRegion, secondRegion] = platform.iamc.tabulate.mock.calls[0][0].region.name_in;
     expect(result.data).toEqual([
-      { region: expect.objectContaining({ uid: 'AT12' }), series: [{ line: [{ year: 2030, value: 1 }, { year: 2050, value: 2 }] }] },
-      { region: expect.objectContaining({ uid: 'AT13' }), series: [{ line: [{ year: 2030, value: 2 }, { year: 2050, value: 3 }] }] },
+      { region: expect.objectContaining({ uid: firstRegion }), series: [{ line: [{ year: 2030, value: 1 }, { year: 2050, value: 2 }] }] },
+      { region: expect.objectContaining({ uid: secondRegion }), series: [{ line: [{ year: 2030, value: 2 }, { year: 2050, value: 3 }] }] },
     ]);
     expect(platform.iamc.tabulate.mock.calls[0][0]).toMatchObject({ model: { name: 'Vulnerability Model v1.0.0' }, scenario: { name: 'Scenario A' } });
     expect(platform.iamc.tabulate.mock.calls[0][0]).not.toHaveProperty('stepYear');

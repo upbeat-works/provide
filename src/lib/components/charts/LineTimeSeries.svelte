@@ -5,6 +5,7 @@
   import MultipleLineLayer from './layers/MultipleLineLayer.svelte';
   import MultipleAreaLayer from './layers/MultipleAreaLayer.svelte';
   import SeriesDots from './layers/SeriesDots.svelte';
+  import SelectedYearMarker from './layers/SelectedYearMarker.svelte';
   import AxisX from './axes/AxisX.svelte';
   import AxisY from './axes/AxisY.svelte';
   import { extent } from 'd3-array';
@@ -30,6 +31,7 @@
   // steps rather than an annual trajectory.
   export let showDots = false;
   export let dotRadius = 5;
+  export let selectedYear = undefined;
   // Share of the value range left clear above and below the series.
   export let yPadding = 0.06;
 
@@ -67,6 +69,9 @@
       <AxisX ticks={xTicks} snapTicks={true} />
       <AxisY {padding} ticks={yTicks} unit={unitUID} ticksHighlighted={ticksYHighlighted} />
       <MultipleAreaLayer />
+      {#if Number.isFinite(selectedYear)}
+        <SelectedYearMarker year={selectedYear} />
+      {/if}
       <MultipleLineLayer {strokeWidth} />
       {#if showDots}
         <SeriesDots r={dotRadius} />

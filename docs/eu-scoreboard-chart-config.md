@@ -227,4 +227,4 @@ and AT13 under SSP1 in 2050. For example, `Population|Age 65+` returned
 does not cover other scenarios, years or chart variables.
 
 The map uses `Population|Age 65+` at NUTS2 level. Scenario choices are SSP1–SSP5,
-with SSP1 as the default. Years are 2020, 2030, 2050 and 2100.
+with SSP1 as the default. Years are 2020, 2030, 2040, 2050, 2075 and 2100.

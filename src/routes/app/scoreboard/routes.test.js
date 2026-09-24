@@ -1,9 +1,9 @@
 import { beforeEach, expect, test, vi } from 'vitest';
-import { loadChart, loadMap } from '$routes/(default)/projects/eu-scoreboard/controller.server.js';
+import { loadChart, loadMap } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
 import { GET as getMap } from './map/+server.js';
 import { GET as getChart } from './charts/[chartId]/+server.js';
 
-vi.mock('$routes/(default)/projects/eu-scoreboard/controller.server.js', async (source) => {
+vi.mock('$routes/(default)/impacts/eu-scoreboard/controller.server.js', async (source) => {
   const actual = await source();
   return { ...actual, loadMap: vi.fn(), loadChart: vi.fn() };
 });

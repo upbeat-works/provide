@@ -35,7 +35,7 @@ export async function loadScoreboardChart(platform: Platform, db: Db, definition
         groups = boundaries.features.flatMap(({ properties }) => {
           if (typeof properties?.NUTS_ID !== 'string') return [];
           return [{ uid: properties.NUTS_ID, label: String(properties.NAME_LATN ?? properties.NUTS_ID) }];
-        });
+        }).sort((a, b) => a.label.localeCompare(b.label));
       }
     } else if (selection.region === 'World') groups = worldR9Regions();
     else groups = childRegions(selection.region, await loadRegionCatalog(db));

@@ -460,11 +460,11 @@ config function. Remove the options endpoint and its loading, error and retry
 code. Keep the optional Strapi label request and the map and chart data requests.
 
 The page already imports the API's config controller directly
-([controller](../src/routes/(default)/projects/eu-scoreboard/controller.js#L1)).
+([controller](../src/routes/(default)/impacts/eu-scoreboard/controller.js#L1)).
 It then requests choices over HTTP
-([server controller](../src/routes/(default)/projects/eu-scoreboard/controller.server.js#L8)).
+([server controller](../src/routes/(default)/impacts/eu-scoreboard/controller.server.js#L8)).
 A failed request prevents map and chart loading
-([indicator loader](../src/routes/(default)/projects/eu-scoreboard/indicators/+page.js#L9)).
+([indicator loader](../src/routes/(default)/impacts/eu-scoreboard/indicators/+page.js#L9)).
 That dependency buys nothing once choices come from bundled config.
 
 **Recommendation:** Build choices and resolve selections through one shared
@@ -489,8 +489,8 @@ recommendation below is not accepted.
 
 The reviewed draft proposed rejecting mixed models and units within each response. But comparison
 results are pooled before drawing one scale
-([combined values](../src/routes/(default)/projects/eu-scoreboard/components/comparison.js#L25),
-[map legend](../src/routes/(default)/projects/eu-scoreboard/components/MapPanel.svelte#L103)).
+([combined values](../src/routes/(default)/impacts/eu-scoreboard/components/comparison.js#L25),
+[map legend](../src/routes/(default)/impacts/eu-scoreboard/components/MapPanel.svelte#L103)).
 Each response could pass its own checks while the two responses use different
 units. The legend also currently reads its unit from config, which the new map
 config will no longer contain.
@@ -635,8 +635,8 @@ That version also had a download fault: each panel has a download control, but i
 request reloads the original chart definition and therefore all panels. Each
 panel also chooses its own axis range, which weakens comparison by bar length.
 See [panel loading](../api/scoreboard/charts.ts#L17),
-[panel rendering](../src/routes/(default)/projects/eu-scoreboard/components/charts/ChartRenderer.svelte#L33)
-and [axis range](../src/routes/(default)/projects/eu-scoreboard/components/charts/StackedBarChart.svelte#L21).
+[panel rendering](../src/routes/(default)/impacts/eu-scoreboard/components/charts/ChartRenderer.svelte#L33)
+and [axis range](../src/routes/(default)/impacts/eu-scoreboard/components/charts/StackedBarChart.svelte#L21).
 
 **Choice:** Use the existing scenario selector for all three charts, removing
 panel config and the panel response/rendering branches; or keep panels because
@@ -722,8 +722,8 @@ The shared tooltip says “under the … pathway”, while the bar component sup
 the segment name. These charts therefore call Female and Age 65+ pathways.
 This wording predates this work, but it shows real coupling in the shared chart
 path. The formatted value also includes the unit while the template adds it again.
-See [tooltip input](../src/routes/(default)/projects/eu-scoreboard/components/charts/StackedBarChart.svelte#L38)
-and [template](../src/routes/(default)/projects/eu-scoreboard/components/charts/popover-bar.html#L7).
+See [tooltip input](../src/routes/(default)/impacts/eu-scoreboard/components/charts/StackedBarChart.svelte#L38)
+and [template](../src/routes/(default)/impacts/eu-scoreboard/components/charts/popover-bar.html#L7).
 
 **Recommendation:** Show the bar label, segment label and value with its unit once.
 Keep scenario context in the page or panel heading. A generic bar should not
@@ -736,7 +736,7 @@ need sector-specific prose or another config option for this.
 
 The test named “renders scatter points without a bubble-size legend” checks a
 figure, axis labels and lack of an error. It checks neither points nor the legend.
-See [test](../src/routes/(default)/projects/eu-scoreboard/components/charts/ChartRenderer.ssr.test.js#L34).
+See [test](../src/routes/(default)/impacts/eu-scoreboard/components/charts/ChartRenderer.ssr.test.js#L34).
 
 **Recommendation:** Rename it as a scatter rendering smoke test. Keep the useful
 loader and adapter tests. Cover accepted fixes at the boundary that owns them,

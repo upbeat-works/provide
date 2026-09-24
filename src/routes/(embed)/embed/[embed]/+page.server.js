@@ -1,6 +1,6 @@
-import { EMBED_UID } from '$routes/(default)/projects/eu-scoreboard/components/charts/catalog.js';
-import { getScoreboard } from '$routes/(default)/projects/eu-scoreboard/controller.js';
-import { loadChart, selectionsFromUrl } from '$routes/(default)/projects/eu-scoreboard/controller.server.js';
+import { EMBED_UID } from '$routes/(default)/impacts/eu-scoreboard/components/charts/catalog.js';
+import { getScoreboard } from '$routes/(default)/impacts/eu-scoreboard/controller.js';
+import { loadChart, selectionsFromUrl } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
 import { parse } from 'qs';
 import { canonicalMapSelection, loadMapAvailability } from '$lib/catalog/map-request.js';
 import { catalogApiUrl } from '$lib/utils/apis.js';

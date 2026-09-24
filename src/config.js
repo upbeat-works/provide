@@ -17,6 +17,7 @@ export const PATH_KEY_CONCEPTS = 'key-terms';
 export const PATH_ADAPTATION = 'case-studies';
 export const PATH_PROJECTS = 'projects';
 export const PATH_PROVIDE = 'provide';
+export const PATH_SPARCCLE = 'sparccle';
 export const PATH_EU_SCOREBOARD = 'eu-scoreboard';
 
 // EU scoreboard (SPARCCLE) purple, shared by the page hero and the header theme

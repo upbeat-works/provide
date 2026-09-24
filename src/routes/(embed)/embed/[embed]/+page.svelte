@@ -6,8 +6,8 @@
   import ImpactTime from '$routes/(default)/impacts/explore/components/ImpactTime/ImpactTime.svelte';
   import ImpactGeo from '$routes/(default)/impacts/explore/components/ImpactGeo/ImpactGeo.svelte';
   import UnavoidableRisk from '$routes/(default)/impacts/components/UnavoidableRisk/UnavoidableRisk.svelte';
-  import ChartEmbed from '$routes/(default)/projects/eu-scoreboard/components/charts/ChartEmbed.svelte';
-  import { EMBED_UID } from '$routes/(default)/projects/eu-scoreboard/components/charts/catalog.js';
+  import ChartEmbed from '$routes/(default)/impacts/eu-scoreboard/components/charts/ChartEmbed.svelte';
+  import { EMBED_UID } from '$routes/(default)/impacts/eu-scoreboard/components/charts/catalog.js';
   import Logo from '$lib/components/site/Logo.svelte';
 
   export let data = {};

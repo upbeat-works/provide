@@ -16,7 +16,9 @@
     LABEL_AVOID_IMPACTS_NAV,
     PATH_PROJECTS,
     PATH_PROVIDE,
+    PATH_SPARCCLE,
     PATH_EU_SCOREBOARD,
+    LABEL_EU_SCOREBOARD,
     CLASS_SCOREBOARD_BG,
     CLASS_SCOREBOARD_TEXT,
     CLASS_SCOREBOARD_BORDER,
@@ -33,7 +35,7 @@
   // `menuText` matches the nav background colour so the Tools dropdown options
   // (on a white panel) are tinted to the current page's theme. Dashed border uses
   // petrol-400 (#6FA5BA) per the design; the tool pages (avoid, provide) share one theme.
-  // The EU scoreboard carries SPARCCLE purple instead, so the nav meets its hero.
+  // The EU scoreboard and SPARCCLE project carry purple, so the nav meets their heroes.
   const HEADER_THEME_DEFAULT = { bg: 'bg-sky-700', border: 'border-petrol-400', menuText: 'text-sky-700' };
   const HEADER_THEME_TOOL = { bg: 'bg-[#1C4157]', border: 'border-petrol-400', menuText: 'text-[#1C4157]' };
   const HEADER_THEME_SCOREBOARD = { bg: CLASS_SCOREBOARD_BG, border: CLASS_SCOREBOARD_BORDER, menuText: CLASS_SCOREBOARD_TEXT };
@@ -41,7 +43,8 @@
   function getHeaderTheme(pathname = '') {
     if (pathname.startsWith(`/${PATH_IMPACT}/${PATH_AVOID}`)) return HEADER_THEME_TOOL;
     if (pathname.startsWith(`/${PATH_PROJECTS}/${PATH_PROVIDE}`)) return HEADER_THEME_TOOL;
-    if (pathname.startsWith(`/${PATH_PROJECTS}/${PATH_EU_SCOREBOARD}`)) return HEADER_THEME_SCOREBOARD;
+    if (pathname.startsWith(`/${PATH_PROJECTS}/${PATH_SPARCCLE}`)) return HEADER_THEME_SCOREBOARD;
+    if (pathname.startsWith(`/${PATH_IMPACT}/${PATH_EU_SCOREBOARD}`)) return HEADER_THEME_SCOREBOARD;
     return HEADER_THEME_DEFAULT;
   }
 
@@ -56,6 +59,7 @@
       label: LABEL_TOOLS,
       submenu: [
         { href: `/${PATH_IMPACT}/${PATH_AVOID}`, label: LABEL_AVOID_IMPACTS_NAV },
+        { href: `/${PATH_IMPACT}/${PATH_EU_SCOREBOARD}`, label: LABEL_EU_SCOREBOARD },
       ],
     },
     { href: `/${PATH_ADAPTATION}`, label: LABEL_ADAPTATION },

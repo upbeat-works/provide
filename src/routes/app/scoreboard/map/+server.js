@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
-import { getScoreboard } from '$routes/(default)/projects/eu-scoreboard/controller.js';
-import { loadMap, selectionsFromUrl } from '$routes/(default)/projects/eu-scoreboard/controller.server.js';
+import { getScoreboard } from '$routes/(default)/impacts/eu-scoreboard/controller.js';
+import { loadMap, selectionsFromUrl } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
 
 export const GET = async ({ fetch, url }) =>
   json(
