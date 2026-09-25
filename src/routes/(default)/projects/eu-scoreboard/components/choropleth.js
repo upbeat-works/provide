@@ -49,27 +49,33 @@ export const colorFor = (value, classes) => classOf(value, classes)?.color;
 // anyone hand-picking colours that drift off the ramp.
 const RAMP_FROM = '#FEDB5C';
 const RAMP_TO = '#E27B47';
-const BUCKETS = ['Very Low', 'Low', 'Medium', 'High'];
+const BUCKET_COUNT = 4;
 
 const channels = (hex) => [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16));
 const toHex = (channel) => Math.round(channel).toString(16).padStart(2, '0');
 const mix = (from, to, t) => `#${from.map((channel, index) => toHex(channel + (to[index] - channel) * t)).join('')}`;
 
-const NUMERIC_COLORS = BUCKETS.map((_, index) => mix(channels(RAMP_FROM), channels(RAMP_TO), index / (BUCKETS.length - 1)));
+const NUMERIC_COLORS = Array.from({ length: BUCKET_COUNT }, (_, index) => mix(channels(RAMP_FROM), channels(RAMP_TO), index / (BUCKET_COUNT - 1)));
 
 const formatNumber = (value) => new Intl.NumberFormat('en', { maximumFractionDigits: 2 }).format(value);
 
-// Equal-width buckets across the range the values actually span, named rather
-// than numbered. One value everywhere has no range to divide, so it keeps its
-// own number: naming that single class 'Very Low' would rank it against nothing.
-export function numericClasses(values = [], unit = undefined) {
+// Equal-width buckets across the range the values actually span, each labelled
+// with the range it covers — an indicator map is read for its values, so the
+// legend names them rather than ranking them. Numbers only: four labels each
+// repeating the unit does not fit the panel, so the panel's subtitle carries it
+// once. One value everywhere has no range to divide, so it keeps its own number.
+export function numericClasses(values = []) {
   const finite = values.map(({ value }) => value).filter(Number.isFinite);
   if (!finite.length) return [];
   const minimum = Math.min(...finite);
   const maximum = Math.max(...finite);
-  if (minimum === maximum) return [{ min: minimum, label: `${formatNumber(minimum)}${unit ? ` ${unit}` : ''}`, color: NUMERIC_COLORS[1] }];
-  const step = (maximum - minimum) / BUCKETS.length;
-  return BUCKETS.map((label, index) => ({ min: minimum + step * index, label, color: NUMERIC_COLORS[index] }));
+  if (minimum === maximum) return [{ min: minimum, label: formatNumber(minimum), color: NUMERIC_COLORS[1] }];
+  const step = (maximum - minimum) / BUCKET_COUNT;
+  return NUMERIC_COLORS.map((color, index) => {
+    const start = minimum + step * index;
+    const end = index === BUCKET_COUNT - 1 ? maximum : minimum + step * (index + 1);
+    return { min: start, label: `${formatNumber(start)}–${formatNumber(end)}`, color };
+  });
 }
 
 // The ids a set of values actually paints.

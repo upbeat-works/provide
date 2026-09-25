@@ -20,7 +20,7 @@ test.each([
 ])('joins %s values through NUTS_ID when features have no top-level id', (_, region) => {
   const shape = shapeFor(region);
   const values = [{ region, value: 0 }];
-  const classes = numericClasses(values, 'K');
+  const classes = numericClasses(values);
   render(Fixture, { shape, values, classes });
 
   expect(shape.features[0].id).toBeUndefined();

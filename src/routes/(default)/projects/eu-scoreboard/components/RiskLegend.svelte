@@ -19,7 +19,9 @@
       <div class="h-full flex-1" style="background-color: {color}" />
     {/each}
   </div>
-  <div class="flex text-xs text-theme-stronger">
+  <!-- Spaced apart and set in tabular figures: the indicator legend's ticks are
+       numeric ranges, which run together and misalign without both. -->
+  <div class="flex gap-x-2 text-xs tabular-nums text-theme-stronger">
     {#each labels as label}
       <span class="flex-1 text-center">{label}</span>
     {/each}

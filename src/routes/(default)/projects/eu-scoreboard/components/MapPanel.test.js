@@ -44,8 +44,10 @@ test('retries a failed map with its full identity and treats zero as data', asyn
   expect(fetcher).toHaveBeenCalledWith(
     '/app/scoreboard/map?sector=testing&indicator=Maximum+Air+Temperature&region=Austria&scenario=CurrentPolicies&year=2050'
   );
-  expect(screen.getByText(/RIME-X/)).toBeTruthy();
-  expect(screen.getByText(/0 K/)).toBeTruthy();
+  // The unit is named once in the subtitle, so the legend's tick is the bare
+  // value — a zero still being a value, not missing data.
+  expect(screen.getByText(/Maximum Air Temperature \(K\) · RIME-X/)).toBeTruthy();
+  expect(screen.getByText('0')).toBeTruthy();
 });
 
 test('does not paint an old result after indicator and sector change', async () => {

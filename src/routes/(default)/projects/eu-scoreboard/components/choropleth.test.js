@@ -121,13 +121,14 @@ describe('legendOf', () => {
 });
 
 describe('numeric indicator map scale', () => {
-  test('spans zero and negative values in four named buckets', () => {
-    const classes = numericClasses([{ value: -2 }, { value: 0 }, { value: 8 }, { value: null }], 'K');
-    expect(classes.map(({ label }) => label)).toEqual(['Very Low', 'Low', 'Medium', 'High']);
+  test('spans zero and negative values in four buckets labelled with their range', () => {
+    const classes = numericClasses([{ value: -2 }, { value: 0 }, { value: 8 }, { value: null }]);
+    // Equal width over the range the values actually span: -2 to 8 in steps of 2.5.
+    // Numbers only — the panel's subtitle names the unit.
+    expect(classes.map(({ label }) => label)).toEqual(['-2–0.5', '0.5–3', '3–5.5', '5.5–8']);
+    expect(classes.map(({ min }) => min)).toEqual([-2, 0.5, 3, 5.5]);
     expect(classOf(-2, classes)).toBe(classes[0]);
     expect(classOf(8, classes)).toBe(classes[3]);
-    // Equal width over the range the values actually span: -2 to 8 in steps of 2.5.
-    expect(classes.map(({ min }) => min)).toEqual([-2, 0.5, 3, 5.5]);
   });
 
   test('walks the ramp from one endpoint to the other', () => {
@@ -136,7 +137,7 @@ describe('numeric indicator map scale', () => {
   });
 
   test('uses one honest class for equal values and none for missing values', () => {
-    expect(numericClasses([{ value: 0 }, { value: 0 }], '%')).toEqual([{ min: 0, label: '0 %', color: '#f5bb55' }]);
+    expect(numericClasses([{ value: 0 }, { value: 0 }])).toEqual([{ min: 0, label: '0', color: '#f5bb55' }]);
     expect(numericClasses([{ value: null }])).toEqual([]);
   });
 

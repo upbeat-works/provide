@@ -31,7 +31,7 @@
   $: syncOwn(ownKey, result);
   $: maps = definition ? collect(views, ownKey, own, revision) : views.map(unavailable);
   $: unit = maps.find((map) => map?.metadata?.unit)?.metadata.unit;
-  $: classes = numericClasses(combinedValues(maps), unit);
+  $: classes = numericClasses(combinedValues(maps));
   $: legend = legendOf(classes);
   $: compareSelectProps = compareBy?.uid === 'region' ? { placeholder: 'Search region' } : {};
 
@@ -108,9 +108,12 @@
     sides = sides.map((value, i) => (i === index ? option : value));
   }
 
+  // The legend's ticks are bare numbers, so the unit is named here — once —
+  // alongside what is mapped and the model behind it.
   function legendSubtitle(map) {
     const model = map?.metadata?.model;
-    return model ? `${definition.name} · ${model}` : definition.name;
+    const name = unit ? `${definition.name} (${unit})` : definition.name;
+    return model ? `${name} · ${model}` : name;
   }
 </script>
 
