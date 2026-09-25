@@ -4,7 +4,7 @@
   import Chevron from '$lib/components/icons/Chevron.svelte';
   import GeographyType from '$lib/components/icons/GeographyType.svelte';
   import { GEOGRAPHY_INDEX, GEOGRAPHY_TYPES } from '$stores/meta.js';
-  import { childGroups, plainLabel } from './geography-tree.js';
+  import { childGroups, leafDescendantCount, plainLabel } from './geography-tree.js';
   import { iconOf } from './flags.js';
 
   export let country; // { uid, label, geoId }
@@ -19,6 +19,7 @@
 
   $: groups = childGroups($GEOGRAPHY_INDEX, country.uid);
   $: childCount = groups.reduce((n, g) => n + g.items.length, 0);
+  $: leafCount = leafDescendantCount($GEOGRAPHY_INDEX, country.uid);
   $: typeLabel = (uid) => plainLabel($GEOGRAPHY_TYPES.find((t) => t.uid === uid)?.label ?? uid);
 
   // Expansion follows the selection, wherever it was made (row, map, deep link):
@@ -52,26 +53,24 @@
 </script>
 
 <div>
-  <div class="group relative flex items-center">
+  <div class="flex items-center">
     <div class="grow min-w-0">
       <RadioGroupOption value={country.uid} let:checked class="block focus:bg-surface-weaker focus:outline-none">
         <InteractiveListItem size="md" icon={iconOf(country)} label={country.label} uid={country.uid} selected={checked} bind:hovered={hoveredItem} />
       </RadioGroupOption>
     </div>
     {#if childCount}
-      <!-- The caret stays out of the way until the row is in play, so the list
-           reads as plain country names: it appears on hover/focus and stays put
-           once the country is open. -->
       <button
         type="button"
-        class="absolute right-0 top-1/2 -translate-y-1/2 flex items-center px-3 text-theme-base transition-opacity group-hover:opacity-100 focus:opacity-100 focus:outline-none"
-        class:opacity-0={!expanded}
+        role="button"
+        class="flex shrink-0 items-center gap-2 px-3 text-theme-base focus:outline-none"
         aria-expanded={expanded}
-        aria-label={expanded ? `Collapse ${country.label}` : `Expand ${country.label}`}
+        aria-label={expanded ? `Collapse ${country.originalLabel ?? country.label}` : `Expand ${country.originalLabel ?? country.label}`}
         on:click|stopPropagation={toggle}
         on:keydown={onCaretKeydown}
       >
-        <Chevron />
+        <span class="text-xs tabular-nums text-text-weaker">{leafCount}</span>
+        <Chevron class="h-4 w-4" />
       </button>
     {/if}
   </div>
@@ -80,13 +79,14 @@
     {#each groups as { type, items } (type)}
       <button
         type="button"
+        role="button"
         class="flex w-full items-center gap-3 py-1.5 pl-12 pr-4 text-left text-theme-base hover:bg-surface-weaker focus:bg-surface-weaker focus:outline-none"
         aria-expanded={openType === type}
         on:click={() => (openType = openType === type ? null : type)}
       >
         <GeographyType {type} class="h-5 w-5 shrink-0" />
         <span class="grow truncate text-xs font-medium uppercase tracking-wider">{typeLabel(type)}</span>
-        <span class="text-xs tabular-nums">{items.length}</span>
+        <span class="text-xs tabular-nums text-text-weaker">{items.length}</span>
         <Chevron class="shrink-0 transition-transform {openType === type ? '' : '-rotate-90'}" />
       </button>
       {#if openType === type}

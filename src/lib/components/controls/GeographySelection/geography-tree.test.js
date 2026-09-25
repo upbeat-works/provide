@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { buildIndex, childSummary, geoIdOf, parentCountriesOf, continentOf, childGroups, plainLabel } from './geography-tree.js';
+import { buildIndex, childSummary, geoIdOf, parentCountriesOf, continentOf, childGroups, plainLabel, leafDescendantCount } from './geography-tree.js';
 
 const geographies = {
   continent: [{ uid: 'Africa', label: 'Africa', geographyType: 'continent', parents: [] }],
@@ -110,6 +110,20 @@ describe('childGroups', () => {
       zzz_new_type: [{ uid: 'Somewhere', label: 'Somewhere', geographyType: 'zzz_new_type', parents: ['Egypt'] }],
     });
     expect(childGroups(withExtras, 'Egypt').map((g) => g.type)).toEqual(['cities', 'river_basins', 'glacier_regions', 'zzz_new_type']);
+  });
+});
+
+describe('leafDescendantCount', () => {
+  const index = buildIndex(geographies);
+
+  test('counts unique leaves under a continent and its countries', () => {
+    expect(leafDescendantCount(index, 'Africa')).toBe(2);
+    expect(leafDescendantCount(index, 'Egypt')).toBe(2);
+    expect(leafDescendantCount(index, 'Sudan')).toBe(1);
+  });
+
+  test('does not count a geography with no descendants', () => {
+    expect(leafDescendantCount(index, 'Cairo')).toBe(0);
   });
 });
 

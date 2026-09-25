@@ -92,6 +92,28 @@ export function childSummary(index, countryUid) {
   return childGroups(index, countryUid).map(({ type, items }) => ({ type, count: items.length }));
 }
 
+export function leafDescendantCount(index, uid) {
+  const visited = new Set([uid]);
+  let count = 0;
+
+  function visit(parentUid) {
+    const children = Object.values(index.childrenByParent[parentUid] ?? {}).flat();
+    if (!children.length) {
+      if (parentUid !== uid) count++;
+      return;
+    }
+
+    for (const child of children) {
+      if (visited.has(child.uid)) continue;
+      visited.add(child.uid);
+      visit(child.uid);
+    }
+  }
+
+  visit(uid);
+  return count;
+}
+
 /**
  * Children of a country grouped by type, in `CHILD_TYPE_ORDER`. Parallels
  * `childSummary` but returns the full child objects (for inline rendering).

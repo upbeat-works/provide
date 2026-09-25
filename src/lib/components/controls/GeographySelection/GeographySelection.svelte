@@ -60,12 +60,14 @@
     if (!open) return;
     initialGeographyUid = $CURRENT_GEOGRAPHY_UID;
     stagedGeographyUid = initialGeographyUid;
+    term = '';
     // Open on the tab that holds the current selection, so it is visible (and
     // highlighted) rather than the user landing on Countries every time. Cities
     // have no pill of their own — they live inside the country accordion — so
     // they fall through to the default below.
     const type = $CURRENT_GEOGRAPHY_TYPE?.uid;
-    if (type && pillTypes.some((t) => t.uid === type && !t.disabled)) currentFilterUid = type;
+    if (COUNTRY_SCOPED_TYPES.includes(type)) currentFilterUid = 'admin0';
+    else if (type && pillTypes.some((t) => t.uid === type && !t.disabled)) currentFilterUid = type;
   }
   $: selectionChanged = modalOpen && stagedGeographyUid !== initialGeographyUid;
   $: stagedGeography = stagedGeographyUid ? $GEOGRAPHY_INDEX.byId[stagedGeographyUid] : undefined;
@@ -153,6 +155,7 @@
         <Geographies
           items={selectableGeographies}
           {term}
+          isOpen={modalOpen}
           bind:hoveredItem
           geographyType={geographyTypes.find(({ uid }) => uid === currentFilterUid)}
           bind:currentUid={stagedGeographyUid}
