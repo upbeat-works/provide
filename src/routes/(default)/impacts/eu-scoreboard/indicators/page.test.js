@@ -219,13 +219,14 @@ test('colours both compared maps on one scale', async () => {
 });
 
 
-test('keeps the selected indicator when showing all countries', async () => {
+test.each(['', 'Austria'])('keeps the selected indicator when showing all countries after searching %s', async (search) => {
   render(Page, {
     data: common,
     url: new URL('http://localhost/impacts/eu-scoreboard/indicators?sector=testing&indicator=Maximum%20Air%20Temperature&region=Austria&scenario=scenario&year=2050'),
   });
 
   await fireEvent.click(screen.getByRole('button', { name: /^Geography:/ }));
+  await fireEvent.input(screen.getByPlaceholderText('Search geography'), { target: { value: search } });
   await fireEvent.click(screen.getAllByRole('button', { name: /^All .*countries/ })[0]);
 
   const url = goto.mock.calls[0][0];

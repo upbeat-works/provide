@@ -237,7 +237,7 @@ test('puts Geography before Topic, Scenario and Year', () => {
   render(Page, { data: dataFor('empty') });
   const fields = screen.getAllByRole('button', { name: /^(Geography|Topic|Scenario|Year):/ });
   expect(fields.map((button) => button.getAttribute('aria-label'))).toEqual([
-    'Geography: All available countries', 'Topic: Heat stress', 'Scenario: CurrentPolicies', 'Year: 2050',
+    'Geography: All countries - ranking', 'Topic: Heat stress', 'Scenario: CurrentPolicies', 'Year: 2050',
   ]);
 });
 
