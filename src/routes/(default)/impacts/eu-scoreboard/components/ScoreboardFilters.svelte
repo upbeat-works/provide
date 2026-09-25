@@ -32,14 +32,6 @@
     if (param === 'region') url.pathname = `${base}/indicators`;
     void goto(url, { keepFocus: true, noScroll: true });
   }
-
-  function showRanking(close) {
-    const url = new URL($page.url);
-    url.pathname = base;
-    url.searchParams.delete('region');
-    close();
-    void goto(url, { keepFocus: true, noScroll: true });
-  }
 </script>
 
 {#each shown as filter (filter.key)}
@@ -52,18 +44,9 @@
       selected={ranking ? undefined : selected}
       placeholder="Search geography"
       panelWidth="w-[24.5rem]"
-      buttonAllLabel="All countries - ranking"
+      buttonAllLabel={allCountries.label}
       on:change={({ detail }) => select('region', detail)}
-    >
-      <svelte:fragment slot="before-search" let:close>
-        <p class="px-4 pb-2 pt-5 text-xs font-semibold uppercase tracking-wide text-text-weaker">View scoreboard ranking</p>
-        <button type="button" class="w-full px-4 py-3 text-left text-sm hover:bg-surface-weaker" class:bg-surface-weaker={ranking} class:font-semibold={ranking} on:click={() => showRanking(close)}>All countries - ranking</button>
-        <div class="mt-2 border-t border-contour-weakest px-4 pt-4">
-          <p class="text-xs font-semibold uppercase tracking-wide text-text-weaker">Explore indicators</p>
-          <p class="mt-2 text-xs text-text-weaker">Adds the Indicator filter and charts below the map.</p>
-        </div>
-      </svelte:fragment>
-    </FilterSelect>
+    />
   {:else}
     <FilterSelect
       label={filter.label}

@@ -217,3 +217,24 @@ test('colours both compared maps on one scale', async () => {
   expect(left.dataset.classCount).toBe(right.dataset.classCount);
   expect(Number(left.dataset.classCount)).toBeGreaterThan(0);
 });
+
+
+test('keeps the selected indicator when showing all countries', async () => {
+  render(Page, {
+    data: common,
+    url: new URL('http://localhost/impacts/eu-scoreboard/indicators?sector=testing&indicator=Maximum%20Air%20Temperature&region=Austria&scenario=scenario&year=2050'),
+  });
+
+  await fireEvent.click(screen.getByRole('button', { name: /^Geography:/ }));
+  await fireEvent.click(screen.getAllByRole('button', { name: /^All .*countries/ })[0]);
+
+  const url = goto.mock.calls[0][0];
+  expect(url.pathname).toBe('/impacts/eu-scoreboard/indicators');
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    sector: 'testing',
+    indicator: 'Maximum Air Temperature',
+    region: 'all',
+    scenario: 'scenario',
+    year: '2050',
+  });
+});

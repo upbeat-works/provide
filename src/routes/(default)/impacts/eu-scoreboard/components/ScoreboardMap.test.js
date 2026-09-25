@@ -164,13 +164,13 @@ test('draws a raster grid inside the selected country frame without loading regi
   expect(loadRegionalBoundaries).not.toHaveBeenCalled();
 });
 
-test('shows regional boundaries across Europe without framing one country', async () => {
+test.each(['NUTS1', 'NUTS2'])('shows %s boundaries across Europe without framing one country', async (level) => {
   stubFetch(async () => Response.json(shapes));
   const regions = { type: 'FeatureCollection', features: [country('AT11', [9, 46, 17, 49]), country('FR10', [-5, 41, 9, 51])] };
   vi.mocked(loadRegionalBoundaries).mockResolvedValue(regions);
-  render(ScoreboardMap, { countryName: 'all', level: 'NUTS2' });
+  render(ScoreboardMap, { countryName: 'all', level });
   await waitFor(() => expect(screen.getByRole('img', { name: 'Regional map layer' })).toBeTruthy());
-  expect(loadRegionalBoundaries).toHaveBeenCalledWith(undefined, 'NUTS2');
+  expect(loadRegionalBoundaries).toHaveBeenCalledWith(undefined, level);
   expect(JSON.parse(screen.getByRole('img', { name: 'Regional map layer' }).dataset.shape)).toEqual(regions);
   expect(JSON.parse(screen.getByText('Country map').dataset.bounds)).toEqual([-24, 34, 45, 72]);
 });

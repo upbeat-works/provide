@@ -70,6 +70,30 @@ function configureRaster() {
 }
 
 describe('scoreboard requests', () => {
+  test.each([
+    ['Heat wave fatalities', 'Vulnerability|Fatalities|Heat Waves|Return Period|1 Year'],
+    ['Heat wave economic losses', 'Vulnerability|Economic Losses|Heat Waves|Return Period|1 Year'],
+  ])('loads %s for the selected socioeconomic map region and year', async (indicator, sourceVariable) => {
+    tabulate.mockResolvedValue(frame([
+      [sourceVariable, 'SSP2', 'AT11', 'Vulnerability Model v1.0.0', 'percent', null, 12, null],
+    ]));
+
+    const response = await request(mapPath({ sector: 'socioeconomic', indicator, scenario: 'SSP2' }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      status: 'ready',
+      values: [{ region: 'AT11', value: 12 }],
+      metadata: { variable: sourceVariable, model: 'Vulnerability Model v1.0.0', unit: 'percent' },
+    });
+    expect(tabulate).toHaveBeenCalledWith(expect.objectContaining({
+      variable: { name: sourceVariable },
+      scenario: { name: 'SSP2' },
+      region: { name_in: ['AT12', 'AT13', 'AT21', 'AT22', 'AT31', 'AT32', 'AT33', 'AT34', 'AT11'] },
+      stepYear: 2050,
+    }));
+  });
+
   test('does not expose the removed options endpoint', async () => {
     expect((await request('/api/scoreboard/options?sector=testing')).status).toBe(404);
     expect(createPlatform).not.toHaveBeenCalled();
