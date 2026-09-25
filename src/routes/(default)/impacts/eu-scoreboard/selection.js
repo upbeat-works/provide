@@ -12,6 +12,9 @@ export function createScoreboardOptions(scoreboard, scenarioLabels = {}) {
 }
 
 export function resolveSelection(scoreboard, options, requested) {
+  if (requested.region === 'all') {
+    options = { ...options, regions: [{ uid: 'all', label: 'All available countries' }, ...options.regions] };
+  }
   const resolved = resolveScoreboardChoices(scoreboard, requested);
   return Object.fromEntries(
     Object.entries(resolved).map(([key, uid]) => [key, options[`${key}s`].find((candidate) => candidate.uid === String(uid))])

@@ -80,7 +80,7 @@ describe('scoreboard requests', () => {
       mapPath({ indicator: 'Missing' }),
       mapPath({ scenario: 'Missing' }),
       mapPath({ region: 'Canada' }),
-      mapPath({ year: '2040' }),
+      mapPath({ year: '2041' }),
       mapPath({ sector: 'missing' }),
       '/api/scoreboard/map?sector=testing',
     ]) {
@@ -282,4 +282,13 @@ describe('scoreboard requests', () => {
       expect(query).not.toHaveProperty('model');
     }
   });
+});
+
+test('loads regions across Europe for the all-country map', async () => {
+  const response = await request(mapPath({ region: 'all' }));
+  expect(response.status).toBe(200);
+  const regions = tabulate.mock.calls[0][0].region.name_in;
+  expect(regions).toContain('AT11');
+  expect(regions).toContain('FR10');
+  expect((await response.json()).values).toContainEqual({ region: 'AT11', value: 0 });
 });

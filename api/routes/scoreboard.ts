@@ -82,10 +82,11 @@ scoreboard.get('/map', async (c) => {
   const year = Number(yearText);
   const validIndicator = map.indicators.some(({ name }) => name === indicatorName);
   const scenarioDefinition = map.scenarios.find(({ id }) => id === scenario);
-  if (!validIndicator || !scenarioDefinition || !country || !map.years.includes(year)) {
+  if (!validIndicator || !scenarioDefinition || (!country && region !== 'all') || !map.years.includes(year)) {
     return c.json({ error: 'Invalid scoreboard map selection' }, 400);
   }
   if (indicator.type === 'raster') {
+    if (!country) return c.json({ status: 'unavailable', values: [], metadata: null });
     if (!validRasterIndicator(indicator)) return c.json({ error: 'Invalid scoreboard map configuration' }, 400);
     const config = geoServerConfig(c);
     if (config instanceof Response) return config;
@@ -110,7 +111,7 @@ scoreboard.get('/map', async (c) => {
     return c.json({ error: 'Invalid scoreboard map configuration' }, 400);
   }
   try {
-    const boundaries = await loadRegionalBoundaries(country.code, indicator.level as NutsLevel);
+    const boundaries = await loadRegionalBoundaries(country?.code, indicator.level as NutsLevel);
     const regionIds = [...new Set(boundaries.features.flatMap(({ properties }) => (typeof properties?.NUTS_ID === 'string' ? [properties.NUTS_ID] : [])))];
     if (!regionIds.length) return c.json(regionalMapResult([], indicator, scenario, year));
     const rows = await readScoreboardMapSeries(await source(c), indicator.variable, { scenario, regions: regionIds, year });

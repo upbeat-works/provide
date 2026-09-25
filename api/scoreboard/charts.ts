@@ -3,14 +3,14 @@ import type { Db } from '../types';
 import { readDefaultRunSeries, selectScoreboardData } from '../views/scoreboard';
 import { childRegions, loadRegionCatalog, worldR9Regions } from './regions';
 import { loadRegionalBoundaries } from './boundaries';
-import { scoreboardCountry } from './countries';
+import { SCOREBOARD_COUNTRIES, scoreboardCountry } from './countries';
 import { chartSeries } from './series';
 import { type Definition, type Selection, option, referenceKey, uniqueSorted } from './types';
 
 export function definitionGroupingError(definition: Definition): string | null {
   const groupBy = definition.data.groupBy;
   if (groupBy !== undefined && groupBy !== 'region' && groupBy !== 'scenario') return 'Unsupported chart grouping';
-  if (groupBy !== undefined && !['stacked_bar', 'bubble', 'scatter'].includes(definition.chartType) && !(groupBy === 'region' && definition.chartType === 'line')) return 'Unsupported chart grouping';
+  if (groupBy !== undefined && !['stacked_bar', 'bubble', 'scatter'].includes(definition.chartType) && !(groupBy === 'region' && ['line', 'line_with_range'].includes(definition.chartType))) return 'Unsupported chart grouping';
   try {
     chartSeries(definition.data, definition.chartType);
     return null;
@@ -20,6 +20,9 @@ export function definitionGroupingError(definition: Definition): string | null {
 }
 
 export async function loadScoreboardChart(platform: Platform, db: Db, definition: Definition, selection: Selection) {
+  if (selection.region === 'all' && !definition.data.groupBy) {
+    definition = { ...definition, data: { ...definition.data, groupBy: 'region' } };
+  }
   const { groupBy } = definition.data;
   const error = definitionGroupingError(definition);
   if (error) throw new Error(error);
@@ -30,14 +33,15 @@ export async function loadScoreboardChart(platform: Platform, db: Db, definition
     else if (definition.data.regionLevel) {
       const country = scoreboardCountry(selection.region);
       groups = [];
-      if (country) {
-        const boundaries = await loadRegionalBoundaries(country.code, definition.data.regionLevel);
+      if (country || selection.region === 'all') {
+        const boundaries = await loadRegionalBoundaries(country?.code, definition.data.regionLevel);
         groups = boundaries.features.flatMap(({ properties }) => {
           if (typeof properties?.NUTS_ID !== 'string') return [];
           return [{ uid: properties.NUTS_ID, label: String(properties.NAME_LATN ?? properties.NUTS_ID) }];
         }).sort((a, b) => a.label.localeCompare(b.label));
       }
-    } else if (selection.region === 'World') groups = worldR9Regions();
+    } else if (selection.region === 'all') groups = SCOREBOARD_COUNTRIES.map(({ name }) => option(name));
+    else if (selection.region === 'World') groups = worldR9Regions();
     else groups = childRegions(selection.region, await loadRegionCatalog(db));
   }
   const references = new Map(series.flatMap((entry) => Object.values(entry).map((reference) => [referenceKey(reference), reference] as const)));

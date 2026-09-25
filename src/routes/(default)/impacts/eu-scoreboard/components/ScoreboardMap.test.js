@@ -163,3 +163,14 @@ test('draws a raster grid inside the selected country frame without loading regi
   expect(screen.getByTestId('country-outline').dataset.highlight).toBe('AUT');
   expect(loadRegionalBoundaries).not.toHaveBeenCalled();
 });
+
+test('shows regional boundaries across Europe without framing one country', async () => {
+  stubFetch(async () => Response.json(shapes));
+  const regions = { type: 'FeatureCollection', features: [country('AT11', [9, 46, 17, 49]), country('FR10', [-5, 41, 9, 51])] };
+  vi.mocked(loadRegionalBoundaries).mockResolvedValue(regions);
+  render(ScoreboardMap, { countryName: 'all', level: 'NUTS2' });
+  await waitFor(() => expect(screen.getByRole('img', { name: 'Regional map layer' })).toBeTruthy());
+  expect(loadRegionalBoundaries).toHaveBeenCalledWith(undefined, 'NUTS2');
+  expect(JSON.parse(screen.getByRole('img', { name: 'Regional map layer' }).dataset.shape)).toEqual(regions);
+  expect(JSON.parse(screen.getByText('Country map').dataset.bounds)).toEqual([-24, 34, 45, 72]);
+});

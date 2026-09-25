@@ -244,3 +244,40 @@ describe('chart config usage', () => {
     expect(platform.iamc.tabulate.mock.calls[0][0]).not.toHaveProperty('stepYear');
   });
 });
+
+test.each(['line', 'line_with_range', 'stacked_bar'])('shows each available country for Europe-wide %s charts', async (chartType) => {
+  const platform = source([
+    ['Population', 'Scenario A', 'Austria', 'Model', 'people', 10],
+    ['Population', 'Scenario A', 'France', 'Model', 'people', 20],
+  ]);
+  const config = { ...definition({ line: 'Population', rangeLow: 'Population', rangeHigh: 'Population' }), chartType } as Definition;
+  const result = await loadScoreboardChart(platform as never, {} as never, config, { ...selection, region: 'all' });
+  expect(result.status).toBe('ready');
+  expect(result.data.map((entry) => entry.region.uid)).toEqual(['Austria', 'France']);
+  expect(adaptChartResult(result).status).toBe('ready');
+});
+
+test('loads regional charts across countries for Europe', async () => {
+  const platform = source([
+    ['Population', 'Scenario A', 'AT11', 'Model', 'people', 10],
+    ['Population', 'Scenario A', 'FR10', 'Model', 'people', 20],
+  ]);
+  const result = await loadScoreboardChart(platform as never, {} as never, definition({ groupBy: 'region', regionLevel: 'NUTS2' }), { ...selection, region: 'all' });
+  expect(result.status).toBe('ready');
+  expect(result.data.map((entry) => entry.region.uid).sort()).toEqual(['AT11', 'FR10']);
+});
+
+test('keeps age bars and sex stacks separate for each country in Europe', async () => {
+  const platform = { iamc: { tabulate: vi.fn(async (query) => frame([
+    [query.variable.name, 'Scenario A', 'Austria', 'Model', 'people', 10],
+    [query.variable.name, 'Scenario A', 'France', 'Model', 'people', 20],
+  ])) } };
+  const config = definition({ variables: ['Population|Female|Young', 'Population|Male|Young'], bars: ['Young'], stacks: ['Female', 'Male'] });
+  const result = await loadScoreboardChart(platform as never, {} as never, config, { ...selection, region: 'all' });
+  const chart = adaptChartResult(result);
+  expect(chart.status).toBe('ready');
+  expect(chart.props.rows.map(({ label, total }) => ({ label, total }))).toEqual([
+    { label: 'Austria — Young', total: 20 },
+    { label: 'France — Young', total: 40 },
+  ]);
+});

@@ -327,7 +327,7 @@ describe('chart result adapter', () => {
     value.definition.data.groupBy = 'model';
     expect(adaptChartResult(value)).toMatchObject({ status: 'error', error: expect.stringContaining('Unsupported chart grouping') });
     const type = result('line_with_range', [{ line: ref('line'), rangeLow: ref('low'), rangeHigh: ref('high') }], []);
-    type.definition.data.groupBy = 'region';
+    type.definition.data.groupBy = 'scenario';
     expect(adaptChartResult(type)).toMatchObject({ status: 'error', error: expect.stringContaining('not supported') });
   });
 

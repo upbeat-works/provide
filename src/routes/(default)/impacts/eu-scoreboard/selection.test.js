@@ -88,3 +88,9 @@ describe('scoreboard choices', () => {
     expect(socioeconomic.indicator.variable).toBe('Population|Age 65+');
   });
 });
+
+test('keeps the Europe-wide selection when loading a shared URL', () => {
+  const scoreboard = getScoreboard('testing');
+  const options = createScoreboardOptions(scoreboard);
+  expect(resolveSelection(scoreboard, options, { region: 'all' }).region).toEqual({ uid: 'all', label: 'All available countries' });
+});

@@ -129,7 +129,14 @@ function stackedBarProps(definition, data, selection) {
   if (isGrouped(groupBy)) {
     rows = data
       .filter(({ series }) => Array.isArray(series) && series.length === definitions.length && series.some(({ segment }) => Number.isFinite(segment)))
-      .map((entry) => stackedRow(groupFor(entry, groupBy), entry.series, layers));
+      .flatMap((entry) => {
+        const group = groupFor(entry, groupBy);
+        if (!definition.data.bars) return [stackedRow(group, entry.series, layers)];
+        return barSeriesIndices(definition.data).map((indices, index) => {
+          const name = definition.data.bars[index];
+          return stackedRow({ uid: `${group.uid}-${name}`, label: `${group.label} — ${name}` }, indices.map((index) => entry.series[index]), layers);
+        });
+      });
   } else if (definition.data.bars) {
     rows = barSeriesIndices(definition.data).map((indices, index) => {
       const name = definition.data.bars[index];
@@ -223,7 +230,7 @@ export function adaptChartResult(result, selection = {}) {
   if (!Array.isArray(definitions)) return { ...base, status: 'error', error: 'Chart data configuration is invalid.' };
   const groupBy = definition.data.groupBy;
   if (definition.data.bars) {
-    if (definition.chartType !== 'stacked_bar' || groupBy !== undefined) return { ...base, status: 'error', error: 'Named bars and stacks require an ungrouped stacked bar chart.' };
+    if (definition.chartType !== 'stacked_bar' || (groupBy !== undefined && groupBy !== 'region')) return { ...base, status: 'error', error: 'Named bars and stacks require a stacked bar chart grouped by region or ungrouped.' };
     try {
       barSeriesIndices(definition.data);
     } catch (error) {
@@ -232,7 +239,7 @@ export function adaptChartResult(result, selection = {}) {
   }
   if (groupBy !== undefined && !isGrouped(groupBy)) return { ...base, status: 'error', error: `Unsupported chart grouping: ${groupBy}` };
   const pointChart = definition.chartType === 'bubble' || definition.chartType === 'scatter';
-  if (isGrouped(groupBy) && definition.chartType !== 'stacked_bar' && !pointChart && !(groupBy === 'region' && definition.chartType === 'line')) {
+  if (isGrouped(groupBy) && definition.chartType !== 'stacked_bar' && !pointChart && !(groupBy === 'region' && ['line', 'line_with_range'].includes(definition.chartType))) {
     return { ...base, status: 'error', error: `${groupBy} grouping is not supported for ${definition.chartType}.` };
   }
   if (!pointChart && unitsFor(definition).length > 1) {

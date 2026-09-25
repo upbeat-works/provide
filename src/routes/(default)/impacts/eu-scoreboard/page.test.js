@@ -237,7 +237,7 @@ test('puts Geography before Topic, Scenario and Year', () => {
   render(Page, { data: dataFor('empty') });
   const fields = screen.getAllByRole('button', { name: /^(Geography|Topic|Scenario|Year):/ });
   expect(fields.map((button) => button.getAttribute('aria-label'))).toEqual([
-    'Geography: Austria', 'Topic: Heat stress', 'Scenario: CurrentPolicies', 'Year: 2050',
+    'Geography: All countries - ranking', 'Topic: Heat stress', 'Scenario: CurrentPolicies', 'Year: 2050',
   ]);
 });
 
@@ -270,4 +270,28 @@ test('country navigation from ranking resets a previously selected indicator', a
     expect(destination.selection.year.uid).toBe('2100');
     expect(url.searchParams.get('sector')).toBe('testing');
   }
+});
+
+test.each(['All available countries', 'Austria'])('opens indicators from the geography selector: %s', async (label) => {
+  render(Page, { data: dataFor('empty'), url: new URL('http://localhost/impacts/eu-scoreboard?sector=heat-stress&scenario=CurrentPolicies&year=2050') });
+  await openFilter('Geography');
+  await chooseOption(label);
+  const url = goto.mock.calls[0][0];
+  expect(url.pathname).toBe('/impacts/eu-scoreboard/indicators');
+  expect(url.searchParams.get('region')).toBe(label === 'Austria' ? 'Austria' : 'all');
+  expect(url.searchParams.get('year')).toBe('2050');
+});
+
+test('returns to ranking from a searched geography list and keeps other filters', async () => {
+  render(Page, { data: dataFor('empty'), url: new URL('http://localhost/impacts/eu-scoreboard/indicators?sector=heat-stress&region=all&year=2050') });
+  await openFilter('Geography');
+  await fireEvent.input(screen.getByPlaceholderText('Search geography'), { target: { value: 'Austria' } });
+  expect(screen.getByRole('button', { name: 'Austria' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'All available countries' })).toBeNull();
+  await chooseOption('All countries - ranking');
+  const url = goto.mock.calls[0][0];
+  expect(url.pathname).toBe('/impacts/eu-scoreboard');
+  expect(url.searchParams.has('region')).toBe(false);
+  expect(url.searchParams.get('sector')).toBe('heat-stress');
+  expect(url.searchParams.get('year')).toBe('2050');
 });

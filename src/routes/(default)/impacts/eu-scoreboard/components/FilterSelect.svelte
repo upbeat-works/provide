@@ -15,6 +15,7 @@
   export let wrapperClass = 'min-w-[10rem]';
   export let buttonClass = 'mt-1 text-sm';
   export let labelClass = '';
+  export let panelWidth = undefined;
 
   // Two-way binding suits a caller holding the choice in local state (the
   // comparison's per-map selectors); `change` suits one that has to act on it —
@@ -54,7 +55,8 @@
     />
   </PopoverButton>
 
-  <PopoverPanel use={[[popperContent, popperOptions]]} let:close class="z-50 {placeholder ? 'w-[20rem]' : 'w-[14rem]'} max-w-[90vw] rounded border border-contour-weakest bg-surface-base shadow-md">
+  <PopoverPanel use={[[popperContent, popperOptions]]} let:close class="z-50 {panelWidth ?? (placeholder ? 'w-[20rem]' : 'w-[14rem]')} max-w-[90vw] rounded border border-contour-weakest bg-surface-base shadow-md">
+    <slot name="before-search" {close} />
     {#if placeholder}
       <div class="p-3">
         <SearchInput bind:value={term} {placeholder} />
@@ -80,6 +82,7 @@
           <button
             type="button"
             class="w-full px-4 py-2 text-left text-sm hover:bg-surface-weaker"
+            class:bg-surface-weaker={isSelected}
             class:font-semibold={isSelected}
             class:text-theme-base={isSelected}
             on:click={() => pick(option, close)}

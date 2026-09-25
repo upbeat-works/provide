@@ -44,7 +44,7 @@ export function resolveScoreboardChoices(scoreboard, requested = {}) {
   return {
     indicator: indicator?.name,
     scenario: scenario.id,
-    region: region.name,
+    region: requested.region === 'all' ? 'all' : region.name,
     year,
   };
 }

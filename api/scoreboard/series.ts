@@ -16,8 +16,8 @@ export function chartSeries(data: Definition['data'], chartType: string): ChartS
     return reference(matches[0], name);
   };
   if (data.bars) {
-    if (chartType !== 'stacked_bar' || data.groupBy !== undefined || !data.stacks) {
-      throw new Error('Named bars require stacks and an ungrouped stacked bar chart.');
+    if (chartType !== 'stacked_bar' || (data.groupBy !== undefined && data.groupBy !== 'region') || !data.stacks) {
+      throw new Error('Named bars require stacks and a stacked bar chart grouped by region or ungrouped.');
     }
     barSeriesIndices(data as BarVariables);
   }

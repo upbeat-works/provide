@@ -11,7 +11,7 @@
   import MapLoading from './MapLoading.svelte';
   import Button from '$lib/components/ui/Button.svelte';
 
-  export let bounds = [-12, 34, 34, 61];
+  export let bounds = [-24, 34, 45, 72];
   export let height = 'h-[420px]';
   export let values = [];
   export let classes = [];
@@ -47,7 +47,8 @@
   let regionalState = { status: 'idle', shape: undefined };
 
   $: country = scoreboardCountry(countryName);
-  $: regionalKey = country && level ? `${country.code}|${level}|${boundaryAttempt}` : '';
+  $: regional = Boolean((country || countryName === 'all') && level);
+  $: regionalKey = regional ? `${country?.code ?? 'all'}|${level}|${boundaryAttempt}` : '';
   $: loadRegions(regionalKey, country?.code, level);
 
   async function loadRegions(key, countryCode, nutsLevel) {
@@ -75,7 +76,6 @@
 
   $: selectedIso3 = country?.iso3 ?? highlight;
   $: framedCountries = selectedIso3 ? [selectedIso3] : fitCountries;
-  $: regional = Boolean(country && level);
   $: raster = Boolean(grid);
   const zoomRange = [-1, 14];
 </script>
