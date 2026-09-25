@@ -48,6 +48,12 @@ SQLite `.sql` backup of the remote (not loadable into Postgres as-is), and
 
 ### Content that started life in code
 
+The landing page analysis cards live in the localized `landing-analysis-card`
+collection. On first startup, Strapi ensures the locales exist, creates and links the two
+cards in each language, and grants public read access. A saved completion flag
+prevents later startups from restoring deleted cards or overwriting editor choices.
+The full snapshot seed resets this flag when it rebuilds the content.
+
 The landing page's "Learn about the Climate Risk Dashboard project" block is the
 `landing-project` single type (a heading plus its two fixed cards, `Intro` and
 `Highlights`). It is not in any snapshot — it was hardcoded markup before it was

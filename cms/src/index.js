@@ -1,20 +1,9 @@
 'use strict';
 
-module.exports = {
-  /**
-   * An asynchronous register function that runs before
-   * your application is initialized.
-   *
-   * This gives you an opportunity to extend code.
-   */
-  register(/*{ strapi }*/) {},
+const { seedLandingAnalysisCards } = require('./api/landing-analysis-card/lib/seed');
 
-  /**
-   * An asynchronous bootstrap function that runs before
-   * your application gets started.
-   *
-   * This gives you an opportunity to set up your data model,
-   * run jobs, or perform some special logic.
-   */
-  bootstrap(/*{ strapi }*/) {},
+module.exports = {
+  async bootstrap({ strapi }) {
+    await seedLandingAnalysisCards(strapi, ['en', 'en-EU'], (message) => strapi.log.info(`[landing-analysis-card] ${message}`));
+  },
 };

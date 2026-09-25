@@ -31,6 +31,7 @@ const { loadContentTypes } = require('./lib/schema');
 const { toCreateData, collectMedia } = require('./lib/transform');
 const { buildTabs } = require('./lib/methodology-map');
 const { seedLandingProject } = require('./seed-landing-project');
+const { seedLandingAnalysisCards, SEED_STORE } = require('../src/api/landing-analysis-card/lib/seed');
 
 const SNAP = process.argv[2] || path.join(__dirname, '..', '.snapshot');
 const LOCALES = ['en', 'en-EU'];
@@ -180,6 +181,8 @@ async function main() {
     // Also absent from the snapshot (it started life as hardcoded markup), and
     // step 2 wiped it, so restore the shipped copy. Editors take it from there.
     await seedLandingProject(strapi, LOCALES, (m) => log(`landing-project ${m}`));
+    await strapi.store(SEED_STORE).delete();
+    await seedLandingAnalysisCards(strapi, LOCALES, (m) => log(`landing-analysis-cards ${m}`));
 
     // ---- 5. grant Public read permissions (a fresh Strapi grants none) ----
     // `types` already includes the methodology tab single types (they live under

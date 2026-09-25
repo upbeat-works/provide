@@ -1,6 +1,5 @@
 <script>
 	import { onMount } from 'svelte';
-	import { PATH_EXPLORE, PATH_IMPACT, PATH_AVOID } from '$config';
 	import AnalysisTools from '$lib/components/icons/AnalysisTools.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
@@ -8,30 +7,7 @@
 	export let customCards = null;
 	export let customHeading = null;
 
-	const defaultCards = [
-		{
-			path: `${PATH_IMPACT}/${PATH_AVOID}`,
-			image: '/img/emission-scenarios.png',
-			imageAlt: 'Chart showing compatible scenarios and impact levels',
-			description:
-				'Avoiding future impacts explores which scenarios minimise the risk from certain impacts in cities and their rural surroundings.',
-			project: 'Provide',
-			geography: 'Cities',
-			dataSource: 'CMIP6'
-		},
-		{
-			path: `${PATH_IMPACT}/${PATH_EXPLORE}`,
-			image: '/img/impacts.png',
-			imageAlt: 'Map showing future climate impacts across geographies',
-			description:
-				'Explorer future impacts shows how different climate futures will affect the environment and people across different emission scenarios.',
-			project: 'Provide',
-			geography: 'Global',
-			dataSource: 'CMIP6'
-		}
-	];
-
-	$: cards = customCards ?? defaultCards;
+	$: cards = customCards ?? [];
 
 	let scrollContainer;
 	let currentIndex = 0;

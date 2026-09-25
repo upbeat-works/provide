@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "landing_analysis_cards",
+  "info": {
+    "singularName": "landing-analysis-card",
+    "pluralName": "landing-analysis-cards",
+    "displayName": "Landing: Analysis card",
+    "description": "A card in the landing page analysis carousel."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "Key": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
+    "Path": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
+    "Image": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
+    "ImageAlt": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
+    "Description": { "type": "text", "pluginOptions": { "i18n": { "localized": true } } },
+    "Project": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
+    "Geography": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
+    "DataSource": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
+    "SortOrder": { "type": "integer", "pluginOptions": { "i18n": { "localized": true } } }
+  }
+}

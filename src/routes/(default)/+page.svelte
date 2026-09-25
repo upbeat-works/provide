@@ -32,7 +32,7 @@
 <div class="mx-auto max-w-7xl lg:px-6">
   <div class="border-x border-dashed border-contour-weakest">
     <SectionExplore />
-    <SectionAnalysis />
+    <SectionAnalysis customCards={data.analysisCards} />
   </div>
 </div>
 <div class="bg-gold-50 border-t border-contour-weakest py-24">
