@@ -44,7 +44,7 @@
   };
 
   setContext('mapbox', { map: readable(map) });
-  setContext('theme', readable({ color: { surface: { base: '#fff' }, contour: { base: '#1b1e20' } } }));
+  setContext('theme', readable({ color: { surface: { base: '#fff' }, contour: { base: '#1b1e20', weaker: '#7b8790' } } }));
 </script>
 
 <RegionalChoropleth {shape} {values} {classes} {unit} />

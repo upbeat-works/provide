@@ -16,7 +16,6 @@
   const theme = getContext('theme');
   const sourceId = `nuts-regions-${instance}`;
   const fillLayerId = `nuts-regions-fill-${instance}`;
-  const borderLayerId = `nuts-regions-border-${instance}`;
   const lineLayerId = `nuts-regions-line-${instance}`;
   instance += 1;
 
@@ -74,21 +73,12 @@
   $map.on('movestart', clearHover);
   $map.addLayer(
     {
-      id: borderLayerId,
-      type: 'line',
-      source: sourceId,
-      filter: regionalFilter(values, classes),
-      paint: { 'line-color': $theme.color.contour.base, 'line-width': 2, 'line-opacity': 0.7 },
-    },
-    before
-  );
-  $map.addLayer(
-    {
       id: lineLayerId,
       type: 'line',
       source: sourceId,
       filter: regionalFilter(values, classes),
-      paint: { 'line-color': $theme.color.surface.base, 'line-width': 0.7 },
+      layout: { 'line-join': 'round' },
+      paint: { 'line-color': $theme.color.contour.weaker, 'line-width': 0.7 },
     },
     before
   );
@@ -97,7 +87,6 @@
 
   $: if ($map.getLayer(fillLayerId)) {
     $map.setPaintProperty(fillLayerId, 'fill-color', regionalFillColor(values, classes));
-    $map.setFilter(borderLayerId, regionalFilter(values, classes));
     $map.setFilter(lineLayerId, regionalFilter(values, classes));
   }
 
@@ -108,7 +97,6 @@
       $map.off('mouseleave', fillLayerId, clearHover);
       $map.off('movestart', clearHover);
       if ($map.getLayer(lineLayerId)) $map.removeLayer(lineLayerId);
-      if ($map.getLayer(borderLayerId)) $map.removeLayer(borderLayerId);
       if ($map.getLayer(fillLayerId)) $map.removeLayer(fillLayerId);
       if ($map.getSource(sourceId)) $map.removeSource(sourceId);
     } catch (error) {
