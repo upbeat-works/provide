@@ -76,7 +76,7 @@ export function createCatalogFlow(catalog) {
     await syncIndicatorScope({ ...context, filters });
   }
 
-  async function syncIndicatorScope(context) {
+  async function syncIndicatorScope(context, options = {}) {
     const input = indicatorFilterInput(context);
     if (!input) {
       activeIndicatorScopeKey = undefined;
@@ -87,13 +87,13 @@ export function createCatalogFlow(catalog) {
     const key = indicatorFilterKey(input);
     if (key === activeIndicatorScopeKey) return activeIndicatorScopeRequest;
     activeIndicatorScopeKey = key;
-    activeIndicatorScopeRequest = catalog.loadFilteredIndicators(input);
+    activeIndicatorScopeRequest = catalog.loadFilteredIndicators(input, options);
     await activeIndicatorScopeRequest;
   }
 
   async function retryIndicatorScope(context) {
     activeIndicatorScopeKey = undefined;
-    await syncIndicatorScope(context);
+    await syncIndicatorScope(context, { refresh: true });
   }
 
   async function retryIndicatorDetails() {

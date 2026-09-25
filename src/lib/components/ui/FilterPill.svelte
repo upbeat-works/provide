@@ -42,18 +42,18 @@
     },
   };
 
-  // A chip with results shows its count and reads bold; one with none is muted
-  // and shows no number at all. Selected takes the strong fill either way.
-  // Chips given no count keep the plain tag styling other pages use.
+  // A selected zero-count facet stays clickable so it can be cleared.
   $: c = colorClasses[color] ?? colorClasses.petrol;
   $: isFacet = count !== undefined;
   $: hasResults = Number(count) > 0;
+  $: unavailable = isFacet && !selected && !hasResults;
   $: tone = selected ? c.selected : isFacet && !hasResults ? c.muted : c.unselected;
   $: typography = !isFacet ? 'text-xs' : hasResults ? 'text-sm font-semibold' : 'text-sm font-normal';
 </script>
 
 <button
-  class="flex items-center gap-1 py-1 px-3 leading-tight border rounded-full transition-colors whitespace-nowrap {typography} {tone} {$$props.class ?? ''}"
+  disabled={unavailable}
+  class="flex items-center gap-1 py-1 px-3 leading-tight border rounded-full transition-colors whitespace-nowrap disabled:cursor-not-allowed {typography} {tone} {$$props.class ?? ''}"
   on:click
 >
   <slot />

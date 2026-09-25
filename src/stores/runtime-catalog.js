@@ -207,6 +207,7 @@ export function createRuntimeCatalog({
   });
   const pendingSelectionStore = writable(initialPendingSelection);
   const indicatorFiltersStore = writable({});
+  const filteredIndicatorCache = new Map();
 
   const indicatorIndexRequest = createLatestRequest(() => getJson(requestFetch, joinUrl(apiUrl, 'indicators')));
   const filterGroupsRequest = createLatestRequest(() => {
@@ -214,8 +215,12 @@ export function createRuntimeCatalog({
     return getJson(requestFetch, `${joinUrl(apiUrl, 'indicators')}?${query}`);
   });
   const filteredIndicatorsRequest = createLatestRequest(async (input) => {
-    const response = await getJson(requestFetch, `${joinUrl(apiUrl, 'indicators')}${indicatorQuery(input)}`);
-    return filteredIndicatorResult(response, input);
+    const query = indicatorQuery(input);
+    if (filteredIndicatorCache.has(query)) return filteredIndicatorCache.get(query);
+    const response = await getJson(requestFetch, `${joinUrl(apiUrl, 'indicators')}${query}`);
+    const result = filteredIndicatorResult(response, input);
+    if (!(response.failedInstances ?? []).length) filteredIndicatorCache.set(query, result);
+    return result;
   });
   const geographyIndexRequest = createLatestRequest(async () => {
     const [geographies, geographyTypes] = await Promise.all([getJson(requestFetch, joinUrl(apiUrl, 'geographies')), getJson(requestFetch, joinUrl(apiUrl, 'geographies/types'))]);
@@ -366,7 +371,10 @@ export function createRuntimeCatalog({
     const geographyRevision = geographySelectionRevision;
     await indicatorIndexRequest.run();
     const state = get(indicatorIndexRequest.state);
-    if (state.status === 'success') applyIndicatorIndex(state.data);
+    if (state.status === 'success') {
+      filteredIndicatorCache.clear();
+      applyIndicatorIndex(state.data);
+    }
     const geographyIndex = get(geographyIndexRequest.state);
     if (geographyRevision === geographySelectionRevision && geographyIndex.status === 'success') applyGeographyIndex(geographyIndex.data);
   }
@@ -377,11 +385,12 @@ export function createRuntimeCatalog({
     filteredIndicatorsRequest.clear();
   }
 
-  async function loadFilteredIndicators({ region, filters } = {}) {
+  async function loadFilteredIndicators({ region, filters } = {}, { refresh = false } = {}) {
     const input = {
       region,
       filters: filters ?? get(indicatorFiltersStore),
     };
+    if (refresh) filteredIndicatorCache.delete(indicatorQuery(input));
     const selectionRevision = indicatorSelectionRevision;
     currentFilteredIndicatorInput = input;
     await filteredIndicatorsRequest.run(input);

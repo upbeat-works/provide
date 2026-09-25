@@ -20,6 +20,7 @@
   import InteractiveListItem from '$lib/components/ui/InteractiveListItem.svelte';
   import { RadioGroup, RadioGroupOption } from '@rgossiaux/svelte-headlessui';
   import { derived } from 'svelte/store';
+  import { tick } from 'svelte';
   import Fuse from 'fuse.js';
   import { indicatorTags } from '$lib/catalog/indicator-tags.js';
   import Button from '$lib/components/ui/Button.svelte';
@@ -57,8 +58,6 @@
 
   $: (term, listBox?.scrollTo({ top: 0 }));
 
-  // Sectors are no longer a convention facet, so the list shows all indicators
-  // available for the geography (search narrows them).
   $: availableItems = available;
 
   $: fuse = new Fuse(availableItems, { includeScore: true, keys: ['label', 'uid'], includeMatches: true });
@@ -102,11 +101,13 @@
     indexRequest: $INDICATOR_INDEX_REQUEST,
     filteredRequest: $FILTERED_INDICATORS_REQUEST,
   });
-  $: if (control.syncContext) syncFilters(control.syncContext);
+  $: if (control.syncContext) void syncFilters(control.syncContext);
   $: listView = listRequestView({ request: control.request, items: searchedItems });
 
-  function syncFilters(context) {
+  async function syncFilters(context) {
     if (!context) return;
+    // Start the request after the control has finished reading the current state.
+    await tick();
     void catalogFlow.syncIndicatorScope(context);
   }
 
@@ -153,6 +154,12 @@
       <SearchInput bind:value={term} placeholder="Search indicators" class="mb-3" />
       {#if control.showAdvancedFilters}
         <AdvancedFilters />
+      {/if}
+      {#if control.request.status === 'loading'}
+        <p class="mt-3 flex items-center gap-2 text-sm text-text-weaker" role="status">
+          <span class="h-3 w-3 animate-spin rounded-full border-2 border-theme-base/30 border-t-theme-base" aria-hidden="true"></span>
+          Updating indicators…
+        </p>
       {/if}
       {#if listView.hasPartialFailure}
         <Button variant="secondary" disabled={owned && !control.ownedRetryAvailable} on:click={retryIndicators}>Retry missing sources</Button>
