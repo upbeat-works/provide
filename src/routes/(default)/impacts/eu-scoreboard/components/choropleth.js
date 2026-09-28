@@ -80,7 +80,19 @@ export function rasterFeatures(grid, classes = [], mask = undefined) {
   return { type: 'FeatureCollection', features };
 }
 
-const NUMERIC_COLORS = ['#fff2cc', '#f9d67a', '#ee9f3f', '#d75b2a', '#9f2727'];
+// The indicator ramp, stated as its two endpoints: every bucket colour is
+// interpolated between them, so the number of buckets can change without
+// anyone hand-picking colours that drift off the ramp.
+const RAMP_FROM = '#FEDB5C';
+const RAMP_TO = '#E27B47';
+const BUCKET_COUNT = 4;
+
+const channels = (hex) => [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16));
+const toHex = (channel) => Math.round(channel).toString(16).padStart(2, '0');
+const mix = (from, to, t) => `#${from.map((channel, index) => toHex(channel + (to[index] - channel) * t)).join('')}`;
+
+const NUMERIC_COLORS = Array.from({ length: BUCKET_COUNT }, (_, index) => mix(channels(RAMP_FROM), channels(RAMP_TO), index / (BUCKET_COUNT - 1)));
+
 const formatNumber = (value) => new Intl.NumberFormat('en', { maximumFractionDigits: 2 }).format(value);
 
 export function numericClasses(values = [], unit = undefined) {
@@ -89,7 +101,7 @@ export function numericClasses(values = [], unit = undefined) {
   const minimum = Math.min(...finite);
   const maximum = Math.max(...finite);
   const suffix = unit ? ` ${unit}` : '';
-  if (minimum === maximum) return [{ min: minimum, max: maximum, label: `${formatNumber(minimum)}${suffix}`, color: NUMERIC_COLORS[2] }];
+  if (minimum === maximum) return [{ min: minimum, max: maximum, label: `${formatNumber(minimum)}${suffix}`, color: NUMERIC_COLORS[1] }];
   const step = (maximum - minimum) / NUMERIC_COLORS.length;
   return NUMERIC_COLORS.map((color, index) => {
     const start = minimum + step * index;

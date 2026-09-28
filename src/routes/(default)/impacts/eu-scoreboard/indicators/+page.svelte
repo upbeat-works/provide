@@ -46,7 +46,6 @@
   $: sections = data.scoreboard.charts.map(({ chartId, title }) => ({ slug: chartId, title }));
 
   let contentRef;
-  let activeSlug;
 </script>
 
 <ScoreboardLayout showSidebar={sections.length > 0}>
@@ -73,7 +72,7 @@
   </svelte:fragment>
 
   <svelte:fragment slot="sidebar">
-    <SectionIndex {sections} {contentRef} bind:activeSlug />
+    <SectionIndex {sections} {contentRef} />
     <div class="mt-8 flex flex-col items-start gap-5">
       <CopyLink />
       <Button href="/{PATH_DOCUMENTATION}" variant="secondary" class="w-full justify-between text-left">
@@ -85,7 +84,7 @@
 
   <div bind:this={contentRef}>
     {#each data.charts ?? [] as chart (chart.definition.chartId)}
-      <ChartPanel {...chart} selection={data.selection} sector={data.scoreboard.sector.uid} accent={activeSlug === chart.definition.chartId} />
+      <ChartPanel {...chart} selection={data.selection} sector={data.scoreboard.sector.uid} />
     {/each}
   </div>
 </ScoreboardLayout>

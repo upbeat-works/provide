@@ -44,8 +44,10 @@ test('retries a failed map with its full identity and treats zero as data', asyn
   expect(fetcher).toHaveBeenCalledWith(
     '/app/scoreboard/map?sector=testing&indicator=Maximum+Air+Temperature&region=Austria&scenario=CurrentPolicies&year=2050'
   );
-  expect(screen.getByText(/RIME-X/)).toBeTruthy();
-  expect(screen.getByText(/0 K/)).toBeTruthy();
+  // The unit is named once in the subtitle, so the legend's tick is the bare
+  // value — a zero still being a value, not missing data.
+  expect(screen.getByText(/Maximum Air Temperature \(K\) · RIME-X/)).toBeTruthy();
+  expect(screen.getByText('0')).toBeTruthy();
 });
 
 test('passes a ready raster grid to the map and builds its legend from cell values', () => {
@@ -67,10 +69,10 @@ test('passes a ready raster grid to the map and builds its legend from cell valu
 
   const map = screen.getByRole('img', { name: 'Regional scoreboard map' });
   expect(JSON.parse(map.dataset.grid)).toEqual(grid);
-  expect(JSON.parse(map.dataset.classes)).toHaveLength(5);
+  expect(JSON.parse(map.dataset.classes)).toHaveLength(4);
   expect(screen.getAllByText(/°C/)).toHaveLength(1);
-  expect(screen.getByText('1.4')).toBeTruthy();
-  expect(screen.getByText('3 °C')).toBeTruthy();
+  expect(screen.getByText('1.5')).toBeTruthy();
+  expect(screen.getByText('3')).toBeTruthy();
 });
 
 test('does not paint an old result after indicator and sector change', async () => {

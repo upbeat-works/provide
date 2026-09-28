@@ -4,13 +4,16 @@ import socioeconomic from './socioeconomic.json';
 import { SCOREBOARD_COUNTRIES, scoreboardCountry } from './countries.ts';
 
 export const SCOREBOARD_INSTANCE = 'sparccle-internal';
-export const SECTORS = [
-  { uid: 'heat-stress', label: 'Heat stress' },
-  { uid: 'testing', label: 'Testing' },
-  { uid: 'socioeconomic', label: 'Socioeconomic' },
+
+const SECTOR_DEFINITIONS = [
+  { uid: 'heat-stress', label: 'Heat stress', definition: heatStress },
+  { uid: 'testing', label: 'Testing', definition: testing },
+  { uid: 'socioeconomic', label: 'Socioeconomic', definition: socioeconomic },
 ];
 
-const definitionsBySector = { 'heat-stress': heatStress, testing, socioeconomic };
+export const SECTORS = SECTOR_DEFINITIONS.map(({ uid, label }) => ({ uid, label }));
+
+const definitionsBySector = Object.fromEntries(SECTOR_DEFINITIONS.map(({ uid, definition }) => [uid, definition]));
 
 function selectMapIndicator(map, indicatorName) {
   const requested = map.indicators.find(({ name }) => name === indicatorName);

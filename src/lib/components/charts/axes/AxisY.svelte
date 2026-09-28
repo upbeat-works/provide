@@ -21,6 +21,8 @@
   // Overrides the unit formatting for one axis, the way AxisX takes a
   // formatter. A band scale's ticks are its own labels and are never formatted.
   export let formatTick = undefined;
+  // Tick text styling, for a chart whose row names carry the reading order.
+  export let tickClass = 'fill-contour-weak text-xs';
 
   $: xPos = x ?? orientation === 1 ? 0 : $width;
   $: yPos = y;
@@ -47,7 +49,7 @@
         />
       {/if}
       {#if showTickLabels}
-        <text x={labelX * -orientation} class="fill-contour-weak text-xs" dominant-baseline="middle" style="text-anchor: {labelTextAnchor};">
+        <text x={labelX * -orientation} class={tickClass} dominant-baseline="middle" style="text-anchor: {labelTextAnchor};">
           {tickLabels[i]}
           <title>{tickLabels[i]}</title>
         </text>

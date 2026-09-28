@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { getScoreboard, resolveScoreboardChoices, SCOREBOARD_COUNTRIES } from './controller.js';
+import { getScoreboard, resolveScoreboardChoices, SCOREBOARD_COUNTRIES, SECTORS } from './controller.js';
 
 describe('scoreboard config', () => {
   test('uses the configured default indicator unless a valid indicator is requested', () => {
@@ -40,13 +40,21 @@ describe('scoreboard config', () => {
         year: '2100',
       })
     ).toEqual({ indicator: 'Mean Air Temperature', scenario: '1.5C', region: 'Ukraine', year: 2100 });
-    expect(resolveScoreboardChoices(scoreboard, { indicator: 'Missing', scenario: 'Missing', region: 'Missing', year: '2040' })).toEqual({
+    expect(resolveScoreboardChoices(scoreboard, { indicator: 'Missing', scenario: 'Missing', region: 'Missing', year: '2041' })).toEqual({
       indicator: 'Maximum Air Temperature',
       scenario: 'CurrentPolicies',
       region: 'Austria',
       year: 2050,
     });
     expect(resolveScoreboardChoices({ ...scoreboard, map: { ...scoreboard.map, years: [2030, 2100] } }, {})).toMatchObject({ year: 2030 });
+  });
+
+  test.each(SECTORS.map(({ uid }) => uid))('resolves a usable scoreboard for the %s sector', (uid) => {
+    const scoreboard = getScoreboard(uid);
+
+    expect(scoreboard.sector.uid).toBe(uid);
+    expect(scoreboard.map.scenarios.length).toBeGreaterThan(0);
+    expect(Array.isArray(scoreboard.charts)).toBe(true);
   });
 
   test('offers all 40 NUTS countries with source codes', () => {

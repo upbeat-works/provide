@@ -21,10 +21,10 @@
     { uid: 'highest', label: 'Highest risk countries' },
     { uid: 'lowest', label: 'Lowest ranked countries' },
   ];
-  // The map's own classes, read High -> very low so the ramp runs the same way
-  // as the leaderboard under it. Same source as the choropleth, so the two
-  // cannot drift apart.
-  const legend = legendOf(RISK_CLASSES, { highestFirst: true });
+  // The map's own classes, read low -> high so the ramp runs pale to deep, the
+  // way a scale is read. Same source as the choropleth, so the two cannot drift
+  // apart.
+  const legend = legendOf(RISK_CLASSES);
   export let scale = legend.scale;
   export let scaleLabels = legend.labels;
 
@@ -49,7 +49,7 @@
 
 <div class="w-[293px] max-w-full rounded bg-white shadow-lg">
   <div class="flex items-start justify-between gap-4 px-6 pt-4" class:pb-4={!open}>
-    <h2 class="text-xl leading-tight text-theme-base">{title}</h2>
+    <h2 class="text-lg leading-tight font-semibold text-theme-base">{title}</h2>
     <!-- The button IS the icon box: no padding and no offset between the two, so
          what is clickable is exactly what is drawn. The icon is sized up to 24px
          to keep that a usable target, with the bar itself still 16px wide. -->
@@ -70,7 +70,7 @@
   {#if open}
     <div class="flex flex-col gap-5 px-6 pb-5 pt-3">
       <div class="flex flex-col gap-2">
-        <p class="text-sm font-semibold text-theme-stronger">{hazard}</p>
+        <p class="text-sm font-bold text-theme-stronger">{hazard}</p>
         <RiskLegend {scale} labels={scaleLabels} />
       </div>
 

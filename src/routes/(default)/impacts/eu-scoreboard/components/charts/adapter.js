@@ -1,7 +1,22 @@
+import colorTokens from '$styles/color-tokens-light.json';
 import { parseVariable } from '../../../../../../../api/conventions.ts';
 import { barSeriesIndices, chartSeries } from '../../../../../../../api/scoreboard/series.ts';
 
-const COLORS = ['#006c78', '#e76f00', '#65832e', '#b07b00', '#a63d68', '#4d6cb3'];
+// The palette explore's charts use: `$THEME.color.category` is this token file's
+// `category` (see ThemeProvider), so importing it here puts both views' charts
+// on one set of hues rather than a second, private list.
+const CATEGORY = colorTokens.category;
+const CATEGORY_COUNT = Object.keys(CATEGORY.base).length;
+
+// One hue per series, in order — the same rule colorScenarios applies in explore.
+const seriesColor = (index) => CATEGORY.base[index % CATEGORY_COUNT];
+
+// A stack's segments are cumulative bands of one quantity rather than unrelated
+// series, so they step through the theme's blue ramp light-to-dark instead of
+// taking several hues. Read off the tokens rather than written out, so the two
+// cannot drift; sampled evenly, so any number of segments spans the ramp.
+const STACK_RAMP = ['100', '200', '300', '400', '500', '600', '700', '800'].map((step) => colorTokens.theme[step]);
+const stackColor = (index, count) => STACK_RAMP[count < 2 ? STACK_RAMP.length - 1 : Math.round((index * (STACK_RAMP.length - 1)) / (count - 1))];
 
 const variableLabel = (reference) => {
   const label = reference?.label?.trim();
@@ -78,7 +93,7 @@ function lineProps(definition, data) {
     return {
       uid: group ? `${group.uid}-${index}` : String(index),
       label,
-      color: COLORS[seriesIndex % COLORS.length],
+      color: seriesColor(seriesIndex),
       values: values.map(({ year, value }) => {
         const point = { year, value };
         const min = lows.get(year);
@@ -106,10 +121,13 @@ function stackedRow(region, data, layers) {
   return { uid: region?.uid ?? 'selection', label: region?.label ?? 'Selected region', total, values };
 }
 
+// Height sets the band step, and the step sets both the bar and the gap between
+// rows — so a shorter chart thins the bars and closes the spacing together,
+// which paddingInner alone cannot do (it trades one against the other).
 function barHeight(rows) {
-  if (rows.length <= 5) return 'h-[420px]';
-  if (rows.length <= 10) return 'h-[560px]';
-  return 'h-[720px]';
+  if (rows.length <= 5) return 'h-[300px]';
+  if (rows.length <= 10) return 'h-[420px]';
+  return 'h-[560px]';
 }
 
 function groupFor(entry, groupBy) {
@@ -123,7 +141,7 @@ const isGrouped = (groupBy) => groupBy === 'region' || groupBy === 'scenario';
 function stackedBarProps(definition, data, selection) {
   const definitions = seriesDefinitions(definition);
   const labels = definition.data.stacks ?? definitions.map((entry) => variableLabel(entry.segment));
-  const layers = labels.map((label, index) => ({ uid: String(index), label, color: COLORS[index % COLORS.length] }));
+  const layers = labels.map((label, index) => ({ uid: String(index), label, color: stackColor(index, labels.length) }));
   let rows;
   const groupBy = definition.data.groupBy;
   if (isGrouped(groupBy)) {
@@ -193,7 +211,8 @@ function bubbleProps(definition, data) {
       x: values?.x ?? null,
       y: values?.y ?? null,
       size: values?.size ?? null,
-      color: COLORS[index % COLORS.length],
+      // Same ramp the stacked bar uses, so the two charts' legends match.
+      color: stackColor(index, definitions.length),
     };
   };
   let points;
@@ -206,6 +225,7 @@ function bubbleProps(definition, data) {
   return {
     points: points.filter(({ x: xValue, y: yValue, size: sizeValue }) => Number.isFinite(xValue) && Number.isFinite(yValue) && (scatter || (Number.isFinite(sizeValue) && sizeValue > 0))),
     pointMode: definition.chartType,
+    levels: definitions.map((entry, index) => ({ uid: String(index), label: variableLabel(entry.x), color: stackColor(index, definitions.length) })),
     xLabel: axisLabel(x),
     yLabel: axisLabel(y),
     sizeLabel: scatter ? undefined : axisLabel(size),

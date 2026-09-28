@@ -1,16 +1,16 @@
 <script>
   import { onDestroy } from 'svelte';
   import { createScrollSpy } from '$lib/utils/scrollSpy';
+  import NestedNav from '$lib/components/navigation/NestedNav.svelte';
 
-  // Index for the ranking view's article column. The labels are written for the
-  // index, not lifted from the headings (the last section's heading names the
-  // hazard, the index just says there is more data), so the sections are passed
-  // in rather than scraped from the DOM the way NestedNav does it.
+  // The side nav the methodology pages use, so the scoreboard's index is the
+  // same menu. NestedNav scrapes h2/h3 whenever it is handed a `contentRef`, and
+  // these labels are deliberately not the headings (the last section's heading
+  // names the hazard, the index just says there is more data) — so the spy runs
+  // here and NestedNav is used in its static mode, told which item is active.
   export let sections = [];
   export let contentRef = undefined;
   export let label = 'Index';
-  // Bindable: the section currently in view, so the page can mark it.
-  export let activeSlug = undefined;
 
   let spy = null;
   let activeIndex = 0;
@@ -26,27 +26,10 @@
     });
   }
 
-  $: activeSlug = sections[activeIndex]?.slug;
+  // NestedNav renders only the entries it considers to carry content.
+  $: navSections = sections.map(({ slug, title }) => ({ slug, title, content: true }));
 
   onDestroy(() => spy?.destroy());
 </script>
 
-<nav class="flex flex-col gap-3">
-  {#if label}
-    <p class="text-xs uppercase tracking-widest font-semibold text-contour-weak">{label}</p>
-  {/if}
-  <ul>
-    {#each sections as { slug, title }, i}
-      <li class="border-b border-contour-weakest">
-        <a
-          href={`#${slug}`}
-          aria-current={i === activeIndex ? 'step' : 'false'}
-          on:click={() => spy?.click(i)}
-          class="block py-3 text-sm font-semibold leading-tight transition-colors hover:text-theme-base {i === activeIndex ? 'text-theme-base' : 'text-text-base'}"
-        >
-          {title}
-        </a>
-      </li>
-    {/each}
-  </ul>
-</nav>
+<NestedNav sections={navSections} {activeIndex} title={label} onNavigate={(i) => spy?.click(i)} />
