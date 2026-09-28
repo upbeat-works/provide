@@ -28,10 +28,10 @@ function warmingResponse() {
     thresholds: [10, 20],
     defaultThreshold: 10,
     years: [2030, 2050, 2100],
-    today: [0.1, 0.2],
+    today: [10, 20],
     data: {
-      'High ambition': [[0.2, 0.3, 0.4], [0.4, 0.5, 0.6]],
-      'Current policies': [[0.1, 0.2, 0.3], [0.15, 0.25, 0.35]],
+      'High ambition': [[20, 30, 40], [40, 50, 60]],
+      'Current policies': [[10, 20, 30], [15, 25, 35]],
     },
     formats: ['csv'],
     model: 'Test model',
