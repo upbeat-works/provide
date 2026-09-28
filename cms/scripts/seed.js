@@ -33,6 +33,8 @@ const { buildTabs } = require('./lib/methodology-map');
 const { seedLandingProject } = require('./seed-landing-project');
 const { seedLandingAnalysisCards, SEED_STORE } = require('../src/api/landing-analysis-card/lib/seed');
 
+const { seedLandingAnalysisImages, IMAGE_STORE } = require('../src/api/landing-analysis-card/lib/images');
+
 const SNAP = process.argv[2] || path.join(__dirname, '..', '.snapshot');
 const LOCALES = ['en', 'en-EU'];
 const PRIMARY = 'en-EU';
@@ -183,6 +185,8 @@ async function main() {
     await seedLandingProject(strapi, LOCALES, (m) => log(`landing-project ${m}`));
     await strapi.store(SEED_STORE).delete();
     await seedLandingAnalysisCards(strapi, LOCALES, (m) => log(`landing-analysis-cards ${m}`));
+    await strapi.store(IMAGE_STORE).delete();
+    await seedLandingAnalysisImages(strapi);
 
     // ---- 5. grant Public read permissions (a fresh Strapi grants none) ----
     // `types` already includes the methodology tab single types (they live under

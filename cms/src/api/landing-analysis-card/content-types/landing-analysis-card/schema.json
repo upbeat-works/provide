@@ -18,7 +18,7 @@
   "attributes": {
     "Key": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
     "Path": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
-    "Image": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
+    "Image": { "type": "media", "multiple": false, "allowedTypes": ["images"], "pluginOptions": { "i18n": { "localized": true } } },
     "ImageAlt": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },
     "Description": { "type": "text", "pluginOptions": { "i18n": { "localized": true } } },
     "Project": { "type": "string", "pluginOptions": { "i18n": { "localized": true } } },

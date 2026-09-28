@@ -7,7 +7,6 @@ const LANDING_ANALYSIS_CARDS = [
   {
     Key: 'avoid-future-impacts',
     Path: '/impacts/avoid',
-    Image: '/img/emission-scenarios.png',
     ImageAlt: 'Chart showing compatible scenarios and impact levels',
     Description:
       'Avoiding future impacts explores which scenarios minimise the risk from certain impacts in cities and their rural surroundings.',
@@ -19,7 +18,6 @@ const LANDING_ANALYSIS_CARDS = [
   {
     Key: 'explore-future-impacts',
     Path: '/impacts/explore',
-    Image: '/img/impacts.png',
     ImageAlt: 'Map showing future climate impacts across geographies',
     Description:
       'Explorer future impacts shows how different climate futures will affect the environment and people across different emission scenarios.',

@@ -146,11 +146,13 @@
 					>
 						<div class="p-4">
 							<figure class="m-0 mb-8 overflow-hidden bg-grass-50 border border-grass-200 rounded-[2px]">
-								<img
-									src={card.image}
-									alt={card.imageAlt}
-									class="w-full aspect-video object-contain group-hover:scale-[1.02] transition-transform duration-300"
-								/>
+								{#if card.image}
+									<img
+										src={card.image}
+										alt={card.imageAlt}
+										class="w-full aspect-video object-contain group-hover:scale-[1.02] transition-transform duration-300"
+									/>
+								{/if}
 							</figure>
 							<p class="text-xl font-normal text-theme-800 leading-snug mb-8 lg:max-w-[80%]">{card.description}</p>
 							<hr class="border-theme-200 mb-4" />

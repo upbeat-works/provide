@@ -6,12 +6,12 @@ export const load = async ({ fetch }) => {
   const [caseStudies, projectSection, analysisCards] = await Promise.all([
     loadFromStrapi('case-study-dynamics', fetch, ['populate[CoverImage]=*', 'populate[Topics]=*'].join('&')),
     loadFromStrapi('landing-project', fetch, ['populate[Intro]=*', 'populate[Highlights][populate]=*'].join('&')).catch(() => null),
-    loadFromStrapi('landing-analysis-cards', fetch).catch(() => []),
+    loadFromStrapi('landing-analysis-cards', fetch, 'populate[Image]=*').catch(() => []),
   ]);
 
   return {
     projectSection: toProjectSection(projectSection),
-    analysisCards: toAnalysisCards(analysisCards),
+    analysisCards: toAnalysisCards(analysisCards, import.meta.env.VITE_CMS_URL),
     caseStudies: caseStudies.map((study) => {
       const slug = study.attributes.Slug;
       return {
