@@ -80,32 +80,65 @@ export function rasterFeatures(grid, classes = [], mask = undefined) {
   return { type: 'FeatureCollection', features };
 }
 
-// The indicator ramp, stated as its two endpoints: every bucket colour is
-// interpolated between them, so the number of buckets can change without
-// anyone hand-picking colours that drift off the ramp.
-const RAMP_FROM = '#FEDB5C';
-const RAMP_TO = '#E27B47';
+// The indicator ramp, stated as its stops: every bucket colour is interpolated
+// along them, so the number of buckets can change without anyone hand-picking
+// colours that drift off the ramp. A sector's JSON may name its own stops via
+// an indicator's `colorRamp`; this pair is the fallback.
+export const DEFAULT_RAMP = ['#FEDB5C', '#E27B47'];
 const BUCKET_COUNT = 4;
 
+const HEX = /^#[0-9a-f]{6}$/i;
 const channels = (hex) => [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16));
-const toHex = (channel) => Math.round(channel).toString(16).padStart(2, '0');
+const toHex = (channel) => Math.round(Math.min(255, Math.max(0, channel))).toString(16).padStart(2, '0');
 const mix = (from, to, t) => `#${from.map((channel, index) => toHex(channel + (to[index] - channel) * t)).join('')}`;
 
-const NUMERIC_COLORS = Array.from({ length: BUCKET_COUNT }, (_, index) => mix(channels(RAMP_FROM), channels(RAMP_TO), index / (BUCKET_COUNT - 1)));
+// Only full six-digit hex is accepted: a typo or a named colour would otherwise
+// parse to NaN channels and paint the whole map transparent, which reads as
+// missing data rather than as a broken config.
+export const isRamp = (ramp) => Array.isArray(ramp) && ramp.length >= 2 && ramp.every((stop) => typeof stop === 'string' && HEX.test(stop));
 
-const formatNumber = (value) => new Intl.NumberFormat('en', { maximumFractionDigits: 2 }).format(value);
+// Interpolates `count` colours across any number of stops, so a two-stop
+// sequential ramp and a three-stop diverging one are described the same way.
+export function rampColors(ramp = DEFAULT_RAMP, count = BUCKET_COUNT) {
+  const stops = (isRamp(ramp) ? ramp : DEFAULT_RAMP).map(channels);
+  if (count <= 1) return [mix(stops[0], stops.at(-1), 0)];
+  const spans = stops.length - 1;
+  return Array.from({ length: count }, (_, index) => {
+    const position = (index / (count - 1)) * spans;
+    // The final stop sits exactly on a boundary; clamp so it reads the last span.
+    const span = Math.min(Math.floor(position), spans - 1);
+    return mix(stops[span], stops[span + 1], position - span);
+  });
+}
 
-export function numericClasses(values = [], unit = undefined) {
+const NUMERIC_COLORS = rampColors();
+
+// Precision tracks magnitude: a 1,240-hour count reads as noise with decimals,
+// while a 0.37 °C anomaly needs them. Trailing zeros are dropped, so whole
+// numbers stay whole. Shared with the map tooltip so a hovered value never
+// shows more precision than the legend bucket it falls in.
+export const formatValue = (value) => {
+  const magnitude = Math.abs(value);
+  const digits = magnitude >= 100 ? 0 : magnitude >= 10 ? 1 : 2;
+  return new Intl.NumberFormat('en', { maximumFractionDigits: digits }).format(value);
+};
+
+const formatNumber = formatValue;
+
+// `ramp` is the indicator's `colorRamp` from the sector JSON, if it set one;
+// anything missing or malformed falls back to the default ramp.
+export function numericClasses(values = [], unit = undefined, ramp = undefined) {
+  const colors = ramp === undefined ? NUMERIC_COLORS : rampColors(ramp);
   const finite = values.map(({ value }) => value).filter(Number.isFinite);
   if (!finite.length) return [];
   const minimum = Math.min(...finite);
   const maximum = Math.max(...finite);
   const suffix = unit ? ` ${unit}` : '';
-  if (minimum === maximum) return [{ min: minimum, max: maximum, label: `${formatNumber(minimum)}${suffix}`, color: NUMERIC_COLORS[1] }];
-  const step = (maximum - minimum) / NUMERIC_COLORS.length;
-  return NUMERIC_COLORS.map((color, index) => {
+  if (minimum === maximum) return [{ min: minimum, max: maximum, label: `${formatNumber(minimum)}${suffix}`, color: colors[1] }];
+  const step = (maximum - minimum) / colors.length;
+  return colors.map((color, index) => {
     const start = minimum + step * index;
-    const end = index === NUMERIC_COLORS.length - 1 ? maximum : minimum + step * (index + 1);
+    const end = index === colors.length - 1 ? maximum : minimum + step * (index + 1);
     return { min: start, max: end, label: `${formatNumber(start)}–${formatNumber(end)}${suffix}`, color };
   });
 }
