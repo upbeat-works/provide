@@ -15,7 +15,7 @@
   }
 </script>
 
-<div class="bg-slate-50 py-6 z-50">
+<div class="bg-slate-50 py-6">
   <div class="grid gap-4 md:gap-6 items-center mx-auto max-w-7xl px-6 grid-cols-1 md:grid-cols-[1fr_auto_1fr]">
     <div class:order-1={mode === 'geography'} class:order-3={mode === 'indicator'} class:md:order-1={mode === 'geography'} class:md:order-3={mode === 'indicator'}>
       <AvoidGeographySelection label={`Step ${geographyStep} - Geography`} />

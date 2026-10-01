@@ -5,7 +5,10 @@
 
 <slot name="hero" />
 
-<div bind:clientHeight={navHeight} class="relative md:sticky md:top-0 z-50">
+<!-- z-40, below the site header's z-50: this bar sticks to the top of the
+     viewport on scroll, and at an equal z-index it would paint over the
+     header's Tools dropdown simply by coming later in the DOM. -->
+<div bind:clientHeight={navHeight} class="relative md:sticky md:top-0 z-40">
   <slot name="nav" />
 </div>
 
