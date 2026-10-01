@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { adaptChartResult, isChartVisible, paddedDomain, radiusForArea, sampledTicks, splitLineAtGaps } from './adapter.js';
+import { adaptChartResult, isChartVisible, paddedDomain, radiusForArea, riskBandOf, RISK_BANDS, sampledTicks, splitLineAtGaps } from './adapter.js';
 
 const ref = (variable, unit = 'K') => ({ variable, model: 'Model', unit });
 const faceted = (indicator) => `${indicator}|Absolute Values (No Change)|Annual|Area|50th Percentile`;
@@ -340,6 +340,13 @@ describe('chart result adapter', () => {
 test('bubble sizing represents value by area and equal values get usable domains', () => {
   expect(radiusForArea(100, 100)).toBeCloseTo(30);
   expect(radiusForArea(25, 100)).toBeCloseTo(15);
+  // Area carries the value: a quarter of the area is half the radius.
+  expect(radiusForArea(50, 100)).toBeCloseTo(30 / Math.SQRT2);
+  // A tiny share would scale under a pixel and read as missing data, so it is
+  // floored to a visible dot; nothing to show still draws nothing.
+  expect(radiusForArea(0.1, 100)).toBe(3);
+  expect(radiusForArea(0, 100)).toBe(0);
+  expect(radiusForArea(null, 100)).toBe(0);
   const domain = paddedDomain([4, 4]);
   expect(domain[0]).toBeLessThan(4);
   expect(domain[1]).toBeGreaterThan(4);
@@ -367,4 +374,65 @@ test('chart visibility includes errors and excludes API and adapter-derived empt
   expect(isChartVisible({ definition, status: 'empty', data: [] })).toBe(false);
   expect(isChartVisible({ definition, status: 'ready', data: [{ line: [{ year: 2050, value: null }] }] })).toBe(false);
   expect(isChartVisible({ definition, status: 'error', error: 'Failed', data: [] })).toBe(true);
+});
+
+describe('risk banding on bubble and scatter points', () => {
+  const roles = [{ x: ref('Risk|Score', 'index'), y: ref('Risk|Growth', '%'), size: ref('Risk|Level', 'index') }];
+  const banded = (data, riskFrom = 'size') => {
+    const base = result('bubble', roles, data);
+    return adaptChartResult({ ...base, definition: { ...base.definition, data: { riskFrom } } });
+  };
+
+  test.each([
+    [0, 'low'],
+    [24.9, 'low'],
+    [25, 'medium'],
+    [74.9, 'medium'],
+    [75, 'high'],
+    [100, 'high'],
+  ])('scores %s as %s risk', (value, uid) => {
+    expect(riskBandOf(value)?.uid).toBe(uid);
+  });
+
+  test('leaves a value outside the score, or no value at all, unbanded', () => {
+    expect(riskBandOf(-1)).toBeUndefined();
+    expect(riskBandOf(undefined)).toBeUndefined();
+    expect(riskBandOf(Number.NaN)).toBeUndefined();
+  });
+
+  test('bands each point by the role the definition names', () => {
+    const adapted = banded([{ x: 5, y: 2, size: 80 }]);
+    expect(adapted.props.points[0]).toMatchObject({ risk: 'high' });
+    // No explicit colour, so BubbleChart resolves the fill from the legend.
+    expect(adapted.props.points[0].color).toBeUndefined();
+  });
+
+  test('can band by the x value instead', () => {
+    expect(banded([{ x: 10, y: 90, size: 90 }], 'x').props.points[0]).toMatchObject({ risk: 'low' });
+    expect(banded([{ x: 10, y: 90, size: 90 }], 'y').props.points[0]).toMatchObject({ risk: 'high' });
+  });
+
+  test('replaces the series legend with the three risk bands', () => {
+    expect(banded([{ x: 5, y: 2, size: 80 }]).props.levels).toEqual([
+      { uid: 'low', label: 'Low risk', color: RISK_BANDS[0].color },
+      { uid: 'medium', label: 'Medium risk', color: RISK_BANDS[1].color },
+      { uid: 'high', label: 'High risk', color: RISK_BANDS[2].color },
+    ]);
+  });
+
+  test('keeps per-series colouring for a chart that names no risk role', () => {
+    const adapted = adaptChartResult(result('bubble', roles, [{ x: 5, y: 2, size: 80 }]));
+    expect(adapted.props.points[0].risk).toBeUndefined();
+    expect(adapted.props.points[0].color).toBeTruthy();
+    expect(adapted.props.levels[0].uid).toBe('0');
+  });
+
+  test('falls back to the series colour when the named role carries no value', () => {
+    // A scatter has no size role at all, so naming it leaves every point unbanded
+    // rather than dropping the chart.
+    const scatterBase = result('scatter', [{ x: ref('A'), y: ref('B') }], [{ x: 5, y: 2 }]);
+    const scatter = adaptChartResult({ ...scatterBase, definition: { ...scatterBase.definition, data: { riskFrom: 'size' } } });
+    expect(scatter.props.points[0].risk).toBeUndefined();
+    expect(scatter.props.points[0].color).toBeTruthy();
+  });
 });

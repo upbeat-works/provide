@@ -17,7 +17,7 @@
   }
 </script>
 
-<div class="bg-slate-50 py-6 z-50">
+<div class="bg-slate-50 py-6">
   <div
     class="grid gap-4 md:gap-6 items-center mx-auto max-w-7xl px-6"
     class:md:grid-cols-[1fr_auto_1fr]={true}

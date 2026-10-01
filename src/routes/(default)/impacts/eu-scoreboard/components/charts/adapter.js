@@ -1,6 +1,7 @@
 import colorTokens from '$styles/color-tokens-light.json';
 import { parseVariable } from '../../../../../../../api/conventions.ts';
 import { barSeriesIndices, chartSeries } from '../../../../../../../api/scoreboard/series.ts';
+import { rescaleToBaseUnit } from '$lib/utils/formatting';
 
 // The palette explore's charts use: `$THEME.color.category` is this token file's
 // `category` (see ThemeProvider), so importing it here puts both views' charts
@@ -18,6 +19,26 @@ const seriesColor = (index) => CATEGORY.base[index % CATEGORY_COUNT];
 const STACK_RAMP = ['100', '200', '300', '400', '500', '600', '700', '800'].map((step) => colorTokens.theme[step]);
 const stackColor = (index, count) => STACK_RAMP[count < 2 ? STACK_RAMP.length - 1 : Math.round((index * (STACK_RAMP.length - 1)) / (count - 1))];
 
+// Risk banding for bubble/scatter points, on the scoreboard's 0–100 risk score.
+// A chart opts in with `data.riskFrom`, naming the role whose variable carries
+// that score; without it points keep their per-series colour, so a chart whose
+// axes are counts rather than scores is not banded by thresholds that would
+// mean nothing to it. Bands ascend, read like the map's classes (the last whose
+// `min` the value reaches), and step through the theme ramp light-to-dark so a
+// darker dot always reads as more risk.
+export const RISK_BANDS = [
+  { uid: 'low', min: 0, label: 'Low risk', color: colorTokens.theme['200'] },
+  { uid: 'medium', min: 25, label: 'Medium risk', color: colorTokens.theme['500'] },
+  { uid: 'high', min: 75, label: 'High risk', color: colorTokens.theme['800'] },
+];
+
+export const RISK_ROLES = ['x', 'y', 'size'];
+
+export function riskBandOf(value, bands = RISK_BANDS) {
+  if (!Number.isFinite(value)) return undefined;
+  return bands.reduce((match, band) => (value >= band.min ? band : match), undefined);
+}
+
 const variableLabel = (reference) => {
   const label = reference?.label?.trim();
   if (label) return label;
@@ -29,9 +50,9 @@ const variableLabel = (reference) => {
 };
 const seriesDefinitions = (definition) => definition.series ?? chartSeries(definition.data, definition.chartType);
 const roleReference = (definition, role) => seriesDefinitions(definition)?.find((entry) => entry[role])?.[role];
-const axisLabel = (reference) => {
+const axisLabel = (reference, unit = reference?.unit) => {
   const label = variableLabel(reference);
-  return reference?.unit ? `${label} (${reference.unit})` : label;
+  return unit ? `${label} (${unit})` : label;
 };
 
 function infoFor(definition) {
@@ -196,6 +217,17 @@ function bubbleProps(definition, data) {
   const y = roleReference(definition, 'y');
   const size = roleReference(definition, 'size');
   const definitions = seriesDefinitions(definition);
+  // A role reported in a scale word ("million") is converted into the base unit
+  // the definition declares via unitFallback, so the axis shows 3,262 people
+  // rather than 0.00326 million.
+  const scaleOf = (role) => (value) => rescaleToBaseUnit(value, role?.unit, role?.unitFallback);
+  const scaleX = scaleOf(x);
+  const scaleY = scaleOf(y);
+  const scaleSize = scaleOf(size);
+  const displayUnit = (role) => scaleOf(role)(1).unit ?? role?.unit;
+  // Opt-in colouring: the named role's value is read as a 0–100 risk score.
+  const riskFrom = RISK_ROLES.includes(definition.data.riskFrom) ? definition.data.riskFrom : undefined;
+  const scaleForRole = { x: scaleX, y: scaleY, size: scaleSize };
   const pointFor = (entry, values, group, index) => {
     const seriesLabel = variableLabel(entry.x);
     let label = seriesLabel;
@@ -208,13 +240,25 @@ function bubbleProps(definition, data) {
     return {
       uid,
       label,
-      x: values?.x ?? null,
-      y: values?.y ?? null,
-      size: values?.size ?? null,
-      // Same ramp the stacked bar uses, so the two charts' legends match.
-      color: stackColor(index, definitions.length),
+      x: Number.isFinite(values?.x) ? scaleX(values.x).value : (values?.x ?? null),
+      y: Number.isFinite(values?.y) ? scaleY(values.y).value : (values?.y ?? null),
+      size: Number.isFinite(values?.size) ? scaleSize(values.size).value : (values?.size ?? null),
+      ...riskColor(values, index),
     };
   };
+
+  // A banded point carries `risk` and no `color`, so BubbleChart resolves its
+  // fill from the legend; an unbanded one keeps the stacked bar's ramp, so the
+  // two charts' legends match. A point whose risk value is missing falls back
+  // to that colour rather than dropping out of the chart.
+  function riskColor(values, index) {
+    if (riskFrom) {
+      const raw = values?.[riskFrom];
+      const band = riskBandOf(Number.isFinite(raw) ? scaleForRole[riskFrom](raw).value : raw);
+      if (band) return { risk: band.uid };
+    }
+    return { color: stackColor(index, definitions.length) };
+  }
   let points;
   const groupBy = definition.data.groupBy;
   if (isGrouped(groupBy)) {
@@ -225,13 +269,15 @@ function bubbleProps(definition, data) {
   return {
     points: points.filter(({ x: xValue, y: yValue, size: sizeValue }) => Number.isFinite(xValue) && Number.isFinite(yValue) && (scatter || (Number.isFinite(sizeValue) && sizeValue > 0))),
     pointMode: definition.chartType,
-    levels: definitions.map((entry, index) => ({ uid: String(index), label: variableLabel(entry.x), color: stackColor(index, definitions.length) })),
-    xLabel: axisLabel(x),
-    yLabel: axisLabel(y),
-    sizeLabel: scatter ? undefined : axisLabel(size),
-    xUnit: x?.unit,
-    yUnit: y?.unit,
-    sizeUnit: size?.unit,
+    levels: riskFrom
+      ? RISK_BANDS.map(({ uid, label, color }) => ({ uid, label, color }))
+      : definitions.map((entry, index) => ({ uid: String(index), label: variableLabel(entry.x), color: stackColor(index, definitions.length) })),
+    xLabel: axisLabel(x, displayUnit(x)),
+    yLabel: axisLabel(y, displayUnit(y)),
+    sizeLabel: scatter ? undefined : axisLabel(size, displayUnit(size)),
+    xUnit: displayUnit(x),
+    yUnit: displayUnit(y),
+    sizeUnit: displayUnit(size),
     tooltipLabels: { x: variableLabel(x), y: variableLabel(y), size: variableLabel(size) },
   };
 }
@@ -292,9 +338,15 @@ export function adaptChartResult(result, selection = {}) {
 
 export const isChartVisible = (result, selection = {}) => adaptChartResult(result, selection).status !== 'empty';
 
-export function radiusForArea(value, maximum, maximumRadius = 30) {
+// Area, not radius, carries the value: a bubble twice the area reads as twice
+// the quantity, which taking the square root of the ratio is what gives.
+// A floor keeps a small-but-present value visible — scaled strictly, a value a
+// few hundredths of the largest lands under a pixel and reads as missing data
+// rather than as a small number. Zero and absent values still draw nothing, so
+// the floor never invents a bubble where there is no quantity.
+export function radiusForArea(value, maximum, maximumRadius = 30, minimumRadius = 3) {
   if (!Number.isFinite(value) || value <= 0 || !Number.isFinite(maximum) || maximum <= 0) return 0;
-  return Math.sqrt(value / maximum) * maximumRadius;
+  return Math.max(minimumRadius, Math.sqrt(value / maximum) * maximumRadius);
 }
 
 export function paddedDomain(values, lowerPadding = 0.12, upperPadding = 0.22) {

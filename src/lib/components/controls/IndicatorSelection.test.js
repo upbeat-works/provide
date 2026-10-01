@@ -52,7 +52,9 @@ describe('IndicatorSelection', () => {
     let finishRequest;
     const pendingResponse = new Promise((resolve) => { finishRequest = resolve; });
     globalThis.fetch = vi.fn(async (input) => {
-      const url = new URL(String(input));
+      // The component fetches a relative path; give it a base so the mock can
+      // read its params instead of throwing on an invalid URL.
+      const url = new URL(String(input), 'http://localhost');
       if (!url.pathname.endsWith('/api/indicators')) throw new Error(`Unexpected request: ${url}`);
       if (url.searchParams.get('Sector') === 'Health') return pendingResponse;
       return Response.json({ indicators: [heat], failedInstances: [], filters });
@@ -80,7 +82,9 @@ describe('IndicatorSelection', () => {
     const emptyFilters = [{ key: 'Sector', label: 'Sector', color: 'grass', options: [{ value: 'Health', count: 0 }, { value: 'Water', count: 0 }] }];
     let regionRequests = 0;
     globalThis.fetch = vi.fn(async (input) => {
-      const url = new URL(String(input));
+      // The component fetches a relative path; give it a base so the mock can
+      // read its params instead of throwing on an invalid URL.
+      const url = new URL(String(input), 'http://localhost');
       if (!url.pathname.endsWith('/api/indicators')) throw new Error(`Unexpected request: ${url}`);
       if (url.searchParams.get('Sector') === 'Health') return Response.json({ indicators: [], failedInstances: [], filters: emptyFilters });
       if (url.searchParams.get('region') === 'DEU' && !url.searchParams.has('Sector')) {

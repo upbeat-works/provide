@@ -8,7 +8,7 @@
   import { getContext } from 'svelte';
   import FilterLayer from '$lib/components/maps/MapboxMap/FilterLayer.svelte';
   import PolygonLayer from '$lib/components/maps/MapboxMap/PolygonLayer.svelte';
-  import InteractivityOverlay from './InteractivityOverlay.svelte';
+  import InteractivityOverlay from '$lib/components/maps/InteractivityOverlay.svelte';
   import { median } from 'd3-array';
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';

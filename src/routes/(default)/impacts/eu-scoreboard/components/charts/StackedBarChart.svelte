@@ -16,6 +16,8 @@
   export let unit = 'float';
   export let height = 'h-[420px]';
   export let unitLabel = xLabel;
+  // Accepted from the adapter but intentionally unrendered: the year is already
+  // stated by the panel's filters, so a pill on the chart just repeats it.
   export let selectedYear = undefined;
 
   // Row names are drawn leftwards from the plot's edge, so the left gutter has to
@@ -76,7 +78,7 @@
   }));
 </script>
 
-<ChartFigure legend={layers} {xLabel} {height} {selectedYear} {...$$restProps}>
+<ChartFigure legend={layers} {xLabel} {height} {...$$restProps}>
   <div class="h-full w-full animate-defer-visibility">
     <LayerCake {padding} x="total" y="label" data={tooltipRows} {xDomain} {yDomain} yScale={scaleBand().paddingInner(0.32).paddingOuter(0.1)}>
       <Svg>
