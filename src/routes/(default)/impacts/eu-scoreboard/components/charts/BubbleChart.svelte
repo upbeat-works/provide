@@ -1,7 +1,7 @@
 <script>
   import { LayerCake, Svg } from 'layercake';
   import { paddedDomain, radiusForArea } from './adapter.js';
-  import { formatValue } from '$lib/utils/formatting';
+  import { formatCompact, formatValue } from '$lib/utils/formatting';
   import AxisX from '$lib/components/charts/axes/AxisX.svelte';
   import AxisY from '$lib/components/charts/axes/AxisY.svelte';
   import BubbleLayer from '$lib/components/charts/layers/BubbleLayer.svelte';
@@ -24,11 +24,15 @@
   export let formatX = (d) => formatValue(d, xUnit);
   export let formatY = (d) => formatValue(d, yUnit);
   export let formatSize = (d) => formatValue(d, sizeUnit);
-  export let formatXTick = (d) => formatValue(d, xUnit, { addSuffix: false });
-  export let formatYTick = (d) => formatValue(d, yUnit, { addSuffix: false });
+  // Ticks are the tightest space on the figure, so they take SI prefixes (42k)
+  // while the tooltip above spells the value out in full.
+  export let formatXTick = (d) => formatCompact(d);
+  export let formatYTick = (d) => formatCompact(d);
   export let height = 'h-[460px]';
   export let tooltipLabels = {};
   export let pointMode = 'bubble';
+  // Accepted from the adapter but intentionally unrendered: the year is already
+  // stated by the panel's filters, so a pill on the chart just repeats it.
   export let selectedYear = undefined;
 
   const padding = { top: 10, right: 96, bottom: 34, left: 62 };
@@ -57,7 +61,7 @@
   $: legend = [...levels, ...(sizeLabel ? [{ uid: 'size', label: sizeLabel, variant: 'note' }] : [])];
 </script>
 
-<ChartFigure {legend} {xLabel} {yLabel} {height} {selectedYear} {...$$restProps}>
+<ChartFigure {legend} {xLabel} {yLabel} {height} {...$$restProps}>
   <div class="h-full w-full animate-defer-visibility">
     <LayerCake {padding} x="x" y="y" {data} xDomain={resolvedXDomain} {yDomain}>
       <Svg>

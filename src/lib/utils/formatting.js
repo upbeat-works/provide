@@ -44,7 +44,41 @@ const indicatorFormats = {
   degree: f(FORMAT_DEGREE),
 
   // format for anything else
-  default: f(FORMAT_INTEGER),
+  default: (value) => adaptiveDefault(value),
+};
+
+// The old fallback was a plain integer format, which silently collapsed every
+// value below 0.5 to "0" — a scatter axis of sub-unit numbers became a column
+// of zeroes. Whole numbers and anything >= 1 keep the previous integer
+// rendering; only the sub-unit range gains the significant digits it needs to
+// stay distinguishable.
+function adaptiveDefault(value) {
+  if (!Number.isFinite(value)) return NA_STRING;
+  const magnitude = Math.abs(value);
+  if (magnitude === 0) return '0';
+  if (magnitude >= 1) return f(FORMAT_INTEGER)(value);
+  return f('.3~g')(value);
+}
+
+// Scale words carry magnitude, not meaning: ixmp4 reports NUTS2 population in
+// "million", so a regional count arrives as 0.00326. Multiplying back into the
+// base unit the chart declares puts the axis in numbers a reader recognises.
+const SCALE_UNITS = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 };
+
+export function rescaleToBaseUnit(value, unit, baseUnit) {
+  const factor = SCALE_UNITS[String(unit ?? '').trim().toLowerCase()];
+  if (!factor || !baseUnit || !Number.isFinite(value)) return { value, unit };
+  return { value: value * factor, unit: baseUnit };
+}
+
+export const isScaleUnit = (unit) => Boolean(SCALE_UNITS[String(unit ?? '').trim().toLowerCase()]);
+
+// Axis ticks are the one place where space is tight enough to want SI prefixes:
+// 41,844 reads as 42k without crowding its neighbours.
+export const formatCompact = (value) => {
+  if (!Number.isFinite(value)) return NA_STRING;
+  if (value === 0) return '0';
+  return Math.abs(value) >= 10000 ? f('.3~s')(value) : adaptiveDefault(value);
 };
 
 // Display labels per unit id. Consumers (charts, axes, sentence formatting)

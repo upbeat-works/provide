@@ -90,7 +90,8 @@
         ],
         "x": "Mean Air Temperature",
         "y": "Maximum Air Temperature",
-        "size": "High Heat Risk"
+        "size": "High Heat Risk",
+        "riskFrom": "size"
       }
     },
     {
