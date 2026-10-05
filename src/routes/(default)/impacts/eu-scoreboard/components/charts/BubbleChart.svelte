@@ -26,8 +26,8 @@
   export let formatSize = (d) => formatValue(d, sizeUnit);
   // Ticks are the tightest space on the figure, so they take SI prefixes (42k)
   // while the tooltip above spells the value out in full.
-  export let formatXTick = (d) => formatCompact(d);
-  export let formatYTick = (d) => formatCompact(d);
+  export let formatXTick = (d) => formatCompact(d, xUnit);
+  export let formatYTick = (d) => formatCompact(d, yUnit);
   export let height = 'h-[460px]';
   export let tooltipLabels = {};
   export let pointMode = 'bubble';

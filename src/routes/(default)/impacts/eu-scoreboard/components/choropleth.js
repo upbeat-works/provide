@@ -113,13 +113,14 @@ export function rampColors(ramp = DEFAULT_RAMP, count = BUCKET_COUNT) {
 
 const NUMERIC_COLORS = rampColors();
 
-// Precision tracks magnitude: a 1,240-hour count reads as noise with decimals,
-// while a 0.37 °C anomaly needs them. Trailing zeros are dropped, so whole
-// numbers stay whole. Shared with the map tooltip so a hovered value never
-// shows more precision than the legend bucket it falls in.
 export const formatValue = (value) => {
   const magnitude = Math.abs(value);
-  const digits = magnitude >= 100 ? 0 : magnitude >= 10 ? 1 : 2;
+  if (magnitude > 0 && magnitude < 1) {
+    return new Intl.NumberFormat('en', { maximumSignificantDigits: 3 }).format(value);
+  }
+  let digits = 2;
+  if (magnitude >= 100) digits = 0;
+  else if (magnitude >= 10) digits = 1;
   return new Intl.NumberFormat('en', { maximumFractionDigits: digits }).format(value);
 };
 

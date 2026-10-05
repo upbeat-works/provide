@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import bbox from '@turf/bbox';
 import {
   classOf,
+  formatValue,
   colorFor,
   countriesBounds,
   countryFillColor,
@@ -249,5 +250,15 @@ describe('custom colour ramps from a sector definition', () => {
     const values = [{ value: 0 }, { value: 100 }];
     expect(numericClasses(values).map(({ color }) => color)).toEqual(numericClasses(values, undefined, DEFAULT_RAMP).map(({ color }) => color));
     expect(numericClasses(values, undefined, ['oops']).map(({ color }) => color)).toEqual(numericClasses(values).map(({ color }) => color));
+  });
+});
+
+describe('map value labels', () => {
+  test('preserves small nonzero values in tooltips and legend boundaries', () => {
+    expect(formatValue(0.00326)).toBe('0.00326');
+    expect(formatValue(-0.000071)).toBe('-0.000071');
+    expect(formatValue(0)).toBe('0');
+    const classes = numericClasses([{ value: 0.003 }, { value: 0.004 }], 'million');
+    expect(legendOf(classes, { labelMode: 'boundaries' }).ticks).toEqual(['0.003', '0.00325', '0.0035', '0.00375', '0.004']);
   });
 });

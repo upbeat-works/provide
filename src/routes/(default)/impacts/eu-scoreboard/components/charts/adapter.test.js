@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { adaptChartResult, isChartVisible, paddedDomain, radiusForArea, riskBandOf, RISK_BANDS, sampledTicks, splitLineAtGaps } from './adapter.js';
+import { adaptChartResult, isChartVisible, paddedDomain, radiusForArea, RISK_BANDS, sampledTicks, splitLineAtGaps } from './adapter.js';
 
 const ref = (variable, unit = 'K') => ({ variable, model: 'Model', unit });
 const faceted = (indicator) => `${indicator}|Absolute Values (No Change)|Annual|Area|50th Percentile`;
@@ -379,37 +379,44 @@ test('chart visibility includes errors and excludes API and adapter-derived empt
 describe('risk banding on bubble and scatter points', () => {
   const roles = [{ x: ref('Risk|Score', 'index'), y: ref('Risk|Growth', '%'), size: ref('Risk|Level', 'index') }];
   const banded = (data, riskFrom = 'size') => {
-    const base = result('bubble', roles, data);
-    return adaptChartResult({ ...base, definition: { ...base.definition, data: { riskFrom } } });
+    const groups = data.map((values, index) => ({ region: { uid: String(index), label: String(index) }, series: [values] }));
+    const base = result('bubble', roles, groups);
+    return adaptChartResult({ ...base, definition: { ...base.definition, data: { groupBy: 'region', riskFrom } } });
   };
 
-  test.each([
-    [0, 'low'],
-    [24.9, 'low'],
-    [25, 'medium'],
-    [74.9, 'medium'],
-    [75, 'high'],
-    [100, 'high'],
-  ])('scores %s as %s risk', (value, uid) => {
-    expect(riskBandOf(value)?.uid).toBe(uid);
+  test('uses the shown values rather than fixed score thresholds', () => {
+    const adapted = banded([
+      { x: 1, y: 2, size: 4.434 },
+      { x: 2, y: 3, size: 4.537 },
+      { x: 3, y: 4, size: 57.376 },
+    ]);
+    expect(adapted.props.points.map(({ risk }) => risk)).toEqual(['low', 'medium', 'high']);
+    expect(adapted.props.points.every(({ color }) => color === undefined)).toBe(true);
   });
 
-  test('leaves a value outside the score, or no value at all, unbanded', () => {
-    expect(riskBandOf(-1)).toBeUndefined();
-    expect(riskBandOf(undefined)).toBeUndefined();
-    expect(riskBandOf(Number.NaN)).toBeUndefined();
+  test('keeps bands unchanged when the unit scale changes', () => {
+    const values = [2, 4, 6, 8, 10];
+    const bandsAtScale = (scale) => banded(values.map((size) => ({ x: 1, y: 2, size: size * scale }))).props.points.map(({ risk }) => risk);
+    expect(bandsAtScale(1)).toEqual(['low', 'medium', 'medium', 'medium', 'high']);
+    expect(bandsAtScale(1000000)).toEqual(bandsAtScale(1));
   });
 
-  test('bands each point by the role the definition names', () => {
-    const adapted = banded([{ x: 5, y: 2, size: 80 }]);
-    expect(adapted.props.points[0]).toMatchObject({ risk: 'high' });
-    // No explicit colour, so BubbleChart resolves the fill from the legend.
-    expect(adapted.props.points[0].color).toBeUndefined();
+  test('bands by the named coordinate, including negative values', () => {
+    const data = [{ x: -30, y: 30, size: 1 }, { x: -20, y: 20, size: 1 }, { x: -10, y: 10, size: 1 }];
+    expect(banded(data, 'x').props.points.map(({ risk }) => risk)).toEqual(['low', 'medium', 'high']);
+    expect(banded(data, 'y').props.points.map(({ risk }) => risk)).toEqual(['high', 'medium', 'low']);
   });
 
-  test('can band by the x value instead', () => {
-    expect(banded([{ x: 10, y: 90, size: 90 }], 'x').props.points[0]).toMatchObject({ risk: 'low' });
-    expect(banded([{ x: 10, y: 90, size: 90 }], 'y').props.points[0]).toMatchObject({ risk: 'high' });
+  test('keeps equal values together and does not claim high risk for a constant series', () => {
+    expect(banded([1, 1, 1].map((size) => ({ x: 1, y: 2, size }))).props.points.map(({ risk }) => risk)).toEqual(['medium', 'medium', 'medium']);
+  });
+
+  test('excludes undrawable points from percentile calculation', () => {
+    const adapted = banded([
+      { x: 1, y: 2, size: 1 }, { x: 2, y: 3, size: 2 }, { x: 3, y: 4, size: 3 },
+      { x: null, y: 4, size: 1000 }, { x: 4, y: 5, size: null },
+    ]);
+    expect(adapted.props.points.map(({ risk }) => risk)).toEqual(['low', 'medium', 'high']);
   });
 
   test('replaces the series legend with the three risk bands', () => {

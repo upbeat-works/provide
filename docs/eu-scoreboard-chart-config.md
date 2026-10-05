@@ -113,10 +113,8 @@ Scatter plots use equal-size points and need no size variable.
 
 ## Risk colouring on bubble and scatter charts
 
-By default every point on a bubble or scatter chart takes its series colour, so
-a region-grouped chart comes out one colour. A chart can instead colour its
-points by risk band, by naming the role whose variable carries a 0–100 risk
-score:
+Bubble and scatter points use their series colour by default. Set `riskFrom`
+to the role used for risk colours:
 
 ```json
 {
@@ -127,23 +125,25 @@ score:
 }
 ```
 
-`riskFrom` is `"x"`, `"y"` or `"size"`. The bands are fixed:
+`riskFrom` is `"x"`, `"y"` or `"size"`. Bands use the named role's values
+from the points shown in the chart, with no required unit or score range.
+The 25th and 75th percentiles are calculated by linear interpolation between
+sorted values:
 
-| Band | Score | Colour |
+| Band | Values | Colour |
 | --- | --- | --- |
-| Low risk | 0 to under 25 | theme 200 (light) |
-| Medium risk | 25 to under 75 | theme 500 |
-| High risk | 75 and above | theme 800 (dark) |
+| Low risk | Below the 25th percentile | theme 200 (light) |
+| Medium risk | From the 25th through the 75th percentile | theme 500 |
+| High risk | Above the 75th percentile | theme 800 (dark) |
 
-The legend becomes those three bands instead of the series list, and the ramp
-runs light to dark so a darker point always reads as more risk.
+The legend shows these three bands. They describe relative risk within the
+shown points, not an absolute risk level. Changing the country, scenario or
+year can change the percentile limits. Equal values share a band. A single
+value or a constant series falls in the medium band.
 
-Banding is opt-in because the thresholds are absolute. A chart whose axes are
-counts rather than scores — `education-by-region`, whose values are people —
-would be banded meaninglessly, so it names no `riskFrom` and keeps its series
-colour. A point whose named role has no value (a scatter has no `size`, or the
-variable is missing for that region) stays on the series colour rather than
-dropping out of the chart.
+Points missing a required coordinate are excluded before calculating the
+percentiles. A shown point with no value for the named role keeps its series
+colour. For example, a scatter chart with `riskFrom: "size"` has no size values.
 
 ## Map defaults and ranking
 

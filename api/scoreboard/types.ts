@@ -23,8 +23,7 @@ export type ChartData = {
   variables: string[];
   model?: string;
   unitFallback?: string;
-  // Names the bubble/scatter role whose variable carries a 0-100 risk score.
-  // Set it to colour points by risk band instead of by series.
+  // Names the role used for percentile bands across the visible points.
   riskFrom?: 'x' | 'y' | 'size';
   bars?: string[];
   stacks?: string[];

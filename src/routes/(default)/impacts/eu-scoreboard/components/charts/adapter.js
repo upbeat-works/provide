@@ -1,3 +1,4 @@
+import { quantileSorted } from 'd3-array';
 import colorTokens from '$styles/color-tokens-light.json';
 import { parseVariable } from '../../../../../../../api/conventions.ts';
 import { barSeriesIndices, chartSeries } from '../../../../../../../api/scoreboard/series.ts';
@@ -19,24 +20,28 @@ const seriesColor = (index) => CATEGORY.base[index % CATEGORY_COUNT];
 const STACK_RAMP = ['100', '200', '300', '400', '500', '600', '700', '800'].map((step) => colorTokens.theme[step]);
 const stackColor = (index, count) => STACK_RAMP[count < 2 ? STACK_RAMP.length - 1 : Math.round((index * (STACK_RAMP.length - 1)) / (count - 1))];
 
-// Risk banding for bubble/scatter points, on the scoreboard's 0–100 risk score.
-// A chart opts in with `data.riskFrom`, naming the role whose variable carries
-// that score; without it points keep their per-series colour, so a chart whose
-// axes are counts rather than scores is not banded by thresholds that would
-// mean nothing to it. Bands ascend, read like the map's classes (the last whose
-// `min` the value reaches), and step through the theme ramp light-to-dark so a
-// darker dot always reads as more risk.
 export const RISK_BANDS = [
-  { uid: 'low', min: 0, label: 'Low risk', color: colorTokens.theme['200'] },
-  { uid: 'medium', min: 25, label: 'Medium risk', color: colorTokens.theme['500'] },
-  { uid: 'high', min: 75, label: 'High risk', color: colorTokens.theme['800'] },
+  { uid: 'low', label: 'Low risk', color: colorTokens.theme['200'] },
+  { uid: 'medium', label: 'Medium risk', color: colorTokens.theme['500'] },
+  { uid: 'high', label: 'High risk', color: colorTokens.theme['800'] },
 ];
 
 export const RISK_ROLES = ['x', 'y', 'size'];
 
-export function riskBandOf(value, bands = RISK_BANDS) {
-  if (!Number.isFinite(value)) return undefined;
-  return bands.reduce((match, band) => (value >= band.min ? band : match), undefined);
+function bandPoints(points, role) {
+  const values = points.map((point) => point[role]).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!values.length) return points;
+  const lower = quantileSorted(values, 0.25);
+  const upper = quantileSorted(values, 0.75);
+  return points.map((point) => {
+    const value = point[role];
+    if (!Number.isFinite(value)) return point;
+    let risk = 'medium';
+    if (value < lower) risk = 'low';
+    if (value > upper) risk = 'high';
+    const { color, ...coordinates } = point;
+    return { ...coordinates, risk };
+  });
 }
 
 const variableLabel = (reference) => {
@@ -225,9 +230,7 @@ function bubbleProps(definition, data) {
   const scaleY = scaleOf(y);
   const scaleSize = scaleOf(size);
   const displayUnit = (role) => scaleOf(role)(1).unit ?? role?.unit;
-  // Opt-in colouring: the named role's value is read as a 0–100 risk score.
   const riskFrom = RISK_ROLES.includes(definition.data.riskFrom) ? definition.data.riskFrom : undefined;
-  const scaleForRole = { x: scaleX, y: scaleY, size: scaleSize };
   const pointFor = (entry, values, group, index) => {
     const seriesLabel = variableLabel(entry.x);
     let label = seriesLabel;
@@ -243,22 +246,10 @@ function bubbleProps(definition, data) {
       x: Number.isFinite(values?.x) ? scaleX(values.x).value : (values?.x ?? null),
       y: Number.isFinite(values?.y) ? scaleY(values.y).value : (values?.y ?? null),
       size: Number.isFinite(values?.size) ? scaleSize(values.size).value : (values?.size ?? null),
-      ...riskColor(values, index),
+      color: stackColor(index, definitions.length),
     };
   };
 
-  // A banded point carries `risk` and no `color`, so BubbleChart resolves its
-  // fill from the legend; an unbanded one keeps the stacked bar's ramp, so the
-  // two charts' legends match. A point whose risk value is missing falls back
-  // to that colour rather than dropping out of the chart.
-  function riskColor(values, index) {
-    if (riskFrom) {
-      const raw = values?.[riskFrom];
-      const band = riskBandOf(Number.isFinite(raw) ? scaleForRole[riskFrom](raw).value : raw);
-      if (band) return { risk: band.uid };
-    }
-    return { color: stackColor(index, definitions.length) };
-  }
   let points;
   const groupBy = definition.data.groupBy;
   if (isGrouped(groupBy)) {
@@ -266,8 +257,10 @@ function bubbleProps(definition, data) {
   } else {
     points = definitions.map((entry, index) => pointFor(entry, data[index], undefined, index));
   }
+  points = points.filter(({ x: xValue, y: yValue, size: sizeValue }) => Number.isFinite(xValue) && Number.isFinite(yValue) && (scatter || (Number.isFinite(sizeValue) && sizeValue > 0)));
+  if (riskFrom) points = bandPoints(points, riskFrom);
   return {
-    points: points.filter(({ x: xValue, y: yValue, size: sizeValue }) => Number.isFinite(xValue) && Number.isFinite(yValue) && (scatter || (Number.isFinite(sizeValue) && sizeValue > 0))),
+    points,
     pointMode: definition.chartType,
     levels: riskFrom
       ? RISK_BANDS.map(({ uid, label, color }) => ({ uid, label, color }))

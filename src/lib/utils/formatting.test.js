@@ -20,8 +20,6 @@ describe('formatPercentPoints', () => {
 });
 
 describe('sub-unit values on an unregistered unit', () => {
-  // The old fallback was a plain integer format, so a scatter axis of NUTS2
-  // population shares rendered every tick as "0".
   test('keeps significant digits instead of collapsing to zero', () => {
     expect(formatValue(0.00326, 'people', { addSuffix: false })).toBe('0.00326');
     expect(formatValue(0.0418, 'people', { addSuffix: false })).toBe('0.0418');
@@ -58,4 +56,9 @@ describe('formatCompact for axis ticks', () => {
     expect(formatCompact(0.0418)).toBe('0.0418');
     expect(formatCompact(0)).toBe('0');
   });
+});
+
+test('keeps fractional axis ticks distinct and preserves percent scaling', () => {
+  expect([1.1, 1.2, 1.3, 1.4].map((value) => formatCompact(value))).toEqual(['1.1', '1.2', '1.3', '1.4']);
+  expect(formatCompact(0.25, 'percent')).toBe('25');
 });

@@ -47,11 +47,6 @@ const indicatorFormats = {
   default: (value) => adaptiveDefault(value),
 };
 
-// The old fallback was a plain integer format, which silently collapsed every
-// value below 0.5 to "0" — a scatter axis of sub-unit numbers became a column
-// of zeroes. Whole numbers and anything >= 1 keep the previous integer
-// rendering; only the sub-unit range gains the significant digits it needs to
-// stay distinguishable.
 function adaptiveDefault(value) {
   if (!Number.isFinite(value)) return NA_STRING;
   const magnitude = Math.abs(value);
@@ -75,10 +70,12 @@ export const isScaleUnit = (unit) => Boolean(SCALE_UNITS[String(unit ?? '').trim
 
 // Axis ticks are the one place where space is tight enough to want SI prefixes:
 // 41,844 reads as 42k without crowding its neighbours.
-export const formatCompact = (value) => {
+export const formatCompact = (value, unit = DEFAULT_FORMAT_UID) => {
   if (!Number.isFinite(value)) return NA_STRING;
   if (value === 0) return '0';
-  return Math.abs(value) >= 10000 ? f('.3~s')(value) : adaptiveDefault(value);
+  const displayValue = unit === 'percent' ? value * 100 : value;
+  if (Math.abs(displayValue) >= 10000) return f('.3~s')(displayValue);
+  return f(',.12~g')(displayValue);
 };
 
 // Display labels per unit id. Consumers (charts, axes, sentence formatting)
