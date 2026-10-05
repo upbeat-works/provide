@@ -44,7 +44,38 @@ const indicatorFormats = {
   degree: f(FORMAT_DEGREE),
 
   // format for anything else
-  default: f(FORMAT_INTEGER),
+  default: (value) => adaptiveDefault(value),
+};
+
+function adaptiveDefault(value) {
+  if (!Number.isFinite(value)) return NA_STRING;
+  const magnitude = Math.abs(value);
+  if (magnitude === 0) return '0';
+  if (magnitude >= 1) return f(FORMAT_INTEGER)(value);
+  return f('.3~g')(value);
+}
+
+// Scale words carry magnitude, not meaning: ixmp4 reports NUTS2 population in
+// "million", so a regional count arrives as 0.00326. Multiplying back into the
+// base unit the chart declares puts the axis in numbers a reader recognises.
+const SCALE_UNITS = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 };
+
+export function rescaleToBaseUnit(value, unit, baseUnit) {
+  const factor = SCALE_UNITS[String(unit ?? '').trim().toLowerCase()];
+  if (!factor || !baseUnit || !Number.isFinite(value)) return { value, unit };
+  return { value: value * factor, unit: baseUnit };
+}
+
+export const isScaleUnit = (unit) => Boolean(SCALE_UNITS[String(unit ?? '').trim().toLowerCase()]);
+
+// Axis ticks are the one place where space is tight enough to want SI prefixes:
+// 41,844 reads as 42k without crowding its neighbours.
+export const formatCompact = (value, unit = DEFAULT_FORMAT_UID) => {
+  if (!Number.isFinite(value)) return NA_STRING;
+  if (value === 0) return '0';
+  const displayValue = unit === 'percent' ? value * 100 : value;
+  if (Math.abs(displayValue) >= 10000) return f('.3~s')(displayValue);
+  return f(',.12~g')(displayValue);
 };
 
 // Display labels per unit id. Consumers (charts, axes, sentence formatting)

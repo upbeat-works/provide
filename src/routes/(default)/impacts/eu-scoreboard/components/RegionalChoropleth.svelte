@@ -4,7 +4,7 @@
 
 <script>
   import { getContext, onDestroy } from 'svelte';
-  import { classOf, regionalFillColor, regionalFilter } from './choropleth.js';
+  import { classOf, formatValue, regionalFillColor, regionalFilter } from './choropleth.js';
 
   export let shape;
   export let values = [];
@@ -20,7 +20,6 @@
   instance += 1;
 
   let hover;
-  const number = new Intl.NumberFormat('en', { maximumFractionDigits: 4 });
   $: hoveredValue = hover ? values.find(({ region }) => region === hover.region)?.value : undefined;
   $: hoveredClass = classOf(hoveredValue, classes);
 
@@ -113,6 +112,6 @@
   >
     <span class="absolute inset-y-0 left-0 w-1" style={`background-color: ${hoveredClass.color}`}></span>
     <p class="text-sm font-semibold leading-tight text-theme-stronger">{hover.label}</p>
-    <p class="mt-1 text-lg font-semibold leading-tight tabular-nums text-text-base">{number.format(hoveredValue)}{unit ? ` ${unit}` : ''}</p>
+    <p class="mt-1 text-lg font-semibold leading-tight tabular-nums text-text-base">{formatValue(hoveredValue)}{unit ? ` ${unit}` : ''}</p>
   </div>
 {/if}

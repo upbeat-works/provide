@@ -38,7 +38,10 @@ from conventions — shrink it, don't grow it.
 
 ## Tests
 
-`bun test api/` (also `npm test`). Routes use MSW-free Hono `api.request(...)` with a test env;
+`bun test ./api` (also `npm test`). Keep the `./` — bun matches the filter as a substring against
+full paths, so a bare `bun test api/` also sweeps in `src/lib/api/` and `src/lib/server/catalog-api`,
+which are vitest files that bun cannot run (`$app/environment` is unresolvable and `vi.mock` is a
+no-op). Routes use MSW-free Hono `api.request(...)` with a test env;
 view pure-functions are unit-tested directly. Tests live next to the code (`*.test.ts`).
 
 The frontend has its own runner: `npm run test:web` (vitest, `vitest.config.js`). Run it **inside

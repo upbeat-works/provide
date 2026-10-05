@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import bbox from '@turf/bbox';
 import {
   classOf,
+  formatValue,
   colorFor,
   countriesBounds,
   countryFillColor,
@@ -10,6 +11,9 @@ import {
   scoredUids,
   legendOf,
   numericClasses,
+  rampColors,
+  isRamp,
+  DEFAULT_RAMP,
   rasterFeatures,
   COUNTRY_CODE,
 } from './choropleth.js';
@@ -205,5 +209,56 @@ describe('riskRankingFor', () => {
     expect(a.map((e) => e.uid)).not.toEqual(b.map((e) => e.uid));
     // Scores stay whole, and on their own scale however far they are nudged.
     expect(b.every(({ value }) => value >= 0 && value <= 100 && Number.isInteger(value))).toBe(true);
+  });
+});
+
+describe('custom colour ramps from a sector definition', () => {
+  test('walks a two-stop ramp end to end', () => {
+    expect(rampColors(['#000000', '#ffffff'], 4)).toEqual(['#000000', '#555555', '#aaaaaa', '#ffffff']);
+  });
+
+  test('passes through the middle stop of a diverging ramp', () => {
+    // Five buckets over two spans puts bucket three exactly on the midpoint.
+    expect(rampColors(['#000000', '#ff0000', '#ffffff'], 5)).toEqual(['#000000', '#800000', '#ff0000', '#ff8080', '#ffffff']);
+  });
+
+  test('keeps the default ramp when the configured one is unusable', () => {
+    const fallback = rampColors(DEFAULT_RAMP);
+    expect(rampColors(['#ffffff'])).toEqual(fallback); // one stop cannot span
+    expect(rampColors(['red', 'blue'])).toEqual(fallback); // named colours
+    expect(rampColors(['#fff', '#000'])).toEqual(fallback); // shorthand hex
+    expect(rampColors(undefined)).toEqual(fallback);
+  });
+
+  test('recognises only full six-digit hex as a ramp', () => {
+    expect(isRamp(['#FEDB5C', '#E27B47'])).toBe(true);
+    expect(isRamp(['#fedb5c', '#e27b47', '#123456'])).toBe(true);
+    expect(isRamp(['#fedb5c'])).toBe(false);
+    expect(isRamp(['#fedb5c', '#nothex'])).toBe(false);
+    expect(isRamp('#fedb5c')).toBe(false);
+    expect(isRamp(undefined)).toBe(false);
+  });
+
+  test("colours an indicator's classes with its configured ramp", () => {
+    const values = [{ value: 0 }, { value: 100 }];
+    expect(numericClasses(values, undefined, ['#000000', '#ffffff']).map(({ color }) => color)).toEqual(['#000000', '#555555', '#aaaaaa', '#ffffff']);
+    // Boundaries are unaffected by the ramp.
+    expect(numericClasses(values, undefined, ['#000000', '#ffffff']).map(({ min }) => min)).toEqual(numericClasses(values).map(({ min }) => min));
+  });
+
+  test('falls back to the default ramp when an indicator sets none', () => {
+    const values = [{ value: 0 }, { value: 100 }];
+    expect(numericClasses(values).map(({ color }) => color)).toEqual(numericClasses(values, undefined, DEFAULT_RAMP).map(({ color }) => color));
+    expect(numericClasses(values, undefined, ['oops']).map(({ color }) => color)).toEqual(numericClasses(values).map(({ color }) => color));
+  });
+});
+
+describe('map value labels', () => {
+  test('preserves small nonzero values in tooltips and legend boundaries', () => {
+    expect(formatValue(0.00326)).toBe('0.00326');
+    expect(formatValue(-0.000071)).toBe('-0.000071');
+    expect(formatValue(0)).toBe('0');
+    const classes = numericClasses([{ value: 0.003 }, { value: 0.004 }], 'million');
+    expect(legendOf(classes, { labelMode: 'boundaries' }).ticks).toEqual(['0.003', '0.00325', '0.0035', '0.00375', '0.004']);
   });
 });

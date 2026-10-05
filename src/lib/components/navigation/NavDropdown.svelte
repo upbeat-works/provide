@@ -44,7 +44,7 @@
 
   <MenuItems
     use={[[popperContent, popperOptions]]}
-    class="min-w-[13rem] rounded border border-contour-weakest bg-surface-base py-1 shadow-xl focus:outline-none"
+    class="z-50 min-w-[13rem] rounded border border-contour-weakest bg-surface-base py-1 shadow-xl focus:outline-none"
   >
     {#each items as item}
       <MenuItem

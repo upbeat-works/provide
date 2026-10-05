@@ -1,6 +1,10 @@
 import type { ScoreboardVariableReference } from '../views/scoreboard';
 
 export type Option = { uid: string; label: string };
+// Interpolated across the map's buckets: two stops for a sequential ramp, three
+// or more for a diverging one. Full six-digit hex only; anything else is
+// ignored in favour of the default ramp.
+export type ColorRamp = string[];
 export type RasterMapIndicator = {
   name: string;
   type: 'raster';
@@ -9,15 +13,18 @@ export type RasterMapIndicator = {
   time: string;
   spatial: string;
   unit?: string;
+  colorRamp?: ColorRamp;
 };
 export type MapIndicator =
-  | { name: string; variable: string; type: 'choropleth'; level: 'NUTS1' | 'NUTS2' }
+  | { name: string; variable: string; type: 'choropleth'; level: 'NUTS1' | 'NUTS2'; colorRamp?: ColorRamp }
   | RasterMapIndicator;
 export type ChartSeries = Array<Record<string, ScoreboardVariableReference>>;
 export type ChartData = {
   variables: string[];
   model?: string;
   unitFallback?: string;
+  // Names the role used for percentile bands across the visible points.
+  riskFrom?: 'x' | 'y' | 'size';
   bars?: string[];
   stacks?: string[];
   stackMode?: 'percent';

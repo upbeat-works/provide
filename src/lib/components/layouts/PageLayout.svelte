@@ -5,7 +5,10 @@
 <slot name="hero" />
 
 {#if $$slots.nav}
-<div bind:clientHeight={navHeight} class="relative md:sticky md:top-0 z-50">
+<!-- z-40, below the site header's z-50: this bar sticks to the top of the
+     viewport on scroll, and at an equal z-index it would paint over the
+     header's Tools dropdown simply by coming later in the DOM. -->
+<div bind:clientHeight={navHeight} class="relative md:sticky md:top-0 z-40">
   <slot name="nav" />
 </div>
 {/if}
@@ -16,7 +19,7 @@
   </div>
   <div class="md:border-l border-contour-weakest border-t md:border-t-0 min-w-0">
     {#if $$slots.filters}
-    <div class="z-20">
+    <div>
       <div class="flex h-fit bg-white border-b border-contour-weakest [&>*]:border-r [&>*]:border-contour-weakest [&>*]:px-6 [&>*]:py-4">
         <slot name="filters" />
       </div>

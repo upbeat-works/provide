@@ -31,7 +31,9 @@
   $: syncOwn(ownKey, result);
   $: maps = definition ? collect(views, ownKey, own, revision) : views.map(unavailable);
   $: unit = maps.find((map) => map?.metadata?.unit)?.metadata.unit;
-  $: classes = numericClasses(combinedValues(maps), unit);
+  // A sector's JSON may give an indicator its own `colorRamp`; without one the
+  // choropleth keeps the default ramp.
+  $: classes = numericClasses(combinedValues(maps), unit, definition?.colorRamp);
   $: legend = legendOf(classes, { labelMode: 'boundaries' });
   $: compareSelectProps = compareBy?.uid === 'region' ? { placeholder: 'Search region' } : {};
 

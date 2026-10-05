@@ -9,6 +9,7 @@
   import { loadRegionalBoundaries } from '../../../../../../api/scoreboard/boundaries.ts';
   import { scoreboardCountry } from '../../../../../../api/scoreboard/countries.ts';
   import MapLoading from './MapLoading.svelte';
+  import InteractivityOverlay from '$lib/components/maps/InteractivityOverlay.svelte';
   import Button from '$lib/components/ui/Button.svelte';
 
   export let bounds = [-24, 34, 45, 72];
@@ -77,6 +78,12 @@
   $: selectedIso3 = country?.iso3 ?? highlight;
   $: framedCountries = selectedIso3 ? [selectedIso3] : fitCountries;
   $: raster = Boolean(grid);
+  // The map starts inert so a wheel over it scrolls the page rather than zooming
+  // the map — the same opening behaviour as the explore maps. A selectable map
+  // is a country picker whose primary action is a single click, so it is never
+  // covered by the activation overlay; it simply stays non-interactive, with
+  // ZoomControl for zooming and clicks going straight through to selection.
+  let interactive = false;
   const zoomRange = [-1, 14];
 </script>
 
@@ -86,7 +93,7 @@
   {:then shape}
     {@const frame = (framedCountries.length && countriesBounds(shape, framedCountries)) || bounds}
     {@const rasterMask = shape.features?.find(({ properties }) => properties?.geoId === selectedIso3)}
-    <MapProvider bounds={frame} fitBoundsOptions={{ padding }} {zoomRange}>
+    <MapProvider bounds={frame} fitBoundsOptions={{ padding }} {zoomRange} {interactive}>
       <ZoomControl />
       {#if regionalState.status === 'ready'}
         <RegionalChoropleth shape={regionalState.shape} {values} {classes} {unit} />
@@ -104,6 +111,9 @@
       />
       <slot />
     </MapProvider>
+    {#if !selectable}
+      <InteractivityOverlay bind:interactive />
+    {/if}
     {#if regionalState.status === 'loading'}
       <div class="absolute right-6 top-6 rounded bg-white px-4 py-3 text-sm text-text-weaker shadow-lg" role="status">Loading regional boundaries</div>
     {:else if regionalState.status === 'error'}

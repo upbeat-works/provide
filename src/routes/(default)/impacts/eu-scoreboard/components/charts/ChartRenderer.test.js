@@ -51,7 +51,7 @@ test.each([
   expect(screen.queryByRole('alert')).toBeNull();
 });
 
-test('shows the selected year on a line chart and a single-year bar chart', () => {
+test('marks the selected year on a line chart but never as a pill on a bar chart', () => {
   const selection = { year: { uid: '2050', label: '2050' } };
   const line = {
     definition: { chartId: 'line', chartType: 'line', data: { variables: ['Temperature|Mean'] } },
@@ -70,6 +70,8 @@ test('shows the selected year on a line chart and a single-year bar chart', () =
   expect(screen.getByRole('img', { name: 'Selected year 2050' })).toBeTruthy();
   lineView.unmount();
 
+  // A single-year bar chart gets its year from the panel's filters, so repeating
+  // it as a pill on the figure is noise.
   render(ChartRendererFixture, { result: bars, selection });
-  expect(screen.getByText('2050', { selector: 'span' })).toBeTruthy();
+  expect(screen.queryByText('2050', { selector: 'span' })).toBeNull();
 });

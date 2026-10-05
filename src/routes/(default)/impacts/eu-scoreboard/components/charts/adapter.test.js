@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { adaptChartResult, isChartVisible, paddedDomain, radiusForArea, sampledTicks, splitLineAtGaps } from './adapter.js';
+import { adaptChartResult, isChartVisible, paddedDomain, radiusForArea, RISK_BANDS, sampledTicks, splitLineAtGaps } from './adapter.js';
 
 const ref = (variable, unit = 'K') => ({ variable, model: 'Model', unit });
 const faceted = (indicator) => `${indicator}|Absolute Values (No Change)|Annual|Area|50th Percentile`;
@@ -340,6 +340,13 @@ describe('chart result adapter', () => {
 test('bubble sizing represents value by area and equal values get usable domains', () => {
   expect(radiusForArea(100, 100)).toBeCloseTo(30);
   expect(radiusForArea(25, 100)).toBeCloseTo(15);
+  // Area carries the value: a quarter of the area is half the radius.
+  expect(radiusForArea(50, 100)).toBeCloseTo(30 / Math.SQRT2);
+  // A tiny share would scale under a pixel and read as missing data, so it is
+  // floored to a visible dot; nothing to show still draws nothing.
+  expect(radiusForArea(0.1, 100)).toBe(3);
+  expect(radiusForArea(0, 100)).toBe(0);
+  expect(radiusForArea(null, 100)).toBe(0);
   const domain = paddedDomain([4, 4]);
   expect(domain[0]).toBeLessThan(4);
   expect(domain[1]).toBeGreaterThan(4);
@@ -367,4 +374,72 @@ test('chart visibility includes errors and excludes API and adapter-derived empt
   expect(isChartVisible({ definition, status: 'empty', data: [] })).toBe(false);
   expect(isChartVisible({ definition, status: 'ready', data: [{ line: [{ year: 2050, value: null }] }] })).toBe(false);
   expect(isChartVisible({ definition, status: 'error', error: 'Failed', data: [] })).toBe(true);
+});
+
+describe('risk banding on bubble and scatter points', () => {
+  const roles = [{ x: ref('Risk|Score', 'index'), y: ref('Risk|Growth', '%'), size: ref('Risk|Level', 'index') }];
+  const banded = (data, riskFrom = 'size') => {
+    const groups = data.map((values, index) => ({ region: { uid: String(index), label: String(index) }, series: [values] }));
+    const base = result('bubble', roles, groups);
+    return adaptChartResult({ ...base, definition: { ...base.definition, data: { groupBy: 'region', riskFrom } } });
+  };
+
+  test('uses the shown values rather than fixed score thresholds', () => {
+    const adapted = banded([
+      { x: 1, y: 2, size: 4.434 },
+      { x: 2, y: 3, size: 4.537 },
+      { x: 3, y: 4, size: 57.376 },
+    ]);
+    expect(adapted.props.points.map(({ risk }) => risk)).toEqual(['low', 'medium', 'high']);
+    expect(adapted.props.points.every(({ color }) => color === undefined)).toBe(true);
+  });
+
+  test('keeps bands unchanged when the unit scale changes', () => {
+    const values = [2, 4, 6, 8, 10];
+    const bandsAtScale = (scale) => banded(values.map((size) => ({ x: 1, y: 2, size: size * scale }))).props.points.map(({ risk }) => risk);
+    expect(bandsAtScale(1)).toEqual(['low', 'medium', 'medium', 'medium', 'high']);
+    expect(bandsAtScale(1000000)).toEqual(bandsAtScale(1));
+  });
+
+  test('bands by the named coordinate, including negative values', () => {
+    const data = [{ x: -30, y: 30, size: 1 }, { x: -20, y: 20, size: 1 }, { x: -10, y: 10, size: 1 }];
+    expect(banded(data, 'x').props.points.map(({ risk }) => risk)).toEqual(['low', 'medium', 'high']);
+    expect(banded(data, 'y').props.points.map(({ risk }) => risk)).toEqual(['high', 'medium', 'low']);
+  });
+
+  test('keeps equal values together and does not claim high risk for a constant series', () => {
+    expect(banded([1, 1, 1].map((size) => ({ x: 1, y: 2, size }))).props.points.map(({ risk }) => risk)).toEqual(['medium', 'medium', 'medium']);
+  });
+
+  test('excludes undrawable points from percentile calculation', () => {
+    const adapted = banded([
+      { x: 1, y: 2, size: 1 }, { x: 2, y: 3, size: 2 }, { x: 3, y: 4, size: 3 },
+      { x: null, y: 4, size: 1000 }, { x: 4, y: 5, size: null },
+    ]);
+    expect(adapted.props.points.map(({ risk }) => risk)).toEqual(['low', 'medium', 'high']);
+  });
+
+  test('replaces the series legend with the three risk bands', () => {
+    expect(banded([{ x: 5, y: 2, size: 80 }]).props.levels).toEqual([
+      { uid: 'low', label: 'Low risk', color: RISK_BANDS[0].color },
+      { uid: 'medium', label: 'Medium risk', color: RISK_BANDS[1].color },
+      { uid: 'high', label: 'High risk', color: RISK_BANDS[2].color },
+    ]);
+  });
+
+  test('keeps per-series colouring for a chart that names no risk role', () => {
+    const adapted = adaptChartResult(result('bubble', roles, [{ x: 5, y: 2, size: 80 }]));
+    expect(adapted.props.points[0].risk).toBeUndefined();
+    expect(adapted.props.points[0].color).toBeTruthy();
+    expect(adapted.props.levels[0].uid).toBe('0');
+  });
+
+  test('falls back to the series colour when the named role carries no value', () => {
+    // A scatter has no size role at all, so naming it leaves every point unbanded
+    // rather than dropping the chart.
+    const scatterBase = result('scatter', [{ x: ref('A'), y: ref('B') }], [{ x: 5, y: 2 }]);
+    const scatter = adaptChartResult({ ...scatterBase, definition: { ...scatterBase.definition, data: { riskFrom: 'size' } } });
+    expect(scatter.props.points[0].risk).toBeUndefined();
+    expect(scatter.props.points[0].color).toBeTruthy();
+  });
 });

@@ -111,6 +111,40 @@ scope; returned regional values remain separate.
 
 Scatter plots use equal-size points and need no size variable.
 
+## Risk colouring on bubble and scatter charts
+
+Bubble and scatter points use their series colour by default. Set `riskFrom`
+to the role used for risk colours:
+
+```json
+{
+  "x": "Mean Air Temperature",
+  "y": "Maximum Air Temperature",
+  "size": "High Heat Risk",
+  "riskFrom": "size"
+}
+```
+
+`riskFrom` is `"x"`, `"y"` or `"size"`. Bands use the named role's values
+from the points shown in the chart, with no required unit or score range.
+The 25th and 75th percentiles are calculated by linear interpolation between
+sorted values:
+
+| Band | Values | Colour |
+| --- | --- | --- |
+| Low risk | Below the 25th percentile | theme 200 (light) |
+| Medium risk | From the 25th through the 75th percentile | theme 500 |
+| High risk | Above the 75th percentile | theme 800 (dark) |
+
+The legend shows these three bands. They describe relative risk within the
+shown points, not an absolute risk level. Changing the country, scenario or
+year can change the percentile limits. Equal values share a band. A single
+value or a constant series falls in the medium band.
+
+Points missing a required coordinate are excluded before calculating the
+percentiles. A shown point with no value for the named role keeps its series
+colour. For example, a scatter chart with `riskFrom: "size"` has no size values.
+
 ## Map defaults and ranking
 
 `map.defaultIndicator` names an entry in `map.indicators`. It is used when
@@ -142,6 +176,39 @@ Its limits of 1, 5 and 10 need review against the indicator's units and data.
 These limits are examples, not validated risk bands.
 
 The ranking view currently uses mock scores; it does not yet read `map.ranking`.
+
+## Map colour ramps
+
+A map indicator paints its choropleth (or raster grid) with the default
+yellow-to-orange ramp. An indicator may name its own instead, as `colorRamp`:
+
+```json
+{
+  "name": "High Heat Risk",
+  "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+  "type": "choropleth",
+  "level": "NUTS2",
+  "colorRamp": ["#FEDB5C", "#E27B47"]
+}
+```
+
+The stops are interpolated across the map's four buckets, so the ramp states
+the ends rather than every bucket's colour — the bucket count can change
+without anyone repicking hues. Two stops give a sequential ramp; three or more
+give a diverging one, and a middle stop lands on a bucket exactly when the
+bucket count is odd:
+
+```json
+{ "colorRamp": ["#2166AC", "#F7F7F7", "#B2182B"] }
+```
+
+Stops must be full six-digit hex (`#RRGGBB`). Shorthand (`#FFF`), named colours
+and single-stop lists are ignored, and that indicator falls back to the default
+ramp rather than painting an unreadable map. The legend reads its swatches from
+the same classes, so it follows the ramp without further configuration.
+
+`colorRamp` sets colour only. Bucket boundaries still come from the data's
+range, so changing a ramp cannot change which regions fall in which band.
 
 ## Examples
 

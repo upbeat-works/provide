@@ -14,17 +14,11 @@
   export let graphDownloadParams = undefined;
   export let graphDownloadSettings = {};
   export let staticMode = false;
-  export let selectedYear = undefined;
 
   $: hasCaption = chartInfo.length || graphDownloadParams;
 </script>
 
 <figure>
-  {#if Number.isFinite(selectedYear)}
-    <div class="mb-3 flex justify-end">
-      <span class="rounded bg-theme-weakest px-2 py-1 text-xs font-bold text-theme-stronger">{selectedYear}</span>
-    </div>
-  {/if}
   {#if legend.length}
     <ColorLegend items={legend} class="mb-4 items-center gap-y-2" labelClass="font-normal text-text-weaker" />
   {/if}
