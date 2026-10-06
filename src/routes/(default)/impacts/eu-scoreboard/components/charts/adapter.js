@@ -104,7 +104,7 @@ export function splitLineAtGaps(entry) {
   return groups.filter(({ length }) => length).map((values, index) => ({ ...entry, uid: `${entry.uid}-${index}`, values }));
 }
 
-function lineProps(definition, data) {
+function lineProps(definition, data, colorFor) {
   const definitions = seriesDefinitions(definition);
   const groupBy = definition.data.groupBy;
   const entries = isGrouped(groupBy)
@@ -119,7 +119,10 @@ function lineProps(definition, data) {
     return {
       uid: group ? `${group.uid}-${index}` : String(index),
       label,
-      color: seriesColor(seriesIndex),
+      // A grouped chart can be told which colour each group holds, so a
+      // country keeps its hue while the picker above the chart adds and removes
+      // others. Without that the hue is the series' position, as before.
+      color: (group && colorFor?.(group.uid)) ?? seriesColor(seriesIndex),
       values: values.map(({ year, value }) => {
         const point = { year, value };
         const min = lows.get(year);
@@ -275,7 +278,7 @@ function bubbleProps(definition, data) {
   };
 }
 
-export function adaptChartResult(result, selection = {}) {
+export function adaptChartResult(result, selection = {}, { colorFor } = {}) {
   const base = { definition: result.definition, status: result.status, error: result.error };
   if (result.status === 'error') return base;
   const { data = [] } = result;
@@ -319,7 +322,7 @@ export function adaptChartResult(result, selection = {}) {
     return { ...base, status: 'error', error: 'Stacked bar segments cannot be negative.' };
   }
   let props;
-  if (definition.chartType === 'line' || definition.chartType === 'line_with_range') props = lineProps(definition, data);
+  if (definition.chartType === 'line' || definition.chartType === 'line_with_range') props = lineProps(definition, data, colorFor);
   if (definition.chartType === 'stacked_bar') props = stackedBarProps(definition, data, selection);
   if (pointChart) props = bubbleProps(definition, data);
   if (!props) return { ...base, status: 'error', error: `Unsupported chart type: ${definition.chartType}` };
