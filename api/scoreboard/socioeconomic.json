@@ -96,6 +96,7 @@
       "data": {
         "groupBy": "region",
         "regionLevel": "NUTS2",
+        "aggregate": "sum",
         "stackMode": "percent",
         "variables": [
           "Population|Age 0-14",
@@ -122,6 +123,7 @@
       "data": {
         "groupBy": "region",
         "regionLevel": "NUTS2",
+        "aggregate": "sum",
         "variables": [
           "Population|Age 25-44|Educational Attainment Low",
           "Population|Age 25-44|Educational Attainment High"
@@ -139,6 +141,7 @@
       "data": {
         "groupBy": "region",
         "regionLevel": "NUTS2",
+        "aggregate": "sum",
         "model": "Vulnerability Model v1.0.0",
         "variables": [
           "Vulnerability|Fatalities|Heat Waves|Return Period|1 Year"
@@ -153,6 +156,7 @@
       "data": {
         "groupBy": "region",
         "regionLevel": "NUTS2",
+        "aggregate": "sum",
         "model": "Vulnerability Model v1.0.0",
         "variables": [
           "Vulnerability|Economic Losses|Heat Waves|Return Period|1 Year"

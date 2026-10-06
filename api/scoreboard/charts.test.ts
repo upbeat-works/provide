@@ -267,6 +267,35 @@ test('loads regional charts across countries for Europe', async () => {
   expect(result.data.map((entry) => entry.region.uid).sort()).toEqual(['AT11', 'FR10']);
 });
 
+test('sums a chart\'s sub-regions into the countries they belong to', async () => {
+  const platform = source([
+    ['Deaths', 'Scenario A', 'AT11', 'Model', 'people', 3],
+    ['Deaths', 'Scenario A', 'AT12', 'Model', 'people', 4],
+    ['Deaths', 'Scenario A', 'FR10', 'Model', 'people', 10],
+  ]);
+  const config = { ...definition({ groupBy: 'region', regionLevel: 'NUTS2', aggregate: 'sum', variables: ['Deaths'] }), chartType: 'line' };
+  const result = await loadScoreboardChart(platform as never, {} as never, config, { ...selection, region: 'all' });
+  expect(result.status).toBe('ready');
+  const totals = Object.fromEntries(result.data.map((entry) => [entry.region.uid, entry.series[0].line.find(({ year }) => year === 2050)?.value]));
+  // Austria is the sum of the two regions that reported, out of the nine it
+  // has: a country short of a region is understated, not blank.
+  expect(totals).toEqual({ Austria: 7, France: 10 });
+  // The rows queried are still the sub-regions, never the country names.
+  expect(platform.iamc.tabulate.mock.calls[0][0].region.name_in).toContain('AT11');
+  expect(platform.iamc.tabulate.mock.calls[0][0].region.name_in).not.toContain('Austria');
+});
+
+test('leaves a chart that does not opt in at its own region level', async () => {
+  const platform = source([['Deaths', 'Scenario A', 'AT11', 'Model', 'people', 3]]);
+  const config = { ...definition({ groupBy: 'region', regionLevel: 'NUTS2', variables: ['Deaths'] }), chartType: 'line' };
+  const result = await loadScoreboardChart(platform as never, {} as never, config, { ...selection, region: 'all' });
+  expect(result.data.map((entry) => entry.region.uid)).toEqual(['AT11']);
+});
+
+test('rejects aggregation with no region level to roll up from', () => {
+  expect(definitionGroupingError(definition({ groupBy: 'region', aggregate: 'sum' }))).toBe('Aggregation requires a region level');
+});
+
 test('keeps age bars and sex stacks separate for each country in Europe', async () => {
   const platform = { iamc: { tabulate: vi.fn(async (query) => frame([
     [query.variable.name, 'Scenario A', 'Austria', 'Model', 'people', 10],

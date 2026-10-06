@@ -109,6 +109,25 @@ For regional charts, `data.regionLevel` selects NUTS1 or NUTS2 regions within
 the chosen country using the map boundary data. The country sets the query
 scope; returned regional values remain separate.
 
+### Country totals across Europe
+
+Some variables are published only at NUTS level, so there is no country series
+to read. `data.aggregate: "sum"` builds one: when the selected region is `all`,
+the chart draws a mark per country, each summed from the sub-regions it is
+published at. The query still asks for those sub-regions. It requires
+`data.regionLevel`, and is rejected without one.
+
+Aggregation is opt-in because summing is only valid for extensive quantities —
+head counts, fatalities, losses. A mean, a rate or a percentile summed this way
+produces a number that is wrong and still renders, so a chart has to say that
+summing is right for it rather than the loader assuming so.
+
+A country total is the sum of the sub-regions that reported that year, so a
+country missing one region is understated rather than blank — the same
+treatment a stacked bar gives a missing segment. A year no sub-region reported
+stays null, so it reads as absent rather than as a true zero. Without
+`aggregate`, a chart keeps its own region level everywhere, as before.
+
 Scatter plots use equal-size points and need no size variable.
 
 ## Risk colouring on bubble and scatter charts

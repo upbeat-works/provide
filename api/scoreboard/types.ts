@@ -37,6 +37,11 @@ export type ChartData = {
   groupBy?: string;
   regions?: string[];
   regionLevel?: 'NUTS1' | 'NUTS2';
+  // Roll the chart's sub-regions up into their countries when the whole of
+  // Europe is selected. Only 'sum', and only for extensive quantities — a mean
+  // or a rate summed this way is nonsense that still renders, which is why it
+  // is declared per chart rather than inferred.
+  aggregate?: 'sum';
 };
 export type BarVariables = ChartData & { bars: string[]; stacks: string[] };
 export type Definition = {
