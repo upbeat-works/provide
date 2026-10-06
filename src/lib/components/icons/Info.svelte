@@ -2,7 +2,15 @@
   import tooltip from '$lib/utils/tooltip';
   export let description;
   export let isInverted = false;
-  $: color = ['text-contour-weaker/70 hover:text-theme-stronger', 'text-white/70 hover:text-white'][isInverted ? 1 : 0];
+
+  // Colour classes replace the default pair rather than joining them: two
+  // `text-*` utilities on one element are resolved by stylesheet order, not by
+  // the order they are written here, so appending would leave the winner to
+  // chance. A caller that passes classes owns the colour outright.
+  let className = undefined;
+  export { className as class };
+
+  $: color = className ?? ['text-contour-weaker/70 hover:text-theme-stronger', 'text-white/70 hover:text-white'][isInverted ? 1 : 0];
 </script>
 
 <svg use:tooltip={{ content: description }} class="{color} transition-colors w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
