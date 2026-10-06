@@ -308,11 +308,34 @@ describe('scoreboard requests', () => {
   });
 });
 
-test('loads regions across Europe for the all-country map', async () => {
+test('asks for countries, not regions, on the all-country map', async () => {
   const response = await request(mapPath({ region: 'all' }));
   expect(response.status).toBe(200);
+  // The data layer is drawn per country at that zoom, and this indicator has
+  // country rows of its own, so the NUTS level is not involved at all.
   const regions = tabulate.mock.calls[0][0].region.name_in;
-  expect(regions).toContain('AT11');
-  expect(regions).toContain('FR10');
-  expect((await response.json()).values).toContainEqual({ region: 'AT11', value: 0 });
+  expect(regions).toContain('Austria');
+  expect(regions).toContain('France');
+  expect(regions).not.toContain('AT11');
+});
+
+test('totals regions into countries for an indicator published only at NUTS level', async () => {
+  const indicator = { name: 'Heat wave fatalities', variable: 'Vulnerability|Fatalities', type: 'choropleth', level: 'NUTS2', aggregate: 'sum' };
+  vi.spyOn(controller, 'getScoreboard').mockReturnValue({
+    indicator,
+    map: { indicators: [indicator], scenarios: [{ id: 'CurrentPolicies' }], years: [2050] },
+  } as never);
+  tabulate.mockResolvedValue(frame([
+    [indicator.variable, 'CurrentPolicies', 'AT11', 'Model', 'people', null, 3, null],
+    [indicator.variable, 'CurrentPolicies', 'AT12', 'Model', 'people', null, 4, null],
+    [indicator.variable, 'CurrentPolicies', 'FR10', 'Model', 'people', null, 10, null],
+  ]));
+
+  const response = await request(mapPath({ region: 'all', indicator: indicator.name }));
+  expect(response.status).toBe(200);
+  // Queried at NUTS level, returned as countries.
+  expect(tabulate.mock.calls[0][0].region.name_in).toContain('AT11');
+  const { values } = await response.json();
+  expect(values).toContainEqual({ region: 'Austria', value: 7 });
+  expect(values).toContainEqual({ region: 'France', value: 10 });
 });

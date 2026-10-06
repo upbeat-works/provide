@@ -196,6 +196,23 @@ These limits are examples, not validated risk bands.
 
 The ranking view currently uses mock scores; it does not yet read `map.ranking`.
 
+## The map across Europe
+
+With the whole of Europe selected, the map's data layer is drawn on the
+countries themselves rather than on NUTS regions: hundreds of shapes read as
+noise at that zoom, and no regional boundaries are fetched for that view.
+
+Most mapped variables carry country rows of their own, so they are simply asked
+for them. That also keeps an intensive quantity out of a sum — a country's mean
+air temperature is published, never added up from its regions. An indicator
+published only at NUTS level sets `aggregate: "sum"` on itself, the same
+declaration a chart makes and for the same reason; it is then queried at its
+region level and totalled into countries. Only the heat-wave vulnerability
+indicators need it today.
+
+Map values are reported under the region name ixmp4 uses. The country layer
+matches features on `geoId`, an ISO3 code, so the client translates the two.
+
 ## Map colour ramps
 
 A map indicator paints its choropleth (or raster grid) with the default

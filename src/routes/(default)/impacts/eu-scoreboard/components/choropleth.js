@@ -167,6 +167,17 @@ export const countryFillColor = (values, classes) => fillColor(COUNTRY_CODE, val
 export const countryFilter = (uids) => idFilter(COUNTRY_CODE, uids);
 export const scoredCountryFilter = (values, classes) => scoredFilter(COUNTRY_CODE, values, classes);
 const regionalValues = (values = []) => values.map(({ region, value }) => ({ uid: region, value }));
+
+// The country layer matches on `geoId`, which is an ISO3 code, while the map
+// endpoint reports whatever ixmp4 calls the region — a country's own name. An
+// entry that already carries a `uid` is left alone, so the callers that key
+// their own values (the ranking's scores) are unaffected.
+export const countryValues = (values = [], countries = []) =>
+  values.flatMap((entry) => {
+    if (entry.uid !== undefined) return [entry];
+    const iso3 = countries.find(({ name }) => name === entry.region)?.iso3;
+    return iso3 ? [{ uid: iso3, value: entry.value }] : [];
+  });
 export const regionalFillColor = (values, classes) => fillColor(NUTS_ID, regionalValues(values), classes);
 export const regionalFilter = (values, classes) => scoredFilter(NUTS_ID, regionalValues(values), classes);
 

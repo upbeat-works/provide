@@ -16,7 +16,7 @@ export type RasterMapIndicator = {
   colorRamp?: ColorRamp;
 };
 export type MapIndicator =
-  | { name: string; variable: string; type: 'choropleth'; level: 'NUTS1' | 'NUTS2'; colorRamp?: ColorRamp }
+  | { name: string; variable: string; type: 'choropleth'; level: 'NUTS1' | 'NUTS2'; colorRamp?: ColorRamp; aggregate?: 'sum' }
   | RasterMapIndicator;
 export type ChartSeries = Array<Record<string, ScoreboardVariableReference>>;
 export type ChartData = {

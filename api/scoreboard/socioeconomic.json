@@ -20,13 +20,15 @@
         "name": "Heat wave fatalities",
         "variable": "Vulnerability|Fatalities|Heat Waves|Return Period|1 Year",
         "type": "choropleth",
-        "level": "NUTS2"
+        "level": "NUTS2",
+        "aggregate": "sum"
       },
       {
         "name": "Heat wave economic losses",
         "variable": "Vulnerability|Economic Losses|Heat Waves|Return Period|1 Year",
         "type": "choropleth",
-        "level": "NUTS2"
+        "level": "NUTS2",
+        "aggregate": "sum"
       }
     ],
     "scenarios": [

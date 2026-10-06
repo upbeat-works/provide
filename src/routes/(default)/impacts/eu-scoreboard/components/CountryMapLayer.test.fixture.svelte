@@ -6,4 +6,4 @@
   export let selectable = false;
 </script>
 
-<div data-testid="country-outline" data-highlight={highlight}></div>
+<div data-testid="country-outline" data-highlight={highlight} data-values={JSON.stringify(values)}></div>
