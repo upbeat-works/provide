@@ -150,7 +150,16 @@
             </div>
           {:else if map.status === 'ready' && values.length}
             <div class="pointer-events-auto absolute bottom-6 left-6">
-              <MapLegendPanel parts={legendParts(view, compareBy?.uid)} subtitle={legendSubtitle(map)} scale={legend.scale} labels={legend.labels} ticks={legend.ticks} />
+              <MapLegendPanel
+                parts={legendParts(view, compareBy?.uid)}
+                subtitle={legendSubtitle(map)}
+                scale={legend.scale}
+                labels={legend.labels}
+                ticks={legend.ticks}
+                {definition}
+                metadata={map.metadata}
+                {grid}
+              />
             </div>
           {:else if map.status === 'loading'}
             <div class="pointer-events-auto absolute bottom-6 left-6 rounded bg-white px-5 py-4 text-sm text-text-weaker shadow-lg" role="status">
