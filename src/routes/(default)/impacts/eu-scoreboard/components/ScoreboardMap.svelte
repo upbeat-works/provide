@@ -5,9 +5,9 @@
   import NutsChoropleth from './NutsChoropleth.svelte';
   import RegionalChoropleth from './RegionalChoropleth.svelte';
   import RasterGrid from './RasterGrid.svelte';
-  import { countriesBounds, COUNTRY_SOURCE } from './choropleth.js';
+  import { countriesBounds, countryValues, COUNTRY_SOURCE } from './choropleth.js';
   import { loadRegionalBoundaries } from '../../../../../../api/scoreboard/boundaries.ts';
-  import { scoreboardCountry } from '../../../../../../api/scoreboard/countries.ts';
+  import { SCOREBOARD_COUNTRIES, scoreboardCountry } from '../../../../../../api/scoreboard/countries.ts';
   import MapLoading from './MapLoading.svelte';
   import InteractivityOverlay from '$lib/components/maps/InteractivityOverlay.svelte';
   import Button from '$lib/components/ui/Button.svelte';
@@ -48,7 +48,10 @@
   let regionalState = { status: 'idle', shape: undefined };
 
   $: country = scoreboardCountry(countryName);
-  $: regional = Boolean((country || countryName === 'all') && level);
+  // Only a single country subdivides into regions. Across the whole of Europe
+  // the data is drawn on the countries themselves, so no NUTS boundaries are
+  // fetched for that view at all.
+  $: regional = Boolean(country && level);
   $: regionalKey = regional ? `${country?.code ?? 'all'}|${level}|${boundaryAttempt}` : '';
   $: loadRegions(regionalKey, country?.code, level);
 
@@ -103,7 +106,7 @@
       {/if}
       <NutsChoropleth
         {shape}
-        values={regional || raster ? [] : values}
+        values={regional || raster ? [] : countryValues(values, SCOREBOARD_COUNTRIES)}
         classes={regional || raster ? [] : classes}
         highlight={selectedIso3}
         {selectable}

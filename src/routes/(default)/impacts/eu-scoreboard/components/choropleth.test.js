@@ -11,6 +11,7 @@ import {
   scoredUids,
   legendOf,
   numericClasses,
+  countryValues,
   rampColors,
   isRamp,
   DEFAULT_RAMP,
@@ -260,5 +261,22 @@ describe('map value labels', () => {
     expect(formatValue(0)).toBe('0');
     const classes = numericClasses([{ value: 0.003 }, { value: 0.004 }], 'million');
     expect(legendOf(classes, { labelMode: 'boundaries' }).ticks).toEqual(['0.003', '0.00325', '0.0035', '0.00375', '0.004']);
+  });
+});
+
+describe('countryValues', () => {
+  const countries = [{ name: 'Austria', iso3: 'AUT' }, { name: 'France', iso3: 'FRA' }];
+
+  test('keys a map value by the geoId its country layer matches on', () => {
+    expect(countryValues([{ region: 'Austria', value: 5 }], countries)).toEqual([{ uid: 'AUT', value: 5 }]);
+  });
+
+  test('drops a region that is not one of the countries drawn', () => {
+    expect(countryValues([{ region: 'AT11', value: 5 }], countries)).toEqual([]);
+  });
+
+  test('leaves values that already carry their own uid alone', () => {
+    const scored = [{ uid: 'FRA', value: 2 }];
+    expect(countryValues(scored, countries)).toEqual(scored);
   });
 });

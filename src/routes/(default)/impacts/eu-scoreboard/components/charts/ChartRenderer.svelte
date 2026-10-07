@@ -10,6 +10,13 @@
   export let selection = {};
   export let sector = undefined;
   export let staticMode = false;
+  // Set by a chart whose groups are chosen above it, so each group keeps its
+  // colour as others are added and removed.
+  export let colorFor = undefined;
+  // Set by a chart whose series are already named by a picker above it, where a
+  // legend would just repeat that list. An empty `legend` is passed rather than
+  // omitted, since LineChart falls back to building one from its series.
+  export let hideLegend = false;
   export let retry = () => invalidateAll();
 
   const components = {
@@ -20,7 +27,7 @@
     scatter: BubbleChart,
   };
 
-  $: chart = adaptChartResult(result, selection);
+  $: chart = adaptChartResult(result, selection, { colorFor });
   $: component = components[chart.kind];
   $: graphDownloadParams = graphParamsFor(result.definition, sector, selection);
 </script>
@@ -31,5 +38,5 @@
     <button type="button" class="mt-2 font-bold text-theme-base" on:click={retry}>Retry</button>
   </div>
 {:else if chart.status === 'ready' && component}
-  <svelte:component this={component} {...chart.props} chartInfo={chart.info} chartUid={EMBED_UID} {graphDownloadParams} {staticMode} />
+  <svelte:component this={component} {...chart.props} {...(hideLegend ? { legend: [] } : {})} chartInfo={chart.info} chartUid={EMBED_UID} {graphDownloadParams} {staticMode} />
 {/if}

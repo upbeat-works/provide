@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { readDefaultRunSeries, readScoreboardMapSeries, selectScoreboardData } from './scoreboard';
+import { aggregateScoreboardData, readDefaultRunSeries, readScoreboardMapSeries, selectScoreboardData } from './scoreboard';
 
 const reference = { variable: 'Temperature|Mean', unit: 'K' };
 
@@ -91,5 +91,36 @@ describe('scoreboard default-run reader', () => {
       { year: 2040, value: null },
       { year: 2050, value: 1.4 },
     ]);
+  });
+});
+
+describe('country totals from sub-regions', () => {
+  const row = (region: string, values: Record<string, number | null>) => ({ scenario: 'A', region, ...values });
+
+  test('sums each year across the regions a country is made of', () => {
+    const rows = [row('AT11', { '2020': 1, '2030': 2 }), row('AT12', { '2020': 10, '2030': 20 })];
+    expect(aggregateScoreboardData(rows as never, { scenario: 'A', regions: ['AT11', 'AT12'] })).toEqual([
+      { year: 2020, value: 11 },
+      { year: 2030, value: 22 },
+    ]);
+  });
+
+  test('totals the regions that reported, leaving the country understated rather than blank', () => {
+    const rows = [row('AT11', { '2020': 1 }), row('AT12', { '2020': null })];
+    expect(aggregateScoreboardData(rows as never, { scenario: 'A', regions: ['AT11', 'AT12'] })).toEqual([{ year: 2020, value: 1 }]);
+  });
+
+  test('keeps a year no region reported null, so it is not read as a true zero', () => {
+    const rows = [row('AT11', { '2020': null }), row('AT12', { '2020': null })];
+    expect(aggregateScoreboardData(rows as never, { scenario: 'A', regions: ['AT11', 'AT12'] })).toEqual([{ year: 2020, value: null }]);
+  });
+
+  test('ignores regions outside the country and scenarios not asked for', () => {
+    const rows = [row('AT11', { '2020': 1 }), row('FR10', { '2020': 99 }), { ...row('AT12', { '2020': 50 }), scenario: 'B' }];
+    expect(aggregateScoreboardData(rows as never, { scenario: 'A', regions: ['AT11', 'AT12'] })).toEqual([{ year: 2020, value: 1 }]);
+  });
+
+  test('has nothing to total for a country with no rows at all', () => {
+    expect(aggregateScoreboardData([], { scenario: 'A', regions: ['AT11'] })).toEqual([]);
   });
 });
