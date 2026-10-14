@@ -1,10 +1,13 @@
 <script>
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import ScoreboardMap from './ScoreboardMap.svelte';
   import MapLegendPanel from './MapLegendPanel.svelte';
   import FilterSelect from './FilterSelect.svelte';
   import { legendOf, numericClasses } from './choropleth.js';
   import { combinedValues, comparisonViews, legendParts, mapValues } from './comparison.js';
   import { loadResource, mapResourceKey } from './resource.js';
+  import { SCOREBOARD_COUNTRIES } from '../../../../../../api/scoreboard/countries.ts';
 
   export let definition;
   export let result;
@@ -13,6 +16,8 @@
   export let compareBy = undefined;
   export let sides = [];
   export let optionsFor = () => [];
+
+  const countriesByIso3 = new Map(SCOREBOARD_COUNTRIES.map((country) => [country.iso3, country]));
 
   const loading = () => ({ status: 'loading', values: [], metadata: null });
   const failed = () => ({ status: 'error', values: [], metadata: null, error: 'Map data could not be loaded.' });
@@ -110,6 +115,26 @@
     sides = sides.map((value, i) => (i === index ? option : value));
   }
 
+  // Only the Europe-wide view draws whole countries, so only it can be clicked.
+  // A single country is drawn as its NUTS regions, which are not offered as a
+  // selection.
+  const countryLevel = (view) => view.region?.uid === 'all';
+
+  // A click picks the country as the geography. Comparing geographies, it is
+  // that map's side that changes; otherwise it is the shared filter, as the
+  // filter bar would set it.
+  function selectCountry(index, iso3) {
+    const country = countriesByIso3.get(iso3);
+    if (!country) return;
+    if (compareBy?.uid === 'region') {
+      chooseSide(index, optionsFor('region').find(({ uid }) => uid === country.name) ?? { uid: country.name, label: country.name });
+      return;
+    }
+    const url = new URL($page.url);
+    url.searchParams.set('region', country.name);
+    void goto(url, { keepFocus: true, noScroll: true });
+  }
+
   // The legend's ticks are bare numbers, so the unit is named here — once —
   // alongside what is mapped and the model behind it.
   function legendSubtitle(map) {
@@ -126,7 +151,18 @@
       {@const values = map.status === 'ready' ? mapValues(map) : []}
       {@const grid = map.status === 'ready' ? map.grid : undefined}
       <div class="relative min-w-0 flex-1">
-        <ScoreboardMap height="h-[560px]" {values} {grid} {classes} {unit} countryName={view.region?.uid} level={definition?.level} />
+        <ScoreboardMap
+          height="h-[560px]"
+          {values}
+          {grid}
+          {classes}
+          {unit}
+          countryName={view.region?.uid}
+          level={definition?.level}
+          selectable={countryLevel(view)}
+          activation
+          on:select={({ detail }) => selectCountry(i, detail.uid)}
+        />
 
         <div class="pointer-events-none absolute inset-0 {compareBy ? '' : 'mx-auto max-w-7xl px-6'}">
           {#if compareBy}
