@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Page from './page.ssr.fixture.svelte';
-import { getScoreboard } from '../controller.js';
+import { getScoreboard } from '../../../../../../api/scoreboard/controller.js';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('../components/ScoreboardMap.svelte', () => import('./map.test.fixture.svelte'));

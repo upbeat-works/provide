@@ -9,7 +9,7 @@ afterAll(async () => vite.close());
 
 test('shows only charts with visible results', async () => {
   const page = await vite.ssrLoadModule('/src/routes/(default)/impacts/eu-scoreboard/indicators/page.ssr.fixture.svelte');
-  const { getScoreboard } = await vite.ssrLoadModule('/src/routes/(default)/impacts/eu-scoreboard/controller.js');
+  const { getScoreboard } = await vite.ssrLoadModule('/api/scoreboard/controller.js');
   const scoreboard = getScoreboard('testing');
   const definition = scoreboard.charts[0];
   const data = {

@@ -63,6 +63,7 @@ function configureRaster() {
     reference: '1850-1900-pre-industrial', time: 'annual', spatial: 'area', unit: '°C',
   };
   vi.spyOn(controller, 'getScoreboard').mockReturnValue({
+    ...getScoreboard('heat-stress'),
     indicator,
     map: { indicators: [indicator], scenarios: [{ id: 'CurrentPolicies', rasterName: 'current-policies' }], years: [2030] },
   } as never);
@@ -70,6 +71,18 @@ function configureRaster() {
 }
 
 describe('scoreboard requests', () => {
+  test('serves topic choices and definitions without querying ixmp4', async () => {
+    const response = await request('/api/scoreboard/definition?sector=testing&indicator=Mean%20Air%20Temperature');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await response.json()).toMatchObject({
+      sector: { uid: 'testing', label: 'Testing' },
+      indicator: { name: 'Mean Air Temperature' },
+      charts: expect.arrayContaining([expect.objectContaining({ chartId: 'mean-air-temperature' })]),
+    });
+    expect(createPlatform).not.toHaveBeenCalled();
+  });
+
   test.each([
     ['Heat wave fatalities', 'Vulnerability|Fatalities|Heat Waves|Return Period|1 Year'],
     ['Heat wave economic losses', 'Vulnerability|Economic Losses|Heat Waves|Return Period|1 Year'],
@@ -135,8 +148,10 @@ describe('scoreboard requests', () => {
 
   test('uses the configured source variable when its display name is unrelated', async () => {
     const indicator = { name: 'Population overview', variable: 'Population', type: 'choropleth', level: 'NUTS2' };
-    const indicators = getScoreboard('testing').map.indicators;
+    const scoreboard = getScoreboard('testing');
+    const indicators = scoreboard.map.indicators;
     indicators.push(indicator);
+    vi.spyOn(controller, 'getScoreboard').mockReturnValue({ ...scoreboard, indicator });
     tabulate.mockImplementation((query) => {
       if (query.variable.name !== 'Population') return frame([]);
       return frame([['Population', 'CurrentPolicies', 'AT11', 'Population model', 'million', null, 12, null]]);
@@ -160,8 +175,10 @@ describe('scoreboard requests', () => {
 
   test('rejects a blank configured source variable before querying the source', async () => {
     const indicator = { name: 'Broken map', variable: '   ', type: 'choropleth', level: 'NUTS2' };
-    const indicators = getScoreboard('testing').map.indicators;
+    const scoreboard = getScoreboard('testing');
+    const indicators = scoreboard.map.indicators;
     indicators.push(indicator);
+    vi.spyOn(controller, 'getScoreboard').mockReturnValue({ ...scoreboard, indicator });
 
     try {
       const response = await request(mapPath({ indicator: indicator.name }));
@@ -322,6 +339,7 @@ test('asks for countries, not regions, on the all-country map', async () => {
 test('totals regions into countries for an indicator published only at NUTS level', async () => {
   const indicator = { name: 'Heat wave fatalities', variable: 'Vulnerability|Fatalities', type: 'choropleth', level: 'NUTS2', aggregate: 'sum' };
   vi.spyOn(controller, 'getScoreboard').mockReturnValue({
+    ...getScoreboard('testing'),
     indicator,
     map: { indicators: [indicator], scenarios: [{ id: 'CurrentPolicies' }], years: [2050] },
   } as never);

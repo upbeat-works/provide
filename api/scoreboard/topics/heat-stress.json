@@ -1,4 +1,6 @@
 {
+  "label": "Heat stress",
+  "order": 10,
   "map": {
     "defaultIndicator": "High Heat Risk",
     "ranking": {

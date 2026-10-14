@@ -524,7 +524,7 @@ charts cover R9 regions. Test that changing country leaves their queried regions
 unchanged, while scenario and year changes still reach the query.
 
 Testing's stacked bar and bubble use region grouping
-([definitions](../api/scoreboard/testing.json#L41)). The chart reader asks for
+([definitions](../api/scoreboard/topics/testing.json)). The chart reader asks for
 children of the selected area, but that helper supports continents and World,
 not individual countries
 ([chart reader](../api/scoreboard/charts.ts#L18),

@@ -3,8 +3,7 @@ import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 import { readdirSync, readFileSync } from 'node:fs';
 
-// Runner for the Svelte component and page tests under `src/` (the API suite is
-// `bun test api/`). The SvelteKit plugin is deliberately not used: it wants a
+// The SvelteKit plugin is deliberately not used: it wants a
 // dev server and a route manifest, and these tests render components directly.
 // That means `$app/*` has no implementation here, so a test that reaches it
 // mocks it (`vi.mock('$app/navigation', …)`), the way the existing ones do.
@@ -52,11 +51,9 @@ export default defineConfig({
     // real vite server, and jsdom's TextEncoder breaks esbuild's Uint8Array
     // invariant.
     environment: 'jsdom',
-    environmentMatchGlobs: [['**/*.ssr.test.js', 'node']],
-    // `src/` holds two test dialects: most files are vitest, fourteen are
-    // `bun:test` and belong to `bun test`. Vitest cannot resolve `bun:test`, so
-    // it runs only the files that actually ask for it.
-    include: vitestFiles(),
+    environmentMatchGlobs: [['**/*.ssr.test.js', 'node'], ['api/**', 'node']],
+    // Vitest cannot resolve bun:test; each runner selects its own files.
+    include: [...vitestFiles(), ...vitestFiles('api')],
     globals: false,
     // The SSR tests boot a vite server of their own, which does not always fit
     // in the 5s default.

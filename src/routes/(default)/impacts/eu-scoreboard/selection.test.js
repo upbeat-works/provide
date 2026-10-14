@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { createScoreboardOptions, resolveSelection } from './selection.js';
-import { getScoreboard } from './controller.js';
+import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
 
 describe('scoreboard choices', () => {
   const scoreboard = {

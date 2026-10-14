@@ -1,7 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { loadFromStrapi, loadScoreboardChart, loadScoreboardMap } from '$utils/apis.js';
 import { loadChart, loadMap, selectionsFromUrl } from './controller.server.js';
-import { getScoreboard } from './controller.js';
+import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
 
 vi.mock('$utils/apis.js', () => ({ loadScoreboardChart: vi.fn(), loadScoreboardMap: vi.fn(), loadFromStrapi: vi.fn() }));
 

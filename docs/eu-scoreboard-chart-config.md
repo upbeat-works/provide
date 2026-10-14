@@ -311,7 +311,7 @@ A bubble chart:
 
 ## Socioeconomic charts
 
-`api/scoreboard/socioeconomic.json` defines:
+`api/scoreboard/topics/socioeconomic.json` defines:
 
 - Population by age and sex: five age-group bars, each split into female and
   male population for the selected region. It reads those values directly,

@@ -176,6 +176,7 @@ async function scoreboardResource(resource, svelteFetch, selections, fields) {
 
 const SCOREBOARD_SHARED_FIELDS = ['sector', 'scenario', 'region', 'year'];
 
+export const loadScoreboardDefinition = (svelteFetch = fetch, selections = {}) => scoreboardResource('definition', svelteFetch, selections, ['sector', 'indicator']);
 export const loadScoreboardMap = (svelteFetch = fetch, selections = {}) => scoreboardResource('map', svelteFetch, selections, ['sector', 'indicator', 'scenario', 'region', 'year']);
 export const loadScoreboardChart = (svelteFetch = fetch, selections = {}) =>
   scoreboardResource(`charts/${encodeURIComponent(selections.chartId)}`, svelteFetch, selections, SCOREBOARD_SHARED_FIELDS);
