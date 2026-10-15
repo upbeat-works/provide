@@ -177,3 +177,15 @@ test.each(['NUTS1', 'NUTS2'])('draws Europe on the countries themselves rather t
   expect(JSON.parse(screen.getByTestId('country-outline').dataset.values)).toEqual([{ uid: 'AUT', value: 5 }]);
   expect(JSON.parse(screen.getByText('Country map').dataset.bounds)).toEqual([-24, 34, 45, 72]);
 });
+
+test('a selectable map takes clicks straight away, unless it asks for activation first', async () => {
+  stubFetch(async () => Response.json(shapes));
+  const { unmount } = render(ScoreboardMap, { selectable: true });
+  await screen.findByText('Country map');
+  expect(screen.queryByRole('button', { name: 'Click to make map interactive' })).toBeNull();
+  unmount();
+
+  render(ScoreboardMap, { selectable: true, activation: true });
+  await fireEvent.click(await screen.findByRole('button', { name: 'Click to make map interactive' }));
+  expect(screen.queryByRole('button', { name: 'Click to make map interactive' })).toBeNull();
+});
