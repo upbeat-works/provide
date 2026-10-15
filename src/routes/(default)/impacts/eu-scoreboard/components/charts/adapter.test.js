@@ -443,3 +443,53 @@ describe('risk banding on bubble and scatter points', () => {
     expect(scatter.props.points[0].color).toBeTruthy();
   });
 });
+
+describe('box plot', () => {
+  const percentile = (n) => `Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|${n} Percentile`;
+  const role = (n, unit = '°C') => ({ variable: percentile(n), model: 'Model', unit, label: `${n} Percentile` });
+  const boxSeries = [{ median: role('50th'), boxLow: role('5th'), boxHigh: role('95th') }];
+  const grouped = (data, series = boxSeries) => {
+    const input = result('box_plot', series, data);
+    input.definition.data = { groupBy: 'region' };
+    return adaptChartResult(input);
+  };
+  const country = (uid, values) => ({ region: { uid, label: uid }, series: [values] });
+
+  test('draws a box per region and names what the box and line are', () => {
+    const adapted = grouped([country('Austria', { median: 30, boxLow: 28, boxHigh: 33 }), country('France', { median: 32, boxLow: 29, boxHigh: 36 })]);
+    expect(adapted.kind).toBe('box_plot');
+    expect(adapted.props.rows).toEqual([
+      { uid: 'Austria', label: 'Austria', median: 30, boxLow: 28, boxHigh: 33 },
+      { uid: 'France', label: 'France', median: 32, boxLow: 29, boxHigh: 36 },
+    ]);
+    expect(adapted.props.legend.map(({ label }) => label)).toEqual(['5th Percentile – 95th Percentile', '50th Percentile']);
+    // The axis names the quantity, not the percentile the median is.
+    expect(adapted.props.xLabel).toBe('Maximum Air Temperature (°C)');
+    const [low, high] = adapted.props.xDomain;
+    expect(low).toBeLessThan(28);
+    expect(high).toBeGreaterThan(36);
+  });
+
+  test('leaves out a row missing any value it would draw', () => {
+    const adapted = grouped([country('Austria', { median: 30, boxLow: null, boxHigh: 33 }), country('France', { median: 32, boxLow: 29, boxHigh: 36 })]);
+    expect(adapted.props.rows.map(({ uid }) => uid)).toEqual(['France']);
+    expect(grouped([country('Austria', { median: null, boxLow: 28, boxHigh: 33 })]).status).toBe('empty');
+  });
+
+  test('draws whiskers only when they are named', () => {
+    const series = [{ ...boxSeries[0], boxLow: role('25th'), boxHigh: role('75th'), whiskerLow: role('5th'), whiskerHigh: role('95th') }];
+    const adapted = grouped([country('Austria', { median: 30, boxLow: 29, boxHigh: 31, whiskerLow: 27, whiskerHigh: 34 })], series);
+    expect(adapted.props.rows[0]).toMatchObject({ whiskerLow: 27, whiskerHigh: 34 });
+    expect(adapted.props.legend.at(-1).label).toBe('Whiskers: 5th Percentile – 95th Percentile');
+    expect(grouped([country('Austria', { median: 30, boxLow: 28, boxHigh: 33 })]).props.rows[0]).not.toHaveProperty('whiskerLow');
+  });
+
+  test('draws the selected region when ungrouped', () => {
+    const adapted = adaptChartResult(result('box_plot', boxSeries, [{ median: 30, boxLow: 28, boxHigh: 33 }]), { region: { uid: 'Austria', label: 'Austria' } });
+    expect(adapted.props.rows).toEqual([{ uid: 'Austria', label: 'Austria', median: 30, boxLow: 28, boxHigh: 33 }]);
+  });
+
+  test('rejects percentiles in different units', () => {
+    expect(grouped([country('Austria', { median: 30, boxLow: 28, boxHigh: 33 })], [{ ...boxSeries[0], boxHigh: role('95th', 'K') }]).status).toBe('error');
+  });
+});

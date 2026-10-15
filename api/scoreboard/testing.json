@@ -109,6 +109,22 @@
         "rangeLow": "5th Percentile",
         "rangeHigh": "95th Percentile"
       }
+    },
+    {
+      "chartId": "maximum-air-temperature-spread",
+      "title": "Maximum air temperature spread",
+      "description": "The 5th to 95th percentile range of annual maximum air temperature, with its median, for the selected geography, scenario and year.",
+      "chartType": "box_plot",
+      "data": {
+        "variables": [
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+          "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile"
+        ],
+        "median": "50th Percentile",
+        "boxLow": "5th Percentile",
+        "boxHigh": "95th Percentile"
+      }
     }
   ]
 }
