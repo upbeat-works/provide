@@ -1,53 +1,51 @@
 # Add and update EU scoreboard topics
 
-To add a topic, drop a valid JSON file in
-[`api/scoreboard/topics/`](../api/scoreboard/topics/) and reload the page.
-The API reads this directory on each request and sends the settings to the web app.
-Adding, editing or removing a topic needs no import, code list or web rebuild.
-The code calls topics *sectors*: the URL uses `sector`. Topics are not edited in Strapi.
-Chart and regional map values come from the `sparccle-internal` ixmp4 instance;
-raster maps come from GeoServer.
+A topic defines the maps, charts, scenarios and years readers can choose.
+Each topic is one JSON file in
+[`api/scoreboard/topics/`](../api/scoreboard/topics/).
 
-| File | Use as an example for |
+The API reads these files on each request. Once a file reaches the running API,
+reload the page to see it. No code imports, restart or web rebuild are needed.
+
+[Add a topic](#add-a-topic) · [Update a topic](#update-a-topic) ·
+[Check and release](#check-and-release) · [Field reference](#field-reference) ·
+[Troubleshooting](#troubleshooting)
+
+## Add a topic
+
+This example adds an **Air temperature** topic with a regional map and a chart
+showing change over time. Start with that pair and check its values.
+
+### 1. Copy a working example
+
+| Example | Useful for |
 | --- | --- |
 | [`heat-stress.json`](../api/scoreboard/topics/heat-stress.json) | Regional maps and lines with a range. |
-| [`socioeconomic.json`](../api/scoreboard/topics/socioeconomic.json) | Named bars, percentage stacks, scatter plots, regional lines and country totals. |
+| [`socioeconomic.json`](../api/scoreboard/topics/socioeconomic.json) | Stacked bars, scatter plots, regional lines and country totals. |
 | [`testing.json`](../api/scoreboard/topics/testing.json) | Simple lines, bubbles, fixed country lists and raster maps. |
 
-To update a topic:
+Copy the closest example to `api/scoreboard/topics/air-temperature.json`.
+The filename becomes the topic ID, selected with `?sector=air-temperature`.
+The code calls topics *sectors*.
 
-1. Edit its JSON file. Change map choices in `map.indicators`, chart content in
-   `charts`, and filter choices in `map.scenarios` and `map.years`.
-2. Copy variable and scenario names exactly from the source data. Adding a name
-   here does not create data for it. Check the country, region level, scenario,
-   year, model and unit that the source provides.
-3. If you rename a map indicator, update `map.defaultIndicator` to match. To
-   change the topic's menu label or position, edit its `label` or `order`.
-4. Check the config and page using the steps below. Changes to the filename,
-   an indicator `name`, or a `chartId` affect saved links and chart embeds.
+Use lowercase words or numbers separated by hyphens. Only `.json` files directly
+in this directory are read; subdirectories are ignored.
 
-To add a topic:
+### 2. Name the topic and choose its data
 
-1. Copy the closest example to `api/scoreboard/topics/<topic-id>.json`. Use a
-   unique filename with lowercase words or numbers separated by hyphens, such as
-   `air-temperature.json`. The filename without `.json` becomes the URL's `sector`
-   value. Do not add a separate `uid` field.
-2. Set the file's top-level `label` for the Topic menu. Set `order` to control its
-   position: smaller numbers come first. Topics without `order` come last;
-   matching orders are sorted by filename. The first topic is the default when
-   `sector` is missing or unknown.
-3. Replace the copied indicators, charts, scenarios and years with your topic's
-   settings. Remove copied charts and ranking settings that do not apply.
-4. Run the checks below, put the file in the running API's topics directory, and
-   reload the page. Only `.json` files directly in that directory are read;
-   subdirectories and files such as `README.md` are ignored.
+Set the required `label` to `Air temperature`. Optional `order` sets its menu
+position: smaller numbers come first; files without an order come last. Ties
+are sorted by filename. The first topic is the default. No `uid` field is needed.
 
-The loader checks topic labels, order, map fields, scenario IDs, years, chart IDs
-and chart roles. An invalid file stops the request with an error naming the file
-in the API log. An empty topics directory is also an error. Keep drafts outside
-this directory, and finish writing a file before moving it into place.
+Replace the copied map indicators, charts, scenarios and years with exact
+source names. The source must provide these values for your chosen regions
+and units. Charts and regional maps read `sparccle-internal` in ixmp4; raster
+maps read GeoServer. JSON settings do not create source data.
 
-A complete topic file can start with one map indicator and one chart:
+### 3. Define the map and chart
+
+Here is the complete file. The map shows regional values for the selected year;
+the chart shows country values over time.
 
 ```json
 {
@@ -82,131 +80,176 @@ A complete topic file can start with one map indicator and one chart:
 }
 ```
 
-Use valid JSON: double quotes, no comments and no trailing commas. Keep `map`
-and `charts` even when one has no content. A topic with charts but no map uses
-`"indicators": []` and `"defaultIndicator": null`; it still needs scenarios and
-years. A topic with only a map uses `"charts": []`.
+Use double quotes, with no comments or trailing commas. Keep drafts outside the
+running API's topics directory: one invalid file blocks topic loading. Then
+[check and release](#check-and-release) the finished file.
 
-These fields control the choices:
+## Update a topic
 
-| Field | What to enter |
+| Change | Edit |
 | --- | --- |
-| `label` | Required, nonempty topic name shown in the menu. |
-| `order` | Optional number for menu order. Lower numbers come first. |
-| `map.defaultIndicator` | An exact indicator `name`, or `null` when there are none. Omit it to use the first indicator. Unknown names are rejected. |
-| `map.indicators` | Map choices in menu order. Each `name` must be unique within the topic; it is also the URL's `indicator` value. |
-| `map.scenarios` | A nonempty list of objects with exact ixmp4 scenario `id` values. The first is the default. Strapi can supply display labels; without one, the ID is shown. |
-| `map.years` | A nonempty list of four-digit numbers. The default is 2050 when listed, otherwise the first year. |
-| `charts` | Chart definitions in page order. Give each a unique `chartId` within the topic, plus `title`, `description`, `chartType` and `data`. |
+| Topic name or menu position | `label` or `order`. |
+| Map choices | `map.indicators`; also update `map.defaultIndicator` if you rename its indicator. |
+| Scenario or year choices | `map.scenarios` or `map.years`. |
+| Chart text, type or data | The matching entry in `charts`. |
+| Chart order | The order of entries in `charts`. |
 
-Countries come from [`countries.ts`](../api/scoreboard/countries.ts), not the
-topic file. The URL's `region` is a country name, such as `Austria`, or `all`.
-An invalid country choice falls back to Austria. Changing the map indicator
-does not change the topic's charts.
+Changing the filename, an indicator's `name`, or a `chartId` affects saved links
+and embeds. Removing a file removes its topic; keep at least one valid topic.
+Follow the same checks below for additions and edits.
 
-For a regional map, use `type: "choropleth"`, the full ixmp4 `variable` name,
-and `level: "NUTS1"` or `"NUTS2"`. Source region IDs must match `NUTS_ID` in the
-[packaged boundaries](../api/scoreboard/data/README.md). Country selection loads
-values at that level; `region=all` reads country values by default.
+## Check and release
 
-An indicator can set `aggregate: "sum"` to build country totals from its NUTS
-regions in the all-countries view. Use this only for values that can be added,
-such as population counts or losses. Never sum temperatures, rates or
-percentiles. Missing regions reduce the total; they do not make the country blank.
+### 1. Load it in a running preview
 
-Optional `colorRamp` sets map colours, for example
-`["#FEDB5C", "#E27B47"]`. Use at least two full six-digit hex colours. Invalid
-ramps fall back to the default. This changes colours, not value limits.
+Put the file in the preview API's `api/scoreboard/topics/` directory. Open
+**Explore indicators** on your preview site:
 
-For a raster map, copy the raster entry in `testing.json`. It needs `name`,
-`type: "raster"`, `indicator`, `reference`, `time` and `spatial`; `unit` is an
-optional display label. Those names must match GeoServer data. If its scenario
-name differs from ixmp4, set `rasterName` on the scenario entry, for example
-`{ "id": "CurrentPolicies", "rasterName": "Current Policies" }`. The API also
-needs `GEOSERVER_URL` and any required GeoServer credentials. Raster maps need
-a selected country; the all-countries view is unavailable.
+```text
+/impacts/eu-scoreboard/indicators?sector=air-temperature&region=Austria
+```
 
-`map.ranking` may contain a `variable` and increasing numeric `bins`. The
-overview ranking still uses mock scores: editing these fields does not change
-the displayed ranking. Check real map and chart data on the **Explore indicators**
-page.
+Confirm that **Air temperature** appears in the Topic menu and is selected.
+The API validates files on load. If loading fails, its log names the file and
+problem; ask the service maintainer if you need help getting that message.
 
-Every chart's `data.variables` lists full ixmp4 variable names. The chart type
-sets how those variables are used:
+### 2. Check the displayed values
 
-| `chartType` | Fields in `data` | Time shown |
+A valid file can still point to missing or conflicting source data. Check:
+
+- The map and chart display values, with the expected titles and units.
+- One map value and one chart value agree with the source.
+- Country, scenario and year changes work for choices with known data.
+- The all-countries view (`region=all`) gives the expected result, especially
+  when using regional sums or a fixed list of regions.
+
+Empty charts are hidden. Confirm that values appear on **Explore indicators**;
+the overview ranking still uses mock scores. See [Troubleshooting](#troubleshooting)
+for missing results.
+
+### 3. Release the checked file
+
+Deliver the checked JSON to production:
+
+| Setup | Release step |
+| --- | --- |
+| Files included in the API Docker image | Build and deploy the API image with the changed files. It includes `api/scoreboard/topics/`. |
+| Topics directory mounted into the API container | Replace the file in that mounted directory. The API reads it on the next request. |
+
+A local file edit does not update production. After release, reload the page
+and check the topic again. The web app needs no rebuild.
+
+## Field reference
+
+### Topic choices and defaults
+
+Keep both `map` and `charts` in every file, even when one has no content.
+
+| Field | Rule |
+| --- | --- |
+| `map.indicators` | Map choices in menu order, with unique `name` values used in the URL. Use `[]` for charts only. |
+| `map.defaultIndicator` | An exact indicator `name`; omit to use the first, or use `null` for no indicators. Unknown names are rejected. |
+| `map.scenarios` | Nonempty list of objects with unique source `id` values. The first is the default. Labels come from Strapi when available; otherwise the ID is shown. |
+| `map.years` | Nonempty list of four-digit numbers. Defaults to 2050 when listed, otherwise the first year. |
+| `charts` | Chart definitions in page order. Use `[]` for a topic with only a map. |
+
+Countries come from the shared [country list](../api/scoreboard/countries.ts).
+The URL's `region` is a country name, such as `Austria`, or `all`; an invalid
+country choice falls back to Austria. A topic with only charts still needs
+scenarios and years. Changing the map indicator does not change the charts.
+
+### Maps
+
+A **regional map** uses `type: "choropleth"`, the full ixmp4 `variable` name, and
+`level: "NUTS1"` or `"NUTS2"`. Source region IDs must match `NUTS_ID` in the
+[packaged boundaries](../api/scoreboard/data/README.md). Selecting a country
+shows its regions; selecting all countries reads country values by default.
+
+| Field on the indicator | Effect |
+| --- | --- |
+| `aggregate: "sum"` | Builds country totals from NUTS regions in the all-countries view. See [Totals and display settings](#totals-and-display-settings). |
+| `colorRamp` | Sets map colours, for example `["#FEDB5C", "#E27B47"]`. Use at least two full six-digit hex colours. Invalid ramps use the default. Value limits stay unchanged. |
+
+A **raster map** uses `type: "raster"` plus `name`, `indicator`, `reference`,
+`time` and `spatial`. Copy the raster entry in `testing.json` and use names that
+match GeoServer. Optional `unit` supplies the display label.
+
+If GeoServer uses a different scenario name, add `rasterName` to that scenario,
+for example `{ "id": "CurrentPolicies", "rasterName": "Current Policies" }`.
+The API needs `GEOSERVER_URL` and any required GeoServer credentials. Raster maps
+require a selected country; they do not support the all-countries view.
+
+`map.ranking` can hold a `variable` and increasing numeric `bins`, but the
+overview does not yet read them. Editing these fields will not change its scores.
+
+### Charts
+
+Each chart needs a unique `chartId` within the topic, plus `title`, `description`,
+`chartType` and `data`. List full source names in `data.variables`.
+
+| `chartType` | How variables are used | Time shown |
 | --- | --- | --- |
-| `line` | One line per variable; no role fields needed. | All available years. |
-| `line_with_range` | `line`, `rangeLow`, `rangeHigh`. | All available years. |
-| `stacked_bar` | Optional `stacks` to name and order segments; `bars` plus `stacks` for named bars. Without either, each variable is a segment. | Selected year. |
-| `scatter` | `x`, `y`. | Selected year. |
-| `bubble` | `x`, `y`, `size`. | Selected year. |
+| `line` | One line per variable. | All available years. |
+| `line_with_range` | Assign `line`, `rangeLow` and `rangeHigh`. | All available years. |
+| `stacked_bar` | Each variable is a segment. Optional `stacks` names and orders segments; add `bars` for named bars. | Selected year. |
+| `scatter` | Assign `x` and `y`. | Selected year. |
+| `bubble` | Assign `x`, `y` and `size`. | Selected year. |
 
-A role names an exact part between `|` separators, not the full variable or a
-partial word. For example, `"line": "50th Percentile"` matches the last part
-of the example variable. Each role must match one variable, and every variable
-must be used. For named bars, each variable must match one bar and one stack,
-and every bar/stack pair needs a variable. Keep stack segments in matching units.
+These assignments are **roles**. Each matches one whole part of a `|`-separated
+variable name. For example, `"line": "50th Percentile"` matches the final part
+of the example variable. Each role must match one variable; every listed
+variable must be used.
 
-Further chart settings:
+For named bars, each variable must match one bar and one stack; every bar/stack
+pair needs a variable. Keep stack segments in matching units.
 
-| Field in `data` | Use |
+### Chart groups
+
+These fields belong inside a chart's `data` object:
+
+| Field | Effect |
 | --- | --- |
-| `groupBy` omitted | Read the selected country's series. With `region=all`, read a group per country. |
-| `groupBy: "region"` with `regionLevel: "NUTS1"` or `"NUTS2"` | Read the selected country's regions. Supported by all five chart types. With `region=all`, read regions across countries. |
-| `groupBy: "region"` with `regions` | Use a fixed list of exact source region names or IDs, regardless of the selected country. It takes precedence over `regionLevel`. |
-| `groupBy: "scenario"` | Compare source scenarios at the selected place and year. Supported for bars, scatter and bubbles. The selected scenario does not filter this query. |
-| `aggregate: "sum"` | With regional grouping and `regionLevel`, sum NUTS values into countries when `region=all`. Omit a fixed `regions` list for this. The same rules for valid sums and missing regions apply as for maps. |
-| `model` | Limit all chart variables to one exact ixmp4 model name. Without it, no model filter is sent; overlapping rows can cause an error. |
-| `unitFallback` | Label values only when the source has no unit. It neither converts nor filters values. Multiple source units cause an error. |
-| `stackMode: "percent"` | Show each bar's available segments as shares of their total. Missing segments are omitted; zero totals stay blank. |
-| `riskFrom` | Colour scatter or bubble points by `"x"`, `"y"` or `"size"`. Bands use the shown values' 25th and 75th percentiles, so they describe relative risk within those points. Use a role the chart has. |
+| `groupBy` omitted | Reads the selected country's series. With `region=all`, reads a group per country. |
+| `groupBy: "region"` with `regionLevel: "NUTS1"` or `"NUTS2"` | Reads the selected country's regions, or regions across countries when `region=all`. Works with all five chart types. |
+| `groupBy: "region"` with `regions` | Uses a fixed list of exact source region names or IDs. Ignores the country choice and takes precedence over `regionLevel`. |
+| `groupBy: "scenario"` | Compares source scenarios at the selected place and year. Works with bars, scatter and bubbles. The scenario filter does not limit this query. |
 
-For regional charts that follow the chosen country, set `regionLevel` explicitly.
-`groupBy: "region"` alone uses geography links and does not select that country's
-NUTS regions. Charts read default ixmp4 runs. Run versions are not set in JSON.
-An optional `caseStudyId` belongs beside `chartId` and names the numeric Strapi
-case-study record ID. Omit it when there is no linked study.
+### Totals and display settings
 
-To check and release a change:
+These fields also belong inside the chart's `data` object:
 
-1. From the repository root, with dependencies installed, validate every topic:
+| Field | Effect |
+| --- | --- |
+| `aggregate: "sum"` | With regional grouping and `regionLevel`, sums NUTS values into countries when `region=all`. Omit a fixed `regions` list. |
+| `model` | Limits all chart variables to one exact ixmp4 model name. Without it, no model filter is sent; overlapping rows can cause an error. |
+| `unitFallback` | Labels values only when the source has no unit. It does not convert values or resolve conflicting units. |
+| `stackMode: "percent"` | Shows available segments as shares of their bar's total. Missing segments are omitted; zero totals stay blank. |
+| `riskFrom` | Colours scatter or bubble points by `"x"`, `"y"` or `"size"`. Use a role the chart has. Bands use the shown values' 25th and 75th percentiles, so risk is relative to those points. |
 
-   ```sh
-   bun -e '
-   import { getScoreboard } from "./api/scoreboard/controller.js";
-   console.log(getScoreboard().sectors);
-   '
-   ```
+**Sum only values that can be added**, such as population counts or losses.
+Never sum temperatures, rates or percentiles. Missing regions reduce a country
+total; a country with no reported values stays absent. This applies to both
+map and chart sums.
 
-   A printed topic list means the files passed the config checks. This does not
-   prove that source data exists or that sums and units are right for the data.
+For charts that follow a country's NUTS regions, set `regionLevel` explicitly.
+`groupBy: "region"` alone uses geography links and does not select those regions.
+Charts read default ixmp4 runs; run versions are not set in JSON.
 
-2. With Node and Bun installed, run the scoreboard API and page tests:
+Optional `caseStudyId` sits beside `chartId`, outside `data`, and names the numeric
+Strapi case-study record ID. Omit it when there is no linked study.
 
-   ```sh
-   npm run test:web -- scoreboard eu-scoreboard
-   ```
+## Troubleshooting
 
-   Add tests alongside changes to selection, requests or chart behavior. Test
-   what a reader can select and see, rather than just repeating labels from JSON.
+| What you see | What to check |
+| --- | --- |
+| Topic missing, or another topic selected | The filename sets the topic ID. Check the URL and confirm the `.json` file reached the running API's topics directory. |
+| Topic settings fail to load | Check the API log for a filename and validation message. One invalid file, or an empty directory, blocks topic loading. |
+| Empty map or missing chart | Check that the exact variables exist for the selected regions, scenario and year. |
+| Map or chart data error | Check API logs for source access failures, duplicate rows or conflicting units. Correct the source or query settings. |
+| Country totals look too small | Sums include only regions with data. Check which regions reported values for that year. |
 
-3. Start the local stack with `bun run dev`, then open
-   `http://localhost:8080/impacts/eu-scoreboard/indicators?sector=<topic-id>&region=Austria`.
-   Check the topic label, map choices, default scenario and year, chart order,
-   titles and units. Switch country, scenario and year to choices with known
-   data. Check `region=all` too, especially when using sums or fixed region lists.
-4. Check one map value and one chart value against the source. In the browser's
-   Network panel, map and chart requests use `/app/scoreboard/map` and
-   `/app/scoreboard/charts/<chartId>`. A chart with no matching data is hidden;
-   an empty page alone does not prove the config works. A 400 response can point
-   to invalid choices or chart roles; a 502 needs an API log check for source
-   access or conflicting rows/units. A 500 from `/api/scoreboard/definition` can
-   mean a topic file failed validation; check the API log for its filename.
-   Logs for data requests omit credentials and source response bodies.
-5. Deliver the JSON files to the running API. The production Docker image copies
-   `api/`, including `scoreboard/topics/`, so the usual release builds and deploys
-   an API image with the changed files. If that directory is mounted from outside
-   the container, update its files there. The API reads changes on the next
-   request without a restart. Reload the page to get the updated topic settings;
-   the web app needs no rebuild for topic edits.
+For a service maintainer, the definition request is
+`/api/scoreboard/definition?sector=<topic-id>`. Browser data requests use
+`/app/scoreboard/map` and `/app/scoreboard/charts/<chartId>`. Inspect their result
+bodies as well as HTTP status: a successful response can still contain a data
+error or an empty result.
