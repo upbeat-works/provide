@@ -3,7 +3,7 @@ import type { Env } from '../types';
 import { instances } from '../instances';
 import { createPlatform } from '../platform';
 import { readScoreboardMapSeries } from '../views/scoreboard';
-import { getScoreboard, SCOREBOARD_INSTANCE, SECTORS } from '../scoreboard/controller.js';
+import { getScoreboard, SCOREBOARD_INSTANCE } from '../scoreboard/controller.js';
 import { SCOREBOARD_COUNTRIES, scoreboardCountry } from '../scoreboard/countries';
 import { loadRegionalBoundaries, type NutsLevel } from '../scoreboard/boundaries';
 import { aggregatedCountryMapResult, regionalMapResult } from '../scoreboard/maps';
@@ -52,6 +52,11 @@ function validRasterIndicator(indicator: RasterMapIndicator) {
     .every((value) => typeof value === 'string' && value.trim().length > 0);
 }
 
+scoreboard.get('/definition', (c) => {
+  c.header('Cache-Control', 'no-store');
+  return c.json(getScoreboard(c.req.query('sector'), c.req.query('indicator')));
+});
+
 scoreboard.get('/charts/:chartId', async (c) => {
   const { charts } = getScoreboard(c.req.query('sector'));
   const definition = charts.find(({ chartId }) => chartId === c.req.param('chartId')) as Definition | undefined;
@@ -76,8 +81,8 @@ scoreboard.get('/map', async (c) => {
   if (!sector || !indicatorName || !scenario || !region || !yearText || !/^\d{4}$/.test(yearText)) {
     return c.json({ error: 'sector, indicator, scenario, region and a four-digit year are required' }, 400);
   }
-  if (!SECTORS.some(({ uid }) => uid === sector)) return c.json({ error: 'Invalid scoreboard map selection' }, 400);
-  const { map, indicator } = getScoreboard(sector, indicatorName);
+  const { map, indicator, sectors } = getScoreboard(sector, indicatorName);
+  if (!sectors.some(({ uid }) => uid === sector)) return c.json({ error: 'Invalid scoreboard map selection' }, 400);
   const country = scoreboardCountry(region);
   const year = Number(yearText);
   const validIndicator = map.indicators.some(({ name }) => name === indicatorName);

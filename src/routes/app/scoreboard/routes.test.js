@@ -2,6 +2,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { loadChart, loadMap } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
 import { GET as getMap } from './map/+server.js';
 import { GET as getChart } from './charts/[chartId]/+server.js';
+import { getScoreboard } from '../../../../api/scoreboard/controller.js';
 
 vi.mock('$routes/(default)/impacts/eu-scoreboard/controller.server.js', async (source) => {
   const actual = await source();
@@ -16,7 +17,7 @@ test('uses the URL indicator for the same-origin map request', async () => {
     'https://example.test/app/scoreboard/map?sector=testing&indicator=Mean%20Air%20Temperature&scenario=1.5C&region=Austria&year=2050'
   );
 
-  await getMap({ fetch: vi.fn(), url });
+  await getMap({ fetch: vi.fn(async () => Response.json(getScoreboard('testing', 'Mean Air Temperature'))), url });
 
   expect(loadMap).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -30,7 +31,7 @@ test('loads a same-origin chart without an indicator parameter', async () => {
   loadChart.mockResolvedValue({ status: 'ready', data: [] });
   const url = new URL('https://example.test/app/scoreboard/charts/test?sector=testing&scenario=1.5C&region=Austria&year=2050');
 
-  const response = await getChart({ fetch: vi.fn(), url, params: { chartId: 'test' } });
+  const response = await getChart({ fetch: vi.fn(async () => Response.json(getScoreboard('testing'))), url, params: { chartId: 'test' } });
 
   expect(response.status).toBe(200);
   expect(loadChart).toHaveBeenCalledWith(

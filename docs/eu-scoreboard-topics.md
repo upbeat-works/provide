@@ -1,17 +1,18 @@
 # Add and update EU scoreboard topics
 
-The **Topic** menu reads JSON files in [`api/scoreboard/`](../api/scoreboard/).
-The code calls topics *sectors*: the URL uses `sector`, and
-[`controller.js`](../api/scoreboard/controller.js) lists them in `SECTOR_DEFINITIONS`.
-Topic settings are shared by the API and web app. They are not edited in Strapi.
+To add a topic, drop a valid JSON file in
+[`api/scoreboard/topics/`](../api/scoreboard/topics/) and reload the page.
+The API reads this directory on each request and sends the settings to the web app.
+Adding, editing or removing a topic needs no import, code list or web rebuild.
+The code calls topics *sectors*: the URL uses `sector`. Topics are not edited in Strapi.
 Chart and regional map values come from the `sparccle-internal` ixmp4 instance;
 raster maps come from GeoServer.
 
 | File | Use as an example for |
 | --- | --- |
-| [`heat-stress.json`](../api/scoreboard/heat-stress.json) | Regional maps and lines with a range. |
-| [`socioeconomic.json`](../api/scoreboard/socioeconomic.json) | Named bars, percentage stacks, scatter plots, regional lines and country totals. |
-| [`testing.json`](../api/scoreboard/testing.json) | Simple lines, bubbles, fixed country lists and raster maps. |
+| [`heat-stress.json`](../api/scoreboard/topics/heat-stress.json) | Regional maps and lines with a range. |
+| [`socioeconomic.json`](../api/scoreboard/topics/socioeconomic.json) | Named bars, percentage stacks, scatter plots, regional lines and country totals. |
+| [`testing.json`](../api/scoreboard/topics/testing.json) | Simple lines, bubbles, fixed country lists and raster maps. |
 
 To update a topic:
 
@@ -21,40 +22,37 @@ To update a topic:
    here does not create data for it. Check the country, region level, scenario,
    year, model and unit that the source provides.
 3. If you rename a map indicator, update `map.defaultIndicator` to match. To
-   change the topic's menu label, edit its `label` in `SECTOR_DEFINITIONS`.
-4. Check the config and page using the steps below. Changes to the topic `uid`,
+   change the topic's menu label or position, edit its `label` or `order`.
+4. Check the config and page using the steps below. Changes to the filename,
    an indicator `name`, or a `chartId` affect saved links and chart embeds.
 
 To add a topic:
 
-1. Copy the closest example to `api/scoreboard/<topic-id>.json`. Use a short,
-   unique ID with lowercase words separated by hyphens, such as `air-temperature`.
-2. Replace the copied indicators, charts, scenarios and years with your topic's
+1. Copy the closest example to `api/scoreboard/topics/<topic-id>.json`. Use a
+   unique filename with lowercase words or numbers separated by hyphens, such as
+   `air-temperature.json`. The filename without `.json` becomes the URL's `sector`
+   value. Do not add a separate `uid` field.
+2. Set the file's top-level `label` for the Topic menu. Set `order` to control its
+   position: smaller numbers come first. Topics without `order` come last;
+   matching orders are sorted by filename. The first topic is the default when
+   `sector` is missing or unknown.
+3. Replace the copied indicators, charts, scenarios and years with your topic's
    settings. Remove copied charts and ranking settings that do not apply.
-3. Add an import in `api/scoreboard/controller.js`:
+4. Run the checks below, put the file in the running API's topics directory, and
+   reload the page. Only `.json` files directly in that directory are read;
+   subdirectories and files such as `README.md` are ignored.
 
-   ```js
-   import airTemperature from './air-temperature.json';
-   ```
-
-4. Add an entry inside that file's `SECTOR_DEFINITIONS` array:
-
-   ```js
-   { uid: 'air-temperature', label: 'Air temperature', definition: airTemperature },
-   ```
-
-5. Test that selecting the new topic returns its own map and charts. Extend
-   [`controller.test.ts`](../api/scoreboard/controller.test.ts) alongside any
-   behavior change. The existing per-topic test checks each registered topic.
-
-The file is not found automatically: both the import and array entry are needed.
-The array sets menu order. Its first entry is used when `sector` is missing or
-unknown. No separate page, API route or CMS topic record is needed.
+The loader checks topic labels, order, map fields, scenario IDs, years, chart IDs
+and chart roles. An invalid file stops the request with an error naming the file
+in the API log. An empty topics directory is also an error. Keep drafts outside
+this directory, and finish writing a file before moving it into place.
 
 A complete topic file can start with one map indicator and one chart:
 
 ```json
 {
+  "label": "Air temperature",
+  "order": 40,
   "map": {
     "defaultIndicator": "Mean Air Temperature",
     "indicators": [
@@ -93,7 +91,9 @@ These fields control the choices:
 
 | Field | What to enter |
 | --- | --- |
-| `map.defaultIndicator` | An exact indicator `name`, or `null` when there are none. An unknown or missing default falls back to the first indicator. |
+| `label` | Required, nonempty topic name shown in the menu. |
+| `order` | Optional number for menu order. Lower numbers come first. |
+| `map.defaultIndicator` | An exact indicator `name`, or `null` when there are none. Omit it to use the first indicator. Unknown names are rejected. |
 | `map.indicators` | Map choices in menu order. Each `name` must be unique within the topic; it is also the URL's `indicator` value. |
 | `map.scenarios` | A nonempty list of objects with exact ixmp4 scenario `id` values. The first is the default. Strapi can supply display labels; without one, the ID is shown. |
 | `map.years` | A nonempty list of four-digit numbers. The default is 2050 when listed, otherwise the first year. |
@@ -170,36 +170,28 @@ case-study record ID. Omit it when there is no linked study.
 
 To check and release a change:
 
-1. From the repository root, with dependencies installed, check that registered
-   topics load and chart definitions pass the existing config checks:
+1. From the repository root, with dependencies installed, validate every topic:
 
    ```sh
    bun -e '
-   import { SECTORS, getScoreboard } from "./api/scoreboard/controller.js";
-   import { definitionGroupingError } from "./api/scoreboard/charts.ts";
-   for (const { uid } of SECTORS) {
-     for (const chart of getScoreboard(uid).charts) {
-       const error = definitionGroupingError(chart);
-       if (error) throw new Error(`${uid}/${chart.chartId}: ${error}`);
-     }
-   }
-   console.log("Registered topic JSON and chart definitions passed.");
+   import { getScoreboard } from "./api/scoreboard/controller.js";
+   console.log(getScoreboard().sectors);
    '
    ```
 
-   This checks JSON imports and chart roles/grouping. It does not prove that
-   source data exists, IDs are unique, or map fields and defaults are correct.
+   A printed topic list means the files passed the config checks. This does not
+   prove that source data exists or that sums and units are right for the data.
 
-2. With the local stack running (`bun run dev`), run the scoreboard page tests:
+2. With Node and Bun installed, run the scoreboard API and page tests:
 
    ```sh
-   docker compose exec web npm run test:web -- eu-scoreboard app/scoreboard
+   npm run test:web -- scoreboard eu-scoreboard
    ```
 
    Add tests alongside changes to selection, requests or chart behavior. Test
    what a reader can select and see, rather than just repeating labels from JSON.
 
-3. Open
+3. Start the local stack with `bun run dev`, then open
    `http://localhost:8080/impacts/eu-scoreboard/indicators?sector=<topic-id>&region=Austria`.
    Check the topic label, map choices, default scenario and year, chart order,
    titles and units. Switch country, scenario and year to choices with known
@@ -209,7 +201,12 @@ To check and release a change:
    `/app/scoreboard/charts/<chartId>`. A chart with no matching data is hidden;
    an empty page alone does not prove the config works. A 400 response can point
    to invalid choices or chart roles; a 502 needs an API log check for source
-   access or conflicting rows/units. Logs omit credentials and source response bodies.
-5. Commit the JSON and controller changes together, then rebuild and release
-   both the API and web app. The web app bundles topic settings, and the API
-   loads its own copy. A JSON-only topic edit still needs both services updated.
+   access or conflicting rows/units. A 500 from `/api/scoreboard/definition` can
+   mean a topic file failed validation; check the API log for its filename.
+   Logs for data requests omit credentials and source response bodies.
+5. Deliver the JSON files to the running API. The production Docker image copies
+   `api/`, including `scoreboard/topics/`, so the usual release builds and deploys
+   an API image with the changed files. If that directory is mounted from outside
+   the container, update its files there. The API reads changes on the next
+   request without a restart. Reload the page to get the updated topic settings;
+   the web app needs no rebuild for topic edits.

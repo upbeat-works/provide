@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Page from './page.test.fixture.svelte';
-import { getScoreboard } from './controller.js';
+import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
 import { load } from './+layout.js';
 
 const { goto, invalidate } = vi.hoisted(() => ({ goto: vi.fn(), invalidate: vi.fn() }));

@@ -1,4 +1,6 @@
 {
+  "label": "Testing",
+  "order": 20,
   "map": {
     "defaultIndicator": "Maximum Air Temperature",
     "ranking": {

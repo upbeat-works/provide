@@ -1,1 +1,1 @@
-export { getScoreboard, resolveScoreboardChoices, SCOREBOARD_COUNTRIES, SCOREBOARD_INSTANCE, SECTORS } from '../../../../../api/scoreboard/controller.js';
+export { resolveScoreboardChoices, SCOREBOARD_COUNTRIES } from '../../../../../api/scoreboard/choices.js';

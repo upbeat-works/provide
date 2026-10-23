@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { getScoreboard } from '../controller.js';
+import { getScoreboard } from '../../../../../../api/scoreboard/controller.js';
 import { load } from './+page.js';
 
 vi.mock('$app/environment', () => ({ browser: true }));

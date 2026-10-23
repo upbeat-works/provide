@@ -3,16 +3,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 let loadMethodologyScenarios;
 let loadScoreboardChart;
 let loadScoreboardMap;
+let loadScoreboardDefinition;
 
 afterEach(() => vi.unstubAllEnvs());
 
 beforeEach(async () => {
   vi.resetModules();
   vi.stubEnv('VITE_API_URL', 'https://catalog.example/api');
-  ({ loadMethodologyScenarios, loadScoreboardChart, loadScoreboardMap } = await import('./apis.js'));
+  ({ loadMethodologyScenarios, loadScoreboardChart, loadScoreboardMap, loadScoreboardDefinition } = await import('./apis.js'));
 });
 
 describe('scoreboard loader', () => {
+  it('loads definitions from the API with the requested topic and indicator', async () => {
+    const definition = { sector: { uid: 'flood-risk', label: 'Flood risk' }, charts: [] };
+    const fetch = vi.fn(async () => Response.json(definition));
+    await expect(loadScoreboardDefinition(fetch, { sector: 'flood-risk', indicator: 'Flood days', year: 2050 })).resolves.toEqual(definition);
+    const url = new URL(fetch.mock.calls[0][0]);
+    expect(url.pathname).toBe('/api/scoreboard/definition/');
+    expect(Object.fromEntries(url.searchParams)).toEqual({ sector: 'flood-risk', indicator: 'Flood days' });
+  });
+
   it('sends only supplied selections and a chart limit', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ charts: [] })));
     await loadScoreboardChart(fetch, {

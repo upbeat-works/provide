@@ -1,4 +1,6 @@
 {
+  "label": "Socioeconomic",
+  "order": 30,
   "map": {
     "defaultIndicator": "Population aged 65 and over",
     "ranking": {

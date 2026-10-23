@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { getScoreboard } from './controller.js';
+import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
 
 describe('scoreboard sector selection', () => {
   test.each([undefined, 'unknown', 'heat-stress'])('opens Heat stress for %s', (sector) => {

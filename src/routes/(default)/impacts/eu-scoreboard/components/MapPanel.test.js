@@ -4,10 +4,17 @@ import { afterEach, expect, test, vi } from 'vitest';
 import MapPanel from './MapPanel.svelte';
 
 vi.mock('./ScoreboardMap.svelte', () => import('./MapPanelMap.test.fixture.svelte'));
+const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
+vi.mock('$app/navigation', () => ({ goto }));
+vi.mock('$app/stores', async () => {
+  const { readable } = await import('svelte/store');
+  return { page: readable({ url: new URL('https://provide.example/impacts/eu-scoreboard/indicators?sector=testing&region=all&scenario=CurrentPolicies&year=2050') }) };
+});
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  goto.mockClear();
 });
 
 const option = (uid) => ({ uid, label: uid });
@@ -153,4 +160,36 @@ test('stops comparison requests and keeps the country outline when the next sect
   for (const map of screen.getAllByRole('img', { name: 'Regional scoreboard map' })) {
     expect(JSON.parse(map.dataset.values)).toEqual([]);
   }
+});
+
+const europe = { ...selection, region: option('all') };
+
+test('opens a clicked country across Europe, keeping the rest of the selection', async () => {
+  render(MapPanel, { ...props, selection: europe });
+  // The map still has to pan and zoom, so it wakes on a first click before it picks.
+  expect(screen.getByRole('img', { name: 'Regional scoreboard map' }).dataset.activation).toBe('true');
+  await fireEvent.click(screen.getByRole('button', { name: 'Select Austria' }));
+  expect(goto).toHaveBeenCalledOnce();
+  const url = goto.mock.calls[0][0];
+  expect(url.pathname).toBe('/impacts/eu-scoreboard/indicators');
+  expect(Object.fromEntries(url.searchParams)).toEqual({ sector: 'testing', region: 'Austria', scenario: 'CurrentPolicies', year: '2050' });
+});
+
+test('offers no click on a single country, whose map is drawn by region', () => {
+  render(MapPanel, props);
+  expect(screen.getByRole('img', { name: 'Regional scoreboard map' }).dataset.selectable).toBe('false');
+  expect(screen.queryByRole('button', { name: 'Select Austria' })).toBeNull();
+});
+
+test('comparing geographies, a click sets that map and does not navigate', async () => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+  const regions = [option('all'), option('Austria'), option('Belgium')];
+  render(MapPanel, { ...props, selection: europe, compareBy: option('region'), sides: [option('Belgium'), option('all')], optionsFor: () => regions });
+  // Only the Europe-wide side is drawn by country, so only it can be clicked.
+  const buttons = screen.getAllByRole('button', { name: 'Select Austria' });
+  expect(buttons).toHaveLength(1);
+  await fireEvent.click(buttons[0]);
+  expect(goto).not.toHaveBeenCalled();
+  const maps = screen.getAllByRole('img', { name: 'Regional scoreboard map' });
+  expect(maps.map(({ dataset }) => dataset.country)).toEqual(['Belgium', 'Austria']);
 });

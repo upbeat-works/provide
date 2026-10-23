@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import { graphParamsFor, EMBED_UID } from '$routes/(default)/impacts/eu-scoreboard/components/charts/catalog.js';
-import { getScoreboard } from '$routes/(default)/impacts/eu-scoreboard/controller.js';
+import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
 import { loadChart } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
 import { load } from './+page.server.js';
 
@@ -23,7 +23,7 @@ test('loads the chart named by graph embed parameters', async () => {
   loadChart.mockResolvedValue(chart);
 
   const data = await load({
-    fetch: vi.fn(),
+    fetch: vi.fn(async () => Response.json(scoreboard)),
     params: { embed: EMBED_UID },
     url: new URL(`https://example.test/embed/${EMBED_UID}?${params}`),
   });

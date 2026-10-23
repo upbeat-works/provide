@@ -1,9 +1,8 @@
 import { EMBED_UID } from '$routes/(default)/impacts/eu-scoreboard/components/charts/catalog.js';
-import { getScoreboard } from '$routes/(default)/impacts/eu-scoreboard/controller.js';
 import { loadChart, selectionsFromUrl } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
 import { parse } from 'qs';
 import { canonicalMapSelection, loadMapAvailability } from '$lib/catalog/map-request.js';
-import { catalogApiUrl } from '$lib/utils/apis.js';
+import { catalogApiUrl, loadScoreboardDefinition } from '$lib/utils/apis.js';
 
 export const load = async ({ fetch, params, url }) => {
   if (params.embed === 'impact-geo') {
@@ -20,7 +19,7 @@ export const load = async ({ fetch, params, url }) => {
     return { mapView: selection ? { ...mapView, selection } : mapView };
   }
   if (params.embed !== EMBED_UID) return {};
-  const scoreboard = getScoreboard(url.searchParams.get('sector'));
+  const scoreboard = await loadScoreboardDefinition(fetch, { sector: url.searchParams.get('sector') ?? undefined });
   const chartId = url.searchParams.get('chartId');
   const { scenario, region, year } = selectionsFromUrl(url);
   const selections = { scenario, region, year };

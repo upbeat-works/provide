@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { getScoreboard } from './controller.js';
+import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
 import { load } from './+layout.js';
 
 test('turns local config into labelled choices and retains valid URL values', () => {

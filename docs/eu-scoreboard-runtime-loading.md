@@ -1,15 +1,19 @@
 # Scoreboard runtime loading
 
 The scoreboard uses its own controller and the fixed `sparccle-internal` source.
-Sector config is bundled with both the API and web app. `getScoreboard(sector,
-indicator)` returns the selected sector's `map`, `charts`, and `indicator`.
+The API reads topic JSON from `api/scoreboard/topics/` on each request. Each file
+supplies its label, optional menu order, map and charts; its filename supplies
+the topic ID. `getScoreboard(sector, indicator)` selects from those files.
+See [Add and update EU scoreboard topics](eu-scoreboard-topics.md).
 
 ## Choices and URL state
 
-The layout reads indicators, scenario IDs, and years from local sector config.
-It uses the shared 40-country list for regions. It does not make an options API
-request. Optional scenario labels come from Strapi; missing content and Strapi
-failures fall back to the configured ID without blocking data requests.
+The server layout loads indicators, scenario IDs and years from
+`/api/scoreboard/definition`. Embeds and the same-origin map/chart routes use
+the same endpoint. Topic settings are not bundled into the web app. The browser
+uses the shared 40-country list for regions. Optional scenario labels come from
+Strapi; missing content and Strapi failures fall back to the configured ID
+without blocking data requests.
 
 A sector with no configured map indicators keeps `map.indicators` empty.
 Its chart filters still work. The page shows the selected country outline and
@@ -18,7 +22,8 @@ explains that regional map data is unavailable; it makes no map-data request.
 The page URL uses `sector`, `indicator`, `region`, `scenario`, and `year`.
 `indicator` stores the short map indicator name. `region` stores the country
 name because chart requests use that value. Invalid choices fall back to the
-first configured indicator and scenario, Austria, and 2050.
+configured default indicator (or the first), the first scenario, Austria, and
+2050 when listed (otherwise the first year).
 
 Each choropleth indicator's `variable` is the exact ixmp4 query name. Raster
 indicators provide their GeoServer indicator, reference, time, spatial and unit
@@ -32,6 +37,7 @@ indicator. Moving between the overview and indicators views keeps valid choices.
 
 | Request | Work |
 | --- | --- |
+| `/api/scoreboard/definition` | Read and validate topic files, then return the selected topic and menu choices without querying ixmp4. The response uses `Cache-Control: no-store`. |
 | `/api/scoreboard/map` | Load one configured regional map for the selected indicator, country, scenario, and year. |
 | `/api/scoreboard/charts/:chartId` | Load one configured chart for the selected country, scenario, and year. |
 | `/app/scoreboard/map` and `/app/scoreboard/charts/:chartId` | Same-origin SvelteKit routes that call the matching API request and return its result. |
