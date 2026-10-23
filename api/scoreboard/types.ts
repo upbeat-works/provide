@@ -31,6 +31,13 @@ export type ChartData = {
   line?: string;
   rangeLow?: string;
   rangeHigh?: string;
+  // A box plot's roles. The box and median are required; the whiskers are a
+  // pair, drawn only when both are named.
+  median?: string;
+  boxLow?: string;
+  boxHigh?: string;
+  whiskerLow?: string;
+  whiskerHigh?: string;
   x?: string;
   y?: string;
   size?: string;

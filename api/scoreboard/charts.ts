@@ -10,10 +10,13 @@ import { type Definition, type Selection, option, referenceKey, uniqueSorted } f
 export function definitionGroupingError(definition: Definition): string | null {
   const groupBy = definition.data.groupBy;
   if (groupBy !== undefined && groupBy !== 'region' && groupBy !== 'scenario') return 'Unsupported chart grouping';
-  if (groupBy !== undefined && !['stacked_bar', 'bubble', 'scatter'].includes(definition.chartType) && !(groupBy === 'region' && ['line', 'line_with_range'].includes(definition.chartType))) return 'Unsupported chart grouping';
+  if (groupBy !== undefined && !['stacked_bar', 'bubble', 'scatter', 'box_plot'].includes(definition.chartType) && !(groupBy === 'region' && ['line', 'line_with_range'].includes(definition.chartType))) return 'Unsupported chart grouping';
   // Aggregation rolls sub-regions into countries, so there has to be a level to
   // roll up from.
   if (definition.data.aggregate && !definition.data.regionLevel) return 'Aggregation requires a region level';
+  // Percentiles do not add: the 95th percentile of a country is not the sum of
+  // its regions' 95th percentiles.
+  if (definition.data.aggregate && definition.chartType === 'box_plot') return 'A box plot cannot be aggregated';
   try {
     chartSeries(definition.data, definition.chartType);
     return null;
@@ -99,6 +102,7 @@ export async function loadScoreboardChart(platform: Platform, db: Db, definition
   const hasValues = (entries: ReturnType<typeof resolveSeries>) => {
     if (definition.chartType === 'bubble') return entries.some(({ x, y, size }) => Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(size) && Number(size) > 0);
     if (definition.chartType === 'scatter') return entries.some(({ x, y }) => Number.isFinite(x) && Number.isFinite(y));
+    if (definition.chartType === 'box_plot') return entries.some(({ median }) => Number.isFinite(median));
     return entries.some((entry) => Object.values(entry).some((value) => {
       if (typeof value === 'number') return Number.isFinite(value);
       return Array.isArray(value) && value.some((point) => Number.isFinite(point.value));

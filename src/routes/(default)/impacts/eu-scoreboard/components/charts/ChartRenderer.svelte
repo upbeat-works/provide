@@ -2,6 +2,7 @@
   import LineChart from './LineChart.svelte';
   import StackedBarChart from './StackedBarChart.svelte';
   import BubbleChart from './BubbleChart.svelte';
+  import BoxPlotChart from './BoxPlotChart.svelte';
   import { adaptChartResult } from './adapter.js';
   import { EMBED_UID, graphParamsFor } from './catalog.js';
   import { invalidateAll } from '$app/navigation';
@@ -25,6 +26,7 @@
     stacked_bar: StackedBarChart,
     bubble: BubbleChart,
     scatter: BubbleChart,
+    box_plot: BoxPlotChart,
   };
 
   $: chart = adaptChartResult(result, selection, { colorFor });

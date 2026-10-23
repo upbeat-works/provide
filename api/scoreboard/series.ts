@@ -32,8 +32,14 @@ export function chartSeries(data: Definition['data'], chartType: string): ChartS
     }
     return data.variables.map((variable) => ({ segment: reference(variable) }));
   }
-  let roles: Array<'line' | 'rangeLow' | 'rangeHigh' | 'x' | 'y' | 'size'>;
+  let roles: Array<'line' | 'rangeLow' | 'rangeHigh' | 'x' | 'y' | 'size' | 'median' | 'boxLow' | 'boxHigh' | 'whiskerLow' | 'whiskerHigh'>;
   if (chartType === 'line_with_range') roles = ['line', 'rangeLow', 'rangeHigh'];
+  else if (chartType === 'box_plot') {
+    // One whisker without the other has nothing to pair against, so it is
+    // rejected rather than drawn half-finished.
+    if ((data.whiskerLow === undefined) !== (data.whiskerHigh === undefined)) throw new Error('Box plot whiskers need both whiskerLow and whiskerHigh.');
+    roles = ['median', 'boxLow', 'boxHigh', ...(data.whiskerLow !== undefined ? (['whiskerLow', 'whiskerHigh'] as const) : [])];
+  }
   else if (chartType === 'scatter') roles = ['x', 'y'];
   else if (chartType === 'bubble') roles = ['x', 'y', 'size'];
   else throw new Error(`Unsupported chart type: ${chartType}`);

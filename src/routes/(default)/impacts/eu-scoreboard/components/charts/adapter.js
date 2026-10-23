@@ -219,6 +219,47 @@ function stackedBarProps(definition, data, selection) {
   };
 }
 
+// The box and its median are what a box plot is; whiskers are drawn only when
+// the definition names them. A row short of any role it draws is left out
+// rather than drawn with a missing edge.
+const BOX_ROLES = ['median', 'boxLow', 'boxHigh'];
+const WHISKER_ROLES = ['whiskerLow', 'whiskerHigh'];
+// Read off the theme's blue ramp, as the stacks are: a pale box so the median
+// line across it is what the eye lands on.
+const BOX_FILL = colorTokens.theme['200'];
+const BOX_STROKE = colorTokens.theme['800'];
+
+function boxPlotProps(definition, data, selection) {
+  const [entry] = seriesDefinitions(definition);
+  const roles = entry.whiskerLow ? [...BOX_ROLES, ...WHISKER_ROLES] : BOX_ROLES;
+  const groupBy = definition.data.groupBy;
+  const entries = isGrouped(groupBy)
+    ? data.map((group) => ({ group: groupFor(group, groupBy), values: group.series?.[0] }))
+    : [{ group: selection?.region, values: data[0] }];
+  const rows = entries.flatMap(({ group, values }) => {
+    if (!values || roles.some((role) => !Number.isFinite(values[role]))) return [];
+    return [{ uid: group?.uid ?? 'selection', label: group?.label ?? 'Selected region', ...Object.fromEntries(roles.map((role) => [role, values[role]])) }];
+  });
+  const unit = roleReference(definition, 'median')?.unit;
+  const span = (low, high) => `${variableLabel(entry[low])} – ${variableLabel(entry[high])}`;
+  return {
+    rows,
+    legend: [
+      { uid: 'box', label: span('boxLow', 'boxHigh'), color: BOX_FILL },
+      { uid: 'median', label: variableLabel(entry.median), color: BOX_STROKE, variant: 'line' },
+      ...(entry.whiskerLow ? [{ uid: 'whiskers', label: `Whiskers: ${span('whiskerLow', 'whiskerHigh')}`, variant: 'note' }] : []),
+    ],
+    labels: Object.fromEntries(roles.map((role) => [role, variableLabel(entry[role])])),
+    // The axis names the quantity, not the percentile the median happens to be.
+    xLabel: axisLabel({ variable: entry.median.variable }, unit),
+    xDomain: paddedDomain(rows.flatMap((row) => roles.map((role) => row[role])), 0.06, 0.06),
+    unit,
+    fill: BOX_FILL,
+    stroke: BOX_STROKE,
+    height: barHeight(rows),
+  };
+}
+
 function bubbleProps(definition, data) {
   const scatter = definition.chartType === 'scatter';
   const x = roleReference(definition, 'x');
@@ -301,7 +342,7 @@ export function adaptChartResult(result, selection = {}, { colorFor } = {}) {
   }
   if (groupBy !== undefined && !isGrouped(groupBy)) return { ...base, status: 'error', error: `Unsupported chart grouping: ${groupBy}` };
   const pointChart = definition.chartType === 'bubble' || definition.chartType === 'scatter';
-  if (isGrouped(groupBy) && definition.chartType !== 'stacked_bar' && !pointChart && !(groupBy === 'region' && ['line', 'line_with_range'].includes(definition.chartType))) {
+  if (isGrouped(groupBy) && definition.chartType !== 'stacked_bar' && definition.chartType !== 'box_plot' && !pointChart && !(groupBy === 'region' && ['line', 'line_with_range'].includes(definition.chartType))) {
     return { ...base, status: 'error', error: `${groupBy} grouping is not supported for ${definition.chartType}.` };
   }
   if (!pointChart && unitsFor(definition).length > 1) {
@@ -325,8 +366,9 @@ export function adaptChartResult(result, selection = {}, { colorFor } = {}) {
   if (definition.chartType === 'line' || definition.chartType === 'line_with_range') props = lineProps(definition, data, colorFor);
   if (definition.chartType === 'stacked_bar') props = stackedBarProps(definition, data, selection);
   if (pointChart) props = bubbleProps(definition, data);
+  if (definition.chartType === 'box_plot') props = boxPlotProps(definition, data, selection);
   if (!props) return { ...base, status: 'error', error: `Unsupported chart type: ${definition.chartType}` };
-  if ((definition.chartType === 'stacked_bar' && !props.rows.some(({ values }) => values.length)) || (pointChart && !props.points.length)) return { ...base, status: 'empty' };
+  if ((definition.chartType === 'stacked_bar' && !props.rows.some(({ values }) => values.length)) || (pointChart && !props.points.length) || (definition.chartType === 'box_plot' && !props.rows.length)) return { ...base, status: 'empty' };
   const selectedYear = Number(selection?.year?.uid ?? selection?.year);
   if (Number.isFinite(selectedYear) && selectedYear > 0) props.selectedYear = selectedYear;
   return { ...base, kind: definition.chartType, props, info: infoFor(definition) };

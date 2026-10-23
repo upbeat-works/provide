@@ -30,6 +30,22 @@ describe('chart renderer', () => {
     expect(html).toContain('High (people)');
     expect(html).not.toMatch(/role="alert"/);
   });
+  test('renders a box plot with its range and median in the legend', async () => {
+    const fixture = await vite.ssrLoadModule('/src/routes/(default)/impacts/eu-scoreboard/components/charts/ChartRenderer.test.fixture.svelte');
+    const variable = (n) => `Temperature|Absolute Values (No Change)|Annual|Area|${n} Percentile`;
+    const ref = (n) => ({ variable: variable(n), model: 'Model', unit: '°C', label: `${n} Percentile` });
+    const result = {
+      status: 'ready',
+      definition: { chartId: 'spread', chartType: 'box_plot', data: { variables: ['5th', '50th', '95th'].map(variable), median: '50th Percentile', boxLow: '5th Percentile', boxHigh: '95th Percentile' } },
+      series: [{ median: ref('50th'), boxLow: ref('5th'), boxHigh: ref('95th') }],
+      data: [{ median: 30, boxLow: 28, boxHigh: 33 }],
+    };
+    const { html } = fixture.default.render({ result });
+    expect(html).toContain('<figure>');
+    expect(html).toContain('5th Percentile – 95th Percentile');
+    expect(html).toContain('Temperature (°C)');
+    expect(html).not.toMatch(/role="alert"/);
+  });
   test('renders ready results through the chart component', async () => {
     const fixture = await vite.ssrLoadModule('/src/routes/(default)/impacts/eu-scoreboard/components/charts/ChartRenderer.test.fixture.svelte');
     const result = { definition, status: 'ready', series: [{ line: { variable: 'Temperature|Mean', model: 'Source model', unit: 'K' } }], data: [{ line: [{ year: 2030, value: 2 }] }] };

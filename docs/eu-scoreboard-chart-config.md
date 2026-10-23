@@ -22,6 +22,7 @@ separate from the unchanged `definition`.
 | `stacked_bar` | `bars` and `stacks` for named bars; `stacks` alone for regional bars. Without either, each variable is a stack segment. |
 | `scatter` | `x`, `y` |
 | `bubble` | `x`, `y`, `size` |
+| `box_plot` | `median`, `boxLow`, `boxHigh`; optionally `whiskerLow` and `whiskerHigh` together |
 
 Role names match exact `|`-separated subsegments, at any position. A role must
 match one variable; missing or unclear matches are errors. Every listed
@@ -31,7 +32,7 @@ and unnamed stacks derive labels from the variable names.
 A range chart has one central line and two bounds. A scatter or bubble chart
 has one set of coordinates per region or scenario. Stacked bars use direct
 segment values; segments must be separate parts with matching units.
-Stacked bars, bubbles and scatter plots use the selected year. Lines and
+Stacked bars, bubbles, scatter plots and box plots use the selected year. Lines and
 ranges show all available years.
 
 `data.groupBy` has these possible values. A region-grouped chart may also set
@@ -40,8 +41,8 @@ ranges show all available years.
 | Value | Meaning |
 | --- | --- |
 | omitted | Resolve the series for the selected region itself. |
-| `"region"` | Resolve one mark per configured `data.regions` entry. Without that list, resolve known regions within the selected area. Supported for `stacked_bar`, `bubble` and `scatter`. |
-| `"scenario"` | Resolve one mark per matching scenario at the selected region and year. Supported for `stacked_bar`, `bubble` and `scatter`. |
+| `"region"` | Resolve one mark per configured `data.regions` entry. Without that list, resolve known regions within the selected area. Supported for `stacked_bar`, `bubble`, `scatter` and `box_plot`. |
+| `"scenario"` | Resolve one mark per matching scenario at the selected region and year. Supported for `stacked_bar`, `bubble`, `scatter` and `box_plot`. |
 
 No other value is valid. Grouping by model or year is not supported. Multiple
 matching rows for one scenario and region are rejected; the loader does not
@@ -129,6 +130,38 @@ stays null, so it reads as absent rather than as a true zero. Without
 `aggregate`, a chart keeps its own region level everywhere, as before.
 
 Scatter plots use equal-size points and need no size variable.
+
+## Box plots
+
+A box plot draws one horizontal box per row — the selected region, or each
+region or scenario when grouped — at the selected year. The box spans `boxLow`
+to `boxHigh`, with a line at `median`. `whiskerLow` and `whiskerHigh` add
+whiskers outside the box; name both or neither.
+
+The roles say what the box means, so the legend can say it too. The impact
+variables in ixmp4 are published at the 5th, 50th and 95th percentiles only,
+so today the box is the 5–95 range with no whiskers:
+
+```json
+{
+  "chartType": "box_plot",
+  "data": {
+    "variables": [
+      "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
+      "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+      "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile"
+    ],
+    "median": "50th Percentile",
+    "boxLow": "5th Percentile",
+    "boxHigh": "95th Percentile"
+  }
+}
+```
+
+With quartiles published, the conventional shape is the box at the 25th and
+75th percentiles and the whiskers at the 5th and 95th. A row missing any role
+it draws is left out rather than drawn with a missing edge. A box plot cannot
+declare `aggregate`: a country's percentile is not the sum of its regions'.
 
 ## Risk colouring on bubble and scatter charts
 

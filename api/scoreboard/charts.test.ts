@@ -310,3 +310,48 @@ test('keeps age bars and sex stacks separate for each country in Europe', async 
     { label: 'France — Young', total: 40 },
   ]);
 });
+
+describe('box plots', () => {
+  const percentiles = ['Temp|5th Percentile', 'Temp|50th Percentile', 'Temp|95th Percentile'];
+  const box = (data = {}): Definition => ({
+    chartId: 'spread',
+    chartType: 'box_plot',
+    data: { variables: percentiles, median: '50th Percentile', boxLow: '5th Percentile', boxHigh: '95th Percentile', ...data },
+  });
+  const values: Record<string, Record<string, number>> = {
+    Austria: { 'Temp|5th Percentile': 28, 'Temp|50th Percentile': 30, 'Temp|95th Percentile': 33 },
+    France: { 'Temp|5th Percentile': 29, 'Temp|50th Percentile': 32, 'Temp|95th Percentile': 36 },
+  };
+  const platform = () => ({
+    iamc: {
+      tabulate: vi.fn(async (query) =>
+        frame(Object.entries(values).map(([region, byVariable]) => [query.variable.name, 'Scenario A', region, 'Model', '°C', byVariable[query.variable.name]]))
+      ),
+    },
+  });
+
+  test('draws a box per country across Europe at the selected year', async () => {
+    const source = platform();
+    const result = await loadScoreboardChart(source as never, {} as never, box(), { ...selection, region: 'all' });
+    expect(source.iamc.tabulate.mock.calls[0][0].stepYear).toBe(2050);
+    const chart = adaptChartResult(result);
+    expect(chart.status).toBe('ready');
+    expect(chart.props.rows).toEqual([
+      { uid: 'Austria', label: 'Austria', median: 30, boxLow: 28, boxHigh: 33 },
+      { uid: 'France', label: 'France', median: 32, boxLow: 29, boxHigh: 36 },
+    ]);
+  });
+
+  test('accepts grouping by region or scenario', () => {
+    expect(definitionGroupingError(box({ groupBy: 'region' }))).toBeNull();
+    expect(definitionGroupingError(box({ groupBy: 'scenario' }))).toBeNull();
+  });
+
+  test('needs both whiskers or neither', () => {
+    expect(definitionGroupingError(box({ variables: [...percentiles, 'Temp|25th Percentile'], whiskerLow: '25th Percentile' }))).toMatch(/both whiskerLow and whiskerHigh/);
+  });
+
+  test('cannot sum percentiles into a country', () => {
+    expect(definitionGroupingError(box({ groupBy: 'region', regionLevel: 'NUTS2', aggregate: 'sum' }))).toBe('A box plot cannot be aggregated');
+  });
+});
