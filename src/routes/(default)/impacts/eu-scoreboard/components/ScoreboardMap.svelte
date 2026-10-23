@@ -21,6 +21,10 @@
   export let fitCountries = [];
   export let padding = 48;
   export let selectable = false;
+  // Keeps the activation overlay in front of a selectable map: the first click
+  // wakes the map, and only then does a click pick a country. For a map that
+  // also has to pan and scroll-zoom, not just be clicked.
+  export let activation = false;
   export let countryName = undefined;
   export let level = undefined;
   export let grid = undefined;
@@ -85,7 +89,8 @@
   // the map — the same opening behaviour as the explore maps. A selectable map
   // is a country picker whose primary action is a single click, so it is never
   // covered by the activation overlay; it simply stays non-interactive, with
-  // ZoomControl for zooming and clicks going straight through to selection.
+  // ZoomControl for zooming and clicks going straight through to selection —
+  // unless it asks for `activation`.
   let interactive = false;
   const zoomRange = [-1, 14];
 </script>
@@ -114,7 +119,7 @@
       />
       <slot />
     </MapProvider>
-    {#if !selectable}
+    {#if !selectable || activation}
       <InteractivityOverlay bind:interactive />
     {/if}
     {#if regionalState.status === 'loading'}
