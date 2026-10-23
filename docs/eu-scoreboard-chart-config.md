@@ -1,297 +1,125 @@
-# Chart config decisions
+# EU scoreboard chart reference
 
-Each sector JSON file has a `charts` array. Sector stays outside each chart
-definition. The chart config is reusable across sectors and does not name
-rendering components.
+Use this reference when editing an entry in a topic's `charts` array.
+For the file location, topic and map settings, preview checks and release steps,
+start with [Add and update EU scoreboard topics](eu-scoreboard-topics.md).
 
-A chart has `chartId`, `title`, `description`, `chartType`, optional
-`caseStudyId`, and `data`. `caseStudyId` is the CMS record ID for a linked case
-study. Omit it when there is no linked study.
+[Chart fields](#chart-fields) · [Chart types](#choose-a-chart-type) ·
+[Variables and units](#variables-models-and-units) · [Grouping](#grouping) ·
+[Country totals](#country-totals) · [Examples](#examples) · [Risk colours](#risk-colours)
 
-Every chart lists full ixmp4 names in `data.variables`. The loader queries
-those names unchanged. Model names and units come from ixmp4;
-`data.unitFallback` supplies a display unit only when the source has none.
-It does not filter or convert values. A variable with more than one source
-unit is rejected. Resolved references and units are returned in `series`,
-separate from the unchanged `definition`.
+## Chart fields
 
-| `chartType` | Fields that assign variables |
+A chart belongs inside `charts` in a file under
+[`api/scoreboard/topics/`](../api/scoreboard/topics/). It does not need its own
+topic ID or a rendering component name.
+
+| Field | Purpose |
 | --- | --- |
-| `line` | None: each variable draws a line, in list order. |
-| `line_with_range` | `line`, `rangeLow`, `rangeHigh` |
-| `stacked_bar` | `bars` and `stacks` for named bars; `stacks` alone for regional bars. Without either, each variable is a stack segment. |
-| `scatter` | `x`, `y` |
-| `bubble` | `x`, `y`, `size` |
-| `box_plot` | `median`, `boxLow`, `boxHigh`; optionally `whiskerLow` and `whiskerHigh` together |
+| `chartId` | Unique ID within the topic, used in requests and embeds. Changing it affects saved links. |
+| `title` | Chart heading. |
+| `description` | Text explaining what the reader sees. |
+| `chartType` | One of the types below. |
+| `data` | Source variables and the settings that assign, group and display them. |
+| `caseStudyId` | Optional numeric Strapi case-study record ID. Omit when there is no linked study. |
 
-Role names match exact `|`-separated subsegments, at any position. A role must
-match one variable; missing or unclear matches are errors. Every listed
-variable must be used. Role names also label axes and stacks. Plain lines
-and unnamed stacks derive labels from the variable names.
-
-A range chart has one central line and two bounds. A scatter or bubble chart
-has one set of coordinates per region or scenario. Stacked bars use direct
-segment values; segments must be separate parts with matching units.
-Stacked bars, bubbles, scatter plots and box plots use the selected year. Lines and
-ranges show all available years.
-
-`data.groupBy` has these possible values. A region-grouped chart may also set
-`data.regions` to an explicit array of region IDs:
-
-| Value | Meaning |
-| --- | --- |
-| omitted | Resolve the series for the selected region itself. |
-| `"region"` | Resolve one mark per configured `data.regions` entry. Without that list, resolve known regions within the selected area. Supported for `stacked_bar`, `bubble`, `scatter` and `box_plot`. |
-| `"scenario"` | Resolve one mark per matching scenario at the selected region and year. Supported for `stacked_bar`, `bubble`, `scatter` and `box_plot`. |
-
-No other value is valid. Grouping by model or year is not supported. Multiple
-matching rows for one scenario and region are rejected; the loader does not
-choose a model. An explicit region list is fixed and does not
-follow the selected country. Without that list, region membership comes from
-known geography links. The controller must not infer it from name prefixes or
-mix an area total with its child regions.
-
-Grouped results use `data: [{ "region": { "uid", "label" }, "series": [...] }]`.
-Scenario-grouped results replace `region` with
-`"scenario": { "uid", "label" }`. The selected scenario does not filter a
-scenario-grouped chart. Ungrouped results keep the resolved role array. A grouped
-point is excluded when a required coordinate is missing. Bars omit missing
-segments and keep available values unchanged. A group with no matching data
-is empty. Empty charts are omitted from the page, including their title,
-description, frame and spacing.
-
-The EU scoreboard fixes the instance to `sparccle-internal`; controls supply the
-country, scenario and year. The map indicator is a separate choice and does not
-change chart config. The shared query layer selects default runs. Run version
-selection stays outside this config. No unit conversion or silent model
-selection is added.
-
-## Named bars and stacks
-
-A stacked chart for the selected region can list full variables and name the
-bar and stack subsegments:
+A complete chart definition:
 
 ```json
 {
-  "variables": [
-    "Population|Female|Age 0-14",
-    "Population|Male|Age 0-14",
-    "Population|Female|Age 15-24",
-    "Population|Male|Age 15-24"
-  ],
-  "unitFallback": "people",
-  "bars": ["Age 0-14", "Age 15-24"],
-  "stacks": ["Female", "Male"]
-}
-```
-
-These are the chart's `data` fields. Each name is both a displayed label and an
-exact `|`-separated subsegment. Position and variable length do not matter. The
-loader queries the listed variable names unchanged. The arrays set bar and stack
-order, independently of variable order. Each variable must match one bar and
-one stack; each pair must have one variable. This form has no `groupBy` or
-`series` list in the authored config. The response supplies a separate `series` list
-with source units for rendering.
-
-For named bars, missing segments are omitted while the other
-segments remain visible. Bar order and stack colours stay fixed. A bar with no
-available segments keeps its label and empty space. A chart with no data is
-still hidden.
-
-## Regional values
-
-Values and units come from ixmp4. By default, the chart displays them unchanged.
-Set `data.stackMode: "percent"` to show each available segment as a share of its
-bar’s available total. Those shares add up to 100%, even if a segment is missing.
-Missing segments are omitted; bars with a zero total stay blank. Source units
-remain in the data details, while the chart displays `%`.
-
-For regional charts, `data.regionLevel` selects NUTS1 or NUTS2 regions within
-the chosen country using the map boundary data. The country sets the query
-scope; returned regional values remain separate.
-
-### Country totals across Europe
-
-Some variables are published only at NUTS level, so there is no country series
-to read. `data.aggregate: "sum"` builds one: when the selected region is `all`,
-the chart draws a mark per country, each summed from the sub-regions it is
-published at. The query still asks for those sub-regions. It requires
-`data.regionLevel`, and is rejected without one.
-
-Aggregation is opt-in because summing is only valid for extensive quantities —
-head counts, fatalities, losses. A mean, a rate or a percentile summed this way
-produces a number that is wrong and still renders, so a chart has to say that
-summing is right for it rather than the loader assuming so.
-
-A country total is the sum of the sub-regions that reported that year, so a
-country missing one region is understated rather than blank — the same
-treatment a stacked bar gives a missing segment. A year no sub-region reported
-stays null, so it reads as absent rather than as a true zero. Without
-`aggregate`, a chart keeps its own region level everywhere, as before.
-
-Scatter plots use equal-size points and need no size variable.
-
-## Box plots
-
-A box plot draws one horizontal box per row — the selected region, or each
-region or scenario when grouped — at the selected year. The box spans `boxLow`
-to `boxHigh`, with a line at `median`. `whiskerLow` and `whiskerHigh` add
-whiskers outside the box; name both or neither.
-
-The roles say what the box means, so the legend can say it too. The impact
-variables in ixmp4 are published at the 5th, 50th and 95th percentiles only,
-so today the box is the 5–95 range with no whiskers:
-
-```json
-{
-  "chartType": "box_plot",
+  "chartId": "mean-air-temperature",
+  "title": "Mean air temperature",
+  "description": "Annual mean air temperature for the selected country and scenario.",
+  "chartType": "line",
   "data": {
     "variables": [
-      "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
-      "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
-      "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile"
-    ],
-    "median": "50th Percentile",
-    "boxLow": "5th Percentile",
-    "boxHigh": "95th Percentile"
+      "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile"
+    ]
   }
 }
 ```
 
-With quartiles published, the conventional shape is the box at the 25th and
-75th percentiles and the whiskers at the 5th and 95th. A row missing any role
-it draws is left out rather than drawn with a missing edge. A box plot cannot
-declare `aggregate`: a country's percentile is not the sum of its regions'.
+## Choose a chart type
 
-## Risk colouring on bubble and scatter charts
+| `chartType` | Use it to show | Fields that assign variables | Time shown |
+| --- | --- | --- | --- |
+| `line` | Change over time. | Each variable draws a line, in list order. | All available years. |
+| `line_with_range` | A central line and two bounds. | `line`, `rangeLow`, `rangeHigh`. | All available years. |
+| `stacked_bar` | Separate parts of a total. | Optional `stacks`; add `bars` for named bars. Without either, each variable is a segment. | Selected year. |
+| `scatter` | Two values per place or scenario. | `x`, `y`. Points have equal size. | Selected year. |
+| `bubble` | Two values, with a third shown by size. | `x`, `y`, `size`. | Selected year. |
+| `box_plot` | A median and a range. | `median`, `boxLow`, `boxHigh`; optional `whiskerLow` and `whiskerHigh` together. | Selected year. |
 
-Bubble and scatter points use their series colour by default. Set `riskFrom`
-to the role used for risk colours:
+Changing the map indicator does not change the charts. Charts read default runs from
+`sparccle-internal`; run versions are not set in JSON.
 
-```json
-{
-  "x": "Mean Air Temperature",
-  "y": "Maximum Air Temperature",
-  "size": "High Heat Risk",
-  "riskFrom": "size"
-}
-```
+## Variables, models and units
 
-`riskFrom` is `"x"`, `"y"` or `"size"`. Bands use the named role's values
-from the points shown in the chart, with no required unit or score range.
-The 25th and 75th percentiles are calculated by linear interpolation between
-sorted values:
+Every `data.variables` entry is a full ixmp4 variable name, queried unchanged.
+Role fields such as `x` or `rangeLow` match one whole part between `|` separators,
+at any position. For example, `"line": "50th Percentile"` matches the final
+part of the variable above.
 
-| Band | Values | Colour |
-| --- | --- | --- |
-| Low risk | Below the 25th percentile | theme 200 (light) |
-| Medium risk | From the 25th through the 75th percentile | theme 500 |
-| High risk | Above the 75th percentile | theme 800 (dark) |
+Each role must match exactly one variable, and every listed variable must be
+used. Missing or unclear matches are errors. Role names also label axes and
+stacks; plain lines and unnamed stacks derive labels from variable names.
 
-The legend shows these three bands. They describe relative risk within the
-shown points, not an absolute risk level. Changing the country, scenario or
-year can change the percentile limits. Equal values share a band. A single
-value or a constant series falls in the medium band.
+| Field in `data` | Effect |
+| --- | --- |
+| `model` | Limits all chart variables to one exact ixmp4 model name. Without it, no model filter is sent; overlapping rows for a scenario and region can cause an error. |
+| `unitFallback` | Supplies a display unit only when the source has none. It does not convert or filter values. |
 
-Points missing a required coordinate are excluded before calculating the
-percentiles. A shown point with no value for the named role keeps its series
-colour. For example, a scatter chart with `riskFrom: "size"` has no size values.
+Models and units shown in the chart come from the returned data. A variable
+with multiple source units is rejected. A fallback label cannot resolve that
+conflict. Stacked segments must have matching units and represent separate
+parts of a total.
 
-## Map defaults and ranking
+## Grouping
 
-`map.defaultIndicator` names an entry in `map.indicators`. It is used when
-the URL has no indicator or names an unknown one. Without a matching default,
-the first indicator is used.
-Use `null` when the sector has no map indicators.
+Put grouping fields inside `data`. Use exact source region names or IDs.
 
-`map.ranking` names the variable used to rank countries and the upper limits
-of its colour bands:
+| Settings | Result |
+| --- | --- |
+| `groupBy` omitted | Read the selected country's series. With `region=all`, read a group per country. |
+| `groupBy: "region"` and `regionLevel: "NUTS1"` or `"NUTS2"` | Read the selected country's NUTS regions. With `region=all`, read regions across countries. Supported by every chart type. |
+| `groupBy: "region"` and `regions: [...]` | Read a fixed list, regardless of the selected country. This list takes precedence over `regionLevel`. |
+| `groupBy: "scenario"` | Compare source scenarios at the selected country and year. Supported by stacked bars, scatter, bubbles and box plots. Named bars are excluded. |
 
-```json
-{
-  "defaultIndicator": "High Heat Risk",
-  "ranking": {
-    "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
-    "bins": [2, 6, 23]
-  }
-}
-```
+Scenario grouping reads all matching source scenarios; the selected scenario
+does not filter it. Lines and ranges can be grouped by region, but not by
+scenario. Grouping by model or year is not supported.
 
-Bins are increasing numeric upper limits, included in their band. Three limits
-define four bands: ≤2, >2–6, >6–23, and >23. Values are not rounded before being
-placed in a band. Bins hold no unit; the variable's data supplies it. The ranking
-variable is independent of the selected map indicator.
+For a country's NUTS regions, set `regionLevel` explicitly. Without a level or
+fixed list, region grouping uses known geography links; it does not select that
+country's NUTS regions.
 
-Testing uses maximum air temperature with provisional limits of 25, 30 and 35.
-Socioeconomic uses `Population|Age 65+` as its default map and ranking variable.
-Its limits of 1, 5 and 10 need review against the indicator's units and data.
-These limits are examples, not validated risk bands.
+## Country totals
 
-The ranking view currently uses mock scores; it does not yet read `map.ranking`.
+Some values exist only for NUTS regions. To show country totals across Europe,
+set `data.aggregate: "sum"` with `groupBy: "region"` and `regionLevel`. Omit a
+fixed `regions` list. With `region=all`, the chart sums those regions into
+countries; with one country selected, its regional values stay separate.
 
-## The map across Europe
+**Sum only values that can be added**, such as population counts or losses.
+Never sum means, rates or percentiles. Box plots reject `aggregate` entirely.
+The loader also rejects aggregation without `regionLevel`.
 
-With the whole of Europe selected, the map's data layer is drawn on the
-countries themselves rather than on NUTS regions: hundreds of shapes read as
-noise at that zoom, and no regional boundaries are fetched for that view.
-
-Most mapped variables carry country rows of their own, so they are simply asked
-for them. That also keeps an intensive quantity out of a sum — a country's mean
-air temperature is published, never added up from its regions. An indicator
-published only at NUTS level sets `aggregate: "sum"` on itself, the same
-declaration a chart makes and for the same reason; it is then queried at its
-region level and totalled into countries. Only the heat-wave vulnerability
-indicators need it today.
-
-Map values are reported under the region name ixmp4 uses. The country layer
-matches features on `geoId`, an ISO3 code, so the client translates the two.
-
-## Map colour ramps
-
-A map indicator paints its choropleth (or raster grid) with the default
-yellow-to-orange ramp. An indicator may name its own instead, as `colorRamp`:
-
-```json
-{
-  "name": "High Heat Risk",
-  "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
-  "type": "choropleth",
-  "level": "NUTS2",
-  "colorRamp": ["#FEDB5C", "#E27B47"]
-}
-```
-
-The stops are interpolated across the map's four buckets, so the ramp states
-the ends rather than every bucket's colour — the bucket count can change
-without anyone repicking hues. Two stops give a sequential ramp; three or more
-give a diverging one, and a middle stop lands on a bucket exactly when the
-bucket count is odd:
-
-```json
-{ "colorRamp": ["#2166AC", "#F7F7F7", "#B2182B"] }
-```
-
-Stops must be full six-digit hex (`#RRGGBB`). Shorthand (`#FFF`), named colours
-and single-stop lists are ignored, and that indicator falls back to the default
-ramp rather than painting an unreadable map. The legend reads its swatches from
-the same classes, so it follows the ramp without further configuration.
-
-`colorRamp` sets colour only. Bucket boundaries still come from the data's
-range, so changing a ramp cannot change which regions fall in which band.
+Totals include only regions with data for that year. Missing regions make a
+total too small; a year with no reported values stays absent, not zero.
+[Map totals](eu-scoreboard-topics.md#maps) use a separate setting on the map
+indicator.
 
 ## Examples
 
-These are `data` objects. All chart types share the same variable list.
+The snippets below are **`data` objects**, to place inside a chart definition.
+Set `chartType` as stated in each section. Short names such as `Temperature|Mean`
+show the structure; replace them with exact names from your source.
+The [topic guide](eu-scoreboard-topics.md#check-and-release) explains how to
+check the resulting values in a running preview.
 
-A line chart:
+### Line with a range
 
-```json
-{
-  "variables": ["Temperature|Mean"]
-}
-```
-
-A line with a range:
+Set `chartType: "line_with_range"`. Assign one variable to each role:
 
 ```json
 {
@@ -302,18 +130,57 @@ A line with a range:
 }
 ```
 
-Regional bars, with stack order set independently of variable order:
+### Named bars and stacks
+
+Set `chartType: "stacked_bar"`. This example draws two age-group bars, each
+split into female and male population:
 
 ```json
 {
-  "variables": ["Population|Young", "Population|Old"],
-  "groupBy": "region",
-  "regionLevel": "NUTS2",
-  "stacks": ["Old", "Young"]
+  "variables": [
+    "Population|Female|Age 0-14",
+    "Population|Male|Age 0-14",
+    "Population|Female|Age 15-24",
+    "Population|Male|Age 15-24"
+  ],
+  "bars": ["Age 0-14", "Age 15-24"],
+  "stacks": ["Female", "Male"]
 }
 ```
 
-A scatter chart:
+Each variable must match one bar and one stack as whole `|`-separated parts.
+Every bar/stack pair needs one variable. The arrays set bar and stack order,
+independently of variable order. Named bars support no grouping or
+`groupBy: "region"`.
+
+Missing segments are omitted. Other segments keep their values, order and
+colours. A bar with no segments keeps its label and empty space; a chart with
+no values is hidden.
+
+### Regional percentage bars
+
+Set `chartType: "stacked_bar"`. This example draws one bar per NUTS2 region:
+
+```json
+{
+  "variables": ["Population|Age 0-14", "Population|Age 65+"],
+  "groupBy": "region",
+  "regionLevel": "NUTS2",
+  "stacks": ["Age 65+", "Age 0-14"],
+  "stackMode": "percent"
+}
+```
+
+`stacks` sets segment order. Each name must match one variable. With
+`stackMode: "percent"`, available segments add up to 100% of their bar's
+available total. Here that total covers only the two listed age groups, not
+the whole population. Missing segments are omitted; zero totals stay blank.
+Source units remain in the data details while the chart displays `%`.
+
+### Scatter
+
+Set `chartType: "scatter"`. This example compares two values for each NUTS2
+region in the selected country:
 
 ```json
 {
@@ -321,7 +188,6 @@ A scatter chart:
     "Population|Age 25-44|Educational Attainment Low",
     "Population|Age 25-44|Educational Attainment High"
   ],
-  "unitFallback": "people",
   "groupBy": "region",
   "regionLevel": "NUTS2",
   "x": "Educational Attainment Low",
@@ -329,7 +195,10 @@ A scatter chart:
 }
 ```
 
-A bubble chart:
+### Bubble
+
+Set `chartType: "bubble"`. This fixed country list ignores the country filter;
+the scenario and year still apply:
 
 ```json
 {
@@ -338,29 +207,67 @@ A bubble chart:
   "regions": ["Austria", "Germany", "France"],
   "x": "Mean",
   "y": "Maximum",
-  "size": "Exposed"
+  "size": "Exposed",
+  "riskFrom": "size"
 }
 ```
 
-## Socioeconomic charts
+`riskFrom` applies the [risk colours](#risk-colours) described below. Omit it to
+use the normal series colour.
 
-`api/scoreboard/topics/socioeconomic.json` defines:
+### Box plot
 
-- Population by age and sex: five age-group bars, each split into female and
-  male population for the selected region. It reads those values directly,
-  without NUTS grouping or a country-total calculation.
-- Age distribution by region: one percentage stack per NUTS2 region, split into
-  ages 0–14, 15–24, 25–44, 45–64 and 65+.
-- Educational attainment, ages 25–44: one point per NUTS2 region, with low
-  attainment on X and high attainment on Y.
+Set `chartType: "box_plot"`. Each row shows a horizontal box at the selected
+year, for the selected country or each group. The box spans `boxLow` to
+`boxHigh`, with a line at `median`.
 
-Each chart follows the selected country, scenario and year. Models and units come from ixmp4,
-with `people` as the fallback. On 23 September 2026, live default-run queries
-for all five `Population|Age …` variables returned unit `million` for AT11, AT12
-and AT13 under SSP1 in 2050. For example, `Population|Age 65+` returned
-0.570025 for AT13. These variables supply counts, not percentages, so the regional age chart uses
-`stackMode: "percent"`. This check
-does not cover other scenarios, years or chart variables.
+This uses the same 5th, 50th and 95th percentile roles as the shipped
+[Testing topic](../api/scoreboard/topics/testing.json):
 
-The map uses `Population|Age 65+` at NUTS2 level. Scenario choices are SSP1–SSP5,
-with SSP1 as the default. Years are 2020, 2030, 2040, 2050, 2075 and 2100.
+```json
+{
+  "variables": [
+    "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|5th Percentile",
+    "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+    "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|95th Percentile"
+  ],
+  "median": "50th Percentile",
+  "boxLow": "5th Percentile",
+  "boxHigh": "95th Percentile"
+}
+```
+
+The roles define what the box means: this is a 5–95 range, not a 25–75 range.
+If your source provides other percentiles, use those exact role names. To draw
+whiskers, add their variables and both `whiskerLow` and `whiskerHigh`; a single
+whisker is rejected. Do not sum box plots into country totals.
+
+## Risk colours
+
+On scatter or bubble charts, `data.riskFrom` names the role used for colour.
+Choose `"x"` or `"y"` for scatter; bubbles can also use `"size"`.
+
+Bands use the values of the visible points, with the 25th and 75th percentiles
+calculated by linear interpolation:
+
+| Band | Values | Colour |
+| --- | --- | --- |
+| Low risk | Below the 25th percentile. | theme 200 (light). |
+| Medium risk | From the 25th through the 75th percentile. | theme 500. |
+| High risk | Above the 75th percentile. | theme 800 (dark). |
+
+These are relative bands within the shown points, not fixed risk thresholds.
+Changing filters can change the limits. Equal values share a band; a single
+value or constant series falls in the medium band. Points without a value for
+the named role keep their series colour.
+
+## Missing data
+
+Scatter points need both coordinates. Bubbles also need a positive size.
+Box-plot rows need every role they draw. Incomplete points or rows are omitted
+before display; risk bands use the remaining points.
+
+A chart with no visible values is hidden, including its title and description.
+An error is shown as an error state. Use the
+[topic guide's troubleshooting table](eu-scoreboard-topics.md#troubleshooting)
+to trace missing data or a failed request.

@@ -3,7 +3,7 @@
 > Historical implementation plan. The final regional map and local-choice flow
 > are described in [Scoreboard maps](eu-scoreboard-map-plan.md) and
 > [Scoreboard runtime loading](eu-scoreboard-runtime-loading.md). The chart
-> config contract is kept in [Chart config decisions](eu-scoreboard-chart-config.md).
+> config contract is kept in [EU scoreboard chart reference](eu-scoreboard-chart-config.md).
 
 Implement [the agreed config](eu-scoreboard-chart-config.md). Testing uses real
 data examples of all four types. Heat stress keeps its empty chart array.

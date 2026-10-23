@@ -64,7 +64,8 @@ The content is either fetched as meta data ([`loadMetaData`](src/lib/utils/apis.
 
 ### Data
 
-For EU scoreboard content, see [Add and update EU scoreboard topics](docs/eu-scoreboard-topics.md).
+For EU scoreboard content, start with [Add and update topics](docs/eu-scoreboard-topics.md).
+Use the [chart reference](docs/eu-scoreboard-chart-config.md) for chart types and data settings.
 
 The scenario data is fetched from the Climate Analytics API ([`loadFromAPI`](src/lib/utils/apis.js)). The documentation of the different endpoints can be found in the following issues:
 

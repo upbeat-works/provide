@@ -7,6 +7,9 @@ Each topic is one JSON file in
 The API reads these files on each request. Once a file reaches the running API,
 reload the page to see it. No code imports, restart or web rebuild are needed.
 
+For chart types, variable roles and grouping, use the
+[EU scoreboard chart reference](eu-scoreboard-chart-config.md).
+
 [Add a topic](#add-a-topic) · [Update a topic](#update-a-topic) ·
 [Check and release](#check-and-release) · [Field reference](#field-reference) ·
 [Troubleshooting](#troubleshooting)
@@ -22,7 +25,7 @@ showing change over time. Start with that pair and check its values.
 | --- | --- |
 | [`heat-stress.json`](../api/scoreboard/topics/heat-stress.json) | Regional maps and lines with a range. |
 | [`socioeconomic.json`](../api/scoreboard/topics/socioeconomic.json) | Stacked bars, scatter plots, regional lines and country totals. |
-| [`testing.json`](../api/scoreboard/topics/testing.json) | Simple lines, bubbles, fixed country lists and raster maps. |
+| [`testing.json`](../api/scoreboard/topics/testing.json) | Lines, bubbles, box plots, fixed country lists and raster maps. |
 
 Copy the closest example to `api/scoreboard/topics/air-temperature.json`.
 The filename becomes the topic ID, selected with `?sector=air-temperature`.
@@ -167,8 +170,16 @@ shows its regions; selecting all countries reads country values by default.
 
 | Field on the indicator | Effect |
 | --- | --- |
-| `aggregate: "sum"` | Builds country totals from NUTS regions in the all-countries view. See [Totals and display settings](#totals-and-display-settings). |
+| `aggregate: "sum"` | Builds country totals from the indicator's NUTS regions in the all-countries view. |
 | `colorRamp` | Sets map colours, for example `["#FEDB5C", "#E27B47"]`. Use at least two full six-digit hex colours. Invalid ramps use the default. Value limits stay unchanged. |
+
+Map totals should add counts or losses, never means, rates or percentiles.
+They include only regions with data: missing regions reduce a total, and a
+country with no reported values stays absent.
+
+Colour stops are spread across the map's buckets and shared with its legend.
+Two stops form a simple ramp; three or more can show a change around a middle
+colour, for example `["#2166AC", "#F7F7F7", "#B2182B"]`.
 
 A **raster map** uses `type: "raster"` plus `name`, `indicator`, `reference`,
 `time` and `spatial`. Copy the raster entry in `testing.json` and use names that
@@ -184,59 +195,18 @@ overview does not yet read them. Editing these fields will not change its scores
 
 ### Charts
 
-Each chart needs a unique `chartId` within the topic, plus `title`, `description`,
-`chartType` and `data`. List full source names in `data.variables`.
+The `charts` array controls chart order. The complete topic example above shows
+where a chart belongs; the [chart reference](eu-scoreboard-chart-config.md)
+explains its fields and provides examples for each type.
 
-| `chartType` | How variables are used | Time shown |
-| --- | --- | --- |
-| `line` | One line per variable. | All available years. |
-| `line_with_range` | Assign `line`, `rangeLow` and `rangeHigh`. | All available years. |
-| `stacked_bar` | Each variable is a segment. Optional `stacks` names and orders segments; add `bars` for named bars. | Selected year. |
-| `scatter` | Assign `x` and `y`. | Selected year. |
-| `bubble` | Assign `x`, `y` and `size`. | Selected year. |
-
-These assignments are **roles**. Each matches one whole part of a `|`-separated
-variable name. For example, `"line": "50th Percentile"` matches the final part
-of the example variable. Each role must match one variable; every listed
-variable must be used.
-
-For named bars, each variable must match one bar and one stack; every bar/stack
-pair needs a variable. Keep stack segments in matching units.
-
-### Chart groups
-
-These fields belong inside a chart's `data` object:
-
-| Field | Effect |
+| To configure… | Read… |
 | --- | --- |
-| `groupBy` omitted | Reads the selected country's series. With `region=all`, reads a group per country. |
-| `groupBy: "region"` with `regionLevel: "NUTS1"` or `"NUTS2"` | Reads the selected country's regions, or regions across countries when `region=all`. Works with all five chart types. |
-| `groupBy: "region"` with `regions` | Uses a fixed list of exact source region names or IDs. Ignores the country choice and takes precedence over `regionLevel`. |
-| `groupBy: "scenario"` | Compares source scenarios at the selected place and year. Works with bars, scatter and bubbles. The scenario filter does not limit this query. |
-
-### Totals and display settings
-
-These fields also belong inside the chart's `data` object:
-
-| Field | Effect |
-| --- | --- |
-| `aggregate: "sum"` | With regional grouping and `regionLevel`, sums NUTS values into countries when `region=all`. Omit a fixed `regions` list. |
-| `model` | Limits all chart variables to one exact ixmp4 model name. Without it, no model filter is sent; overlapping rows can cause an error. |
-| `unitFallback` | Labels values only when the source has no unit. It does not convert values or resolve conflicting units. |
-| `stackMode: "percent"` | Shows available segments as shares of their bar's total. Missing segments are omitted; zero totals stay blank. |
-| `riskFrom` | Colours scatter or bubble points by `"x"`, `"y"` or `"size"`. Use a role the chart has. Bands use the shown values' 25th and 75th percentiles, so risk is relative to those points. |
-
-**Sum only values that can be added**, such as population counts or losses.
-Never sum temperatures, rates or percentiles. Missing regions reduce a country
-total; a country with no reported values stays absent. This applies to both
-map and chart sums.
-
-For charts that follow a country's NUTS regions, set `regionLevel` explicitly.
-`groupBy: "region"` alone uses geography links and does not select those regions.
-Charts read default ixmp4 runs; run versions are not set in JSON.
-
-Optional `caseStudyId` sits beside `chartId`, outside `data`, and names the numeric
-Strapi case-study record ID. Omit it when there is no linked study.
+| Chart type, ID, title or linked case study | [Chart fields and types](eu-scoreboard-chart-config.md#chart-fields). |
+| Variables, role names, models or units | [Variables, models and units](eu-scoreboard-chart-config.md#variables-models-and-units). |
+| Regional or scenario comparisons | [Grouping](eu-scoreboard-chart-config.md#grouping). |
+| Country totals from regional data | [Country totals](eu-scoreboard-chart-config.md#country-totals). |
+| Ranges, bars, scatter, bubbles or box plots | [Examples](eu-scoreboard-chart-config.md#examples). |
+| Relative risk colours | [Risk colours](eu-scoreboard-chart-config.md#risk-colours). |
 
 ## Troubleshooting
 

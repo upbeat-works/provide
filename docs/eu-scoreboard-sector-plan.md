@@ -3,7 +3,7 @@
 > Historical first-stage plan. The current controller, choices, map, and chart
 > request flow are described in [Scoreboard runtime loading](eu-scoreboard-runtime-loading.md),
 > [Scoreboard maps](eu-scoreboard-map-plan.md), and
-> [Chart config decisions](eu-scoreboard-chart-config.md).
+> [EU scoreboard chart reference](eu-scoreboard-chart-config.md).
 
 ## Goal
 
