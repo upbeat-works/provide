@@ -46,6 +46,8 @@ test('writes the indicator parameter without changing the sector', async () => {
 
   await fireEvent.click(screen.getByRole('button', { name: /^Indicator:/ }));
   await fireEvent.click(screen.getByRole('button', { name: 'Mean Air Temperature' }));
+  expect(goto).not.toHaveBeenCalled();
+  await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
   const url = goto.mock.calls[0][0];
   expect(url.searchParams.get('sector')).toBe('testing');

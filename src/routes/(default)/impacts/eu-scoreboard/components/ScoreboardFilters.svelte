@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { PATH_EU_SCOREBOARD, PATH_IMPACT } from '$config';
   import FilterSelect from './FilterSelect.svelte';
+  import IndicatorPicker from './IndicatorPicker.svelte';
 
   export let data;
   export let filters = ['region', 'sector', 'indicator', 'scenario', 'year'];
@@ -69,6 +70,13 @@
         </div>
       </svelte:fragment>
     </FilterSelect>
+  {:else if filter.key === 'indicator'}
+    <IndicatorPicker
+      options={choicesFor(options, selected)}
+      {selected}
+      definitions={data.scoreboard.map?.indicators ?? []}
+      on:change={({ detail }) => select('indicator', detail)}
+    />
   {:else}
     <FilterSelect
       label={filter.label}
