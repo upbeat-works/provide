@@ -18,9 +18,12 @@ services:
   nginx:
     image: nginx:1.27-alpine
     depends_on:
-      - api
-      - cms
-      - web
+      api:
+        condition: service_healthy
+      cms:
+        condition: service_healthy
+      web:
+        condition: service_healthy
     volumes:
       - ./docker/nginx.dev.conf:/etc/nginx/nginx.conf:ro
     ports:
@@ -31,6 +34,13 @@ services:
       context: .
       dockerfile: docker/Dockerfile.api
     command: bun run --watch server.ts # server.ts migrates catalog on boot (idempotent)
+    healthcheck:
+      test: ['CMD', 'bun', '-e', 'fetch("http://127.0.0.1:8080/api/").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))']
+      interval: 30s
+      start_interval: 2s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
     env_file:
       - .env # for IXMP4_USERNAME / IXMP4_PASSWORD
     environment:
@@ -55,6 +65,13 @@ services:
     build:
       context: ./cms
       dockerfile: ../docker/Dockerfile.cms
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'fetch("http://127.0.0.1:1337/_health").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))']
+      interval: 30s
+      start_interval: 2s
+      timeout: 3s
+      retries: 12
+      start_period: 60s
     env_file:
       - cms/.env # app secrets (APP_KEYS, *_SECRET, S3_*)
     environment:
@@ -86,9 +103,18 @@ services:
     image: node:20-slim
     working_dir: /app
     command: sh -c "npm install && npm run dev:web -- --host 0.0.0.0 --port 5173"
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'fetch("http://127.0.0.1:5173/@vite/client").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))']
+      interval: 30s
+      start_interval: 2s
+      timeout: 3s
+      retries: 12
+      start_period: 120s
     depends_on:
-      - api
-      - cms
+      api:
+        condition: service_healthy
+      cms:
+        condition: service_healthy
     env_file:
       - .env # frontend VITE_* vars (Mapbox, etc.)
     environment:
