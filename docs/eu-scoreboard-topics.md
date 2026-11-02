@@ -172,7 +172,8 @@ Keep both `map` and `charts` in every file, even when one has no content.
 
 Countries come from the shared [country list](../api/scoreboard/countries.ts).
 The URL's `region` is a country name, such as `Austria`, or `all`; an invalid
-country choice falls back to Austria. A topic with only charts still needs
+country choice falls back to Europe (`all`). Europe is also the default when
+no region is set. A topic with only charts still needs
 scenarios and years. Changing the map indicator does not change the charts.
 
 ### Maps

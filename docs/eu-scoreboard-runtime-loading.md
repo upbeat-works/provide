@@ -22,7 +22,7 @@ explains that regional map data is unavailable; it makes no map-data request.
 The page URL uses `sector`, `indicator`, `region`, `scenario`, and `year`.
 `indicator` stores the short map indicator name. `region` stores the country
 name because chart requests use that value. Invalid choices fall back to the
-configured default indicator (or the first), the first scenario, Austria, and
+configured default indicator (or the first), the first scenario, Europe (`all`), and
 2050 when listed (otherwise the first year).
 
 Each choropleth indicator's `variable` is the exact ixmp4 query name. Its optional
@@ -35,7 +35,9 @@ fields. An optional scenario `rasterName` maps an ixmp4 scenario ID to its
 GeoServer name. An indicator's `name` remains the filter label and URL choice.
 
 Chart URLs and embeds keep their existing chart fields. They do not require an
-indicator. Moving between the overview and indicators views keeps valid choices.
+indicator. Opening the ranking view clears the region choice and returns to Europe.
+Other valid choices are kept. Opening the indicators view keeps the selected
+geography.
 
 ## Requests
 

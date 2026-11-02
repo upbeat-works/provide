@@ -8,6 +8,7 @@ export default function popover(node, params) {
 
   const instance = tippy(node, {
     theme: 'dark',
+    appendTo: node.closest('[data-chart-tooltips]') ?? document.body,
     allowHTML: params.allowHTML ?? false,
     content: params.content,
     arrow: roundArrow,

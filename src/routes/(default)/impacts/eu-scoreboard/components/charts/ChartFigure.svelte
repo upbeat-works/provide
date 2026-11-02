@@ -18,7 +18,7 @@
   $: hasCaption = chartInfo.length || graphDownloadParams;
 </script>
 
-<figure>
+<figure class="relative z-0" data-chart-tooltips>
   {#if legend.length}
     <ColorLegend items={legend} class="mb-4 items-center gap-y-2" labelClass="font-normal text-text-weaker" />
   {/if}

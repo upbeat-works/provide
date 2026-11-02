@@ -43,7 +43,7 @@ describe('scoreboard config', () => {
     expect(resolveScoreboardChoices(scoreboard, { indicator: 'Missing', scenario: 'Missing', region: 'Missing', year: '2041' })).toEqual({
       indicator: 'Maximum Air Temperature',
       scenario: 'CurrentPolicies',
-      region: 'Austria',
+      region: 'all',
       year: 2050,
     });
     expect(resolveScoreboardChoices({ ...scoreboard, map: { ...scoreboard.map, years: [2030, 2100] } }, {})).toMatchObject({ year: 2030 });
