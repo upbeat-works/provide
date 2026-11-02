@@ -17,7 +17,8 @@
       if (uid) params.set(key, uid);
     }
     target.search = params.toString();
-    return `${target.pathname}${target.search}`;
+    if (context.url.hash.startsWith('#preview')) target.hash = context.url.hash;
+    return `${target.pathname}${target.search}${target.hash}`;
   }
 </script>
 

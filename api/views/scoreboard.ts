@@ -37,19 +37,10 @@ export async function readDefaultRunSeries(platform: Pick<Platform, 'iamc'>, ref
 
 export async function readScoreboardMapSeries(
   platform: Pick<Platform, 'iamc'>,
-  variable: string,
+  reference: ScoreboardVariableReference,
   scope: Required<Pick<ScoreboardScope, 'scenario' | 'regions' | 'year'>>
 ): Promise<WideRow[]> {
-  if (!scope.regions.length) return [];
-  const df = await platform.iamc.tabulate({
-    variable: { name: variable },
-    run: { defaultOnly: true },
-    scenario: { name: scope.scenario },
-    region: { name_in: scope.regions },
-    stepYear: scope.year,
-    wide: true,
-  });
-  return dfToRows(df as DataFrameLike);
+  return readDefaultRunSeries(platform, reference, scope);
 }
 
 /**

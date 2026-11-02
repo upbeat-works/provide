@@ -4,6 +4,8 @@
   import Link from '$lib/components/icons/Link.svelte';
 
   export let href = undefined;
+  export let label = 'Copy link to these results';
+  export let className = 'flex items-center gap-x-2 text-left text-sm font-bold hover:bg-white rounded-xl transition-colors text-theme-base';
 
   let copied = false;
   let resetTimeout;
@@ -19,10 +21,10 @@
 </script>
 
 <button
-  class="flex items-center gap-x-2 text-left text-sm font-bold hover:bg-white rounded-xl transition-colors text-theme-base"
+  class={className}
   on:click={handleClick}
   use:tooltip={{ content: copied ? 'Copied to clipboard!' : 'Click to copy the link to the clipboard' }}
 >
   <Link class="h-4 w-4 flex-shrink-0" />
-  {copied ? 'Copied!' : 'Copy link to these results'}
+  {copied ? 'Copied!' : label}
 </button>

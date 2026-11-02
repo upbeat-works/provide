@@ -13,6 +13,7 @@
   export let result;
   export let selection;
   export let sector;
+  export let preview = undefined;
   export let compareBy = undefined;
   export let sides = [];
   export let optionsFor = () => [];
@@ -95,7 +96,7 @@
   }
 
   function load(view) {
-    return loadResource('map', sector, withIndicator(view)).catch(failed);
+    return loadResource('map', sector, withIndicator(view), fetch, { preview }).catch(failed);
   }
 
   function retry(view) {

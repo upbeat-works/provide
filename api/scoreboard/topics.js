@@ -16,7 +16,7 @@ function uniqueNames(items, field, name) {
   requireField(names.every(text) && new Set(names).size === names.length, `${name} need unique, nonempty ${field} values`);
 }
 
-function validateTopic(topic) {
+export function validateTopic(topic) {
   requireField(text(topic?.label), 'label is required');
   requireField(topic.order === undefined || Number.isFinite(topic.order), 'order must be a number');
   const map = topic.map;

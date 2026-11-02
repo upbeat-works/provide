@@ -25,7 +25,11 @@ name because chart requests use that value. Invalid choices fall back to the
 configured default indicator (or the first), the first scenario, Austria, and
 2050 when listed (otherwise the first year).
 
-Each choropleth indicator's `variable` is the exact ixmp4 query name. Raster
+Each choropleth indicator's `variable` is the exact ixmp4 query name. Its optional
+`unit` filters source rows by an exact unit name before values or country totals
+are built. Chart `data.unit` accepts one unit for every variable or an object
+keyed by role, such as `{ "x": "°C", "y": "°C", "size": "days/yr" }`.
+Neither setting converts values. Raster
 indicators provide their GeoServer indicator, reference, time, spatial and unit
 fields. An optional scenario `rasterName` maps an ixmp4 scenario ID to its
 GeoServer name. An indicator's `name` remains the filter label and URL choice.
@@ -65,6 +69,23 @@ requests.
 Optional case-study content is loaded only for a ready chart that names a CMS
 record. A CMS failure does not remove chart data. Map errors and chart errors
 are reported without exposing credentials or upstream response bodies.
+
+## JSON preview
+
+`#preview` opens a JSON dialog on the indicators page. Applying a valid topic
+changes the fragment to `#preview=<gzip compressed base64url>`. The browser
+reads this fragment; it is not part of the server request URL.
+
+The same-origin `/app/scoreboard/preview/definition`, `/map` and
+`/charts/:chartId` routes forward POST bodies to the API's matching scoreboard
+routes. POST requests validate and use the supplied topic; GET requests read
+topic files. Both use the same map and chart loaders. Drafts use the topic ID
+`preview` and are never written to disk. Responses are not cached.
+
+Applying a draft replaces the displayed preview as one unit. Older definition
+responses cannot replace a newer draft. Map comparisons and chart retries carry
+the same draft in their POST body. Section links scroll without replacing the
+preview fragment. Empty charts remain visible in preview.
 
 ## Local proxy check
 

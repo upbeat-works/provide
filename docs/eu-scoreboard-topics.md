@@ -60,6 +60,7 @@ the chart shows country values over time.
       {
         "name": "Mean Air Temperature",
         "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+        "unit": "°C",
         "type": "choropleth",
         "level": "NUTS2"
       }
@@ -74,6 +75,7 @@ the chart shows country values over time.
       "description": "Annual mean air temperature for the selected country and scenario.",
       "chartType": "line",
       "data": {
+        "unit": "°C",
         "variables": [
           "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile"
         ]
@@ -103,18 +105,27 @@ Follow the same checks below for additions and edits.
 
 ## Check and release
 
-### 1. Load it in a running preview
+### 1. Preview the JSON
 
-Put the file in the preview API's `api/scoreboard/topics/` directory. Open
-**Explore indicators** on your preview site:
+Open the scoreboard with `#preview` at the end of its URL:
 
 ```text
-/impacts/eu-scoreboard/indicators?sector=air-temperature&region=Austria
+/impacts/eu-scoreboard/indicators#preview
 ```
 
-Confirm that **Air temperature** appears in the Topic menu and is selected.
-The API validates files on load. If loading fails, its log names the file and
-problem; ask the service maintainer if you need help getting that message.
+A dialog opens with the current topic's JSON. Paste your file and click
+**Preview**. Invalid JSON or config stays in the dialog with an error.
+A valid draft changes the URL to `#preview=<compressed-base64url>` and loads
+its maps and charts. **Edit JSON** opens the dialog again.
+
+The link contains the draft, compressed with gzip. Copy the link to share it;
+opening it loads the same config. Filters and comparisons use the draft too.
+Empty charts show a message so missing data is visible. Chart embeds and image
+exports are unavailable in preview because they use saved topic settings.
+
+Preview sends the JSON to the API in POST bodies. It does not write topic files
+or change the published scoreboard. **Exit preview** returns to saved settings.
+The ranking still uses mock scores, so preview links open **Explore indicators**.
 
 ### 2. Check the displayed values
 
@@ -126,8 +137,9 @@ A valid file can still point to missing or conflicting source data. Check:
 - The all-countries view (`region=all`) gives the expected result, especially
   when using regional sums or a fixed list of regions.
 
-Empty charts are hidden. Confirm that values appear on **Explore indicators**;
-the overview ranking still uses mock scores. See [Troubleshooting](#troubleshooting)
+Empty charts show a message in preview and are hidden on the published page.
+Confirm that values appear on **Explore indicators**; the overview ranking
+still uses mock scores. See [Troubleshooting](#troubleshooting)
 for missing results.
 
 ### 3. Release the checked file
@@ -150,6 +162,8 @@ Keep both `map` and `charts` in every file, even when one has no content.
 
 | Field | Rule |
 | --- | --- |
+| `label` | Required topic name, shown in the Topic menu. |
+| `order` | Optional number that sets menu order, smallest first. Topics without it come last. |
 | `map.indicators` | Map choices in menu order, with unique `name` values used in the URL. Use `[]` for charts only. |
 | `map.defaultIndicator` | An exact indicator `name`; omit to use the first, or use `null` for no indicators. Unknown names are rejected. |
 | `map.scenarios` | Nonempty list of objects with unique source `id` values. The first is the default. Labels come from Strapi when available; otherwise the ID is shown. |
@@ -168,10 +182,30 @@ A **regional map** uses `type: "choropleth"`, the full ixmp4 `variable` name, an
 [packaged boundaries](../api/scoreboard/data/README.md). Selecting a country
 shows its regions; selecting all countries reads country values by default.
 
-| Field on the indicator | Effect |
+| Field on a regional-map indicator | Effect |
 | --- | --- |
+| `unit` | Selects one exact source unit, such as `"days/yr"`, when the variable has several. It does not convert values. |
 | `aggregate: "sum"` | Builds country totals from the indicator's NUTS regions in the all-countries view. |
 | `colorRamp` | Sets map colours, for example `["#FEDB5C", "#E27B47"]`. Use at least two full six-digit hex colours. Invalid ramps use the default. Value limits stay unchanged. |
+
+Set `unit` on each regional-map indicator that needs a source-unit filter.
+For example, this selects heat-risk days when the source also has rows in `°C`:
+
+```json
+{
+  "name": "High Heat Risk",
+  "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+  "unit": "days/yr",
+  "type": "choropleth",
+  "level": "NUTS2"
+}
+```
+
+The unit must match the source exactly. It selects rows before map values or
+country totals are built; it does not rename or convert them. Omitting it sends
+no unit filter. A chart needs its own `data.unit`; the map setting does not apply
+to charts. See [chart units](eu-scoreboard-chart-config.md#select-source-units)
+for charts that combine different measurements.
 
 Map totals should add counts or losses, never means, rates or percentiles.
 They include only regions with data: missing regions reduce a total, and a
@@ -183,12 +217,15 @@ colour, for example `["#2166AC", "#F7F7F7", "#B2182B"]`.
 
 A **raster map** uses `type: "raster"` plus `name`, `indicator`, `reference`,
 `time` and `spatial`. Copy the raster entry in `testing.json` and use names that
-match GeoServer. Optional `unit` supplies the display label.
+match GeoServer. For raster maps, optional `unit` supplies only the display
+label; it does not select a layer or filter source values.
 
 If GeoServer uses a different scenario name, add `rasterName` to that scenario,
 for example `{ "id": "CurrentPolicies", "rasterName": "Current Policies" }`.
 The API needs `GEOSERVER_URL` and any required GeoServer credentials. Raster maps
-require a selected country; they do not support the all-countries view.
+require a selected country; they do not support the all-countries view. A layer
+must be published for the exact country, scenario and year. Adding a choice to
+JSON does not publish a raster layer.
 
 `map.ranking` can hold a `variable` and increasing numeric `bins`, but the
 overview does not yet read them. Editing these fields will not change its scores.
@@ -215,6 +252,8 @@ explains its fields and provides examples for each type.
 | Topic missing, or another topic selected | The filename sets the topic ID. Check the URL and confirm the `.json` file reached the running API's topics directory. |
 | Topic settings fail to load | Check the API log for a filename and validation message. One invalid file, or an empty directory, blocks topic loading. |
 | Empty map or missing chart | Check that the exact variables exist for the selected regions, scenario and year. |
+| Conflicting units or duplicate heat-risk rows | Set `unit` on the regional-map indicator and `data.unit` on each chart. For heat-risk days, use `"days/yr"`. `unitFallback` cannot select rows. |
+| Empty raster map | Check that GeoServer has a layer for the selected country, scenario and year, including any `rasterName`. |
 | Map or chart data error | Check API logs for source access failures, duplicate rows or conflicting units. Correct the source or query settings. |
 | Country totals look too small | Sums include only regions with data. Check which regions reported values for that year. |
 

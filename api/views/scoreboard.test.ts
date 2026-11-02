@@ -33,7 +33,7 @@ describe('scoreboard default-run reader', () => {
 
     const rows = await readScoreboardMapSeries(
       platform,
-      'Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile',
+      { variable: 'Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile' },
       { scenario: 'CurrentPolicies', regions: ['AT11'], year: 2050 }
     );
 
