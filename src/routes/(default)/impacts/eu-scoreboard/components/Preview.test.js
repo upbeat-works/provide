@@ -97,7 +97,7 @@ test('ignores an older draft response after a newer draft has loaded', async () 
 
 test('keeps draft data in map and chart retries and comparisons', async () => {
   const { default: Page } = await import('../indicators/+page.svelte');
-  const topic = { ...draft, map: { ...draft.map, indicators: [{ name: 'Draft map', variable: 'Draft map variable', type: 'choropleth', level: 'NUTS2' }] } };
+  const topic = { ...draft, map: { ...draft.map, indicators: [{ name: 'Draft map', variable: 'Draft map variable', type: 'choropleth', europeLevel: 'NUTS0', level: 'NUTS2' }] } };
   const handler = fetcher.getMockImplementation();
   fetcher.mockImplementation(async (url, options) => {
     if (url.includes('/definition?')) return handler(url, options);
@@ -119,4 +119,15 @@ test('keeps draft data in map and chart retries and comparisons', async () => {
     expect(options.method).toBe('POST');
     expect(JSON.parse(options.body)).toEqual(topic);
   }
+});
+
+test('skips country-only charts in a Europe preview and loads them after selecting a country', async () => {
+  const topic = { ...draft, charts: [{ ...draft.charts[0], hideInEuropeView: true }] };
+  const hash = `#preview=${await encodePreview(topic)}`;
+  page.set({ url: new URL(`http://localhost/impacts/eu-scoreboard/indicators?region=all${hash}`) });
+  render(Preview, { data });
+  await screen.findByText('Unsaved topic');
+  expect(fetcher.mock.calls.some(([url]) => url.includes('/charts/'))).toBe(false);
+  page.set({ url: new URL(`http://localhost/impacts/eu-scoreboard/indicators?region=Austria${hash}`) });
+  await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url.includes('/charts/new-chart') && url.includes('region=Austria'))).toBe(true));
 });

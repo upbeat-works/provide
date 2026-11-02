@@ -1,5 +1,6 @@
 <script>
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
+  import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import ChartRenderer from './charts/ChartRenderer.svelte';
   import SeriesPicker from './SeriesPicker.svelte';
   import { isChartVisible } from './charts/adapter.js';
@@ -74,7 +75,11 @@
 </script>
 
 {#if !chart || chart.status === 'loading'}
-  <p class="py-8" role="status">Loading {definition.title}…</p>
+  <ScoreboardSection eyebrow={selection.region?.label ?? 'No region'} slug={definition.chartId} title={definition.title} description={definition.description}>
+    <div class="flex min-h-[360px] items-center justify-center" aria-busy="true">
+      <LoadingPlaceholder />
+    </div>
+  </ScoreboardSection>
 {:else if preview && !isChartVisible(chart, selection)}
   <ScoreboardSection slug={definition.chartId} title={definition.title} description={definition.description}>
     <p role="status">No chart data for this selection.</p>

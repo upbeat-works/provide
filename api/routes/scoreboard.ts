@@ -4,6 +4,7 @@ import { instances } from '../instances';
 import { createPlatform } from '../platform';
 import { readScoreboardMapSeries } from '../views/scoreboard';
 import { getScoreboard, previewScoreboard, SCOREBOARD_INSTANCE } from '../scoreboard/controller.js';
+import { mapBoundaryLevel } from '../scoreboard/choices.js';
 import { SCOREBOARD_COUNTRIES, scoreboardCountry } from '../scoreboard/countries';
 import { loadRegionalBoundaries, type NutsLevel } from '../scoreboard/boundaries';
 import { aggregatedCountryMapResult, regionalMapResult } from '../scoreboard/maps';
@@ -132,12 +133,8 @@ scoreboard.on(['GET', 'POST'], '/map', async (c) => {
     return c.json({ error: 'Invalid scoreboard map configuration' }, 400);
   }
   try {
-    // Across the whole of Europe the data layer is drawn per country, not per
-    // NUTS region: hundreds of shapes read as noise at that zoom. Most mapped
-    // variables carry country rows of their own, so they are simply asked for
-    // them — which also keeps a temperature out of a sum. One published only at
-    // NUTS level declares `aggregate` and is totalled up instead.
-    if (!country) {
+    const level = mapBoundaryLevel(indicator, region);
+    if (level === 'NUTS0') {
       const platform = await source(c);
       if (indicator.aggregate === 'sum') {
         const boundaries = await loadRegionalBoundaries(undefined, indicator.level as NutsLevel);
@@ -149,7 +146,7 @@ scoreboard.on(['GET', 'POST'], '/map', async (c) => {
       const rows = await readScoreboardMapSeries(platform, indicator, { scenario, regions: SCOREBOARD_COUNTRIES.map(({ name }) => name), year });
       return c.json(regionalMapResult(rows, indicator, scenario, year));
     }
-    const boundaries = await loadRegionalBoundaries(country.code, indicator.level as NutsLevel);
+    const boundaries = await loadRegionalBoundaries(country?.code, level as NutsLevel);
     const regionIds = [...new Set(boundaries.features.flatMap(({ properties }) => (typeof properties?.NUTS_ID === 'string' ? [properties.NUTS_ID] : [])))];
     if (!regionIds.length) return c.json(regionalMapResult([], indicator, scenario, year));
     const rows = await readScoreboardMapSeries(await source(c), indicator, { scenario, regions: regionIds, year });

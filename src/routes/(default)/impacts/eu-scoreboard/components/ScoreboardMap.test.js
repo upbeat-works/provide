@@ -7,8 +7,6 @@ import { COUNTRY_SOURCE } from './choropleth.js';
 import { loadRegionalBoundaries } from '../../../../../../api/scoreboard/boundaries.ts';
 
 vi.mock('$app/environment', () => ({ browser: true }));
-// The fixture stands in for MapProvider and renders no slot, so the choropleth
-// layers never mount and the band can be tested without a Mapbox context.
 vi.mock('$lib/components/maps/MapboxMap/MapProvider.svelte', () => import('./ScoreboardMap.test.fixture.svelte'));
 vi.mock('$lib/components/maps/MapboxMap/ZoomControl.svelte', () => import('./Empty.test.fixture.svelte'));
 vi.mock('./NutsChoropleth.svelte', () => import('./CountryMapLayer.test.fixture.svelte'));
@@ -164,13 +162,11 @@ test('draws a raster grid inside the selected country frame without loading regi
   expect(loadRegionalBoundaries).not.toHaveBeenCalled();
 });
 
-test.each(['NUTS1', 'NUTS2'])('draws Europe on the countries themselves rather than %s regions', async (level) => {
+test('draws country values when Europe uses NUTS0', async () => {
   stubFetch(async () => Response.json(shapes));
-  render(ScoreboardMap, { countryName: 'all', level, values: [{ region: 'Austria', value: 5 }] });
+  render(ScoreboardMap, { countryName: 'all', level: 'NUTS0', values: [{ region: 'Austria', value: 5 }] });
   await waitFor(() => expect(screen.getByTestId('country-outline')).toBeTruthy());
 
-  // Hundreds of regions read as noise at this zoom, so the regional layer is not
-  // drawn and its boundaries are never fetched.
   expect(screen.queryByRole('img', { name: 'Regional map layer' })).toBeNull();
   expect(loadRegionalBoundaries).not.toHaveBeenCalled();
   // Values arrive under the name ixmp4 uses; the country layer matches on geoId.
@@ -188,4 +184,17 @@ test('a selectable map takes clicks straight away, unless it asks for activation
   render(ScoreboardMap, { selectable: true, activation: true });
   await fireEvent.click(await screen.findByRole('button', { name: 'Click to make map interactive' }));
   expect(screen.queryByRole('button', { name: 'Click to make map interactive' })).toBeNull();
+});
+
+test.each(['NUTS2', 'NUTS3'])('draws Europe with %s shapes and can switch back to countries', async (level) => {
+  const regionalShapes = { type: 'FeatureCollection', features: [{ properties: { NUTS_ID: 'AT111' } }, { properties: { NUTS_ID: 'FR101' } }] };
+  vi.mocked(loadRegionalBoundaries).mockResolvedValue(regionalShapes);
+  stubFetch(async () => Response.json(shapes));
+  const { rerender } = render(ScoreboardMap, { countryName: 'all', level });
+  const layer = await screen.findByRole('img', { name: 'Regional map layer' });
+  expect(JSON.parse(layer.dataset.shape)).toEqual(regionalShapes);
+  expect(loadRegionalBoundaries).toHaveBeenCalledWith(undefined, level);
+  await rerender({ countryName: 'all', level: 'NUTS0', values: [{ region: 'Austria', value: 5 }] });
+  expect(screen.queryByRole('img', { name: 'Regional map layer' })).toBeNull();
+  expect(JSON.parse(screen.getByTestId('country-outline').dataset.values)).toEqual([{ uid: 'AUT', value: 5 }]);
 });

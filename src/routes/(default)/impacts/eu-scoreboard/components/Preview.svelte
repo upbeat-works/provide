@@ -6,6 +6,8 @@
   import { createScoreboardOptions, resolveSelection } from '../selection.js';
   import { loadResource } from './resource.js';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
+  import JsonEditor from './JsonEditor.svelte';
+  import { chartsForRegion } from '../../../../../../api/scoreboard/choices.js';
 
   export let data;
   let mounted = false;
@@ -74,7 +76,7 @@
     const load = (resource) => loadResource(resource, 'preview', selection, fetch, { preview: draft });
     let map;
     if (scoreboard.indicator) map = load('map').catch(() => ({ status: 'error', values: [], error: 'Map data could not be loaded.' }));
-    const charts = scoreboard.charts.map((definition) => ({
+    const charts = chartsForRegion(scoreboard.charts, selection.region?.uid).map((definition) => ({
       definition,
       result: load(`charts/${encodeURIComponent(definition.chartId)}`).catch(() => ({ definition, status: 'error', data: [], error: 'Chart data could not be loaded.' })),
     }));
@@ -137,7 +139,7 @@
     <form on:submit|preventDefault={apply}>
       <h2 id="preview-title" class="mb-4 text-xl font-bold">Preview scoreboard JSON</h2>
       <label for="preview-json" class="mb-2 block font-semibold">Topic JSON</label>
-      <textarea id="preview-json" bind:value={text} spellcheck="false" rows="18" class="w-full rounded border border-gray-400 p-3 font-mono text-sm" />
+      <JsonEditor id="preview-json" bind:value={text} />
       {#if error}<p role="alert" class="mt-3 text-red-700">{error}</p>{/if}
       <div class="mt-4 flex gap-4">
         <button type="submit" disabled={busy} class="rounded bg-theme-base px-4 py-2 font-bold text-white">{busy ? 'Checking…' : 'Preview'}</button>

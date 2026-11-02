@@ -36,6 +36,7 @@
         "layercake": "^8.0.2",
         "lodash-es": "^4.17.21",
         "mapbox-gl": "^3.1.2",
+        "microlighter": "^2.2.0",
         "pg": "^8.22.0",
         "qs": "^6.11.0",
         "svelte-compare-image": "^3.0.0",
@@ -789,6 +790,8 @@
     "merge-stream": ["merge-stream@2.0.0", "", {}, "sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w=="],
 
     "merge2": ["merge2@1.4.1", "", {}, "sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg=="],
+
+    "microlighter": ["microlighter@2.2.0", "", {}, "sha512-XFUHmKclX4taKWVpYkqJ/GlfUS27FzQTCph1u3v9OwkmQJGXry3Pk1e7SivLz6xGOCxRVyi3DSrztF3e460jrg=="],
 
     "micromatch": ["micromatch@4.0.8", "", { "dependencies": { "braces": "^3.0.3", "picomatch": "^2.3.1" } }, "sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA=="],
 

@@ -52,10 +52,7 @@
   let regionalState = { status: 'idle', shape: undefined };
 
   $: country = scoreboardCountry(countryName);
-  // Only a single country subdivides into regions. Across the whole of Europe
-  // the data is drawn on the countries themselves, so no NUTS boundaries are
-  // fetched for that view at all.
-  $: regional = Boolean(country && level);
+  $: regional = Boolean(level && level !== 'NUTS0');
   $: regionalKey = regional ? `${country?.code ?? 'all'}|${level}|${boundaryAttempt}` : '';
   $: loadRegions(regionalKey, country?.code, level);
 

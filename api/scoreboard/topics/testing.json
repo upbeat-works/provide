@@ -12,12 +12,14 @@
         "name": "Maximum Air Temperature",
         "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
         "type": "choropleth",
+        "europeLevel": "NUTS2",
         "level": "NUTS2"
       },
       {
         "name": "Mean Air Temperature",
         "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
         "type": "choropleth",
+        "europeLevel": "NUTS2",
         "level": "NUTS2"
       },
       {

@@ -42,3 +42,13 @@ describe('regional NUTS boundaries', () => {
     expect(new Set(result.features.map(({ geometry }) => geometry.type))).toEqual(new Set(['Polygon', 'MultiPolygon']));
   });
 });
+
+test('loads NUTS3 boundaries for Austria and the United Kingdom without network access', async () => {
+  vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network access is not allowed'));
+  for (const country of ['AT', 'UK']) {
+    const result = await loadRegionalBoundaries(country, 'NUTS3');
+    expect(result.features.length).toBeGreaterThan(0);
+    expect(result.features.every(({ properties }) => properties?.CNTR_CODE === country && Number(properties.LEVL_CODE) === 3 && properties.NUTS_ID)).toBe(true);
+  }
+  expect(fetch).not.toHaveBeenCalled();
+});

@@ -128,7 +128,8 @@ test('renders a map and a ready chart while another chart is still loading', asy
   });
   expect(screen.getByRole('img', { name: 'Mock country map' })).toBeTruthy();
   expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
-  expect(screen.getByRole('status').textContent).toContain(scoreboard.charts[1].title);
+  expect(screen.getByRole('status')).toBeTruthy();
+  expect(screen.getByRole('heading', { name: scoreboard.charts[1].title })).toBeTruthy();
   finish({ definition: scoreboard.charts[1], status: 'empty', data: [] });
   await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
   expect(screen.queryByRole('heading', { name: scoreboard.charts[1].title })).toBeNull();
@@ -238,4 +239,16 @@ test.each(['', 'Austria'])('keeps the selected indicator when showing all countr
     scenario: 'scenario',
     year: '2050',
   });
+});
+
+test('hides a country-only chart and its link in Europe, then shows it for Austria', async () => {
+  const chart = { ...definition, hideInEuropeView: true };
+  const data = { ...common, scoreboard: { ...scoreboard, charts: [chart] }, charts: [{ definition: chart, result: { ...readyChart, definition: chart } }], selection: { ...common.selection, region: option('all') } };
+  const url = new URL('http://localhost/impacts/eu-scoreboard/indicators?region=all');
+  const { rerender } = render(Page, { data, url });
+  expect(screen.queryByRole('heading', { name: chart.title })).toBeNull();
+  expect(screen.queryByRole('link', { name: chart.title })).toBeNull();
+  await rerender({ data: { ...data, selection: common.selection }, url: new URL('http://localhost/impacts/eu-scoreboard/indicators?region=Austria') });
+  expect(screen.getByRole('heading', { name: chart.title })).toBeTruthy();
+  expect(screen.getByRole('link', { name: chart.title })).toBeTruthy();
 });

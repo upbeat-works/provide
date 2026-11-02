@@ -62,6 +62,7 @@ the chart shows country values over time.
         "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
         "unit": "°C",
         "type": "choropleth",
+        "europeLevel": "NUTS2",
         "level": "NUTS2"
       }
     ],
@@ -179,14 +180,32 @@ scenarios and years. Changing the map indicator does not change the charts.
 ### Maps
 
 A **regional map** uses `type: "choropleth"`, the full ixmp4 `variable` name, and
-`level: "NUTS1"` or `"NUTS2"`. Source region IDs must match `NUTS_ID` in the
-[packaged boundaries](../api/scoreboard/data/README.md). Selecting a country
-shows its regions; selecting all countries reads country values by default.
+a required `europeLevel` and a `level` for the selected-country view. Source
+region IDs must match `NUTS_ID` in the
+[packaged boundaries](../api/scoreboard/data/README.md).
+
+| Boundary setting | Allowed values | View it controls |
+| --- | --- | --- |
+| `europeLevel` | `"NUTS0"`, `"NUTS2"`, `"NUTS3"`. Required; no default. | Europe (`region=all`). NUTS0 draws countries; NUTS2 and NUTS3 draw regions across Europe. |
+| `level` | `"NUTS1"`, `"NUTS2"`, `"NUTS3"`. Required. | Regions inside a selected country. |
+
+The saved topics use `"europeLevel": "NUTS2"`. Setting it to `"NUTS3"`
+changes the source query and boundaries for Europe without changing the
+selected-country view. The source must contain data at the requested level;
+the app does not split country or NUTS2 values into smaller regions.
+
+With `"europeLevel": "NUTS0"`, the map reads country values, or builds country
+totals when `aggregate` is `"sum"`. With NUTS2 or NUTS3, it reads regional values
+directly and does not aggregate them. Country shapes can be clicked to select
+a country in NUTS0 mode; use the Geography menu in regional modes. The ranking
+map always shows countries.
+
+`europeLevel` is not supported on raster indicators.
 
 | Field on a regional-map indicator | Effect |
 | --- | --- |
 | `unit` | Selects one exact source unit, such as `"days/yr"`, when the variable has several. It does not convert values. |
-| `aggregate: "sum"` | Builds country totals from the indicator's NUTS regions in the all-countries view. |
+| `aggregate: "sum"` | Builds country totals from `level` only when Europe uses `europeLevel: "NUTS0"`. |
 | `colorRamp` | Sets map colours, for example `["#FEDB5C", "#E27B47"]`. Use at least two full six-digit hex colours. Invalid ramps use the default. Value limits stay unchanged. |
 
 Set `unit` on each regional-map indicator that needs a source-unit filter.
@@ -198,6 +217,7 @@ For example, this selects heat-risk days when the source also has rows in `°C`:
   "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
   "unit": "days/yr",
   "type": "choropleth",
+  "europeLevel": "NUTS2",
   "level": "NUTS2"
 }
 ```
@@ -232,6 +252,10 @@ JSON does not publish a raster layer.
 overview does not yet read them. Editing these fields will not change its scores.
 
 ### Charts
+
+Set `"hideInEuropeView": true` on a chart to show it only when a country is
+selected. The Europe view skips the chart, its menu link and its data request.
+This is set for **Population by age and sex** in the socioeconomic topic.
 
 The `charts` array controls chart order. The complete topic example above shows
 where a chart belongs; the [chart reference](eu-scoreboard-chart-config.md)

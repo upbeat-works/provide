@@ -8,7 +8,17 @@ export function selectMapIndicator(map, indicatorName) {
   return map.indicators.find(({ name }) => name === map.defaultIndicator) ?? map.indicators[0];
 }
 
+export function mapBoundaryLevel(indicator, region) {
+  if (indicator?.type !== 'choropleth') return undefined;
+  if (region === 'all') return indicator.europeLevel;
+  return indicator.level;
+}
+
 export { SCOREBOARD_COUNTRIES };
+
+export function chartsForRegion(charts, region) {
+  return charts.filter((chart) => region !== 'all' || !chart.hideInEuropeView);
+}
 
 export function resolveScoreboardChoices(scoreboard, requested = {}) {
   const indicator = selectMapIndicator(scoreboard.map, requested.indicator);

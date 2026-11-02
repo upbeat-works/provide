@@ -25,6 +25,12 @@ name because chart requests use that value. Invalid choices fall back to the
 configured default indicator (or the first), the first scenario, Europe (`all`), and
 2050 when listed (otherwise the first year).
 
+Each choropleth indicator requires `europeLevel` (`NUTS0`, `NUTS2` or `NUTS3`);
+there is no default. It chooses the query and boundaries for Europe. `level`
+chooses the boundaries inside one country. Country totals apply only when
+`europeLevel` is `NUTS0`; regional Europe views read regional values directly.
+The saved topics use `NUTS2` for Europe.
+
 Each choropleth indicator's `variable` is the exact ixmp4 query name. Its optional
 `unit` filters source rows by an exact unit name before values or country totals
 are built. Chart `data.unit` accepts one unit for every variable or an object

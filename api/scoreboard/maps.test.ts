@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { regionalMapResult } from './maps';
 
 const variable = 'Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile';
-const indicator = { name: 'Maximum Air Temperature', variable, type: 'choropleth', level: 'NUTS2' } as const;
+const indicator = { name: 'Maximum Air Temperature', variable, type: 'choropleth', europeLevel: 'NUTS0', level: 'NUTS2' } as const;
 
 describe('regional map result', () => {
   test('joins by row region, keeps zero and reports response metadata', () => {

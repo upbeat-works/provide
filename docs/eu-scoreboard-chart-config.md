@@ -20,6 +20,7 @@ topic ID or a rendering component name.
 | `title` | Chart heading. |
 | `description` | Text explaining what the reader sees. |
 | `chartType` | One of the types below. |
+| `hideInEuropeView` | Optional boolean. Set to `true` to hide the chart and its menu link when Geography is Europe (`region=all`). Its data is not requested in that view. Omitted or `false` keeps it visible. Applies to saved topics and JSON previews. |
 | `data` | Source variables and the settings that assign, group and display them. |
 | `caseStudyId` | Optional numeric Strapi case-study record ID. Omit when there is no linked study. |
 

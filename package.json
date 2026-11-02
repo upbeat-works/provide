@@ -99,6 +99,7 @@
     "layercake": "^8.0.2",
     "lodash-es": "^4.17.21",
     "mapbox-gl": "^3.1.2",
+    "microlighter": "^2.2.0",
     "pg": "^8.22.0",
     "qs": "^6.11.0",
     "svelte-compare-image": "^3.0.0",

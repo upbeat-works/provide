@@ -1,4 +1,4 @@
-export type NutsLevel = 'NUTS1' | 'NUTS2';
+export type NutsLevel = 'NUTS1' | 'NUTS2' | 'NUTS3';
 
 export function filterRegionalBoundaries(collection: GeoJSON.FeatureCollection, countryCode: string | undefined, level: NutsLevel): GeoJSON.FeatureCollection {
   const levelCode = Number(level.slice(-1));
@@ -8,7 +8,8 @@ export function filterRegionalBoundaries(collection: GeoJSON.FeatureCollection, 
 
 async function loadBoundaryCollection(level: NutsLevel): Promise<GeoJSON.FeatureCollection> {
   if (level === 'NUTS1') return (await import('./data/nuts1.json')).default as GeoJSON.FeatureCollection;
-  return (await import('./data/nuts2.json')).default as GeoJSON.FeatureCollection;
+  if (level === 'NUTS2') return (await import('./data/nuts2.json')).default as GeoJSON.FeatureCollection;
+  return (await import('./data/nuts3.json')).default as GeoJSON.FeatureCollection;
 }
 
 export async function loadRegionalBoundaries(countryCode: string | undefined, level: NutsLevel): Promise<GeoJSON.FeatureCollection> {

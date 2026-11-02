@@ -24,6 +24,7 @@ describe('scoreboard config', () => {
       name: 'Mean Air Temperature',
       variable: 'Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile',
       type: 'choropleth',
+      europeLevel: 'NUTS2',
       level: 'NUTS2',
     });
     expect(scoreboard.charts.map(({ chartId }) => chartId)).toContain('maximum-air-temperature-range');

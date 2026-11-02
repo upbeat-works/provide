@@ -7,6 +7,7 @@
   import { legendOf, numericClasses } from './choropleth.js';
   import { combinedValues, comparisonViews, legendParts, mapValues } from './comparison.js';
   import { loadResource, mapResourceKey } from './resource.js';
+  import { mapBoundaryLevel } from '../../../../../../api/scoreboard/choices.js';
   import { SCOREBOARD_COUNTRIES } from '../../../../../../api/scoreboard/countries.ts';
 
   export let definition;
@@ -116,10 +117,7 @@
     sides = sides.map((value, i) => (i === index ? option : value));
   }
 
-  // Only the Europe-wide view draws whole countries, so only it can be clicked.
-  // A single country is drawn as its NUTS regions, which are not offered as a
-  // selection.
-  const countryLevel = (view) => view.region?.uid === 'all';
+  const countryLevel = (view) => mapBoundaryLevel(definition, view.region?.uid) === 'NUTS0';
 
   // A click picks the country as the geography. Comparing geographies, it is
   // that map's side that changes; otherwise it is the shared filter, as the
@@ -159,7 +157,7 @@
           {classes}
           {unit}
           countryName={view.region?.uid}
-          level={definition?.level}
+          level={mapBoundaryLevel(definition, view.region?.uid)}
           selectable={countryLevel(view)}
           activation
           on:select={({ detail }) => selectCountry(i, detail.uid)}
@@ -194,6 +192,7 @@
                 labels={legend.labels}
                 ticks={legend.ticks}
                 {definition}
+                level={mapBoundaryLevel(definition, view.region?.uid)}
                 metadata={map.metadata}
                 {grid}
               />

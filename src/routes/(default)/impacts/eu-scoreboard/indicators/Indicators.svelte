@@ -10,6 +10,7 @@
   import LinkArrow from '$lib/components/icons/LinkArrow.svelte';
   import { seedComparison } from '../components/comparison.js';
   import { PATH_DOCUMENTATION } from '$config';
+  import { chartsForRegion } from '../../../../../../api/scoreboard/choices.js';
 
   export let data;
   export let preview = undefined;
@@ -44,7 +45,9 @@
   $: filters = availableFilters.filter((uid) => uid !== compareBy?.uid && (!preview || uid !== 'sector'));
 
   // The article column's index, and what the "view charts" button jumps to.
-  $: sections = data.scoreboard.charts.map(({ chartId, title }) => ({ slug: chartId, title }));
+  $: visibleCharts = chartsForRegion(data.scoreboard.charts, data.selection.region?.uid);
+  $: sections = visibleCharts.map(({ chartId, title }) => ({ slug: chartId, title }));
+  $: charts = (data.charts ?? []).filter(({ definition }) => visibleCharts.some(({ chartId }) => chartId === definition.chartId));
 
   let contentRef;
 </script>
@@ -84,7 +87,7 @@
   </svelte:fragment>
 
   <div bind:this={contentRef}>
-    {#each data.charts ?? [] as chart (chart.definition.chartId)}
+    {#each charts as chart (chart.definition.chartId)}
       <ChartPanel {preview} {...chart} selection={data.selection} sector={data.scoreboard.sector.uid} />
     {/each}
   </div>
