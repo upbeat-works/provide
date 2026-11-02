@@ -5,8 +5,8 @@ async function loadDescription(fetch, collection, { id, signal }) {
     const response = await fetch(catalogContentUrl(collection, id), { signal });
     if (!response.ok) return undefined;
     const body = await response.json();
-    const record = body.data?.find(({ attributes }) => attributes?.UID === id);
-    return record?.attributes?.Description || undefined;
+    const record = body.data?.find((record) => record.UID === id);
+    return record?.Description || undefined;
   } catch {
     return undefined;
   }
@@ -40,7 +40,7 @@ export async function loadScenarioLabels(fetch, { ids, timeout = 1000 }) {
     const body = await Promise.race([request(), timeoutResult]);
     if (!body) return labels;
     for (const record of body.data ?? []) {
-      const { UID: uid, Label: label } = record.attributes ?? record;
+      const { UID: uid, Label: label } = record;
       if (ids.includes(uid) && label) labels[uid] = label;
     }
   } catch {

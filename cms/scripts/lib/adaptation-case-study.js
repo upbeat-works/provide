@@ -7,8 +7,8 @@
  * components in the MainContent dynamic zone.
  *
  * No I/O — unit tested in adaptation-case-study.test.js. The runner
- * (create-adaptation-case-study.js) adds the locale, publishedAt and the Project
- * relation before handing the payload to entityService.
+ * (create-adaptation-case-study.js) sets the locale, publish status, and Project
+ * relation before handing the payload to the Document Service.
  */
 
 // The original page linked to itself and to sibling case studies using the old

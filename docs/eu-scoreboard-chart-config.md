@@ -21,7 +21,7 @@ topic ID or a rendering component name.
 | `description` | Text explaining what the reader sees. |
 | `chartType` | One of the types below. |
 | `data` | Source variables and the settings that assign, group and display them. |
-| `caseStudyId` | Optional numeric Strapi case-study record ID. Omit when there is no linked study. |
+| `caseStudyId` | Optional Strapi case-study `documentId` string from the migrated CMS. Omit when there is no linked study. |
 
 A complete chart definition:
 

@@ -10,16 +10,15 @@ import { parse } from 'marked';
 // the CMS was unreachable and the loader degraded to null), and the section
 // renders nothing rather than an empty card grid.
 export function toProjectSection(entry) {
-  const attributes = entry?.attributes ?? entry;
-  if (!attributes) return null;
+  if (!entry) return null;
 
-  const intro = toCard(attributes.Intro);
-  const highlights = toCard(attributes.Highlights);
+  const intro = toCard(entry.Intro);
+  const highlights = toCard(entry.Highlights);
   if (!intro && !highlights) return null;
 
   // The heading is a long-text field: its line breaks are the editor's, so the
   // two-line balance survives without a hardcoded <br>.
-  const titleLines = (attributes.Title ?? '')
+  const titleLines = (entry.Title ?? '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);

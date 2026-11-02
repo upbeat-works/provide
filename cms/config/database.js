@@ -13,11 +13,10 @@ module.exports = ({ env }) => {
   };
 
   const connections = {
-    // Shared Postgres: the CMS lives in the `strapi` schema (the API's catalog
-    // tables live in `catalog` on the same database). `schema` becomes the
-    // connection search_path, so Strapi's tables are namespaced away from the API.
-    // Discrete fields — user & password as separate secrets.
+    // The CMS and API share a database but use separate schemas.
     postgres: {
+      // Some Strapi migrations use unqualified table names.
+      searchPath: [val('DATABASE_SCHEMA', 'strapi')],
       connection: {
         host: val('DATABASE_HOST', 'localhost'),
         port: Number(val('DATABASE_PORT', 5432)),
@@ -34,7 +33,7 @@ module.exports = ({ env }) => {
     },
     sqlite: {
       connection: {
-        filename: path.join(__dirname, '..', val('DATABASE_FILENAME', 'database/data.db')),
+        filename: path.resolve(__dirname, '..', val('DATABASE_FILENAME', 'database/data.db')),
       },
       useNullAsDefault: true,
     },

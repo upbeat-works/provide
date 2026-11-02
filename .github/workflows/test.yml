@@ -1,0 +1,52 @@
+name: test
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: provide_tests
+          POSTGRES_PASSWORD: test-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_HOST: localhost
+      DATABASE_NAME: provide_tests
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: test-only
+      VITE_API_URL: /api
+      VITE_CMS_URL: http://cms.example.test
+      VITE_STRAPI_LOCALE: en-EU
+      VITE_SCREENSHOT_URL: http://screenshots.example.test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:web
+      - run: npm run test:content
+      - run: npm run build
+      - run: npm install --global yarn@1.22.22
+      - run: yarn --cwd cms install --frozen-lockfile
+      - run: npm run test:cms
+      - run: yarn --cwd cms build
+  cms-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm run test:cms:migration

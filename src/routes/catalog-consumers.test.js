@@ -104,7 +104,7 @@ function createLoaderFetch({
     }
     if (url.origin === CMS_ORIGIN && path === '/api/scenarios') {
       if (scenarioContent === 'failure') throw new TypeError('private CMS failure');
-      const data = scenarioContent === 'missing' ? [] : [{ id: 8, attributes: { UID: scenarioContentUid, Description: 'Scenario editorial text.' } }];
+      const data = scenarioContent === 'missing' ? [] : [{ id: 8, UID: scenarioContentUid, Description: 'Scenario editorial text.' }];
       return Response.json({ data });
     }
     if (url.origin === CMS_ORIGIN && path === '/api/indicators') {
@@ -116,18 +116,16 @@ function createLoaderFetch({
         data: [
           {
             id: 1,
-            attributes: {
-              Slug: 'PT001',
+            Slug: 'PT001',
               Title: 'Lisbon study',
               Abstract: 'A case study.',
               Authors: 'Research team',
-              CoverImage: { data: null },
-              Topics: { data: [] },
-              Project: { data: null },
-              Geography: { data: null },
-              Scenarios: { data: [] },
+              CoverImage: null,
+              Topics: [],
+              Project: null,
+              Geography: null,
+              Scenarios: [],
               MainContent: mainContent,
-            },
           },
         ],
       });
@@ -282,14 +280,30 @@ describe('focused catalog consumers', () => {
     expect(detail.caseStudy.city.label).toBe('Lisbon');
   });
 
+  test('loads both images in a case-study comparison', async () => {
+    const image1 = { url: 'https://media.example/first.png', alternativeText: 'First' };
+    const image2 = { url: 'https://media.example/second.png', alternativeText: 'Second' };
+    const { loaderFetch, requests } = createLoaderFetch({ mainContent: [{
+      __component: 'image-slider.image-slider',
+      ImageSliderPair: [{ Image1: image1, Image2: image2 }],
+    }] });
+    const { load } = await import('./(default)/case-studies/[slug]/+page.server.js');
+    const detail = await load({ fetch: loaderFetch, params: { slug: 'PT001' } });
+    expect(detail.caseStudy.mainContent[0].imagePairs[0]).toMatchObject({ image1, image2 });
+    const request = requests.find((url) => url.pathname === '/api/case-study-dynamics');
+    for (const field of ['Image1', 'Image2']) {
+      expect(request.searchParams.get(`populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate][${field}]`)).toBe('true');
+    }
+  });
+
   test('case-study snapshots require an instance when an indicator ID exists in several sources', async () => {
     const futureImpacts = {
       __component: 'future-impacts.future-impacts',
       ExplorerUrl: '/impacts/explore',
       ImpactGeoDescription: 'Map text',
       ImpactTimeDescription: 'Chart text',
-      ImpactGeoSnapshot: [{ Indicator: 'Heat', Year: '2050', Image: { data: null } }],
-      ImpactTimeSnapshot: [{ Indicator: 'Heat', Image: { data: null } }],
+      ImpactGeoSnapshot: [{ Indicator: 'Heat', Year: '2050', Image: null }],
+      ImpactTimeSnapshot: [{ Indicator: 'Heat', Image: null }],
     };
     const { loaderFetch } = createLoaderFetch({
       indicators: [
@@ -311,8 +325,8 @@ describe('focused catalog consumers', () => {
       ExplorerUrl: '/impacts/explore?indicator=Heat&instance=second-source',
       ImpactGeoDescription: 'Map text',
       ImpactTimeDescription: 'Chart text',
-      ImpactGeoSnapshot: [{ Indicator: 'Heat', Instance: 'second-source', Year: '2050', Image: { data: null } }],
-      ImpactTimeSnapshot: [{ Indicator: 'Heat', Instance: 'second-source', Image: { data: null } }],
+      ImpactGeoSnapshot: [{ Indicator: 'Heat', Instance: 'second-source', Year: '2050', Image: null }],
+      ImpactTimeSnapshot: [{ Indicator: 'Heat', Instance: 'second-source', Image: null }],
     };
     const { loaderFetch } = createLoaderFetch({
       indicators: [
@@ -426,8 +440,8 @@ describe('focused catalog consumers', () => {
       ExplorerUrl: '/impacts/explore',
       ImpactGeoDescription: 'Map text',
       ImpactTimeDescription: 'Chart text',
-      ImpactGeoSnapshot: [{ Indicator: 'Heat', Year: '2050', Image: { data: null } }],
-      ImpactTimeSnapshot: [{ Indicator: 'Heat', Image: { data: null } }],
+      ImpactGeoSnapshot: [{ Indicator: 'Heat', Year: '2050', Image: null }],
+      ImpactTimeSnapshot: [{ Indicator: 'Heat', Image: null }],
     };
     const { loaderFetch } = createLoaderFetch({ indicators, indicatorFailures, mainContent: [futureImpacts] });
     const { load: loadDetail } = await import('./(default)/case-studies/[slug]/+page.server.js');

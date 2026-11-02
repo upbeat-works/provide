@@ -68,11 +68,9 @@ describe('GET /app/scenario-details/:id', () => {
           data: [
             {
               id: 9,
-              attributes: {
-                UID: 'SSP / 2?',
+              UID: 'SSP / 2?',
                 Description: 'Editorial scenario text.',
                 ScenarioCharacteristics: [{ Year: 2050, Description: 'private timeline text' }],
-              },
             },
           ],
           meta: { pagination: { page: 1, pageSize: 1, pageCount: 1, total: 1 } },

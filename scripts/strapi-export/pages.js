@@ -1,12 +1,5 @@
 #!/usr/bin/env node
-// Dev tool: organize Strapi content into the NEW page/tab/section layout
-// ($Page/$Tab/$Section.md) for the `about` and `methodology` pages.
-//
-// The tab/section structure is the TARGET design (from the mockups), not
-// something stored in Strapi — this script maps existing Strapi content into
-// it. Content that doesn't belong to these two pages is left out. Where a
-// section is expected but Strapi has no text, an empty placeholder .md is
-// written.
+// Export About and methodology content as Markdown files grouped by page.
 //
 //   node scripts/strapi-export/pages.js
 //   BASE=… LOCALE=… OUT=export node scripts/strapi-export/pages.js
@@ -52,7 +45,7 @@ function serialize(frontmatter, body) {
 // --- pure mapping: raw payloads -> [{ path, frontmatter, body }] ------------
 
 function aboutFiles(aboutJson, locale) {
-  const sections = aboutJson?.data?.attributes?.Section ?? [];
+  const sections = aboutJson?.data?.Section ?? [];
   return sections
     .filter((s) => (s.Title ?? '').trim())
     .map((s) => {
@@ -66,7 +59,7 @@ function aboutFiles(aboutJson, locale) {
 }
 
 function methodologyFiles(methJson, glossJson, locale) {
-  const dataTypes = methJson?.data?.attributes?.DataType ?? [];
+  const dataTypes = methJson?.data?.DataType ?? [];
   const files = [];
 
   const named = (arr) => (arr ?? []).filter((it) => (it?.Label ?? '').trim());
@@ -129,7 +122,7 @@ function methodologyFiles(methJson, glossJson, locale) {
 
   // Key terms tab: from glossaries.
   for (const g of glossJson?.data ?? []) {
-    const a = g.attributes ?? {};
+    const a = g;
     const title = (a.Title ?? '').trim();
     if (!title) continue;
     files.push({

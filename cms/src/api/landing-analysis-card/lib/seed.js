@@ -54,31 +54,21 @@ async function seedLandingAnalysisCards(strapi, locales = ['en', 'en-EU'], log =
 
   await grantPublicRead(strapi, log);
   for (const card of LANDING_ANALYSIS_CARDS) {
-    const translations = [];
-    for (const locale of locales) {
-      const existing = await strapi.entityService.findMany(UID, {
-        locale,
-        publicationState: 'preview',
-        filters: { Key: card.Key },
-        limit: 1,
-      });
-      let entry = existing[0];
-      if (!entry) {
-        entry = await strapi.entityService.create(UID, {
-          data: { ...card, locale, publishedAt: new Date() },
-        });
-        log(`${locale}: seeded ${card.Key}`);
-      }
-      translations.push(entry);
-    }
-    for (const entry of translations) {
-      // Strapi's entity service strips localization links on update.
-      await strapi.db.query(UID).update({
-        where: { id: entry.id },
-        data: { localizations: translations.filter((other) => other.id !== entry.id).map((other) => other.id) },
-      });
+    const entries = await Promise.all(locales.map((locale) => strapi.documents(UID).findFirst({
+      locale, status: 'draft', filters: { Key: card.Key },
+    })));
+    let documentId = entries.find(Boolean)?.documentId;
+    for (const [index, locale] of locales.entries()) {
+      if (entries[index]) continue;
+      const options = { locale, status: 'published', data: { ...card } };
+      let entry;
+      if (documentId) entry = await strapi.documents(UID).update({ documentId, ...options });
+      else entry = await strapi.documents(UID).create(options);
+      documentId = entry.documentId;
+      log(`${locale}: seeded ${card.Key}`);
     }
   }
+
   await store.set({ value: true });
 }
 

@@ -42,7 +42,7 @@ test('does not load an unknown chart', async () => {
 });
 
 test('requests only the linked case study and keeps the chart if the CMS fails', async () => {
-  const definition = { ...scoreboard.charts[0], caseStudyId: '23' };
+  const definition = { ...scoreboard.charts[0], caseStudyId: 'lisbon-document' };
   const chart = { definition, status: 'ready', data: [] };
   loadScoreboardChart.mockResolvedValue(chart);
   loadFromStrapi.mockRejectedValue(new Error('CMS unavailable'));
@@ -50,7 +50,15 @@ test('requests only the linked case study and keeps the chart if the CMS fails',
   const result = await loadChart({ scoreboard: { ...scoreboard, charts: [definition] }, chartId: definition.chartId, selections, fetch: vi.fn() });
 
   expect(result).toEqual(chart);
-  expect(loadFromStrapi).toHaveBeenCalledWith('case-study-dynamics', expect.any(Function), expect.any(String), 'filters[id][$eq]=23');
+  expect(loadFromStrapi).toHaveBeenCalledWith('case-study-dynamics', expect.any(Function), expect.any(String), 'filters[documentId][$eq]=lisbon-document');
+});
+
+test('attaches the linked case study by its document identity', async () => {
+  const definition = { ...scoreboard.charts[0], caseStudyId: 'lisbon-document' };
+  loadScoreboardChart.mockResolvedValue({ definition, status: 'ready', data: [] });
+  loadFromStrapi.mockResolvedValue([{ id: 91, documentId: 'lisbon-document', Slug: 'lisbon', Title: 'Lisbon', CoverImage: { url: '/uploads/lisbon.png' } }]);
+  const result = await loadChart({ scoreboard: { ...scoreboard, charts: [definition] }, chartId: definition.chartId, selections, fetch: vi.fn() });
+  expect(result.caseStudy).toMatchObject({ slug: 'lisbon', title: 'Lisbon', image: { url: '/uploads/lisbon.png' } });
 });
 
 test('reads the map indicator with the shared chart choices', () => {

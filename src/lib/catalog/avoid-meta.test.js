@@ -19,7 +19,7 @@ const META = {
   scenarios: [{ uid: 'sdp', label: 'SDP' }],
 };
 const DESCRIPTIONS = {
-  indicators: [{ attributes: { UID: 'urbclim-T2M-mean', Description: 'desc' } }],
+  indicators: [{ UID: 'urbclim-T2M-mean', Description: 'desc' }],
   scenarios: [],
 };
 

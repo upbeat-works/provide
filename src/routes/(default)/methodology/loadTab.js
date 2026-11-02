@@ -8,7 +8,7 @@ import { LABEL_DOCUMENTATION } from '$config';
 // single type whose `Sections` is a list of {Title, Text} and shape it for render.
 export async function loadSectionsTab(fetch, endpoint) {
   const entry = await loadFromStrapi(endpoint, fetch);
-  const sections = (entry?.attributes?.Sections ?? [])
+  const sections = (entry?.Sections ?? [])
     .map(({ Title, Text }) => ({
       slug: kebabCase(Title),
       title: (Title ?? '').trim(),
