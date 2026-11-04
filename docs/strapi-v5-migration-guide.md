@@ -1,16 +1,25 @@
 # Strapi v5 migration guide
 
-The website uses Node 26.13.0; the API uses Bun 1.4.4. Both install from the root npm lockfile. The CMS uses Strapi 5.60.0, Node 26.13.0, and Yarn 1.22.22. SQLite remains available for tests and exports; production uses PostgreSQL.
+Local development and CI use Node 26.13.0 for the website and CMS, and Bun 1.4.4 for the API. The website and API install from the root npm lockfile. The CMS uses Strapi 5.60.0 and Yarn 1.22.22. SQLite remains available for tests and exports; production uses PostgreSQL.
+
+The production Dockerfiles use IIASA's `latest` base-image tags. IIASA manages the exact mirrored versions. Patch and minor updates are accepted within these ranges; major updates need a separate check.
+
+| Base image | Accepted runtime range |
+| --- | --- |
+| `registry.iiasa.ac.at/scse-library/climate-risk-dashboard-node:latest` | Node `>=26.13.0 <27` |
+| `registry.iiasa.ac.at/scse-library/bun:latest` | Bun `>=1.4.4 <2` |
+
+The public Dockerfiles and version files keep the tested versions above.
 
 ## Live migration steps
 
 
-1. Verify IIASA's base images before choosing production tags. Check their Node/Bun versions and any required certificates or settings. Use the tested official images (`node:26.13.0-bookworm-slim` and `oven/bun:1.4.4`) if IIASA permits, or verified private equivalents. The private tags currently named in `docker/prod/` have not been checked. Publish new private bases only if needed.
-2. Record the live app image digests, Node/Bun versions, PostgreSQL version, and CMS version for rollback. Update the production Dockerfiles to the bases chosen in step 1, then build and test those app images. Node 26 needs `libatomic1`; the official Bookworm image includes it. The CMS build installs native compilation tools and Yarn explicitly.
+1. Have IIASA mirror runtimes within the ranges above to its existing `latest` tags. Check the runtime versions and required certificates or settings. The Node base must support `apt-get`, as the CMS build uses Debian packages. The tested public bases are `node:26.13.0-bookworm-slim` and `oven/bun:1.4.4`.
+2. Record the base and app image digests, Node/Bun versions, PostgreSQL version, and CMS version for rollback. Build and test the production app images using IIASA's mirrored bases. Node 26 needs `libatomic1`; the official Bookworm image includes it. The CMS build installs native compilation tools and Yarn explicitly.
 3. Set a persistent `ADMIN_ENCRYPTION_KEY` for the CMS. Generate it with `openssl rand -base64 32`; store it alongside the other CMS secrets. Retain existing application keys, token salts, JWT secrets, database configuration, and S3 settings.
 4. Restore a production PostgreSQL backup into a separate database. First boot it with Strapi 4.26.2 if production is older, using Node 20.20.2 or a supported Node 22 release. Stop that instance before starting Strapi 5. Rehearse with the final IIASA app images on the production architecture. Check admin login, editing, publishing, uploads, language versions, case studies, methodology, and API charts.
 5. For the agreed maintenance window, stop CMS edits and all old CMS instances. Back up the database and media. Repeat the tested upgrade sequence, including the Strapi 4.26.2 step if needed. Run exactly one Strapi 5 CMS instance through its startup migrations.
-6. Release the matching website and CMS together: the website reads the Strapi 5 response shape. Deploy the pinned Bun API image. Check the public pages, API, admin actions, and logs before reopening.
+6. Release the matching website and CMS together: the website reads the Strapi 5 response shape. Deploy the matching API image. Check the public pages, API, admin actions, and logs before reopening.
 7. If checks fail, stop the new CMS and restore the database backup plus the previous app images. An image-only rollback cannot undo the Strapi database migration. Restore media too if the release changed it.
 
 Publishing base images, changing Jenkins, and deploying production require IIASA access and are not performed by the local scripts. The live-data rehearsal is required even when the generated-data migration test passes.

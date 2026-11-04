@@ -3,7 +3,7 @@
 # VITE_* values are baked into the client bundle at build time.
 
 # ---- build ----
-FROM registry.iiasa.ac.at/scse-library/climate-risk-dashboard-node:26.13.0-bookworm-slim AS build
+FROM registry.iiasa.ac.at/scse-library/climate-risk-dashboard-node:latest AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -46,7 +46,7 @@ ENV VITE_API_URL=$VITE_API_URL \
 RUN npm run build
 
 # ---- runtime ----
-FROM registry.iiasa.ac.at/scse-library/climate-risk-dashboard-node:26.13.0-bookworm-slim AS runtime
+FROM registry.iiasa.ac.at/scse-library/climate-risk-dashboard-node:latest AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000

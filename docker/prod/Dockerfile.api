@@ -1,10 +1,10 @@
 # Production image for the Hono/Bun API (server.ts).
 # Build context: repository root.
 
-FROM registry.iiasa.ac.at/scse-library/bun:1.4.4 AS base
+FROM registry.iiasa.ac.at/scse-library/bun:latest AS base
 WORKDIR /app
 
-FROM registry.iiasa.ac.at/scse-library/climate-risk-dashboard-node:26.13.0-bookworm-slim AS deps
+FROM registry.iiasa.ac.at/scse-library/climate-risk-dashboard-node:latest AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
