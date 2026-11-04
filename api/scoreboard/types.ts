@@ -16,12 +16,13 @@ export type RasterMapIndicator = {
   colorRamp?: ColorRamp;
 };
 export type MapIndicator =
-  | { name: string; variable: string; type: 'choropleth'; level: 'NUTS1' | 'NUTS2'; colorRamp?: ColorRamp; aggregate?: 'sum' }
+  | { name: string; variable: string; unit?: string; type: 'choropleth'; level: 'NUTS1' | 'NUTS2' | 'NUTS3'; europeLevel: 'NUTS0' | 'NUTS2' | 'NUTS3'; colorRamp?: ColorRamp; aggregate?: 'sum' }
   | RasterMapIndicator;
 export type ChartSeries = Array<Record<string, ScoreboardVariableReference>>;
 export type ChartData = {
   variables: string[];
   model?: string;
+  unit?: string | Record<string, string>;
   unitFallback?: string;
   // Names the role used for percentile bands across the visible points.
   riskFrom?: 'x' | 'y' | 'size';
@@ -54,6 +55,7 @@ export type BarVariables = ChartData & { bars: string[]; stacks: string[] };
 export type Definition = {
   chartId: string;
   chartType: string;
+  hideInEuropeView?: boolean;
   data: ChartData;
   [key: string]: unknown;
 };

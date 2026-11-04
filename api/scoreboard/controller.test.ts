@@ -24,6 +24,7 @@ describe('scoreboard config', () => {
       name: 'Mean Air Temperature',
       variable: 'Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile',
       type: 'choropleth',
+      europeLevel: 'NUTS2',
       level: 'NUTS2',
     });
     expect(scoreboard.charts.map(({ chartId }) => chartId)).toContain('maximum-air-temperature-range');
@@ -43,7 +44,7 @@ describe('scoreboard config', () => {
     expect(resolveScoreboardChoices(scoreboard, { indicator: 'Missing', scenario: 'Missing', region: 'Missing', year: '2041' })).toEqual({
       indicator: 'Maximum Air Temperature',
       scenario: 'CurrentPolicies',
-      region: 'Austria',
+      region: 'all',
       year: 2050,
     });
     expect(resolveScoreboardChoices({ ...scoreboard, map: { ...scoreboard.map, years: [2030, 2100] } }, {})).toMatchObject({ year: 2030 });

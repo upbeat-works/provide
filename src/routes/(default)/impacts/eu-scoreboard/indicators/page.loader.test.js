@@ -52,3 +52,12 @@ test('loads charts without requesting a map for a charts-only sector', async () 
   expect(fetch).toHaveBeenCalledTimes(chartsOnly.charts.length);
   expect(fetch.mock.calls.every(([path]) => path.includes('/charts/'))).toBe(true);
 });
+
+test.each(['all', 'Austria'])('loads charts allowed in the %s view', async (region) => {
+  const charts = scoreboard.charts.slice(0, 3).map((chart, i) => ({ ...chart, hideInEuropeView: i === 0 }));
+  const fetch = vi.fn(async () => Response.json({ status: 'empty', data: [] }));
+  const result = await load({ fetch, parent: async () => ({ scoreboard: { ...scoreboard, charts }, selection: { ...selection, region: option(region) } }) });
+  const expected = region === 'all' ? charts.slice(1) : charts;
+  expect(result.charts.map(({ definition }) => definition.chartId)).toEqual(expected.map(({ chartId }) => chartId));
+  expect(fetch.mock.calls.filter(([path]) => path.includes('/charts/'))).toHaveLength(expected.length);
+});

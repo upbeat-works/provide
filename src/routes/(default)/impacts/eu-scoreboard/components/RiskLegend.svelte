@@ -11,24 +11,26 @@
   export let ticks = [];
 </script>
 
-<div class="flex flex-col gap-2">
-  <!-- Butted together, not spaced: the classes partition one range, and a gap
-       between them reads as a gap in the data. Square ends, no rounding — the
-       ramp is a measured axis, not a pill. -->
-  <div class="flex h-3.5 w-full">
-    {#each scale as color}
-      <div class="h-full flex-1" style="background-color: {color}" />
-    {/each}
-  </div>
-  {#if ticks.length}
-    <div class="flex justify-between text-xs tabular-nums text-theme-stronger" class:justify-center={ticks.length === 1}>
-      {#each ticks as tick}<span>{tick}</span>{/each}
-    </div>
-  {:else}
-    <div class="flex gap-x-2 text-xs tabular-nums text-theme-stronger">
-      {#each labels as label}
-        <span class="flex-1 text-center">{label}</span>
+<div class="overflow-x-auto">
+  <div class="flex min-w-max flex-col gap-2">
+    <!-- Butted together, not spaced: the classes partition one range, and a gap
+         between them reads as a gap in the data. Square ends, no rounding — the
+         ramp is a measured axis, not a pill. -->
+    <div class="flex h-3.5 w-full">
+      {#each scale as color}
+        <div class="h-full flex-1" style="background-color: {color}" />
       {/each}
     </div>
-  {/if}
+    {#if ticks.length}
+      <div class="flex justify-between gap-x-[3px] text-xs tabular-nums text-theme-stronger" class:justify-center={ticks.length === 1}>
+        {#each ticks as tick}<span>{tick}</span>{/each}
+      </div>
+    {:else}
+      <div class="flex gap-x-2 text-xs tabular-nums text-theme-stronger">
+        {#each labels as label}
+          <span class="flex-1 text-center">{label}</span>
+        {/each}
+      </div>
+    {/if}
+  </div>
 </div>

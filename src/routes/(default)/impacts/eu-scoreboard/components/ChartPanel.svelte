@@ -1,5 +1,6 @@
 <script>
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
+  import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import ChartRenderer from './charts/ChartRenderer.svelte';
   import SeriesPicker from './SeriesPicker.svelte';
   import { isChartVisible } from './charts/adapter.js';
@@ -11,6 +12,7 @@
   export let result;
   export let selection;
   export let sector;
+  export let preview = undefined;
 
   // The result is resolved into a variable rather than awaited in the markup:
   // the picker's state is derived from the groups it carries, and an `{#await}`
@@ -68,12 +70,20 @@
   }
 
   function retry() {
-    sync(loadResource(`charts/${encodeURIComponent(definition.chartId)}`, sector, selection).catch(failed));
+    sync(loadResource(`charts/${encodeURIComponent(definition.chartId)}`, sector, selection, fetch, { preview }).catch(failed));
   }
 </script>
 
 {#if !chart || chart.status === 'loading'}
-  <p class="py-8" role="status">Loading {definition.title}…</p>
+  <ScoreboardSection eyebrow={selection.region?.label ?? 'No region'} slug={definition.chartId} title={definition.title} description={definition.description}>
+    <div class="flex min-h-[360px] items-center justify-center" aria-busy="true">
+      <LoadingPlaceholder />
+    </div>
+  </ScoreboardSection>
+{:else if preview && !isChartVisible(chart, selection)}
+  <ScoreboardSection slug={definition.chartId} title={definition.title} description={definition.description}>
+    <p role="status">No chart data for this selection.</p>
+  </ScoreboardSection>
 {:else if isChartVisible(chart, selection)}
   <ScoreboardSection eyebrow={selection.region?.label ?? 'No region'} slug={definition.chartId} title={definition.title} description={definition.description}>
     {#if chart.caseStudy?.slug}
@@ -89,7 +99,7 @@
            screen or there is no way to choose again. -->
       <p class="py-8 text-sm text-text-weaker" role="status">No {pickerLabel.toLowerCase()} selected.</p>
     {:else}
-      <ChartRenderer result={shown} {selection} {sector} {retry} {colorFor} hideLegend={pickable} />
+      <ChartRenderer result={shown} {selection} {sector} {retry} {colorFor} hideLegend={pickable} staticMode={Boolean(preview)} />
     {/if}
   </ScoreboardSection>
 {/if}

@@ -5,7 +5,7 @@ For the file location, topic and map settings, preview checks and release steps,
 start with [Add and update EU scoreboard topics](eu-scoreboard-topics.md).
 
 [Chart fields](#chart-fields) · [Chart types](#choose-a-chart-type) ·
-[Variables and units](#variables-models-and-units) · [Grouping](#grouping) ·
+[Variables and units](#variables-models-and-units) · [Source units](#select-source-units) · [Grouping](#grouping) ·
 [Country totals](#country-totals) · [Examples](#examples) · [Risk colours](#risk-colours)
 
 ## Chart fields
@@ -20,6 +20,7 @@ topic ID or a rendering component name.
 | `title` | Chart heading. |
 | `description` | Text explaining what the reader sees. |
 | `chartType` | One of the types below. |
+| `hideInEuropeView` | Optional boolean. Set to `true` to hide the chart and its menu link when Geography is Europe (`region=all`). Its data is not requested in that view. Omitted or `false` keeps it visible. Applies to saved topics and JSON previews. |
 | `data` | Source variables and the settings that assign, group and display them. |
 | `caseStudyId` | Optional Strapi case-study `documentId` string from the migrated CMS. Omit when there is no linked study. |
 
@@ -32,6 +33,7 @@ A complete chart definition:
   "description": "Annual mean air temperature for the selected country and scenario.",
   "chartType": "line",
   "data": {
+    "unit": "°C",
     "variables": [
       "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile"
     ]
@@ -58,7 +60,7 @@ Changing the map indicator does not change the charts. Charts read default runs 
 Every `data.variables` entry is a full ixmp4 variable name, queried unchanged.
 Role fields such as `x` or `rangeLow` match one whole part between `|` separators,
 at any position. For example, `"line": "50th Percentile"` matches the final
-part of the variable above.
+part of `High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile`.
 
 Each role must match exactly one variable, and every listed variable must be
 used. Missing or unclear matches are errors. Role names also label axes and
@@ -67,12 +69,55 @@ stacks; plain lines and unnamed stacks derive labels from variable names.
 | Field in `data` | Effect |
 | --- | --- |
 | `model` | Limits all chart variables to one exact ixmp4 model name. Without it, no model filter is sent; overlapping rows for a scenario and region can cause an error. |
+| `unit` | Selects an exact source unit for all variables, such as `"days/yr"`, or a unit for each role, such as `{ "x": "°C", "y": "°C", "size": "days/yr" }`. It does not convert values. |
 | `unitFallback` | Supplies a display unit only when the source has none. It does not convert or filter values. |
 
 Models and units shown in the chart come from the returned data. A variable
-with multiple source units is rejected. A fallback label cannot resolve that
-conflict. Stacked segments must have matching units and represent separate
-parts of a total.
+with multiple source units is rejected unless `unit` selects one. A fallback
+label cannot resolve that conflict. Use a role-to-unit object for charts that
+combine measurements, such as temperature axes with heat-risk days as bubble
+size. Omitted roles use the source unit without filtering. Stacked segments
+must have matching units and represent separate parts of a total.
+
+### Select source units
+
+Set `data.unit` to a string when every variable uses the same unit:
+
+```json
+{
+  "variables": [
+    "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+    "High Heat Risk|Absolute Values (No Change)|Annual|Area|5th Percentile",
+    "High Heat Risk|Absolute Values (No Change)|Annual|Area|95th Percentile"
+  ],
+  "unit": "days/yr",
+  "line": "50th Percentile",
+  "rangeLow": "5th Percentile",
+  "rangeHigh": "95th Percentile"
+}
+```
+
+This is a `line_with_range` chart's `data` object. Each query selects rows whose
+source unit is exactly `days/yr`. Rows in `°C` are excluded. A unit that has no
+matching rows gives an empty result; there is no fallback to another unit.
+
+When roles use different units, set `data.unit` to an object keyed by role.
+The [bubble example](#bubble) uses `°C` for `x` and `y`, and `days/yr` for `size`.
+These keys are chart roles, not variable names or axis labels:
+
+| Chart type | Keys in a `unit` object |
+| --- | --- |
+| `line` | `line` (applies to every line). |
+| `line_with_range` | `line`, `rangeLow`, `rangeHigh`. |
+| `stacked_bar` | `segment` (applies to every segment). |
+| `scatter` | `x`, `y`. |
+| `bubble` | `x`, `y`, `size`. |
+| `box_plot` | `median`, `boxLow`, `boxHigh`, and `whiskerLow`, `whiskerHigh` when used. |
+
+Use matching units for a line and its bounds, or a box and its whiskers.
+`unitFallback` only labels values when the source unit is missing; it cannot
+resolve duplicate rows or convert values. Set map units separately on each
+[regional-map indicator](eu-scoreboard-topics.md#maps).
 
 ## Grouping
 
@@ -198,16 +243,22 @@ region in the selected country:
 ### Bubble
 
 Set `chartType: "bubble"`. This fixed country list ignores the country filter;
-the scenario and year still apply:
+the scenario and year still apply. The axes show temperature, and bubble size
+shows heat-risk days:
 
 ```json
 {
-  "variables": ["Temperature|Mean", "Temperature|Maximum", "Population|Exposed"],
+  "variables": [
+    "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+    "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
+    "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile"
+  ],
+  "unit": { "x": "°C", "y": "°C", "size": "days/yr" },
   "groupBy": "region",
   "regions": ["Austria", "Germany", "France"],
-  "x": "Mean",
-  "y": "Maximum",
-  "size": "Exposed",
+  "x": "Mean Air Temperature",
+  "y": "Maximum Air Temperature",
+  "size": "High Heat Risk",
   "riskFrom": "size"
 }
 ```
@@ -267,7 +318,8 @@ Scatter points need both coordinates. Bubbles also need a positive size.
 Box-plot rows need every role they draw. Incomplete points or rows are omitted
 before display; risk bands use the remaining points.
 
-A chart with no visible values is hidden, including its title and description.
+On the published page, a chart with no visible values is hidden, including its
+title and description. Preview keeps the title and shows a no-data message.
 An error is shown as an error state. Use the
 [topic guide's troubleshooting table](eu-scoreboard-topics.md#troubleshooting)
 to trace missing data or a failed request.

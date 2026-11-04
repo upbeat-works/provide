@@ -4,16 +4,21 @@ export function chartSeries(data: Definition['data'], chartType: string): ChartS
   if (!Array.isArray(data.variables) || !data.variables.length) {
     throw new Error('Chart variables are required.');
   }
-  const reference = (variable: string, label?: string) => ({
+  function unitFor(role?: string) {
+    if (typeof data.unit === 'string') return data.unit;
+    if (role) return data.unit?.[role];
+  }
+  const reference = (variable: string, label?: string, role?: string) => ({
     variable,
+    ...(unitFor(role) ? { unit: unitFor(role) } : {}),
     ...(data.model ? { model: data.model } : {}),
     ...(data.unitFallback ? { unitFallback: data.unitFallback } : {}),
     ...(label ? { label } : {}),
   });
-  const select = (name: string | undefined) => {
+  const select = (name: string | undefined, role?: string) => {
     const matches = data.variables.filter((variable) => variable.split('|').includes(name ?? ''));
     if (!name || matches.length !== 1) throw new Error(`Role "${name ?? ''}" must match exactly one variable as a whole subsegment.`);
-    return reference(matches[0], name);
+    return reference(matches[0], name, role);
   };
   if (data.bars) {
     if (chartType !== 'stacked_bar' || (data.groupBy !== undefined && data.groupBy !== 'region') || !data.stacks) {
@@ -21,16 +26,16 @@ export function chartSeries(data: Definition['data'], chartType: string): ChartS
     }
     barSeriesIndices(data as BarVariables);
   }
-  if (chartType === 'line') return data.variables.map((variable) => ({ line: reference(variable) }));
+  if (chartType === 'line') return data.variables.map((variable) => ({ line: reference(variable, undefined, 'line') }));
   if (chartType === 'stacked_bar') {
     if (data.stacks && !data.bars) {
-      const segments = data.stacks.map(select);
+      const segments = data.stacks.map((name) => select(name, 'segment'));
       if (segments.length !== data.variables.length || new Set(segments.map(({ variable }) => variable)).size !== data.variables.length) {
         throw new Error('Each variable must match one stack.');
       }
       return segments.map((segment) => ({ segment }));
     }
-    return data.variables.map((variable) => ({ segment: reference(variable) }));
+    return data.variables.map((variable) => ({ segment: reference(variable, undefined, 'segment') }));
   }
   let roles: Array<'line' | 'rangeLow' | 'rangeHigh' | 'x' | 'y' | 'size' | 'median' | 'boxLow' | 'boxHigh' | 'whiskerLow' | 'whiskerHigh'>;
   if (chartType === 'line_with_range') roles = ['line', 'rangeLow', 'rangeHigh'];
@@ -43,7 +48,7 @@ export function chartSeries(data: Definition['data'], chartType: string): ChartS
   else if (chartType === 'scatter') roles = ['x', 'y'];
   else if (chartType === 'bubble') roles = ['x', 'y', 'size'];
   else throw new Error(`Unsupported chart type: ${chartType}`);
-  const series = Object.fromEntries(roles.map((role) => [role, select(data[role])]));
+  const series = Object.fromEntries(roles.map((role) => [role, select(data[role], role)]));
   const used = new Set(Object.values(series).map(({ variable }) => variable));
   if (data.variables.some((variable) => !used.has(variable))) throw new Error('Each variable needs a chart role.');
   return [series];

@@ -43,7 +43,7 @@
 <HtmlHead />
 
 <ThemeProvider theme="light">
-  <div class="grid grid-rows-[auto_1fr_auto] h-screen flex-col">
+  <div class="grid grid-rows-[auto_1fr_auto] h-screen flex-col" style:padding-top="var(--scoreboard-preview-height, 0px)">
     <Header />
     <div bind:this={scrollEl} class="relative overflow-y-auto scroll-smooth motion-reduce:scroll-auto">
       <main>

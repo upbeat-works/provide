@@ -2,13 +2,14 @@ import { browser } from '$app/environment';
 import { generatePageTitle } from '$utils/meta.js';
 import { LABEL_EU_SCOREBOARD } from '$config';
 import { loadResource } from '../components/resource.js';
+import { chartsForRegion } from '../../../../../../api/scoreboard/choices.js';
 
 export const load = async ({ fetch, parent }) => {
   const { scoreboard, selection } = await parent();
   const title = generatePageTitle(`Explore indicators – ${LABEL_EU_SCOREBOARD}`);
   let map;
   if (scoreboard.indicator) map = { definition: scoreboard.indicator, status: 'loading' };
-  const charts = scoreboard.charts.map((definition) => ({ definition, result: { definition, status: 'loading' } }));
+  const charts = chartsForRegion(scoreboard.charts, selection.region?.uid).map((definition) => ({ definition, result: { definition, status: 'loading' } }));
   if (browser) {
     if (scoreboard.indicator) {
       map = loadResource('map', scoreboard.sector.uid, selection, fetch).catch(() => ({ definition: scoreboard.indicator, status: 'error', values: [], error: 'Map data could not be loaded.' }));

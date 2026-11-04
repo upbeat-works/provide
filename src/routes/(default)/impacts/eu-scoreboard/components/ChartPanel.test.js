@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, expect, test } from 'vitest';
 import ChartPanel from './ChartPanel.svelte';
 import { filterGroups } from './series-filter.js';
@@ -35,6 +35,19 @@ const props = {
   selection: { region: option('all'), scenario: option('CurrentPolicies'), year: option(2040) },
   sector: 'testing',
 };
+
+test('announces loading until the requested chart is ready', async () => {
+  let resolve;
+  const result = new Promise((done) => { resolve = done; });
+  render(ChartPanel, { ...props, result });
+  expect(screen.getByRole('status')).toBeTruthy();
+  expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
+  expect(screen.getByText(definition.description)).toBeTruthy();
+  resolve(grouped);
+  await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+  expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
+  expect(screen.getByText(definition.description)).toBeTruthy();
+});
 
 test('renders the chart alongside the picker for a grouped result', () => {
   render(ChartPanel, props);

@@ -31,13 +31,13 @@ describe('scoreboard choices', () => {
     expect(options.years).toEqual(['2020', '2030', '2050', '2100'].map((uid) => ({ uid, label: uid })));
   });
 
-  test('defaults to the first configured indicator and scenario, Austria, and 2050', () => {
+  test('defaults to the first configured indicator and scenario, Europe, and 2050', () => {
     const options = createScoreboardOptions(scoreboard);
 
     expect(resolveSelection(scoreboard, options, {})).toEqual({
       indicator: options.indicators[0],
       scenario: options.scenarios[0],
-      region: { uid: 'Austria', label: 'Austria' },
+      region: { uid: 'all', label: 'Europe' },
       year: { uid: '2050', label: '2050' },
     });
   });
@@ -92,5 +92,5 @@ describe('scoreboard choices', () => {
 test('keeps the Europe-wide selection when loading a shared URL', () => {
   const scoreboard = getScoreboard('testing');
   const options = createScoreboardOptions(scoreboard);
-  expect(resolveSelection(scoreboard, options, { region: 'all' }).region).toEqual({ uid: 'all', label: 'All available countries' });
+  expect(resolveSelection(scoreboard, options, { region: 'all' }).region).toEqual({ uid: 'all', label: 'Europe' });
 });

@@ -256,11 +256,11 @@ describe('custom colour ramps from a sector definition', () => {
 
 describe('map value labels', () => {
   test('preserves small nonzero values in tooltips and legend boundaries', () => {
-    expect(formatValue(0.00326)).toBe('0.00326');
-    expect(formatValue(-0.000071)).toBe('-0.000071');
+    expect(formatValue(0.00326)).toBe('3.26×10⁻³');
+    expect(formatValue(-0.000071)).toBe('-7.1×10⁻⁵');
     expect(formatValue(0)).toBe('0');
     const classes = numericClasses([{ value: 0.003 }, { value: 0.004 }], 'million');
-    expect(legendOf(classes, { labelMode: 'boundaries' }).ticks).toEqual(['0.003', '0.00325', '0.0035', '0.00375', '0.004']);
+    expect(legendOf(classes, { labelMode: 'boundaries' }).ticks).toEqual(['3×10⁻³', '3.25×10⁻³', '3.5×10⁻³', '3.75×10⁻³', '4×10⁻³']);
   });
 });
 

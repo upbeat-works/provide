@@ -15,7 +15,12 @@ export async function loadChart({ scoreboard, fetch, selections, chartId }) {
     reportFailure('load-chart', reason);
     return { definition, status: 'error', data: [], error: 'Chart data could not be loaded.' };
   }
-  if (definition.caseStudyId && result.status === 'ready') {
+  return enrichChart(result, fetch);
+}
+
+export async function enrichChart(result, fetch) {
+  const definition = result.definition;
+  if (definition?.caseStudyId && result.status === 'ready') {
     try {
       const studies = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=true&populate[Covers]=true', `filters[documentId][$eq]=${encodeURIComponent(definition.caseStudyId)}`);
       const study = studies.find(({ documentId }) => documentId === String(definition.caseStudyId));

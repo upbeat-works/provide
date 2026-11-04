@@ -11,7 +11,7 @@ afterEach(() => rmSync(directory, { recursive: true, force: true }));
 function topic(label = 'Flood risk', order = 10) {
   return {
     label, order,
-    map: { defaultIndicator: 'Flood days', indicators: [{ name: 'Flood days', variable: 'Flood|Days', type: 'choropleth', level: 'NUTS2' }], scenarios: [{ id: 'Scenario A' }], years: [2050] },
+    map: { defaultIndicator: 'Flood days', indicators: [{ name: 'Flood days', variable: 'Flood|Days', type: 'choropleth', europeLevel: 'NUTS0', level: 'NUTS2' }], scenarios: [{ id: 'Scenario A' }], years: [2050] },
     charts: [{ chartId: 'flood-days', title: 'Flood days', description: 'Annual flood days.', chartType: 'line', data: { variables: ['Flood|Days'] } }],
   };
 }
@@ -89,4 +89,10 @@ test('reports malformed JSON and an empty topic directory', () => {
   expect(() => load()).toThrow(/No scoreboard topics/);
   writeFileSync(join(directory, 'broken.json'), '{');
   expect(() => load()).toThrow(/broken\.json/);
+});
+
+test.each(['true', 1, null])('rejects hideInEuropeView value %s', (hideInEuropeView) => {
+  const value = topic();
+  save('flood-risk.json', { ...value, charts: value.charts.map((chart) => ({ ...chart, hideInEuropeView })) });
+  expect(() => load()).toThrow('hideInEuropeView must be a boolean');
 });

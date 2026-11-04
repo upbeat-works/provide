@@ -8,7 +8,7 @@
   export let filters = ['region', 'sector', 'indicator', 'scenario', 'year'];
 
   const base = `/${PATH_IMPACT}/${PATH_EU_SCOREBOARD}`;
-  const allCountries = { uid: 'all', label: 'All available countries' };
+  const allCountries = { uid: 'all', label: 'Europe' };
   $: ranking = !$page.url.pathname.replace(/\/$/, '').endsWith('/indicators');
 
   const FIELDS = {

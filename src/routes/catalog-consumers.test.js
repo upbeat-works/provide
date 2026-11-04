@@ -249,7 +249,7 @@ describe('focused catalog consumers', () => {
     const layout = loadClientLayout({ data: serverLayout, url });
     await loadRanking({ fetch: loaderFetch, url, parent: async () => layout });
     expect(apiPaths(requests)).toEqual(['/api/scoreboard/definition']);
-    expect(layout.selection.region.uid).toBe('Austria');
+    expect(layout.selection.region.uid).toBe('all');
     expect(layout.selection.year.uid).toBe('2050');
     const indicators = await loadIndicators({ fetch: loaderFetch, url, parent: async () => layout });
     await Promise.all([indicators.map, ...indicators.charts.map(({ result }) => result)]);

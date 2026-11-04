@@ -16,7 +16,7 @@ function uniqueNames(items, field, name) {
   requireField(names.every(text) && new Set(names).size === names.length, `${name} need unique, nonempty ${field} values`);
 }
 
-function validateTopic(topic) {
+export function validateTopic(topic) {
   requireField(text(topic?.label), 'label is required');
   requireField(topic.order === undefined || Number.isFinite(topic.order), 'order must be a number');
   const map = topic.map;
@@ -29,15 +29,18 @@ function validateTopic(topic) {
   for (const indicator of map.indicators) {
     if (indicator.type === 'choropleth') {
       requireField(text(indicator.variable), `${indicator.name}: variable is required`);
-      requireField(['NUTS1', 'NUTS2'].includes(indicator.level), `${indicator.name}: level must be NUTS1 or NUTS2`);
+      requireField(['NUTS1', 'NUTS2', 'NUTS3'].includes(indicator.level), `${indicator.name}: level must be NUTS1, NUTS2 or NUTS3`);
+      requireField(['NUTS0', 'NUTS2', 'NUTS3'].includes(indicator.europeLevel), `${indicator.name}: europeLevel must be NUTS0, NUTS2 or NUTS3`);
       requireField(indicator.aggregate === undefined || indicator.aggregate === 'sum', `${indicator.name}: aggregate must be sum`);
     } else {
+      requireField(indicator.europeLevel === undefined, `${indicator.name}: europeLevel is only supported for choropleth maps`);
       requireField(indicator.type === 'raster', `${indicator.name}: unsupported map type`);
       requireField(['indicator', 'reference', 'time', 'spatial'].every((key) => text(indicator[key])), `${indicator.name}: raster fields are required`);
     }
   }
   uniqueNames(topic.charts, 'chartId', 'charts');
   for (const chart of topic.charts) {
+    requireField(chart.hideInEuropeView === undefined || typeof chart.hideInEuropeView === 'boolean', `${chart.chartId}: hideInEuropeView must be a boolean`);
     requireField(text(chart.title) && typeof chart.description === 'string', `${chart.chartId}: title and description are required`);
     requireField(Array.isArray(chart.data?.variables) && chart.data.variables.every(text), `${chart.chartId}: variables must be strings`);
     const error = definitionGroupingError(chart);

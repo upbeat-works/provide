@@ -23,7 +23,7 @@
   // Groups (keys, labels, colours) and their discovered values both come from
   // the API — nothing about the vocabulary is known ahead of time here.
   $: selectedOf = (key) => $FACET_FILTERS[key] ?? [];
-  $: groups = $FACET_GROUPS.filter((group) => group.options.length || selectedOf(group.key).length);
+  $: groups = $FACET_GROUPS;
   $: activeGroupCount = activeFacetGroupCount($FACET_FILTERS);
   $: view = advancedFilterControlView({ request: $FILTER_GROUPS_REQUEST, groups });
 

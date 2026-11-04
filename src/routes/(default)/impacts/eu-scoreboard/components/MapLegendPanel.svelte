@@ -19,17 +19,18 @@
   // about the rows behind it.
   export let definition = undefined;
   export let metadata = null;
+  export let level = undefined;
   export let grid = null;
 
   let isOpen = false;
 
-  $: info = layerInfo({ definition, metadata, grid });
+  $: info = layerInfo({ definition, metadata, grid, level });
   // Nothing derived means nothing to open, so the button is not offered rather
   // than opening an empty panel.
   $: hasInfo = info.rows.length > 0;
 </script>
 
-<div class="flex w-[19rem] max-w-full flex-col gap-3 rounded bg-white px-5 py-4 shadow-lg">
+<div class="flex w-[23rem] max-w-full flex-col gap-3 rounded bg-white px-5 py-4 shadow-lg">
   <div class="flex items-start gap-2">
     <h2 class="flex-1 text-sm font-semibold leading-tight text-theme-stronger">
       {#each parts as { label, accent }, i}

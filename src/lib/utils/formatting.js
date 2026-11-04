@@ -19,7 +19,6 @@ export const FORMAT_DEFAULT_DECIMALS = (d = 1) => f(`,.${d}f`);
 export const KEY_DEGREES_CELSIUS = 'degrees-celsius';
 export const KEY_DEGREES_WARMING = 'degrees-warming';
 
-// the basic formatting function sued
 const f = formatLocale({
   ...formatDefaultLocale,
   decimal: '.',
@@ -68,12 +67,26 @@ export function rescaleToBaseUnit(value, unit, baseUnit) {
 
 export const isScaleUnit = (unit) => Boolean(SCALE_UNITS[String(unit ?? '').trim().toLowerCase()]);
 
+export function formatSmallValue(value) {
+  const magnitude = Math.abs(value);
+  if (!(magnitude > 0 && magnitude < 0.01)) return undefined;
+  const [coefficient, exponent] = value.toExponential(2).split('e');
+  const superscript = exponent.replace(/[-+0-9]/g, (character) => {
+    if (character === '-') return '⁻';
+    if (character === '+') return '⁺';
+    return '⁰¹²³⁴⁵⁶⁷⁸⁹'[Number(character)];
+  });
+  return `${Number(coefficient)}×10${superscript}`;
+}
+
 // Axis ticks are the one place where space is tight enough to want SI prefixes:
 // 41,844 reads as 42k without crowding its neighbours.
 export const formatCompact = (value, unit = DEFAULT_FORMAT_UID) => {
   if (!Number.isFinite(value)) return NA_STRING;
   if (value === 0) return '0';
   const displayValue = unit === 'percent' ? value * 100 : value;
+  const scientific = formatSmallValue(displayValue);
+  if (scientific) return scientific;
   if (Math.abs(displayValue) >= 10000) return f('.3~s')(displayValue);
   return f(',.12~g')(displayValue);
 };
@@ -97,6 +110,10 @@ const suffixes = {
 
 export const formatValue = (value, indicatorId = DEFAULT_FORMAT_UID, { addSuffix = true, formatter: customFormatter = undefined, decimals, matchDecimals = false } = {}) => {
   value = parseFloat(value);
+  const displayValue = indicatorId === 'percent' ? value * 100 : value;
+  let scientific = customFormatter ? undefined : formatSmallValue(displayValue);
+  if (scientific && indicatorId === 'percent') scientific += ' %';
+  if (scientific && indicatorId === 'currency') scientific += ' €';
   if (matchDecimals) {
     decimals = getDecimals(value);
   }
@@ -104,7 +121,8 @@ export const formatValue = (value, indicatorId = DEFAULT_FORMAT_UID, { addSuffix
     customFormatter = getFormatter(indicatorId, decimals);
   }
   const formatter = customFormatter || indicatorFormats[indicatorId] || indicatorFormats['default'];
-  const str = formatter(value);
+  let str = scientific ?? formatter(value);
+  if (value === 0) str = str.replace(/^[-−]?0(?:\.0+)?/, '0');
   let suffix = addSuffix ? suffixes[indicatorId] : '';
   // Natural-language units (e.g. "°C", "days/year") aren't in the registry; the
   // unit string is its own suffix.
@@ -142,15 +160,13 @@ export function formatRange(range, unit, minDecimals = 0) {
   // This function formats a range of values with all resulting strings to be unique
   const decimalsMax = 4;
   let decimals = minDecimals;
-  let formatter = getFormatter(unit, decimals);
-  let values = range.map((d) => formatValue(d, unit, { formatter }));
+  let values = range.map((d) => formatValue(d, unit, { decimals }));
   while (
     values.some((value, index) => values.indexOf(value) !== index) && // Check if values have any dublicates
     decimals < decimalsMax
   ) {
     decimals += 1;
-    formatter = getFormatter(unit, decimals);
-    values = range.map((d) => formatValue(d, unit, { formatter })); // Reformat values with one more decimal
+    values = range.map((d) => formatValue(d, unit, { decimals })); // Reformat values with one more decimal
   }
   return {
     decimals,
@@ -165,15 +181,13 @@ export function findDecimalsForDistinctValues(values, unit, minDecimals = 0, max
   const validValues = uniq(values.filter((v) => typeof v === 'number' && !isNaN(v) && v !== 0));
   const decimalsMax = maxDecimals;
   let decimals = minDecimals;
-  let formatter = getFormatter(unit, decimals);
-  let strings = validValues.map((d) => formatValue(d, unit, { formatter }));
+  let strings = validValues.map((d) => formatValue(d, unit, { decimals }));
   while (
     strings.some((value, index) => strings.indexOf(value) !== index) && // Check if strings have any dublicates
     decimals < decimalsMax
   ) {
     decimals += 1;
-    formatter = getFormatter(unit, decimals);
-    strings = validValues.map((d) => formatValue(d, unit, { formatter })); // Reformat values with one more decimal
+    strings = validValues.map((d) => formatValue(d, unit, { decimals })); // Reformat values with one more decimal
   }
   return decimals;
 }

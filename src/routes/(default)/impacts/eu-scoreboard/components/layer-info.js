@@ -6,7 +6,7 @@ import { parseVariable } from '../../../../../../api/conventions.ts';
 // field the data cannot answer is simply absent rather than filled with a
 // placeholder: an empty row would claim the metadata exists and is blank.
 
-const NUTS_LABELS = { NUTS1: 'NUTS-1 regions', NUTS2: 'NUTS-2 regions' };
+const NUTS_LABELS = { NUTS0: 'Countries (NUTS-0)', NUTS1: 'NUTS-1 regions', NUTS2: 'NUTS-2 regions', NUTS3: 'NUTS-3 regions' };
 
 // A degree of latitude is ~111 km everywhere; a degree of longitude shrinks
 // towards the poles, so this is the generous edge of the cell, which is why it
@@ -27,7 +27,7 @@ const gridResolution = (grid) => {
  * facets are slugified at the GeoServer boundary (`coverageIdSegment`), not in
  * the config, so they are displayed exactly as the sector JSON names them.
  */
-export function layerInfo({ definition = {}, metadata = null, grid = null } = {}) {
+export function layerInfo({ definition = {}, metadata = null, grid = null, level = definition.level } = {}) {
   const rows = [];
   const add = (label, value) => {
     const text = typeof value === 'number' ? String(value) : String(value ?? '').trim();
@@ -44,7 +44,7 @@ export function layerInfo({ definition = {}, metadata = null, grid = null } = {}
   add('Estimate', parsed?.value?.raw);
   add('Reference period', raster ? definition.reference : parsed?.period);
   add('Spatial basis', raster ? definition.spatial : parsed?.spatial);
-  add('Spatial coverage', raster ? gridResolution(grid) : NUTS_LABELS[definition?.level]);
+  add('Spatial coverage', raster ? gridResolution(grid) : NUTS_LABELS[level]);
   add('Source', metadata?.model);
 
   return { rows };

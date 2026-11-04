@@ -16,12 +16,14 @@
         "name": "Population aged 65 and over",
         "variable": "Population|Age 65+",
         "type": "choropleth",
+        "europeLevel": "NUTS2",
         "level": "NUTS2"
       },
       {
         "name": "Heat wave fatalities",
         "variable": "Vulnerability|Fatalities|Heat Waves|Return Period|1 Year",
         "type": "choropleth",
+        "europeLevel": "NUTS2",
         "level": "NUTS2",
         "aggregate": "sum"
       },
@@ -29,6 +31,7 @@
         "name": "Heat wave economic losses",
         "variable": "Vulnerability|Economic Losses|Heat Waves|Return Period|1 Year",
         "type": "choropleth",
+        "europeLevel": "NUTS2",
         "level": "NUTS2",
         "aggregate": "sum"
       }
@@ -63,6 +66,7 @@
     {
       "chartId": "population-by-age-and-sex",
       "title": "Population by age and sex",
+      "hideInEuropeView": true,
       "description": "Female and male population in each age group for the selected country, scenario and year.",
       "chartType": "stacked_bar",
       "data": {
