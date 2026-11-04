@@ -3,12 +3,7 @@ import path from 'node:path';
 
 const MIGRATIONS_DIR = path.join(import.meta.dir, 'migrations');
 
-/**
- * The generated migrations as an ordered list of individual DDL statements.
- * The SQL is schema-agnostic (see strip-schema-qualifiers.ts), so replaying it
- * under a given `search_path` creates the tables in that schema — used to
- * stand up an ephemeral `test_*` schema per test env.
- */
+/** Loads schema-independent SQL statements for isolated test schemas. */
 export function migrationStatements(): string[] {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort();
   const statements: string[] = [];

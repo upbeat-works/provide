@@ -8,7 +8,6 @@ import { pgBaseConfig } from './db/connection';
 import { instances } from './instances';
 import type { Env, Ixmp4Instance } from './types';
 
-// The generated DDL, replayed into each test's ephemeral schema.
 const MIGRATION_SQL = migrationStatements();
 
 // A single admin connection used only to CREATE/DROP the per-test schemas.
@@ -30,18 +29,14 @@ function uniqueSchemaName(): string {
   return `test_${crypto.randomUUID().replace(/-/g, '')}`;
 }
 
-/**
- * Stands up an isolated database for one test: a fresh `test_*` schema on the
- * local Postgres, with the migrations replayed into it and the connection's
- * search_path pinned to it. Fully isolated per call (mirrors the old in-memory
- * SQLite). The schema + connection are torn down by `teardownTestEnvs()`.
- */
+/** Creates an empty catalog in an isolated schema, cleaned up after each test. */
 export async function createTestEnv(): Promise<Env['Bindings']> {
   const name = uniqueSchemaName();
   await admin().query(`CREATE SCHEMA "${name}"`);
   const client = new Client({ ...pgBaseConfig(), options: `-c search_path=${name}` });
   await client.connect();
   for (const stmt of MIGRATION_SQL) await client.query(stmt);
+  await client.query('TRUNCATE indicators');
   active.push({ schema: name, client });
   return {
     DB: drizzle(client, { schema }),

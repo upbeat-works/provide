@@ -1,7 +1,7 @@
 # Curated indicator enrichment (sector + legacy translation uid).
 #
-# `legacyUid` = the frozen legacy /meta indicator uid (stable; from Appendix A).
-# `sector`    = the legacy sector. Cities/avoid indicators are all urban-climate.
+# IDs must match the first segment of ixmp4 variable names exactly.
+# `legacyUid` identifies an indicator in the frozen legacy /meta.
 
 - id: Days a Year with Maximum Temperatures Above X°C
   sector: urban-climate
@@ -82,10 +82,6 @@
   sector: urban-climate
   legacyUid: urbclim-heatstressimpact-wbgt-dayover31
 
-# --- Imported from the legacy API (provide-api processing/metadata/metadata.py).
-# Every indicator the legacy /meta defined, with its sector. `id` is the legacy
-# LABEL verbatim except where verified against a live indicator scan (only
-# `Mean Temperature` exists in ixmp4 today; legacy spelled it "Mean temperature").
 - id: Mean Temperature
   sector: terrestrial-climate
   legacyUid: terclim-mean-temperature
@@ -263,3 +259,72 @@
 - id: Nighttime Urban Heat Island Corrected for Topography
   sector: urban-climate
   legacyUid: urbclim-T2M-daily-mean-min-topography
+
+- id: Days with Extreme High Heat Stress
+  sector: urban-climate
+- id: Days with High Heat Stress
+  sector: urban-climate
+- id: Days with Maximum Temperatures above 25 °C
+  sector: urban-climate
+- id: Days with Maximum Temperatures above 30 °C
+  sector: urban-climate
+- id: Days with Maximum Temperatures above 35 °C
+  sector: urban-climate
+- id: Days with Moderate Heat Stress
+  sector: urban-climate
+- id: Days with Very High Heat Stress
+  sector: urban-climate
+- id: Heat-Wave Magnitude Index daily (HMWId)
+  sector: urban-climate
+- id: Heatwave Days
+  sector: urban-climate
+- id: Hours with Extreme Heat Stress
+  sector: urban-climate
+- id: Hours with High Heat Stress
+  sector: urban-climate
+- id: Hours with Moderate Heat Stress
+  sector: urban-climate
+- id: Hours with Very High Heat Stress
+  sector: urban-climate
+- id: Lost Working Hours for Intense Activities
+  sector: urban-climate
+- id: Lost Working Hours for Light Activities
+  sector: urban-climate
+- id: Lost Working Hours for Moderate Activities
+  sector: urban-climate
+- id: Nights with High Heat Stress
+  sector: urban-climate
+- id: Nights with Maximum Temperatures above 20 °C
+  sector: urban-climate
+- id: Nights with Maximum Temperatures above 25 °C
+  sector: urban-climate
+- id: Nights with Maximum Temperatures above 28 °C
+  sector: urban-climate
+- id: Population Exposed to High Heatstress
+  sector: urban-climate
+- id: Population Exposed to Very High Heatstress
+  sector: urban-climate
+- id: Annual Maximum Fire Weather Index
+  sector: terrestrial-climate
+- id: Extremely Hot Year with a 10-Year Return Period
+  sector: terrestrial-climate
+- id: Extremely Hot Year with a 20-Year Return Period
+  sector: terrestrial-climate
+- id: Extremely Hot Year with a 50-Year Return Period
+  sector: terrestrial-climate
+- id: Fire Season Length
+  sector: terrestrial-climate
+- id: Fire Weather Index (Fire Season)
+  sector: terrestrial-climate
+- id: Global Mean Temperature
+  sector: terrestrial-climate
+- id: Maximum Air Temperature
+  sector: terrestrial-climate
+- id: Mean Air Temperature
+  sector: terrestrial-climate
+- id: Glacier Runoff
+  sector: glacier
+- id: Global Mean Sea Level Rise
+  sector: maritime-climate
+- id: High Heat Risk
+  sector: to-be-assigned
