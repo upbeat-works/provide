@@ -13,9 +13,9 @@ async function loadScenarios(fetch) {
   const [technicalScenarios, contentRows] = await Promise.all([loadMethodologyScenarios(fetch), loadFromStrapi('scenarios', fetch, 'fields[0]=UID&fields[1]=Description').catch(() => [])]);
   const descriptions = new Map();
   for (const row of contentRows ?? []) {
-    const uid = row?.attributes?.UID;
+    const uid = row?.UID;
     if (typeof uid !== 'string') continue;
-    descriptions.set(uid.toLowerCase(), row.attributes.Description);
+    descriptions.set(uid.toLowerCase(), row.Description);
   }
   return technicalScenarios.map((scenario) => {
     const description = descriptions.get(String(scenario.uid).toLowerCase());
@@ -30,9 +30,9 @@ function filterUniqueObjects(value, index, array) {
 
 function processScenarioPresets(list) {
   return list.map((preset) => {
-    const { Description, scenarios, Timeframe, Title } = preset.attributes;
+    const { Description, scenarios, Timeframe, Title } = preset;
 
-    const scenarioList = scenarios?.data ?? [];
+    const scenarioList = scenarios ?? [];
     if (scenarioList.length === 0) {
       console.warn(`No scenarios for preset ${Title}.`);
     }
@@ -40,7 +40,7 @@ function processScenarioPresets(list) {
     return {
       [KEY_SCENARIOPRESET_UID]: kebabCase(Title),
       description: Description ?? '',
-      scenarios: scenarioList.map(({ attributes }) => attributes.UID).filter(filterUniqueObjects),
+      scenarios: scenarioList.map((scenario) => scenario.UID).filter(filterUniqueObjects),
       timeframe: parseInt(Timeframe.slice(1)), // Note: this needs to be the same variable type as the selectable timeframe uids.
       title: Title,
     };
@@ -62,9 +62,9 @@ const loadExplainer = async ({ fetch, methodologyScenarios }) => {
 };
 
 const loadGlossary = async ({ fetch }) => {
-  const data = await loadFromStrapi('glossaries', fetch, undefined, 'sort[0]=id');
+  const data = await loadFromStrapi('glossaries', fetch, undefined, 'sort[0]=createdAt');
   const entries = data.map((d) => {
-    const { Title, Category, Link, UID, Description, Abbreviation } = d.attributes;
+    const { Title, Category, Link, UID, Description, Abbreviation } = d;
     return {
       title: Title,
       category: Category,

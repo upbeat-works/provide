@@ -25,7 +25,7 @@ const TARGET_TITLES = ['About the dashboard', 'Projects', 'Funding sources', 'Li
 const SPARCCLE_PLACEHOLDER = '_Placeholder: add a short description of the SPARCCLE project here._';
 
 // Accepted title variants (normalized) for each source section. Covers the
-// current Fly copy and the older "About the PROVIDE climate risk dashboard" /
+// stored source copy and the older "About the PROVIDE climate risk dashboard" /
 // "Sharing licence" wording so the reshape works against any recent snapshot.
 const SOURCE = {
   dashboard: ['about the dashboard', 'about the provide climate risk dashboard', 'about the provide dashboard'],

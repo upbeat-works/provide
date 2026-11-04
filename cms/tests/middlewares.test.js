@@ -10,13 +10,8 @@ const envWith = (vars) => {
   return fn;
 };
 
-// Tolerate both the old array export and the new ({ env }) => array factory,
-// so the RED run exercises the real current module and fails on an assertion
-// (a missing host) rather than a TypeError.
-const resolve = (env) =>
-  typeof middlewares === 'function' ? middlewares({ env }) : middlewares;
 const directivesFor = (env) =>
-  resolve(env).find((m) => m && m.name === 'strapi::security')
+  middlewares({ env }).find((m) => m && m.name === 'strapi::security')
     .config.contentSecurityPolicy.directives;
 
 test('always allows Cloudinary for existing assets', () => {

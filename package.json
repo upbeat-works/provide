@@ -7,13 +7,11 @@
     "dev:api": "bun run --watch server.ts",
     "dev:strapi": "cd cms && yarn develop",
     "dev:down": "docker compose down",
-    "prod": "docker compose -f docker-compose.prod.yml up --build",
-    "prod:down": "docker compose -f docker-compose.prod.yml down",
     "start": "bun run server.ts",
-    "test": "bun test ./api",
-    "test:watch": "bun test --watch ./api",
-    "test:web": "vitest run",
-    "test:web:watch": "vitest",
+    "test": "node scripts/test-bun.mjs",
+    "test:watch": "node scripts/test-bun.mjs --watch",
+    "test:web": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
+    "test:web:watch": "NODE_OPTIONS=--no-experimental-webstorage vitest",
     "build": "vite build",
     "preview": "vite preview",
     "package": "svelte-kit package",
@@ -27,7 +25,10 @@
     "db:cms:dump": "bash scripts/dump-cms-remote.sh",
     "db:cms:import": "docker compose run --rm cms yarn strapi import --file dumps/strapi-transfer.tar.gz --force",
     "db:cms:rekey": "docker compose run --rm cms node scripts/rekey-scenario-uids.js",
-    "db:cms:coverage": "docker compose run --rm cms node scripts/seed-case-study-coverage.js"
+    "db:cms:coverage": "docker compose run --rm cms node scripts/seed-case-study-coverage.js",
+    "test:content": "node --test src/lib/content/landing-analysis-cards.test.mjs test/*.test.mjs",
+    "test:cms": "cd cms && yarn test",
+    "test:cms:migration": "bash scripts/test-cms-upgrade.sh"
   },
   "devDependencies": {
     "@melt-ui/pp": "^0.1.4",
@@ -111,5 +112,10 @@
   },
   "overrides": {
     "svelte": "$svelte"
-  }
+  },
+  "engines": {
+    "node": ">=26.13.0 <27",
+    "bun": ">=1.4.4 <2"
+  },
+  "packageManager": "npm@11.20.0"
 }

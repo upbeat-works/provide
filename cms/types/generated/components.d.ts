@@ -1,280 +1,374 @@
-import type { Schema, Attribute } from '@strapi/strapi';
+import type { Schema, Struct } from '@strapi/strapi';
 
-export interface AvoidingImpactsAvoidingImpacts extends Schema.Component {
+export interface AvoidingImpactsAvoidingImpacts extends Struct.ComponentSchema {
   collectionName: 'components_avoiding_impacts_avoiding_impacts';
   info: {
+    description: '';
     displayName: 'AvoidingImpacts';
     icon: 'allergies';
-    description: '';
   };
   attributes: {
-    IndicatorUid: Attribute.String;
-    StudyLocationUid: Attribute.String;
-    Description: Attribute.RichText;
-    GeographyUid: Attribute.String;
-    ExplorerUrl: Attribute.String;
+    Description: Schema.Attribute.RichText;
+    ExplorerUrl: Schema.Attribute.Text;
+    Indicators: Schema.Attribute.Component<'avoiding-impacts.indicator', true>;
+    StudyLocations: Schema.Attribute.Component<'avoiding-impacts.study-location', true>;
+    Title: Schema.Attribute.String;
   };
 }
 
-export interface DataProcessingDataProcessing extends Schema.Component {
+export interface AvoidingImpactsIndicator extends Struct.ComponentSchema {
+  collectionName: 'components_avoiding_impacts_indicators';
+  info: {
+    displayName: 'Indicator';
+    icon: 'bars';
+  };
+  attributes: {
+    Instance: Schema.Attribute.String & Schema.Attribute.Required;
+    Uid: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
+export interface AvoidingImpactsStudyLocation extends Struct.ComponentSchema {
+  collectionName: 'components_avoiding_impacts_study_locations';
+  info: {
+    displayName: 'StudyLocation';
+    icon: 'map';
+  };
+  attributes: {
+    Uid: Schema.Attribute.String;
+  };
+}
+
+export interface CaseStudyCoveredGeography extends Struct.ComponentSchema {
+  collectionName: 'components_case_study_covered_geographies';
+  info: {
+    displayName: 'Covered Geography';
+    icon: 'earth';
+  };
+  attributes: {
+    GeographyId: Schema.Attribute.String;
+  };
+}
+
+export interface DataProcessingDataProcessing extends Struct.ComponentSchema {
   collectionName: 'components_data_processing_data_processings';
   info: {
     displayName: 'DataProcessing';
     icon: 'bars';
   };
   attributes: {
-    Title: Attribute.String;
-    Label: Attribute.String;
-    Description: Attribute.RichText;
+    Description: Schema.Attribute.RichText;
+    Label: Schema.Attribute.String;
+    Title: Schema.Attribute.String;
   };
 }
 
-export interface FutureImpactsFutureImpacts extends Schema.Component {
+export interface FutureImpactsFutureImpacts extends Struct.ComponentSchema {
   collectionName: 'components_future_impacts_future_impacts';
   info: {
+    description: '';
     displayName: 'FutureImpacts';
     icon: 'asterisk';
-    description: '';
   };
   attributes: {
-    ImpactTimeSnapshot: Attribute.Component<
-      'future-impacts.impact-time-snapshot',
-      true
-    >;
-    ImpactGeoSnapshot: Attribute.Component<'future-impacts.impact-geo', true>;
-    ImpactTimeDescription: Attribute.RichText;
-    ImpactGeoDescription: Attribute.RichText;
-    ExplorerUrl: Attribute.String;
+    ExplorerUrl: Schema.Attribute.Text;
+    ImpactGeoDescription: Schema.Attribute.RichText;
+    ImpactGeoSnapshot: Schema.Attribute.Component<'future-impacts.impact-geo', true>;
+    ImpactTimeDescription: Schema.Attribute.RichText;
+    ImpactTimeSnapshot: Schema.Attribute.Component<'future-impacts.impact-time-snapshot', true>;
   };
 }
 
-export interface FutureImpactsImpactGeo extends Schema.Component {
+export interface FutureImpactsImpactGeo extends Struct.ComponentSchema {
   collectionName: 'components_impacts_galery_impact_geos';
   info: {
+    description: '';
     displayName: 'ImpactGeoSnapshot';
     icon: 'map';
-    description: '';
   };
   attributes: {
-    Indicator: Attribute.String;
-    Year: Attribute.String;
-    Image: Attribute.Media;
+    Image: Schema.Attribute.Media<'images'>;
+    Indicator: Schema.Attribute.String & Schema.Attribute.Required;
+    Instance: Schema.Attribute.String & Schema.Attribute.Required;
+    Year: Schema.Attribute.String;
   };
 }
 
-export interface FutureImpactsImpactTimeSnapshot extends Schema.Component {
+export interface FutureImpactsImpactTimeSnapshot extends Struct.ComponentSchema {
   collectionName: 'components_impacts_galery_impact_time_snapshots';
   info: {
+    description: '';
     displayName: 'ImpactTimeSnapshot';
     icon: 'chart-line';
-    description: '';
   };
   attributes: {
-    Indicator: Attribute.String;
-    Image: Attribute.Media;
+    Image: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    Indicator: Schema.Attribute.String & Schema.Attribute.Required;
+    Instance: Schema.Attribute.String & Schema.Attribute.Required;
   };
 }
 
-export interface ImageSliderImageSliderPair extends Schema.Component {
-  collectionName: 'components_image_slider_image_slider_pairs';
-  info: {
-    displayName: 'ImageSliderPair';
-    icon: 'object-ungroup';
-    description: '';
-  };
-  attributes: {
-    Image1: Attribute.Media & Attribute.Required;
-    Image2: Attribute.Media;
-    AttributeValue: Attribute.String;
-    GroupName: Attribute.String;
-  };
-}
-
-export interface ImageSliderImageSlider extends Schema.Component {
+export interface ImageSliderImageSlider extends Struct.ComponentSchema {
   collectionName: 'components_image_slider_image_sliders';
   info: {
+    description: '';
     displayName: 'ImageSlider';
     icon: 'images';
-    description: '';
   };
   attributes: {
-    Description: Attribute.RichText;
-    AttributeLabel: Attribute.String;
-    ImageSliderPair: Attribute.Component<
-      'image-slider.image-slider-pair',
-      true
-    >;
-    GroupingLabel: Attribute.String;
-    ExplorerUrl: Attribute.String;
+    AllowImageSelection: Schema.Attribute.Boolean;
+    AttributeLabel: Schema.Attribute.String;
+    ExplorerUrl: Schema.Attribute.String;
+    GroupingLabel: Schema.Attribute.String;
+    ImageSliderPair: Schema.Attribute.Component<'image-slider.image-slider-pair', true>;
+    ShowThumbnails: Schema.Attribute.Boolean;
   };
 }
 
-export interface IssueIssue extends Schema.Component {
+export interface ImageSliderImageSliderPair extends Struct.ComponentSchema {
+  collectionName: 'components_image_slider_image_slider_pairs';
+  info: {
+    description: '';
+    displayName: 'ImageSliderPair';
+    icon: 'object-ungroup';
+  };
+  attributes: {
+    AttributeValue: Schema.Attribute.String;
+    Description: Schema.Attribute.String;
+    GroupValue: Schema.Attribute.String;
+    Image1: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
+    Image2: Schema.Attribute.Media<'images'>;
+  };
+}
+
+export interface IssueIssue extends Struct.ComponentSchema {
   collectionName: 'components_issue_issues';
   info: {
+    description: '';
     displayName: 'Issue';
     icon: 'tasks';
-    description: '';
   };
   attributes: {
-    Title: Attribute.String;
-    Description: Attribute.RichText;
+    Description: Schema.Attribute.RichText;
+    Title: Schema.Attribute.String;
   };
 }
 
-export interface MediaPublication extends Schema.Component {
+export interface LandingProjectHighlight extends Struct.ComponentSchema {
+  collectionName: 'components_landing_project_highlight_items';
+  info: {
+    description: 'One titled highlight in the second card.';
+    displayName: 'ProjectHighlight';
+    icon: 'bars';
+  };
+  attributes: {
+    Description: Schema.Attribute.Text;
+    Title: Schema.Attribute.String;
+  };
+}
+
+export interface LandingProjectHighlights extends Struct.ComponentSchema {
+  collectionName: 'components_landing_project_highlights';
+  info: {
+    description: 'The second card of the landing "About the project" block: an intro line, the titled highlights beneath it, and an optional link.';
+    displayName: 'ProjectHighlights';
+    icon: 'bulletList';
+  };
+  attributes: {
+    Items: Schema.Attribute.Component<'landing.project-highlight', true>;
+    LinkLabel: Schema.Attribute.String;
+    LinkUrl: Schema.Attribute.String;
+    Text: Schema.Attribute.RichText;
+  };
+}
+
+export interface LandingProjectIntro extends Struct.ComponentSchema {
+  collectionName: 'components_landing_project_intros';
+  info: {
+    description: 'The first card of the landing "About the project" block: a paragraph about the projects behind the platform, plus an optional link.';
+    displayName: 'ProjectIntro';
+    icon: 'align-center';
+  };
+  attributes: {
+    LinkLabel: Schema.Attribute.String;
+    LinkUrl: Schema.Attribute.String;
+    Text: Schema.Attribute.RichText;
+  };
+}
+
+export interface MediaPublication extends Struct.ComponentSchema {
   collectionName: 'components_media_publications';
   info: {
     displayName: 'Publication';
     icon: 'file-contract';
   };
   attributes: {
-    PublicationDate: Attribute.Date;
-    Type: Attribute.Enumeration<['publication', 'deliverable']> &
-      Attribute.DefaultTo<'publication'>;
-    File: Attribute.Media;
+    File: Schema.Attribute.Media<'files'>;
+    PublicationDate: Schema.Attribute.Date;
+    Type: Schema.Attribute.Enumeration<['publication', 'deliverable']> & Schema.Attribute.DefaultTo<'publication'>;
   };
 }
 
-export interface MethodologyDataTypeDataType extends Schema.Component {
+export interface MethodologyDataTypeDataType extends Struct.ComponentSchema {
   collectionName: 'components_methodology_data_type_data_types';
   info: {
+    description: '';
     displayName: 'Data Type';
     icon: 'apps';
-    description: '';
   };
   attributes: {
-    Label: Attribute.String;
-    Model: Attribute.Component<'methodology-model.model', true>;
-    Simulation: Attribute.Component<'methodology-simulation.simulation', true>;
-    Processing: Attribute.Component<'methodology-processing.processing', true>;
+    Label: Schema.Attribute.String;
+    Model: Schema.Attribute.Component<'methodology-model.model', true>;
+    Processing: Schema.Attribute.Component<'methodology-processing.processing', true>;
+    Simulation: Schema.Attribute.Component<'methodology-simulation.simulation', true>;
   };
 }
 
-export interface MethodologyModelModel extends Schema.Component {
+export interface MethodologyImpactImpactSection extends Struct.ComponentSchema {
+  collectionName: 'components_methodology_impact_impact_sections';
+  info: {
+    description: 'A section within the methodology Impact tab, grouped by Impact and Category.';
+    displayName: 'Impact Section';
+    icon: 'layer';
+  };
+  attributes: {
+    Category: Schema.Attribute.String;
+    Impact: Schema.Attribute.String;
+    Text: Schema.Attribute.RichText;
+    Title: Schema.Attribute.String;
+  };
+}
+
+export interface MethodologyModelModel extends Struct.ComponentSchema {
   collectionName: 'components_methodology_model_models';
   info: {
+    description: '';
     displayName: 'Model';
     icon: 'connector';
-    description: '';
   };
   attributes: {
-    Label: Attribute.String;
-    Description: Attribute.RichText;
-    TitleShort: Attribute.String;
+    Description: Schema.Attribute.RichText;
+    Label: Schema.Attribute.String;
+    TitleShort: Schema.Attribute.String;
   };
 }
 
-export interface MethodologyProcessingProcessing extends Schema.Component {
+export interface MethodologyProcessingProcessing extends Struct.ComponentSchema {
   collectionName: 'components_methodology_processing_processings';
   info: {
+    description: '';
     displayName: 'Processing';
     icon: 'cog';
-    description: '';
   };
   attributes: {
-    Label: Attribute.String;
-    Description: Attribute.RichText;
-    TitleShort: Attribute.String;
+    Description: Schema.Attribute.RichText;
+    Label: Schema.Attribute.String;
+    TitleShort: Schema.Attribute.String;
   };
 }
 
-export interface MethodologySimulationSimulation extends Schema.Component {
+export interface MethodologySimulationSimulation extends Struct.ComponentSchema {
   collectionName: 'components_methodology_simulation_simulations';
   info: {
+    description: '';
     displayName: 'Simulation';
     icon: 'connector';
-    description: '';
   };
   attributes: {
-    Label: Attribute.String;
-    Description: Attribute.RichText;
-    TitleShort: Attribute.String;
+    Description: Schema.Attribute.RichText;
+    Label: Schema.Attribute.String;
+    TitleShort: Schema.Attribute.String;
   };
 }
 
-export interface ModelModel extends Schema.Component {
+export interface ModelModel extends Struct.ComponentSchema {
   collectionName: 'components_model_models';
   info: {
+    description: '';
     displayName: 'Model';
     icon: 'align-left';
-    description: '';
   };
   attributes: {
-    Title: Attribute.String;
-    Description: Attribute.RichText;
-    Link: Attribute.String;
-    Label: Attribute.String;
-    UID: Attribute.String;
+    Description: Schema.Attribute.RichText;
+    Label: Schema.Attribute.String;
+    Link: Schema.Attribute.String;
+    Title: Schema.Attribute.String;
+    UID: Schema.Attribute.String;
   };
 }
 
-export interface ScenarioCharacteristicScenarioCharacteristic
-  extends Schema.Component {
+export interface ScenarioCharacteristicScenarioCharacteristic extends Struct.ComponentSchema {
   collectionName: 'components_scenario_characteristic_scenario_characteristics';
   info: {
+    description: '';
     displayName: 'ScenarioCharacteristic';
     icon: 'barcode';
-    description: '';
   };
   attributes: {
-    Description: Attribute.Text;
-    Year: Attribute.String;
+    Description: Schema.Attribute.Text;
+    Year: Schema.Attribute.String;
   };
 }
 
-export interface ScenarioUidScenario extends Schema.Component {
+export interface ScenarioUidScenario extends Struct.ComponentSchema {
   collectionName: 'components_scenario_uid_scenarios';
   info: {
     displayName: 'Scenario';
     icon: 'align-right';
   };
   attributes: {
-    UID: Attribute.String;
+    UID: Schema.Attribute.String;
   };
 }
 
-export interface ScenarioScenario extends Schema.Component {
+export interface ScenarioScenario extends Struct.ComponentSchema {
   collectionName: 'components_scenario_scenarios';
   info: {
+    description: '';
     displayName: 'Scenario';
     icon: 'align-justify';
-    description: '';
   };
   attributes: {
-    Title: Attribute.String;
-    Description: Attribute.RichText;
-    Label: Attribute.String;
-    UID: Attribute.String;
+    Description: Schema.Attribute.RichText;
+    Label: Schema.Attribute.String;
+    Title: Schema.Attribute.String;
+    UID: Schema.Attribute.String;
   };
 }
 
-export interface SectionSection extends Schema.Component {
+export interface SectionSection extends Struct.ComponentSchema {
   collectionName: 'components_section_sections';
   info: {
+    description: '';
     displayName: 'Section';
     icon: 'align-center';
-    description: '';
   };
   attributes: {
-    Title: Attribute.String;
-    Text: Attribute.RichText;
+    Text: Schema.Attribute.RichText;
+    Title: Schema.Attribute.String;
   };
 }
 
-declare module '@strapi/types' {
-  export module Shared {
-    export interface Components {
+declare module '@strapi/strapi' {
+  export namespace Public {
+    export interface ComponentSchemas {
       'avoiding-impacts.avoiding-impacts': AvoidingImpactsAvoidingImpacts;
+      'avoiding-impacts.indicator': AvoidingImpactsIndicator;
+      'avoiding-impacts.study-location': AvoidingImpactsStudyLocation;
+      'case-study.covered-geography': CaseStudyCoveredGeography;
       'data-processing.data-processing': DataProcessingDataProcessing;
       'future-impacts.future-impacts': FutureImpactsFutureImpacts;
       'future-impacts.impact-geo': FutureImpactsImpactGeo;
       'future-impacts.impact-time-snapshot': FutureImpactsImpactTimeSnapshot;
-      'image-slider.image-slider-pair': ImageSliderImageSliderPair;
       'image-slider.image-slider': ImageSliderImageSlider;
+      'image-slider.image-slider-pair': ImageSliderImageSliderPair;
       'issue.issue': IssueIssue;
+      'landing.project-highlight': LandingProjectHighlight;
+      'landing.project-highlights': LandingProjectHighlights;
+      'landing.project-intro': LandingProjectIntro;
       'media.publication': MediaPublication;
       'methodology-data-type.data-type': MethodologyDataTypeDataType;
+      'methodology-impact.impact-section': MethodologyImpactImpactSection;
       'methodology-model.model': MethodologyModelModel;
       'methodology-processing.processing': MethodologyProcessingProcessing;
       'methodology-simulation.simulation': MethodologySimulationSimulation;

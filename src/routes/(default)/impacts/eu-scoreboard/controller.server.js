@@ -22,8 +22,8 @@ export async function enrichChart(result, fetch) {
   const definition = result.definition;
   if (definition?.caseStudyId && result.status === 'ready') {
     try {
-      const studies = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*&populate[Covers]=*', `filters[id][$eq]=${encodeURIComponent(definition.caseStudyId)}`);
-      const study = studies.find(({ id }) => String(id) === String(definition.caseStudyId));
+      const studies = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=true&populate[Covers]=true', `filters[documentId][$eq]=${encodeURIComponent(definition.caseStudyId)}`);
+      const study = studies.find(({ documentId }) => documentId === String(definition.caseStudyId));
       if (study) result = { ...result, caseStudy: toCaseStudyLink(study) };
     } catch (reason) {
       reportFailure('load-case-study', reason);

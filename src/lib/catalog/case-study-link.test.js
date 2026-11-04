@@ -87,14 +87,12 @@ describe('toCaseStudyLink', () => {
   test('maps a Strapi entry onto the link shape', () => {
     expect(
       toCaseStudyLink({
-        attributes: {
-          Slug: 'lisbon',
+        Slug: 'lisbon',
           Title: 'Extreme heat in Lisbon',
           Abstract: 'abstract',
           IsDefault: true,
           Covers: [{ GeographyId: 'Berlin' }, { GeographyId: 'Portugal' }],
-          CoverImage: { data: { attributes: { url: '/x.png' } } },
-        },
+          CoverImage: { url: '/x.png' },
       })
     ).toEqual({
       slug: 'lisbon',
@@ -108,7 +106,7 @@ describe('toCaseStudyLink', () => {
   });
 
   test('defaults an entry with no Covers / IsDefault / image', () => {
-    const out = toCaseStudyLink({ attributes: { Slug: 'adaptation', Title: 'Adaptation' } });
+    const out = toCaseStudyLink({ Slug: 'adaptation', Title: 'Adaptation' });
     expect(out.covers).toEqual([]);
     expect(out.isDefault).toBe(false);
     expect(out.image).toBeNull();

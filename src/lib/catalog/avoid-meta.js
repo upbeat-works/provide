@@ -3,7 +3,7 @@ export function buildAvoidMeta(legacyMeta = {}, descriptions = {}) {
   const cityIndicatorUids = new Set(cityType?.availableIndicators ?? []);
   const byUid = new Map((legacyMeta.indicators ?? []).map((i) => [i.uid, i]));
   const descByUid = new Map(
-    (descriptions.indicators ?? []).map((d) => [d.attributes?.UID, d.attributes?.Description]),
+    (descriptions.indicators ?? []).map((d) => [d?.UID, d?.Description]),
   );
   // In legacy /meta, geography availability is defined at the SECTOR level (the
   // indicator's own `availableGeographies` is empty). Merge the two so each

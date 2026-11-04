@@ -9,7 +9,7 @@ const {
   SPARCCLE_PLACEHOLDER,
 } = require('./about-restructure');
 
-// Mirrors the current live About page (Fly, en-EU): eight flat sections.
+// Uses the stored About content (en-EU): eight flat sections.
 const current = [
   { Title: 'About the dashboard', Text: 'The PROVIDE climate risk dashboard is an interactive tool.' },
   { Title: 'Contributors', Text: '**Project lead:** Carl-Friedrich Schleussner' },

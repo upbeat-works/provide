@@ -11,10 +11,6 @@
  * Boots Strapi programmatically, so run with the dev server stopped:
  *
  *   node scripts/restructure-about.js
- *
- * On Fly (idle instance):
- *   fly ssh console -a provide-cms -C \
- *     "/bin/sh -c 'cd /app && node scripts/restructure-about.js'"
  */
 const { restructureAbout } = require('./lib/about-restructure');
 
@@ -22,11 +18,11 @@ const UID = 'api::about.about';
 const LOCALES = ['en', 'en-EU'];
 
 async function main() {
-  const strapi = await require('@strapi/strapi')().load();
+  const strapi = await require('@strapi/strapi').createStrapi().load();
   const log = (m) => strapi.log.info(`[about] ${m}`);
   try {
     for (const locale of LOCALES) {
-      const entry = await strapi.entityService.findMany(UID, { locale, populate: ['Section'] });
+      const entry = await strapi.documents(UID).findFirst({ locale, populate: ['Section'] });
       if (!entry) {
         log(`${locale}: no About entry — skipped`);
         continue;
@@ -40,8 +36,8 @@ async function main() {
         continue;
       }
 
-      await strapi.entityService.update(UID, entry.id, {
-        data: { Section: after, publishedAt: new Date() },
+      await strapi.documents(UID).update({ documentId: entry.documentId, locale, status: 'published',
+        data: { Section: after },
       });
       log(`${locale}: ${before.length} → ${after.length} sections [${after.map((s) => s.Title).join(' | ')}]`);
     }

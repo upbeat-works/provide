@@ -1,5 +1,9 @@
 # PROVIDE Climate Risk Dashboard
 
+Runtime versions, checks, and release steps: [Strapi v5 migration guide](docs/strapi-v5-migration-guide.md).
+
+Node 26.13.0 runs the website and CMS; Bun 1.4.4 runs the API. Install the website/API dependencies with `npm ci`. The CMS uses Yarn 1.22.22.
+
 ## Table of Contents
 
 - [Links](#links)
@@ -119,7 +123,7 @@ project-root/
 
 ## Technical aspects
 
-The page is build in JavaScript/TypeScript with [Svelte](https://svelte.dev/) 4 using [SvelteKit](https://svelte.dev/docs/kit/introduction). The underlying engine is [Bun](https://bun.sh/). It uses [Tailwind CSS](https://tailwindcss.com/) for styling. The page is hosted on [Netlify](https://www.netlify.com/) while in development and on [Climate Analytics](https://climateanalytics.org/) in production. Maps are created using [Mapbox](https://www.mapbox.com/) and Charts are craeted using [D3](https://d3js.org/) and [Layercake](https://layercake.graphics/) for the charts.
+The page is built in JavaScript/TypeScript with [Svelte](https://svelte.dev/) 4 using [SvelteKit](https://svelte.dev/docs/kit/introduction). The website runs on Node.js and the Hono API runs on Bun. It uses [Tailwind CSS](https://tailwindcss.com/) for styling. IIASA hosts production with Jenkins builds and Kubernetes. Maps are created using [Mapbox](https://www.mapbox.com/) and charts are created using [D3](https://d3js.org/) and [Layercake](https://layercake.graphics/) for the charts.
 
 ## Configuration
 
@@ -174,7 +178,7 @@ To run this project locally:
 1. Clone the repository
 2. Install dependencies:
    ```
-   bun install
+   npm ci
    ```
 3. Set up environment variables:
 
@@ -196,7 +200,7 @@ To run this project locally:
 
 6. To build the project for production:
    ```
-   bun run build
+   npm run build
    ```
 
 ## Naming convention

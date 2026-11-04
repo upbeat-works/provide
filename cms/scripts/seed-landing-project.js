@@ -12,19 +12,12 @@
  *
  *   node scripts/seed-landing-project.js [--force]
  *
- * On Fly (idle instance):
- *   fly ssh console -a provide-cms -C \
- *     "/bin/sh -c 'cd /app && node scripts/seed-landing-project.js'"
- *
- * Also runs as a step of scripts/seed.js, which wipes every content type first.
  */
 const { LANDING_PROJECT } = require('./lib/landing-project');
 
 const UID = 'api::landing-project.landing-project';
 const LOCALES = ['en', 'en-EU'];
 
-// Public read, or the site gets a 403 and quietly drops the block. seed.js does
-// this for every type in one pass; here it keeps the standalone run complete.
 async function grantPublicRead(strapi, log) {
   const action = `${UID}.find`;
   const role = await strapi.db.query('plugin::users-permissions.role').findOne({ where: { type: 'public' } });
@@ -40,26 +33,30 @@ async function grantPublicRead(strapi, log) {
 async function seedLandingProject(strapi, locales = LOCALES, log = () => {}, { force = false } = {}) {
   await grantPublicRead(strapi, log);
 
-  for (const locale of locales) {
-    const entry = await strapi.entityService.findMany(UID, {
-      locale,
-      populate: { Intro: true, Highlights: { populate: ['Items'] } },
-    });
-
+  const entries = await Promise.all(locales.map((locale) => strapi.documents(UID).findFirst({
+    locale,
+    populate: { Intro: true, Highlights: { populate: ['Items'] } },
+  })));
+  let documentId = entries.find(Boolean)?.documentId;
+  for (const [index, locale] of locales.entries()) {
+    const entry = entries[index];
+    if (entry) documentId = entry.documentId;
     if ((entry?.Intro || entry?.Highlights) && !force) {
       log(`${locale}: already has content — left untouched`);
       continue;
     }
 
-    const data = { ...LANDING_PROJECT, locale, publishedAt: new Date() };
-    if (entry) await strapi.entityService.update(UID, entry.id, { data });
-    else await strapi.entityService.create(UID, { data });
+    const data = { ...LANDING_PROJECT };
+    let saved;
+    if (documentId) saved = await strapi.documents(UID).update({ documentId, locale, status: 'published', data });
+    else saved = await strapi.documents(UID).create({ locale, status: 'published', data });
+    documentId = saved.documentId;
     log(`${locale}: seeded both cards`);
   }
 }
 
 async function main() {
-  const strapi = await require('@strapi/strapi')().load();
+  const strapi = await require('@strapi/strapi').createStrapi().load();
   const log = (m) => strapi.log.info(`[landing-project] ${m}`);
   try {
     await seedLandingProject(strapi, LOCALES, log, { force: process.argv.includes('--force') });

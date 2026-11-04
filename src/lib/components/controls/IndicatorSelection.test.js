@@ -48,7 +48,13 @@ afterEach(() => {
 describe('IndicatorSelection', () => {
   test('shows progress beside the filters while a filtered list loads', async () => {
     const heat = { id: 'Heat', label: 'Heat', instance: 'source-b', unit: 'days' };
-    const filters = [{ key: 'Sector', label: 'Sector', color: 'grass', options: [{ value: 'Health', count: 1 }] }];
+    const filters = [
+      { key: 'Sector', label: 'Sector', color: 'grass', options: [{ value: 'Health', count: 1 }] },
+      { key: 'Project', label: 'Project', color: 'pink', options: [{ value: 'PROVIDE', count: 1 }] },
+      { key: 'Data Source', label: 'Data Source', color: 'gray', options: [] },
+      { key: 'Spatial Resolution', label: 'Spatial Resolution', color: 'orange', options: [] },
+      { key: 'Temporal Resolution', label: 'Temporal', color: 'sky', options: [] },
+    ];
     let finishRequest;
     const pendingResponse = new Promise((resolve) => { finishRequest = resolve; });
     globalThis.fetch = vi.fn(async (input) => {
@@ -65,6 +71,7 @@ describe('IndicatorSelection', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'Select an indicator' }));
     await fireEvent.click(screen.getByRole('button', { name: /Advanced Filters/ }));
+    for (const { label } of filters) expect(screen.getByText(label)).toBeTruthy();
     await fireEvent.click(screen.getByRole('button', { name: /Health/ }));
 
     expect(get(runtimeCatalog.indicatorFilters)).toEqual({ Sector: ['Health'] });
@@ -73,6 +80,7 @@ describe('IndicatorSelection', () => {
     await waitFor(() => expect(screen.getByText('Updating indicators…')).toBeTruthy());
     finishRequest(Response.json({ indicators: [heat], failedInstances: [], filters }));
     await waitFor(() => expect(screen.getByRole('radio', { name: 'Heat' })).toBeTruthy());
+    for (const { label } of filters) expect(screen.getByText(label)).toBeTruthy();
   });
 
   test('restores the list when an empty filter is deselected', async () => {

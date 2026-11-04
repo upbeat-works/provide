@@ -38,16 +38,12 @@ from conventions — shrink it, don't grow it.
 
 ## Tests
 
-`bun test ./api` (also `npm test`). Keep the `./` — bun matches the filter as a substring against
-full paths, so a bare `bun test api/` also sweeps in `src/lib/api/` and `src/lib/server/catalog-api`,
-which are vitest files that bun cannot run (`$app/environment` is unresolvable and `vi.mock` is a
-no-op). Routes use MSW-free Hono `api.request(...)` with a test env;
-view pure-functions are unit-tested directly. Tests live next to the code (`*.test.ts`).
+`npm test` selects files importing `bun:test` under `api/` and `src/`.
+`npm run test:web` selects Vitest files and disables Node Web Storage so jsdom
+supplies browser storage. Both Node 26.13.0 and Bun 1.4.4 must be available.
+`npm run test:content` runs the Node content and CMS copy tests.
 
-The frontend has its own runner: `npm run test:web` (vitest, `vitest.config.js`). Run it **inside
-the web container** — `docker compose exec web npm run test:web` — since vitest's worker pool does
-not work under bun. Two dialects live under `src/`: most `*.test.js` are vitest, fourteen are
-`bun:test` and are picked up by `bun test`; the vitest config selects its own by looking for a
-`vitest` import, so a new frontend test just needs to import from `vitest`. SvelteKit's `$app/*`
-modules have no implementation outside a running app — `test/stubs/` keeps them importable, and a
-test that asserts on navigation mocks them (`vi.mock('$app/navigation', …)`).
+The API tests need a separate PostgreSQL database configured through
+`DATABASE_*`. `npm run test:cms` runs CMS tests; `npm run test:cms:migration`
+rehearses a Strapi 4-to-5 upgrade in temporary Docker containers.
+See `docs/strapi-v5-migration-guide.md` for release and database-copy instructions.
