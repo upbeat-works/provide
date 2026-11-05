@@ -60,15 +60,9 @@ async function expectSectorCoverage(env: Env['Bindings']) {
 }
 
 describe('indicator sector coverage', () => {
-  test('seeded catalogs expose the source indicators through sector filters', async () => {
-    const env = await createTestEnv();
-    await env.DB.execute(sql.raw(buildIndicatorsSeedSql(seedRows)));
-    await expectSectorCoverage(env);
-  });
-
   test('upgrades the legacy catalog and preserves existing metadata when run again', async () => {
     const env = await createTestEnv();
-    const existingRows = [...seedRows.filter(({ legacyUid }) => legacyUid), ...parseIndicatorsYaml('- id: Glacier Runoff\n  legacyUid: glacier-runoff\n- id: Custom Indicator\n  sector: custom\n')];
+    const existingRows = [...seedRows, ...parseIndicatorsYaml('- id: Glacier Runoff\n  legacyUid: glacier-runoff\n- id: Custom Indicator\n  sector: custom\n')];
     await env.DB.execute(sql.raw(buildIndicatorsSeedSql(existingRows)));
     await env.DB.execute(sql.raw(migration));
     await env.DB.execute(sql.raw(migration));

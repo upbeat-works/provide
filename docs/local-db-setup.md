@@ -62,13 +62,6 @@ npm run db:seed       # geographies -> indicators -> seed.sql + seed-indicators.
 `import-indicators.ts` (from `api/db/import/indicators.yaml`), then applies the
 generated SQL into the `catalog` schema.
 
-`db:seed` deletes and rebuilds the catalog rows. Use it for a fresh database or
-an intended reset. To update an existing catalog, add a SQL data migration under
-`api/db/migrations` and register it in `meta/_journal.json`. The API applies pending
-Drizzle migrations at startup, before serving requests. Keep the seed data in sync
-for fresh installs. Indicator IDs must match the first segment of the ixmp4
-variable name exactly, including spelling and capital letters.
-
 Sanity check:
 
 ```bash
