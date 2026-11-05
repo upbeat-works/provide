@@ -78,10 +78,9 @@
 </script>
 
 <SelectionModal
-  {label}
+  label={selected ? topic?.label ?? label : 'Topic'}
   buttonLabel={selected?.label ?? topic?.label ?? 'No data'}
   buttonAriaLabel="{label}: {selected?.label ?? topic?.label ?? 'none'}"
-  category={selected ? topic?.label : undefined}
   {wrapperClass}
   {buttonClass}
   {labelClass}
