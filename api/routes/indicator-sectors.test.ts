@@ -54,7 +54,7 @@ async function expectSectorCoverage(env: Env['Bindings']) {
       expect.objectContaining({ id: 'Glacier Runoff', sector: 'glacier' }),
       expect.objectContaining({ id: 'Global Mean Sea Level Rise', sector: 'maritime-climate' }),
       expect.objectContaining({ id: 'Mean Air Temperature', sector: 'terrestrial-climate' }),
-      expect.objectContaining({ id: 'High Heat Risk', sector: 'to-be-assigned' }),
+      expect.objectContaining({ id: 'High Heat Risk', sector: 'urban-climate' }),
     ])
   );
 }

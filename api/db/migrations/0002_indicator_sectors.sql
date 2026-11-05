@@ -32,5 +32,5 @@ INSERT INTO indicators (id, sector) VALUES
   ('Mean Air Temperature', 'terrestrial-climate'),
   ('Glacier Runoff', 'glacier'),
   ('Global Mean Sea Level Rise', 'maritime-climate'),
-  ('High Heat Risk', 'to-be-assigned')
+  ('High Heat Risk', 'urban-climate')
 ON CONFLICT (id) DO UPDATE SET sector = EXCLUDED.sector;
