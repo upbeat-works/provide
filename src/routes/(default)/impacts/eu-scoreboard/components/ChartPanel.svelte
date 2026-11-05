@@ -99,7 +99,7 @@
            screen or there is no way to choose again. -->
       <p class="py-8 text-sm text-text-weaker" role="status">No {pickerLabel.toLowerCase()} selected.</p>
     {:else}
-      <ChartRenderer result={shown} {selection} {sector} {retry} {colorFor} hideLegend={pickable} staticMode={Boolean(preview)} />
+      <ChartRenderer result={shown} {selection} {retry} {colorFor} hideLegend={pickable} staticMode={Boolean(preview)} />
     {/if}
   </ScoreboardSection>
 {/if}

@@ -1,5 +1,7 @@
-import { loadFromStrapi, loadScoreboardChart, loadScoreboardMap } from '$utils/apis.js';
+import { error } from '@sveltejs/kit';
+import { catalogApiUrl, loadFromStrapi, loadScoreboardChart, loadScoreboardMap } from '$utils/apis.js';
 import { toCaseStudyLink } from '$lib/catalog/case-study-link.js';
+import { validateChart } from '../../../../../api/scoreboard/charts';
 
 function reportFailure(operation, reason) {
   console.error('Scoreboard request failed', { operation, reasonName: reason instanceof Error ? reason.name : typeof reason, status: reason?.status });
@@ -13,6 +15,30 @@ export async function loadChart({ scoreboard, fetch, selections, chartId }) {
     result = await loadScoreboardChart(fetch, { sector: scoreboard.sector.uid, ...selections, chartId });
   } catch (reason) {
     reportFailure('load-chart', reason);
+    return { definition, status: 'error', data: [], error: 'Chart data could not be loaded.' };
+  }
+  return enrichChart(result, fetch);
+}
+
+export async function loadChartFromDefinition({ chart, fetch, selections }) {
+  let definition;
+  try {
+    definition = JSON.parse(chart);
+    validateChart(definition);
+  } catch (reason) {
+    error(400, reason instanceof SyntaxError ? 'chart must contain valid JSON.' : reason.message);
+  }
+  let result;
+  try {
+    const response = await fetch(`${catalogApiUrl('scoreboard/charts')}?${new URLSearchParams(selections)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(definition),
+    });
+    if (!response.ok) throw new Error('Chart request failed');
+    result = await response.json();
+  } catch (reason) {
+    reportFailure('load-chart-definition', reason);
     return { definition, status: 'error', data: [], error: 'Chart data could not be loaded.' };
   }
   return enrichChart(result, fetch);

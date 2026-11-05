@@ -9,7 +9,7 @@ import { SCOREBOARD_COUNTRIES, scoreboardCountry } from '../scoreboard/countries
 import { loadRegionalBoundaries, type NutsLevel } from '../scoreboard/boundaries';
 import { aggregatedCountryMapResult, regionalMapResult } from '../scoreboard/maps';
 import { emptyRasterMapResult, rasterMapResult } from '../scoreboard/rasters';
-import { definitionGroupingError, loadScoreboardChart } from '../scoreboard/charts';
+import { definitionGroupingError, loadScoreboardChart, validateChart } from '../scoreboard/charts';
 import type { Definition, RasterMapIndicator, Selection } from '../scoreboard/types';
 import {
   fetchImpactGeoRaster,
@@ -68,6 +68,24 @@ scoreboard.on(['GET', 'POST'], '/definition', async (c) => {
   const definition = await requestScoreboard(c);
   if (definition instanceof Response) return definition;
   return c.json(definition);
+});
+
+scoreboard.post('/charts', async (c) => {
+  c.header('Cache-Control', 'no-store');
+  let definition: Definition;
+  try {
+    definition = await c.req.json();
+    validateChart(definition);
+  } catch (reason) {
+    return c.json({ error: reason instanceof Error ? reason.message : 'Invalid chart JSON' }, 400);
+  }
+  const selection = selectionFromRequest(c);
+  if (!selection) return c.json({ error: 'scenario, region and a four-digit year are required' }, 400);
+  try {
+    return c.json(await loadScoreboardChart(await source(c), c.env.DB, definition, selection));
+  } catch (reason) {
+    return failure(c, 'Chart data unavailable', reason);
+  }
 });
 
 scoreboard.on(['GET', 'POST'], '/charts/:chartId', async (c) => {

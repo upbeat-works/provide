@@ -100,8 +100,9 @@ running API's topics directory: one invalid file blocks topic loading. Then
 | Chart text, type or data | The matching entry in `charts`. |
 | Chart order | The order of entries in `charts`. |
 
-Changing the filename, an indicator's `name`, or a `chartId` affects saved links
-and embeds. Removing a file removes its topic; keep at least one valid topic.
+Changing the filename, an indicator's `name`, or a `chartId` affects saved
+scoreboard links. Embedded charts keep their definition in the URL.
+Removing a file removes its topic; keep at least one valid topic.
 Follow the same checks below for additions and edits.
 
 ## Check and release
@@ -121,8 +122,9 @@ its maps and charts. **Edit JSON** opens the dialog again.
 
 The link contains the draft, compressed with gzip. Copy the link to share it;
 opening it loads the same config. Filters and comparisons use the draft too.
-Empty charts show a message so missing data is visible. Chart embeds and image
-exports are unavailable in preview because they use saved topic settings.
+Empty charts show a message so missing data is visible. Preview hides image
+export controls. To embed a draft chart, use its
+[chart definition in the widget URL](eu-scoreboard-chart-config.md#embed-a-chart).
 
 Preview sends the JSON to the API in POST bodies. It does not write topic files
 or change the published scoreboard. **Exit preview** returns to saved settings.

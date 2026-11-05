@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { definitionGroupingError } from './charts.ts';
+import { validateChart } from './charts.ts';
 
 const topicsDirectory = join(dirname(fileURLToPath(import.meta.url)), 'topics');
 const text = (value) => typeof value === 'string' && value.trim().length > 0;
@@ -39,13 +39,7 @@ export function validateTopic(topic) {
     }
   }
   uniqueNames(topic.charts, 'chartId', 'charts');
-  for (const chart of topic.charts) {
-    requireField(chart.hideInEuropeView === undefined || typeof chart.hideInEuropeView === 'boolean', `${chart.chartId}: hideInEuropeView must be a boolean`);
-    requireField(text(chart.title) && typeof chart.description === 'string', `${chart.chartId}: title and description are required`);
-    requireField(Array.isArray(chart.data?.variables) && chart.data.variables.every(text), `${chart.chartId}: variables must be strings`);
-    const error = definitionGroupingError(chart);
-    requireField(!error, `${chart.chartId}: ${error}`);
-  }
+  for (const chart of topic.charts) validateChart(chart);
 }
 
 export function readTopics(directory = topicsDirectory) {

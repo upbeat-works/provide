@@ -6,7 +6,7 @@ start with [Add and update EU scoreboard topics](eu-scoreboard-topics.md).
 
 [Chart fields](#chart-fields) · [Chart types](#choose-a-chart-type) ·
 [Variables and units](#variables-models-and-units) · [Source units](#select-source-units) · [Grouping](#grouping) ·
-[Country totals](#country-totals) · [Examples](#examples) · [Risk colours](#risk-colours)
+[Country totals](#country-totals) · [Examples](#examples) · [Risk colours](#risk-colours) · [Embed a chart](#embed-a-chart)
 
 ## Chart fields
 
@@ -16,7 +16,7 @@ topic ID or a rendering component name.
 
 | Field | Purpose |
 | --- | --- |
-| `chartId` | Unique ID within the topic, used in requests and embeds. Changing it affects saved links. |
+| `chartId` | Unique ID within the topic, used in chart requests, page links and export filenames. |
 | `title` | Chart heading. |
 | `description` | Text explaining what the reader sees. |
 | `chartType` | One of the types below. |
@@ -40,6 +40,40 @@ A complete chart definition:
   }
 }
 ```
+
+## Embed a chart
+
+Use `/embed/eu-scoreboard-chart` with a full chart definition in the `chart`
+query param. It accepts the same fields as a topic's `charts` entry, so the
+chart does not need to be saved in a topic. The scoreboard's graph export
+links use this format too.
+
+| Query param | Value |
+| --- | --- |
+| `chart` | The full chart definition as JSON. Use `URLSearchParams` to encode it. |
+| `scenario` | Exact source scenario ID, such as `CurrentPolicies`. |
+| `region` | Country name, such as `Austria`, or `all` for Europe. |
+| `year` | Four-digit year, such as `2050`. |
+| `static` | Optional. Set to `true` to hide controls for image export. |
+
+For example, set an iframe's `src` using the chart definition above:
+
+```js
+const params = new URLSearchParams({
+  chart: JSON.stringify(chart),
+  scenario: 'CurrentPolicies',
+  region: 'Austria',
+  year: '2050',
+});
+const url = new URL('/embed/eu-scoreboard-chart', 'https://your-provide-host.example');
+url.search = params.toString();
+iframe.src = url.href;
+```
+
+The widget reads the definition from the URL. `chartId` inside that definition
+names the chart; it does not look up a saved chart. Topic edits do not change
+an existing embed's definition. Source data is loaded when the widget opens.
+All chart types, roles, units and grouping settings below apply to embeds.
 
 ## Choose a chart type
 

@@ -8,6 +8,7 @@
   import saveAs from 'file-saver';
 
   export let graphParams = {};
+  export let filename = undefined;
   export let width = 1000;
   export let processingIntensity = 1;
   export let embedUid;
@@ -28,7 +29,7 @@
 
   let format = formats[0];
 
-  $: screenshotName = Object.values(graphParams)
+  $: screenshotName = (filename ? [filename] : Object.values(graphParams))
     .map((str) => snakeCase(str))
     .join('-');
 
