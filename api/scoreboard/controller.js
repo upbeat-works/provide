@@ -8,7 +8,7 @@ export function getScoreboard(sectorId, indicatorName, { directory } = {}) {
   const definition = topics.find(({ uid }) => uid === sectorId) ?? topics[0];
   return {
     instance: SCOREBOARD_INSTANCE,
-    sectors: topics.map(({ uid, label }) => ({ uid, label })),
+    sectors: topics.map(({ uid, label, map }) => ({ uid, label, indicators: map.indicators, defaultIndicator: selectMapIndicator(map)?.name })),
     sector: { uid: definition.uid, label: definition.label },
     map: definition.map,
     charts: definition.charts,

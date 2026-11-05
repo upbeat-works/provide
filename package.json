@@ -36,6 +36,7 @@
     "@sveltejs/kit": "^2.5.0",
     "@sveltejs/vite-plugin-svelte": "^3.0.1",
     "@testing-library/svelte": "^4.2.3",
+    "@testing-library/user-event": "^14.6.8",
     "@thoughtbot/tailwindcss-aria-attributes": "^0.2.0",
     "@turf/intersect": "^6.5.0",
     "@types/d3-array": "^3.2.1",

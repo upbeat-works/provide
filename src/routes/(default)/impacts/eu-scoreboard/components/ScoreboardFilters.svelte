@@ -6,7 +6,7 @@
   import IndicatorPicker from './IndicatorPicker.svelte';
 
   export let data;
-  export let filters = ['region', 'sector', 'indicator', 'scenario', 'year'];
+  export let filters = ['region', 'indicator', 'scenario', 'year'];
 
   const base = `/${PATH_IMPACT}/${PATH_EU_SCOREBOARD}`;
   const allCountries = { uid: 'all', label: 'All available countries' };
@@ -31,6 +31,14 @@
     const url = new URL($page.url);
     url.searchParams.set(param, option.uid);
     if (param === 'region') url.pathname = `${base}/indicators`;
+    void goto(url, { keepFocus: true, noScroll: true });
+  }
+
+  function selectIndicator({ topic, indicator }) {
+    const url = new URL($page.url);
+    url.searchParams.set('sector', topic.uid);
+    if (indicator) url.searchParams.set('indicator', indicator.uid);
+    else url.searchParams.delete('indicator');
     void goto(url, { keepFocus: true, noScroll: true });
   }
 
@@ -72,10 +80,10 @@
     </FilterSelect>
   {:else if filter.key === 'indicator'}
     <IndicatorPicker
-      options={choicesFor(options, selected)}
+      topics={data.scoreboard.sectors}
+      topic={data.scoreboard.sector}
       {selected}
-      definitions={data.scoreboard.map?.indicators ?? []}
-      on:change={({ detail }) => select('indicator', detail)}
+      on:change={({ detail }) => selectIndicator(detail)}
     />
   {:else}
     <FilterSelect

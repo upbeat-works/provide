@@ -5,20 +5,13 @@
   import SelectionModal from '$lib/components/controls/components/SelectionModal.svelte';
   import SelectionPanel from '$lib/components/controls/components/SelectionPanel.svelte';
   import SearchInput from '$lib/components/ui/SearchInput.svelte';
-  import InteractiveListItem from '$lib/components/ui/InteractiveListItem.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { layerInfo } from './layer-info.js';
 
-  // The filter bar's indicator choice, laid out like Explore's indicator modal:
-  // a searchable list, a detail panel for the hovered row, and an Apply footer.
-  // Explore's own control (IndicatorSelection) is bound to the catalog stores;
-  // the scoreboard's choice lives in the URL, so it only dispatches `change`.
-  // A scoreboard indicator has no curated description — the panel shows what
-  // its definition says about the layer, the same rows as the legend's info.
   export let label = 'Indicator';
-  export let options = [];
+  export let topics = [];
+  export let topic = undefined;
   export let selected = undefined;
-  export let definitions = [];
   export let wrapperClass = 'min-w-[10rem]';
   export let buttonClass = 'mt-1 text-sm';
   export let labelClass = '';
@@ -26,13 +19,21 @@
   const dispatch = createEventDispatcher();
 
   let isOpen = false;
+  let stagedTopicUid;
   let staged;
-  $: if (!isOpen) staged = selected?.uid;
+  let previewUid;
+  $: if (!isOpen) {
+    stagedTopicUid = topic?.uid;
+    staged = selected?.uid;
+    previewUid = undefined;
+  }
+  $: stagedTopic = topics.find(({ uid }) => uid === stagedTopicUid);
+  $: definitions = stagedTopic?.indicators ?? [];
+  $: options = definitions.map(({ name }) => ({ uid: name, label: name }));
 
   let term = '';
   let listBox;
-  // A new search starts the list from the top. The sidebar column is what
-  // scrolls, so it is the list's parent that is reset.
+  // The sidebar owns the scroll container.
   $: if (listBox?.parentElement) (term, (listBox.parentElement.scrollTop = 0));
 
   $: fuse = new Fuse(options, { keys: ['label', 'uid'], includeMatches: true });
@@ -54,29 +55,33 @@
         return { ...item, label };
       });
 
-  let hovered = null;
-  // Hold the last hovered row so the panel does not blank as the pointer
-  // crosses the gap between rows (InteractiveListItem clears on mouseleave).
-  let lastHovered = null;
-  $: if (hovered) lastHovered = hovered;
   $: stagedOption = options.find(({ uid }) => uid === staged);
-  $: detailsUid = hovered ?? lastHovered ?? staged;
-  $: details = options.find(({ uid }) => uid === detailsUid);
+  $: details = options.find(({ uid }) => uid === previewUid) ?? stagedOption;
   $: rows = details ? layerInfo({ definition: definitions.find(({ name }) => name === details.uid) }).rows : [];
-  $: changed = isOpen && Boolean(staged) && staged !== selected?.uid;
+  $: changed = isOpen && stagedTopic && (stagedTopicUid !== topic?.uid || staged !== selected?.uid);
+  $: canApply = changed && (stagedOption || !definitions.length);
+
+  function pickTopic(next) {
+    const previous = next.indicators.find(({ name }) => name === staged);
+    stagedTopicUid = next.uid;
+    staged = previous?.name ?? next.defaultIndicator;
+    previewUid = undefined;
+  }
 
   function apply() {
-    if (!stagedOption) return;
+    if (!canApply) return;
+    const choice = { topic: { uid: stagedTopic.uid, label: stagedTopic.label }, indicator: stagedOption };
     isOpen = false;
     term = '';
-    dispatch('change', stagedOption);
+    dispatch('change', choice);
   }
 </script>
 
 <SelectionModal
   {label}
-  buttonLabel={selected?.label ?? 'No data'}
-  buttonAriaLabel="{label}: {selected?.label ?? 'none'}"
+  buttonLabel={selected?.label ?? topic?.label ?? 'No data'}
+  buttonAriaLabel="{label}: {selected?.label ?? topic?.label ?? 'none'}"
+  category={selected ? topic?.label : undefined}
   {wrapperClass}
   {buttonClass}
   {labelClass}
@@ -85,17 +90,46 @@
   <SelectionPanel>
     <svelte:fragment slot="header">
       <SearchInput bind:value={term} placeholder="Search indicators" />
+      <div class="mt-3 rounded-sm border border-theme-base/20 bg-surface-base/60 p-4" role="group" aria-label="Topic">
+        <p class="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-theme-base">
+          <span class="h-2 w-2 rounded-full bg-theme-base" aria-hidden="true"></span>
+          Topic
+        </p>
+        <div class="flex flex-wrap gap-2">
+          {#each topics as item (item.uid)}
+            <button
+              type="button"
+              aria-pressed={stagedTopicUid === item.uid}
+              class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-semibold transition-colors {stagedTopicUid === item.uid ? 'border-theme-base bg-theme-base text-white' : 'border-theme-base/30 bg-surface-base text-theme-base hover:bg-theme-50'}"
+              on:click={() => pickTopic(item)}
+            >
+              {item.label}<span class="font-normal opacity-70">{item.indicators.length}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
     </svelte:fragment>
     <svelte:fragment slot="sidebar">
       <span class="block px-5 pt-4 pb-2 text-xs uppercase tracking-widest text-text-weaker">Indicators</span>
       <div bind:this={listBox}>
         <RadioGroup bind:value={staged}>
           {#each matches as { uid, label } (uid)}
-            <RadioGroupOption value={uid} let:checked>
-              <InteractiveListItem {uid} {label} bind:hovered selected={checked} />
+            <RadioGroupOption
+              as="button"
+              type="button"
+              value={uid}
+              aria-label={uid}
+              title={uid}
+              class="flex w-full px-5 py-1 text-left text-sm hover:bg-surface-weaker focus:bg-surface-weaker focus:outline-none border-theme-base {staged === uid ? 'text-theme-base border-r-3 bg-surface-weaker' : ''}"
+              on:focus={() => (previewUid = uid)}
+              on:mouseover={() => (previewUid = uid)}
+            >
+              <span class="truncate" class:font-bold={staged === uid}>{@html label}</span>
             </RadioGroupOption>
           {:else}
-            <span class="text-xs py-1 px-5 block text-text-weaker" role="status">No indicators found.</span>
+            <span class="text-xs py-1 px-5 block text-text-weaker" role="status">
+              {#if definitions.length}No indicators found.{:else}No map indicators in this topic.{/if}
+            </span>
           {/each}
         </RadioGroup>
       </div>
@@ -123,11 +157,13 @@
     <p class="min-w-0 truncate text-sm text-text-weaker">
       {#if stagedOption}
         <span class="font-medium text-theme-base">{stagedOption.label}</span> selected
+      {:else if stagedTopic}
+        <span class="font-medium text-theme-base">{stagedTopic.label}</span> selected
       {:else}
         No indicator selected yet
       {/if}
     </p>
-    {#if changed}
+    {#if canApply}
       <Button variant="primary" class="shrink-0" on:click={apply}>Apply</Button>
     {/if}
   </div>

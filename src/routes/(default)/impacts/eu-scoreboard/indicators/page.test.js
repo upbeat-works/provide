@@ -45,7 +45,7 @@ test('writes the indicator parameter without changing the sector', async () => {
   });
 
   await fireEvent.click(screen.getByRole('button', { name: /^Indicator:/ }));
-  await fireEvent.click(screen.getByRole('button', { name: 'Mean Air Temperature' }));
+  await fireEvent.click(screen.getByRole('radio', { name: 'Mean Air Temperature' }));
   expect(goto).not.toHaveBeenCalled();
   await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
@@ -69,8 +69,10 @@ test.each([false, true])('changes sector and keeps the full indicator selection 
     await waitFor(() => expect(screen.getAllByRole('img', { name: 'Mock country map' })).toHaveLength(2));
   }
 
-  await fireEvent.click(screen.getByRole('button', { name: /^Topic:/ }));
-  await fireEvent.click(screen.getByRole('button', { name: 'Heat stress' }));
+  await fireEvent.click(screen.getByRole('button', { name: /^Indicator:/ }));
+  await fireEvent.click(screen.getByRole('button', { name: /^Heat stress/ }));
+  expect(goto).not.toHaveBeenCalled();
+  await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
   const url = goto.mock.calls[0][0];
   expect(url.pathname).toBe('/impacts/eu-scoreboard/indicators');
@@ -84,7 +86,15 @@ test.each([false, true])('changes sector and keeps the full indicator selection 
 });
 
 test('keeps charts and country context available for a sector without a regional map', async () => {
-  const chartsOnly = { ...scoreboard, map: { ...scoreboard.map, indicators: [] }, indicator: undefined };
+  const chartsOnly = {
+    ...scoreboard,
+    map: { ...scoreboard.map, indicators: [] },
+    indicator: undefined,
+    sectors: scoreboard.sectors.map((topic) => {
+      if (topic.uid !== scoreboard.sector.uid) return topic;
+      return { ...topic, indicators: [], defaultIndicator: undefined };
+    }),
+  };
   const chartSelection = { ...common.selection, indicator: undefined };
   render(Page, {
     data: {
@@ -101,13 +111,15 @@ test('keeps charts and country context available for a sector without a regional
   expect(screen.getByRole('heading', { name: definition.title })).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Mock country map' }).dataset.country).toBe('Austria');
   expect(screen.getByText('Regional map data is not available for this sector.')).toBeTruthy();
-  expect(screen.queryByRole('button', { name: /^Indicator:/ })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Compare' })).toBeNull();
 
-  await fireEvent.click(screen.getByRole('button', { name: /^Topic:/ }));
-  await fireEvent.click(screen.getByRole('button', { name: 'Heat stress' }));
+  await fireEvent.click(screen.getByRole('button', { name: /^Indicator:/ }));
+  await fireEvent.click(screen.getByRole('button', { name: /^Heat stress/ }));
+  await fireEvent.click(screen.getByRole('radio', { name: 'High Heat Risk' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
   expect(Object.fromEntries(goto.mock.calls[0][0].searchParams)).toEqual({
     sector: 'heat-stress',
+    indicator: 'High Heat Risk',
     region: 'Austria',
     scenario: 'scenario',
     year: '2050',

@@ -39,7 +39,7 @@
     sides = compareBy ? seedComparison(optionsFor(compareBy.uid), data.selection?.[compareBy.uid]) : [];
   }
 
-  $: availableFilters = data.scoreboard.indicator ? ['region', 'sector', 'indicator', 'scenario', 'year'] : ['region', 'sector', 'scenario', 'year'];
+  const availableFilters = ['region', 'indicator', 'scenario', 'year'];
   $: filters = availableFilters.filter((uid) => uid !== compareBy?.uid);
 
   // The article column's index, and what the "view charts" button jumps to.
