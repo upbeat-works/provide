@@ -34,7 +34,7 @@ beforeEach(() => {
   fetcher = vi.fn(async (url, options) => {
     const topic = JSON.parse(options.body);
     if (url.includes('/definition?')) {
-      try { return Response.json(previewScoreboard(topic)); }
+      try { return Response.json(previewScoreboard(topic, new URL(url, 'http://localhost').searchParams.get('indicator'))); }
       catch (reason) { return Response.json({ error: reason.message }, { status: 400 }); }
     }
     return Response.json({ definition: topic.charts[0], status: 'empty', data: [] });
@@ -64,6 +64,26 @@ test('shows validation errors without changing the link or querying chart data',
   expect((await screen.findByRole('alert')).textContent).toContain('map.years');
   expect(goto).not.toHaveBeenCalled();
   expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+test('changes the preview indicator while keeping the draft and original topic in the link', async () => {
+  const { default: Page } = await import('../indicators/+page.svelte');
+  const topic = { ...draft, map: { ...draft.map, indicators: data.scoreboard.map.indicators } };
+  const hash = `#preview=${await encodePreview(topic)}`;
+  page.set({ url: new URL(`http://localhost/impacts/eu-scoreboard/indicators?sector=testing${hash}`) });
+  render(Page, { data });
+
+  await fireEvent.click(await screen.findByRole('button', { name: /^Indicator:/ }));
+  await fireEvent.click(screen.getByRole('radio', { name: 'Mean Air Temperature' }));
+  expect(goto).not.toHaveBeenCalled();
+  await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+  const url = goto.mock.calls[0][0];
+  expect(url.searchParams.get('sector')).toBe('testing');
+  expect(url.searchParams.get('indicator')).toBe('Mean Air Temperature');
+  expect(url.hash).toBe(hash);
+  await screen.findByRole('button', { name: 'Indicator: Mean Air Temperature' });
+  for (const [, options] of fetcher.mock.calls) expect(JSON.parse(options.body)).toEqual(topic);
 });
 
 test('opens a shared link and reports a broken link', async () => {

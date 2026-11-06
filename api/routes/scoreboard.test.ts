@@ -78,6 +78,15 @@ describe('scoreboard requests', () => {
     expect(await response.json()).toMatchObject({
       sector: { uid: 'testing', label: 'Testing' },
       indicator: { name: 'Mean Air Temperature' },
+      sectors: expect.arrayContaining([
+        expect.objectContaining({
+          uid: 'socioeconomic',
+          label: 'Socioeconomic',
+          indicators: expect.arrayContaining([
+            expect.objectContaining({ name: 'Population aged 65 and over', variable: 'Population|Age 65+' }),
+          ]),
+        }),
+      ]),
       charts: expect.arrayContaining([expect.objectContaining({ chartId: 'mean-air-temperature' })]),
     });
     expect(createPlatform).not.toHaveBeenCalled();
