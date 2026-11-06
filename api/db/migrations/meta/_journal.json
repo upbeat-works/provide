@@ -15,6 +15,13 @@
       "when": 1789066800000,
       "tag": "0001_indicator_title_case",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793836800000,
+      "tag": "0002_indicator_sectors",
+      "breakpoints": true
     }
   ]
 }
