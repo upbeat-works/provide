@@ -6,16 +6,12 @@
  * for the field mapping). Source content is the committed snapshot
  * lib/adaptation-source.json (downloaded from https://provide-cms.herokuapp.com).
  *
- * Idempotent — matches an existing entry by Slug + locale and updates it in
- * place, so it is safe to re-run.
+ * Matches by Slug and locale. Re-running replaces and publishes the mapped
+ * fields, including any editor changes to those fields.
  *
  * Boots Strapi programmatically, so run with the dev server stopped:
  *
  *   node scripts/create-adaptation-case-study.js
- *
- * On Fly (idle instance):
- *   fly ssh console -a provide-cms -C \
- *     "/bin/sh -c 'cd /app && node scripts/create-adaptation-case-study.js'"
  */
 const { buildAdaptationCaseStudy } = require('./lib/adaptation-case-study');
 const source = require('./lib/adaptation-source.json');
@@ -27,73 +23,65 @@ const PROJECT_UID = 'api::project.project';
 const LOCALES = ['en', 'en-EU'];
 const PROJECT_TITLE = 'Provide';
 
-// Find the PROVIDE project id in `locale`, falling back to the same project in
-// any locale (relations can point at a localization). Returns null if absent.
 async function findProjectId(strapi, locale) {
-  const inLocale = await strapi.entityService.findMany(PROJECT_UID, {
-    locale,
-    filters: { Title: PROJECT_TITLE },
-    limit: 1,
-  });
-  if (inLocale?.[0]) return inLocale[0].id;
-  const anyLocale = await strapi.entityService.findMany(PROJECT_UID, {
-    filters: { Title: PROJECT_TITLE },
-    limit: 1,
-  });
-  return anyLocale?.[0]?.id ?? null;
+  const project = await strapi.documents(PROJECT_UID).findFirst({ locale, filters: { Title: PROJECT_TITLE } });
+  return project?.documentId ?? null;
+}
+
+async function seedAdaptationCaseStudy(strapi, log = () => {}) {
+  const base = buildAdaptationCaseStudy(source);
+
+  // Ensure the target locales exist (a fresh Strapi has only `en`).
+  const localeService = strapi.plugin('i18n').service('locales');
+  const haveLocales = (await localeService.find()).map((l) => l.code);
+  for (const code of LOCALES) {
+    if (!haveLocales.includes(code)) {
+      await localeService.create({ code, name: code });
+      log(`created locale ${code}`);
+    }
+  }
+
+  const entries = await Promise.all(LOCALES.map((locale) => strapi.documents(UID).findFirst({
+    locale, filters: { Slug: base.Slug },
+  })));
+  let documentId = entries.find(Boolean)?.documentId;
+  for (const [index, locale] of LOCALES.entries()) {
+    const projectId = await findProjectId(strapi, locale);
+    if (!projectId) log(`${locale}: WARNING — no "${PROJECT_TITLE}" project found; creating without a Project relation`);
+
+    const data = {
+      ...base,
+      ...(projectId ? { Project: projectId } : {}),
+    };
+
+    const existing = entries[index];
+    if (existing) documentId = existing.documentId;
+    let saved;
+    if (documentId) saved = await strapi.documents(UID).update({ documentId, locale, status: 'published', data });
+    else saved = await strapi.documents(UID).create({ locale, status: 'published', data });
+    documentId = saved.documentId;
+    log(`${locale}: saved "${base.Title}" (${base.Slug}) documentId=${documentId}`);
+  }
 }
 
 async function main() {
-  const strapi = await require('@strapi/strapi')().load();
+  const strapi = await require('@strapi/strapi').createStrapi().load();
   const log = (m) => strapi.log.info(`[adaptation] ${m}`);
   try {
-    const base = buildAdaptationCaseStudy(source);
-
-    // Ensure the target locales exist (a fresh Strapi has only `en`).
-    const localeService = strapi.plugin('i18n').service('locales');
-    const haveLocales = (await localeService.find()).map((l) => l.code);
-    for (const code of LOCALES) {
-      if (!haveLocales.includes(code)) {
-        await localeService.create({ code, name: code });
-        log(`created locale ${code}`);
-      }
-    }
-
-    for (const locale of LOCALES) {
-      const projectId = await findProjectId(strapi, locale);
-      if (!projectId) log(`${locale}: WARNING — no "${PROJECT_TITLE}" project found; creating without a Project relation`);
-
-      const data = {
-        ...base,
-        locale,
-        publishedAt: new Date(),
-        ...(projectId ? { Project: projectId } : {}),
-      };
-
-      const existing = await strapi.entityService.findMany(UID, {
-        locale,
-        filters: { Slug: base.Slug },
-        limit: 1,
-      });
-
-      if (existing?.[0]) {
-        await strapi.entityService.update(UID, existing[0].id, { data });
-        log(`${locale}: updated "${base.Title}" (${base.Slug}) id=${existing[0].id}`);
-      } else {
-        const rec = await strapi.entityService.create(UID, { data });
-        log(`${locale}: created "${base.Title}" (${base.Slug}) id=${rec.id}`);
-      }
-    }
-
+    await seedAdaptationCaseStudy(strapi, log);
     log('done');
   } finally {
     await strapi.destroy();
   }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+module.exports = { seedAdaptationCaseStudy };
+
+if (require.main === module) {
+  main()
+    .then(() => process.exit(0))
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
+}

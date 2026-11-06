@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 const option = (uid) => ({ uid, label: uid });
-const definition = { name: 'Maximum Air Temperature', type: 'choropleth', level: 'NUTS2' };
+const definition = { name: 'Maximum Air Temperature', type: 'choropleth', europeLevel: 'NUTS0', level: 'NUTS2' };
 const selection = {
   indicator: option(definition.name),
   region: option('Austria'),
@@ -192,4 +192,28 @@ test('comparing geographies, a click sets that map and does not navigate', async
   expect(goto).not.toHaveBeenCalled();
   const maps = screen.getAllByRole('img', { name: 'Regional scoreboard map' });
   expect(maps.map(({ dataset }) => dataset.country)).toEqual(['Belgium', 'Austria']);
+});
+
+test.each(['NUTS0', 'NUTS2', 'NUTS3'])('shows Europe at %s and keeps country detail when switching geography', async (europeLevel) => {
+  const configured = { ...definition, europeLevel };
+  const { rerender } = render(MapPanel, { ...props, definition: configured, selection: { ...selection, region: option('all') } });
+  const map = screen.getByRole('img', { name: 'Regional scoreboard map' });
+  expect(map.dataset.level).toBe(europeLevel);
+  expect(map.dataset.selectable).toBe(String(europeLevel === 'NUTS0'));
+  await rerender({ ...props, definition: configured, selection });
+  expect(map.dataset.level).toBe('NUTS2');
+  expect(map.dataset.country).toBe('Austria');
+});
+
+
+test('describes the displayed Europe level in the map details', async () => {
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
+  render(MapPanel, {
+    ...props,
+    definition: { ...definition, europeLevel: 'NUTS3' },
+    selection: { ...selection, region: option('all') },
+    result: result('ready', [{ region: 'AT111', value: 5 }], { unit: 'days/yr' }),
+  });
+  await fireEvent.click(screen.getByRole('button', { name: 'About this layer' }));
+  expect(screen.getByText('NUTS-3 regions')).toBeTruthy();
 });

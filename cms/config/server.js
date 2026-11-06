@@ -4,8 +4,4 @@ module.exports = ({ env }) => ({
   app: {
     keys: env.array("APP_KEYS"),
   },
-  webhooks: {
-    // Add this to not receive populated relations in webhooks
-    populateRelations: false,
-  },
 });

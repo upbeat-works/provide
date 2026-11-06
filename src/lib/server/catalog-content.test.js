@@ -35,9 +35,9 @@ describe('catalog editorial clients', () => {
         expect(url.searchParams.get('filters[UID][$in][1]')).toBe('1.5C');
         return HttpResponse.json({
           data: [
-            { id: 1, attributes: { UID: 'CurrentPolicies', Label: 'Current policies' } },
-            { id: 2, attributes: { UID: '1.5C', Label: null } },
-            { id: 3, attributes: { UID: 'Unrequested', Label: 'Do not use' } },
+            { id: 1, UID: 'CurrentPolicies', Label: 'Current policies' },
+            { id: 2, UID: '1.5C', Label: null },
+            { id: 3, UID: 'Unrequested', Label: 'Do not use' },
           ],
         });
       })
@@ -94,10 +94,8 @@ describe('catalog editorial clients', () => {
           data: [
             {
               id: 8,
-              attributes: {
-                UID: id,
+              UID: id,
                 Description: description,
-              },
             },
           ],
           meta: {
@@ -156,7 +154,7 @@ describe('catalog editorial clients', () => {
           data: [
             {
               id: 8,
-              attributes: { UID: 'Missing', Description: 'private source detail' },
+              UID: 'Missing', Description: 'private source detail',
             },
           ],
         },

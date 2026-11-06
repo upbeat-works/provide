@@ -1,34 +1,27 @@
 import { test, expect } from 'bun:test';
-
-// Strapi config modules are CommonJS: ({ env }) => ({...}). Tests live in
-// cms/tests/ (not cms/config/) so Strapi does not auto-load them at boot.
+const path = require('node:path');
 const database = require('../config/database.js');
 
-// Minimal stand-in for Strapi's `env` helper.
-const envWith = (vars) => {
-  const fn = (key, fallback) => (key in vars ? vars[key] : fallback);
-  fn.int = (key, fallback) => (key in vars ? vars[key] : fallback);
-  fn.bool = (key, fallback) => (key in vars ? vars[key] : fallback);
-  fn.array = (key, fallback) => (key in vars ? vars[key] : fallback);
-  return fn;
-};
+function envWith(vars) {
+  const env = (key, fallback) => vars[key] ?? fallback;
+  env.int = (key, fallback) => Number(env(key, fallback));
+  env.bool = (key, fallback) => env(key, fallback);
+  return env;
+}
 
-test('uses the sqlite client', () => {
-  const cfg = database({ env: envWith({}) });
-  expect(cfg.connection.client).toBe('sqlite');
+test('connects to the CMS schema in the shared PostgreSQL database', () => {
+  const { connection } = database({ env: envWith({ DATABASE_HOST: 'db', DATABASE_USERNAME: 'cms', DATABASE_PASSWORD: 'secret' }) });
+  expect(connection.client).toBe('postgres');
+  expect(connection.connection).toMatchObject({ host: 'db', user: 'cms', password: 'secret', schema: 'strapi' });
 });
 
-test('defaults the sqlite file to database/data.db when DATABASE_FILENAME is unset', () => {
-  const cfg = database({ env: envWith({}) });
-  expect(cfg.connection.connection.filename).toBe('database/data.db');
+test('uses the requested SQLite file for isolated tests and exports', () => {
+  const { connection } = database({ env: envWith({ DATABASE_CLIENT: 'sqlite', DATABASE_FILENAME: '/tmp/cms-test.db' }) });
+  expect(connection.connection.filename).toBe('/tmp/cms-test.db');
+  expect(connection.useNullAsDefault).toBe(true);
 });
 
-test('honors DATABASE_FILENAME (the Fly volume path in production)', () => {
-  const cfg = database({ env: envWith({ DATABASE_FILENAME: '/data/data.db' }) });
-  expect(cfg.connection.connection.filename).toBe('/data/data.db');
-});
-
-test('sets useNullAsDefault (knex requires it for sqlite)', () => {
-  const cfg = database({ env: envWith({}) });
-  expect(cfg.connection.useNullAsDefault).toBe(true);
+test('resolves the default SQLite file inside the CMS', () => {
+  const { connection } = database({ env: envWith({ DATABASE_CLIENT: 'sqlite' }) });
+  expect(connection.connection.filename).toBe(path.resolve(import.meta.dir, '../database/data.db'));
 });

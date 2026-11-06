@@ -5,7 +5,7 @@ import { LABEL_CONTACT } from '$config';
 
 export const load = async ({ fetch }) => {
   const data = await loadFromStrapi('contact', fetch);
-  const { Contact } = data.attributes;
+  const { Contact } = data;
 
   const title = generatePageTitle(LABEL_CONTACT);
 

@@ -12,17 +12,17 @@ export const load = async ({ fetch, params }) => {
       'case-study-dynamics',
       fetch,
       [
-        `populate[CoverImage]=*`,
+        `populate[CoverImage]=true`,
         `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactTimeSnapshot][populate]=Image`,
         `populate[MainContent][on][future-impacts.future-impacts][populate][ImpactGeoSnapshot][populate]=Image`,
-        `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image1`,
-        `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate]=Image2`,
+        `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate][Image1]=true`,
+        `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate][Image2]=true`,
         `populate[MainContent][on][avoiding-impacts.avoiding-impacts][populate]=*`,
         `populate[MainContent][on][section.section][populate]=*`,
-        `populate[Topics]=*`,
-        `populate[Project]=*`,
-        `populate[Geography]=*`,
-        `populate[Scenarios]=*`,
+        `populate[Topics]=true`,
+        `populate[Project]=true`,
+        `populate[Geography]=true`,
+        `populate[Scenarios]=true`,
       ].join('&')
     ),
     loadFromStrapi('case-study-outro', fetch),
@@ -32,9 +32,9 @@ export const load = async ({ fetch, params }) => {
     indicators: indicatorIndex.indicators ?? [],
   };
   const indicatorIndexIncomplete = Boolean(indicatorIndex.failedInstances?.length);
-  const caseStudyOutro = caseStudyOutroRaw?.attributes;
+  const caseStudyOutro = caseStudyOutroRaw;
 
-  const caseStudyRaw = caseStudiesRaw.find((d) => d.attributes.Slug === params.slug)?.attributes;
+  const caseStudyRaw = caseStudiesRaw.find((d) => d.Slug === params.slug);
   if (!caseStudyRaw) error(404, { message: 'No case study available for this slug' });
 
   const hasAvoidingImpacts = caseStudyRaw.MainContent.some((content) => content.__component === 'avoiding-impacts.avoiding-impacts');
@@ -57,15 +57,15 @@ export const load = async ({ fetch, params }) => {
     title: caseStudyRaw.Title,
     abstract: caseStudyRaw.Abstract,
     authors: caseStudyRaw.Authors,
-    coverImage: caseStudyRaw.CoverImage?.data?.attributes ?? null,
+    coverImage: caseStudyRaw.CoverImage ?? null,
     publicationDate: caseStudyRaw.PublicationDate ?? null,
-    topics: (caseStudyRaw.Topics?.data ?? []).map((d) => ({ id: d.id, ...d.attributes })),
-    project: caseStudyRaw.Project?.data ? { id: caseStudyRaw.Project.data.id, ...caseStudyRaw.Project.data.attributes } : null,
-    geography: caseStudyRaw.Geography?.data ? { id: caseStudyRaw.Geography.data.id, ...caseStudyRaw.Geography.data.attributes } : null,
-    scenarios: (caseStudyRaw.Scenarios?.data ?? []).map((d) => ({
+    topics: (caseStudyRaw.Topics ?? []),
+    project: caseStudyRaw.Project ?? null,
+    geography: caseStudyRaw.Geography ?? null,
+    scenarios: (caseStudyRaw.Scenarios ?? []).map((d) => ({
       id: d.id,
-      uid: d.attributes.UID,
-      label: d.attributes.Label ?? d.attributes.UID,
+      uid: d.UID,
+      label: d.Label ?? d.UID,
     })),
     mainContent: (
       await Promise.all(
@@ -94,7 +94,7 @@ export const load = async ({ fetch, params }) => {
               const resolveSnapshot = (snpsht, extra) => {
                 const matches = meta.indicators.filter((indicator) => indicator.uid === snpsht.Indicator && indicator.instance === snpsht.Instance);
                 const indicator = matches.length === 1 ? matches[0] : undefined;
-                return indicator ? { indicator, image: snpsht.Image?.data?.attributes, ...extra } : null;
+                return indicator ? { indicator, image: snpsht.Image, ...extra } : null;
               };
               const impactGeoSnapshots = c.ImpactGeoSnapshot.map((s) => resolveSnapshot(s, { year: s.Year })).filter(Boolean);
               const impactTimeSnapshots = c.ImpactTimeSnapshot.map((s) => resolveSnapshot(s, {})).filter(Boolean);
@@ -117,8 +117,8 @@ export const load = async ({ fetch, params }) => {
                 allowImageSelection: c.AllowImageSelection,
                 showThumbnails: c.ShowThumbnails,
                 imagePairs: c.ImageSliderPair.map((img) => ({
-                  image1: img.Image1.data?.attributes,
-                  image2: img.Image2.data?.attributes,
+                  image1: img.Image1,
+                  image2: img.Image2,
                   description: img.Description?.trim(),
                   attribute: { uid: img.AttributeValue?.trim(), label: img.AttributeValue?.trim() },
                   group: { uid: img.GroupValue?.trim(), label: img.GroupValue?.trim() },
@@ -137,16 +137,16 @@ export const load = async ({ fetch, params }) => {
   };
 
   const caseStudies = caseStudiesRaw.map((study) => {
-    const attrs = study.attributes;
-    const topics = (attrs.Topics?.data ?? []).map((d) => ({ id: d.id, ...d.attributes }));
+    const attrs = study;
+    const topics = (attrs.Topics ?? []);
     return {
       id: study.id,
       title: attrs.Title,
       city: meta.cities.find((c) => c.geoId === attrs.Slug) ?? { uid: attrs.Slug, label: attrs.Title ?? attrs.Slug },
       abstract: attrs.Abstract,
       category: topics[0]?.Title,
-      image: attrs.CoverImage?.data?.attributes ?? null,
-      project: attrs.Project?.data ? { id: attrs.Project.data.id, ...attrs.Project.data.attributes } : null,
+      image: attrs.CoverImage ?? null,
+      project: attrs.Project ?? null,
     };
   });
 

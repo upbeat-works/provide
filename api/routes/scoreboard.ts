@@ -3,12 +3,13 @@ import type { Env } from '../types';
 import { instances } from '../instances';
 import { createPlatform } from '../platform';
 import { readScoreboardMapSeries } from '../views/scoreboard';
-import { getScoreboard, SCOREBOARD_INSTANCE } from '../scoreboard/controller.js';
+import { getScoreboard, previewScoreboard, SCOREBOARD_INSTANCE } from '../scoreboard/controller.js';
+import { mapBoundaryLevel } from '../scoreboard/choices.js';
 import { SCOREBOARD_COUNTRIES, scoreboardCountry } from '../scoreboard/countries';
 import { loadRegionalBoundaries, type NutsLevel } from '../scoreboard/boundaries';
 import { aggregatedCountryMapResult, regionalMapResult } from '../scoreboard/maps';
 import { emptyRasterMapResult, rasterMapResult } from '../scoreboard/rasters';
-import { definitionGroupingError, loadScoreboardChart } from '../scoreboard/charts';
+import { definitionGroupingError, loadScoreboardChart, validateChart } from '../scoreboard/charts';
 import type { Definition, RasterMapIndicator, Selection } from '../scoreboard/types';
 import {
   fetchImpactGeoRaster,
@@ -17,6 +18,16 @@ import {
 } from '../views/impact-geo';
 
 const scoreboard = new Hono<Env>();
+
+async function requestScoreboard(c: Context<Env>) {
+  if (c.req.method !== 'POST') return getScoreboard(c.req.query('sector'), c.req.query('indicator'));
+  c.header('Cache-Control', 'no-store');
+  try {
+    return previewScoreboard(await c.req.json(), c.req.query('indicator'));
+  } catch (reason) {
+    return c.json({ error: reason instanceof Error ? reason.message : 'Invalid preview JSON' }, 400);
+  }
+}
 
 function source(c: Context<Env>) {
   const instance = instances.find(({ slug }) => slug === SCOREBOARD_INSTANCE);
@@ -52,13 +63,35 @@ function validRasterIndicator(indicator: RasterMapIndicator) {
     .every((value) => typeof value === 'string' && value.trim().length > 0);
 }
 
-scoreboard.get('/definition', (c) => {
+scoreboard.on(['GET', 'POST'], '/definition', async (c) => {
   c.header('Cache-Control', 'no-store');
-  return c.json(getScoreboard(c.req.query('sector'), c.req.query('indicator')));
+  const definition = await requestScoreboard(c);
+  if (definition instanceof Response) return definition;
+  return c.json(definition);
 });
 
-scoreboard.get('/charts/:chartId', async (c) => {
-  const { charts } = getScoreboard(c.req.query('sector'));
+scoreboard.post('/charts', async (c) => {
+  c.header('Cache-Control', 'no-store');
+  let definition: Definition;
+  try {
+    definition = await c.req.json();
+    validateChart(definition);
+  } catch (reason) {
+    return c.json({ error: reason instanceof Error ? reason.message : 'Invalid chart JSON' }, 400);
+  }
+  const selection = selectionFromRequest(c);
+  if (!selection) return c.json({ error: 'scenario, region and a four-digit year are required' }, 400);
+  try {
+    return c.json(await loadScoreboardChart(await source(c), c.env.DB, definition, selection));
+  } catch (reason) {
+    return failure(c, 'Chart data unavailable', reason);
+  }
+});
+
+scoreboard.on(['GET', 'POST'], '/charts/:chartId', async (c) => {
+  const scoreboard = await requestScoreboard(c);
+  if (scoreboard instanceof Response) return scoreboard;
+  const { charts } = scoreboard;
   const definition = charts.find(({ chartId }) => chartId === c.req.param('chartId')) as Definition | undefined;
   if (!definition) return c.json({ error: 'Chart not found' }, 404);
   const selection = selectionFromRequest(c);
@@ -72,7 +105,7 @@ scoreboard.get('/charts/:chartId', async (c) => {
   }
 });
 
-scoreboard.get('/map', async (c) => {
+scoreboard.on(['GET', 'POST'], '/map', async (c) => {
   const sector = c.req.query('sector');
   const indicatorName = c.req.query('indicator');
   const scenario = c.req.query('scenario');
@@ -81,7 +114,9 @@ scoreboard.get('/map', async (c) => {
   if (!sector || !indicatorName || !scenario || !region || !yearText || !/^\d{4}$/.test(yearText)) {
     return c.json({ error: 'sector, indicator, scenario, region and a four-digit year are required' }, 400);
   }
-  const { map, indicator, sectors } = getScoreboard(sector, indicatorName);
+  const scoreboard = await requestScoreboard(c);
+  if (scoreboard instanceof Response) return scoreboard;
+  const { map, indicator, sectors } = scoreboard;
   if (!sectors.some(({ uid }) => uid === sector)) return c.json({ error: 'Invalid scoreboard map selection' }, 400);
   const country = scoreboardCountry(region);
   const year = Number(yearText);
@@ -116,27 +151,23 @@ scoreboard.get('/map', async (c) => {
     return c.json({ error: 'Invalid scoreboard map configuration' }, 400);
   }
   try {
-    // Across the whole of Europe the data layer is drawn per country, not per
-    // NUTS region: hundreds of shapes read as noise at that zoom. Most mapped
-    // variables carry country rows of their own, so they are simply asked for
-    // them — which also keeps a temperature out of a sum. One published only at
-    // NUTS level declares `aggregate` and is totalled up instead.
-    if (!country) {
+    const level = mapBoundaryLevel(indicator, region);
+    if (level === 'NUTS0') {
       const platform = await source(c);
       if (indicator.aggregate === 'sum') {
         const boundaries = await loadRegionalBoundaries(undefined, indicator.level as NutsLevel);
         const regionIds = [...new Set(boundaries.features.flatMap(({ properties }) => (typeof properties?.NUTS_ID === 'string' ? [properties.NUTS_ID] : [])))];
         if (!regionIds.length) return c.json(aggregatedCountryMapResult([], indicator, scenario, year));
-        const rows = await readScoreboardMapSeries(platform, indicator.variable, { scenario, regions: regionIds, year });
+        const rows = await readScoreboardMapSeries(platform, indicator, { scenario, regions: regionIds, year });
         return c.json(aggregatedCountryMapResult(rows, indicator, scenario, year));
       }
-      const rows = await readScoreboardMapSeries(platform, indicator.variable, { scenario, regions: SCOREBOARD_COUNTRIES.map(({ name }) => name), year });
+      const rows = await readScoreboardMapSeries(platform, indicator, { scenario, regions: SCOREBOARD_COUNTRIES.map(({ name }) => name), year });
       return c.json(regionalMapResult(rows, indicator, scenario, year));
     }
-    const boundaries = await loadRegionalBoundaries(country.code, indicator.level as NutsLevel);
+    const boundaries = await loadRegionalBoundaries(country?.code, level as NutsLevel);
     const regionIds = [...new Set(boundaries.features.flatMap(({ properties }) => (typeof properties?.NUTS_ID === 'string' ? [properties.NUTS_ID] : [])))];
     if (!regionIds.length) return c.json(regionalMapResult([], indicator, scenario, year));
-    const rows = await readScoreboardMapSeries(await source(c), indicator.variable, { scenario, regions: regionIds, year });
+    const rows = await readScoreboardMapSeries(await source(c), indicator, { scenario, regions: regionIds, year });
     return c.json(regionalMapResult(rows, indicator, scenario, year));
   } catch (reason) {
     return failure(c, 'Map data unavailable', reason);

@@ -15,11 +15,8 @@ async function seedLandingAnalysisImages(strapi) {
   if (await store.get()) return;
 
   for (const image of IMAGES) {
-    const cards = await strapi.entityService.findMany(UID, {
-      locale: 'all',
-      publicationState: 'preview',
-      filters: { Key: image.key },
-      populate: ['Image'],
+    const cards = await strapi.db.query(UID).findMany({
+      where: { Key: image.key }, populate: ['Image'],
     });
     const missing = cards.filter((card) => !card.Image);
     if (!missing.length) continue;
@@ -31,12 +28,13 @@ async function seedLandingAnalysisImages(strapi) {
       const { size } = await stat(filePath);
       [media] = await strapi.plugin('upload').service('upload').upload({
         data: { fileInfo: { name, alternativeText: missing[0].ImageAlt } },
-        files: { path: filePath, name, type: 'image/png', size },
+        files: { filepath: filePath, originalFilename: name, mimetype: 'image/png', size },
       });
     }
 
     for (const card of missing) {
-      await strapi.entityService.update(UID, card.id, { data: { Image: media.id } });
+      // Update each stored variant without publishing an editor's draft.
+      await strapi.db.query(UID).update({ where: { id: card.id }, data: { Image: media.id } });
     }
   }
   await store.set({ value: true });

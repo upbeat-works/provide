@@ -9,7 +9,6 @@
 
   export let result;
   export let selection = {};
-  export let sector = undefined;
   export let staticMode = false;
   // Set by a chart whose groups are chosen above it, so each group keeps its
   // colour as others are added and removed.
@@ -31,7 +30,10 @@
 
   $: chart = adaptChartResult(result, selection, { colorFor });
   $: component = components[chart.kind];
-  $: graphDownloadParams = graphParamsFor(result.definition, sector, selection);
+  $: graphDownloadParams = graphParamsFor(result.definition, selection);
+  $: graphDownloadSettings = {
+    filename: [result.definition.chartId, selection.scenario?.uid, selection.region?.uid, selection.year?.uid].filter(Boolean).join(' '),
+  };
 </script>
 
 {#if chart.status === 'error'}
@@ -40,5 +42,5 @@
     <button type="button" class="mt-2 font-bold text-theme-base" on:click={retry}>Retry</button>
   </div>
 {:else if chart.status === 'ready' && component}
-  <svelte:component this={component} {...chart.props} {...(hideLegend ? { legend: [] } : {})} chartInfo={chart.info} chartUid={EMBED_UID} {graphDownloadParams} {staticMode} />
+  <svelte:component this={component} {...chart.props} {...(hideLegend ? { legend: [] } : {})} chartInfo={chart.info} chartUid={EMBED_UID} {graphDownloadParams} {graphDownloadSettings} {staticMode} />
 {/if}

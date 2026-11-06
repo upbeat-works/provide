@@ -1,3 +1,4 @@
+import { formatSmallValue } from '$lib/utils/formatting';
 import bbox from '@turf/bbox';
 import intersect from '@turf/intersect';
 
@@ -114,6 +115,8 @@ export function rampColors(ramp = DEFAULT_RAMP, count = BUCKET_COUNT) {
 const NUMERIC_COLORS = rampColors();
 
 export const formatValue = (value) => {
+  const scientific = formatSmallValue(value);
+  if (scientific) return scientific;
   const magnitude = Math.abs(value);
   if (magnitude > 0 && magnitude < 1) {
     return new Intl.NumberFormat('en', { maximumSignificantDigits: 3 }).format(value);

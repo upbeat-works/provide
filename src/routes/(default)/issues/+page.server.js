@@ -4,7 +4,7 @@ import { kebabCase } from 'lodash-es';
 
 export const load = async ({ fetch }) => {
   const data = await loadFromStrapi('issue', fetch);
-  const { Issues } = data.attributes;
+  const { Issues } = data;
 
   return {
     issues: Issues.map((section) => ({

@@ -25,7 +25,7 @@ describe('chart renderer', () => {
       data: [{ x: 20, y: 30 }],
     };
     const { html } = fixture.default.render({ result });
-    expect(html).toContain('<figure>');
+    expect(html).toMatch(/<figure\b/);
     expect(html).toContain('Low (people)');
     expect(html).toContain('High (people)');
     expect(html).not.toMatch(/role="alert"/);
@@ -41,7 +41,7 @@ describe('chart renderer', () => {
       data: [{ median: 30, boxLow: 28, boxHigh: 33 }],
     };
     const { html } = fixture.default.render({ result });
-    expect(html).toContain('<figure>');
+    expect(html).toMatch(/<figure\b/);
     expect(html).toContain('5th Percentile – 95th Percentile');
     expect(html).toContain('Temperature (°C)');
     expect(html).not.toMatch(/role="alert"/);
@@ -50,7 +50,7 @@ describe('chart renderer', () => {
     const fixture = await vite.ssrLoadModule('/src/routes/(default)/impacts/eu-scoreboard/components/charts/ChartRenderer.test.fixture.svelte');
     const result = { definition, status: 'ready', series: [{ line: { variable: 'Temperature|Mean', model: 'Source model', unit: 'K' } }], data: [{ line: [{ year: 2030, value: 2 }] }] };
     const { html } = fixture.default.render({ result });
-    expect(html).toContain('<figure>');
+    expect(html).toMatch(/<figure\b/);
     expect(html).toContain('About the data');
     expect(html).not.toMatch(/role="(status|alert)"/);
   });

@@ -1,7 +1,7 @@
 # Catalog runtime loading: architecture review
 
 **Review date:** 9 September 2026  
-**Subject:** `docs/catalog-runtime-loading-design.md`  
+**Subject:** Initial catalog runtime loading draft. Current contract: [catalog runtime loading](superpowers/specs/2026-09-09-catalog-runtime-loading-design.md).
 **Method:** Two adversarial passes, blended into one list
 
 ## Verdict
@@ -40,7 +40,7 @@ and must remove the old full-catalog path instead of keeping both systems.
 
 The design says that both selection orders are equal, but does not define what
 “supports” means before parameters are chosen
-([design](catalog-runtime-loading-design.md#indicator-chosen-first)). The live
+(design in the reviewed draft). The live
 geography-first request accepts an indicator when any variable exists in the
 region ([indicators route](../api/routes/indicators.ts#L15)). The live
 indicator-first request checks only one present-day, annual, area, 50th
@@ -59,7 +59,7 @@ parameters only after both main choices are known.
 automatically. Review this rule if testing shows confusing behavior.
 
 “Clear or adjust” does not say how to tell loading, failure, and a confirmed
-empty result apart ([selection rules](catalog-runtime-loading-design.md#selection-rules)).
+empty result apart (selection rules in the reviewed draft).
 This matters because current code treats an empty indicator result as “not
 checked yet” ([state store](../src/stores/state.js#L336)), resolves URL values
 only once against loaded catalog data
@@ -83,7 +83,7 @@ framework.
 Do not add pagination unless the unique indicator list is itself too large.
 
 The expected result says expensive IXMP4 work starts after a choice
-([expected result](catalog-runtime-loading-design.md#expected-result)). Yet the
+(expected result in the reviewed draft). Yet the
 live indicator index connects to every source and lists every variable before it
 can reduce them to indicators ([indicators route](../api/routes/indicators.ts#L10)).
 The split avoids run, GMT, citation, filter, and time-span work, but it does not
@@ -162,7 +162,7 @@ loader unless the app navigates or invalidates page data. The document does not
 say whether runtime detail comes from the app server, the Hono API, or a page
 reload. It also says a page may show its own Strapi error but gives no result
 shape that keeps IXMP4 detail usable when Strapi fails
-([Strapi content](catalog-runtime-loading-design.md#strapi-content)).
+(Strapi content in the reviewed draft).
 
 Recommendation: give each runtime use case a small same-origin SvelteKit server
 endpoint. It calls a matching use-case-specific API endpoint and, when needed,
@@ -201,7 +201,7 @@ Keeping shared caching outside this draft also limits scope.
 # GeoServer and emissions port: plan review
 
 **Review date:** 21 September 2026
-**Subject:** `docs/geoserver-emissions-port-plan.md`
+**Subject:** Completed GeoServer and emissions port. Current guide: [GeoServer setup](geoserver-setup.md).
 **Method:** Two independent adversarial reviews (GPT-6 Astra and GPT-5.6 Sol),
 checked against current code and combined below. Earlier decisions above remain
 unchanged. References below use the port plan's line numbers at review time.

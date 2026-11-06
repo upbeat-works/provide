@@ -4,7 +4,7 @@ import { loadFromStrapi } from '$lib/utils/apis.js';
 import { toCaseStudyLink } from '$lib/catalog/case-study-link.js';
 
 export const load = async ({ fetch }) => {
-  const caseStudiesRaw = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*&populate[Covers]=*');
+  const caseStudiesRaw = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=true&populate[Covers]=true');
 
   const caseStudies = caseStudiesRaw.map(toCaseStudyLink);
 

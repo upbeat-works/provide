@@ -16,7 +16,6 @@
     'impact-time': ImpactTime,
     'impact-geo': ImpactGeo,
     'unavoidable-risk': UnavoidableRisk,
-    // The scoreboard's charts share one embed; `?chart=<slug>` says which.
     [EMBED_UID]: ChartEmbed,
   };
 
@@ -31,7 +30,6 @@
       return {
         result: data.scoreboardChart,
         selection: data.selection,
-        sector: data.scoreboard?.sector.uid,
         staticMode: params.static,
       };
     }

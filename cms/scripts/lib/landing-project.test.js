@@ -7,15 +7,15 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { LANDING_PROJECT } = require('./landing-project');
-const { loadContentTypes, loadComponents } = require('./schema');
-
-const components = loadComponents();
-const landing = loadContentTypes().find((t) => t.singularName === 'landing-project');
+const landing = require('../../src/api/landing-project/content-types/landing-project/schema.json');
+const components = Object.fromEntries(['project-intro', 'project-highlight', 'project-highlights'].map(
+  (name) => [`landing.${name}`, require(`../../src/components/landing/${name}.json`)],
+));
 
 test('the landing-project single type is vendored under src/api', () => {
   assert.ok(landing, 'no landing-project content type found');
   assert.equal(landing.kind, 'singleType');
-  assert.equal(landing.i18n, true, 'the site fetches content per locale');
+  assert.equal(landing.pluginOptions.i18n.localized, true, 'the site fetches content per locale');
 });
 
 test('the block is two named cards, not a list — nobody can add a third', () => {

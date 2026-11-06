@@ -12,12 +12,14 @@
         "name": "Maximum Air Temperature",
         "variable": "Maximum Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
         "type": "choropleth",
+        "europeLevel": "NUTS2",
         "level": "NUTS2"
       },
       {
         "name": "Mean Air Temperature",
         "variable": "Mean Air Temperature|Absolute Values (No Change)|Annual|Area|50th Percentile",
         "type": "choropleth",
+        "europeLevel": "NUTS2",
         "level": "NUTS2"
       },
       {
@@ -59,6 +61,7 @@
       "description": "Annual high heat risk days for Austria, Germany and France in the selected scenario and year.",
       "chartType": "stacked_bar",
       "data": {
+        "unit": "days/yr",
         "groupBy": "region",
         "regions": [
           "Austria",
@@ -79,6 +82,11 @@
       "description": "Mean air temperature is shown on the horizontal axis, maximum air temperature on the vertical axis, and high heat risk days by bubble size for Austria, Germany and France in the selected scenario and year.",
       "chartType": "bubble",
       "data": {
+        "unit": {
+          "x": "°C",
+          "y": "°C",
+          "size": "days/yr"
+        },
         "groupBy": "region",
         "regions": [
           "Austria",

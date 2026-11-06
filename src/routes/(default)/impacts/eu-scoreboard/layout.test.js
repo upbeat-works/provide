@@ -21,10 +21,10 @@ test('turns local config into labelled choices and retains valid URL values', ()
   expect(result.regions).toHaveLength(40);
 });
 
-test('defaults the country and year without a discovery request', () => {
+test('defaults to Europe and the configured year without a discovery request', () => {
   const scoreboard = getScoreboard('testing');
   const result = load({ data: { scoreboard, scenarioLabels: {} }, url: new URL('https://example.test/impacts/eu-scoreboard/indicators') });
 
-  expect(result.selection.region.uid).toBe('Austria');
+  expect(result.selection.region.uid).toBe('all');
   expect(result.selection.year.uid).toBe('2050');
 });

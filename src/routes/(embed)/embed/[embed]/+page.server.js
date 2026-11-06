@@ -1,8 +1,8 @@
 import { EMBED_UID } from '$routes/(default)/impacts/eu-scoreboard/components/charts/catalog.js';
-import { loadChart, selectionsFromUrl } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
+import { loadChartFromDefinition, selectionsFromUrl } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
 import { parse } from 'qs';
 import { canonicalMapSelection, loadMapAvailability } from '$lib/catalog/map-request.js';
-import { catalogApiUrl, loadScoreboardDefinition } from '$lib/utils/apis.js';
+import { catalogApiUrl } from '$lib/utils/apis.js';
 
 export const load = async ({ fetch, params, url }) => {
   if (params.embed === 'impact-geo') {
@@ -19,11 +19,10 @@ export const load = async ({ fetch, params, url }) => {
     return { mapView: selection ? { ...mapView, selection } : mapView };
   }
   if (params.embed !== EMBED_UID) return {};
-  const scoreboard = await loadScoreboardDefinition(fetch, { sector: url.searchParams.get('sector') ?? undefined });
-  const chartId = url.searchParams.get('chartId');
   const { scenario, region, year } = selectionsFromUrl(url);
   const selections = { scenario, region, year };
   const selection = Object.fromEntries(Object.entries(selections).map(([key, uid]) => [key, uid ? { uid, label: uid } : null]));
-  if (!chartId || Object.values(selection).some((value) => !value)) return { scoreboard, scoreboardChart: undefined, selection };
-  return { scoreboard, scoreboardChart: await loadChart({ scoreboard, fetch, selections, chartId }), selection };
+  const chart = url.searchParams.get('chart');
+  if (chart === null || Object.values(selection).some((value) => !value) || !/^\d{4}$/.test(year)) return { scoreboardChart: undefined, selection };
+  return { scoreboardChart: await loadChartFromDefinition({ chart, fetch, selections }), selection };
 };

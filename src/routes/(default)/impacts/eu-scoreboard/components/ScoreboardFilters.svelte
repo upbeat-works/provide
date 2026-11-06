@@ -9,7 +9,7 @@
   export let filters = ['region', 'indicator', 'scenario', 'year'];
 
   const base = `/${PATH_IMPACT}/${PATH_EU_SCOREBOARD}`;
-  const allCountries = { uid: 'all', label: 'All available countries' };
+  const allCountries = { uid: 'all', label: 'Europe' };
   $: ranking = !$page.url.pathname.replace(/\/$/, '').endsWith('/indicators');
 
   const FIELDS = {
@@ -36,7 +36,7 @@
 
   function selectIndicator({ topic, indicator }) {
     const url = new URL($page.url);
-    url.searchParams.set('sector', topic.uid);
+    if (topic.uid !== 'preview') url.searchParams.set('sector', topic.uid);
     if (indicator) url.searchParams.set('indicator', indicator.uid);
     else url.searchParams.delete('indicator');
     void goto(url, { keepFocus: true, noScroll: true });

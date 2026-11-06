@@ -1,11 +1,7 @@
 module.exports = ({ env }) => ({
-  proxy: true,
+  proxy: { koa: true },
   url: env("PUBLIC_URL"),
   app: {
     keys: env.array("APP_KEYS"),
-  },
-  webhooks: {
-    // Add this to not receive populated relations in webhooks
-    populateRelations: false,
   },
 });

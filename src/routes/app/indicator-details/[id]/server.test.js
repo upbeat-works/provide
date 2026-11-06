@@ -134,7 +134,7 @@ describe('GET /app/indicator-details/:id', () => {
         contentSignal = options?.signal;
         return Promise.resolve(
           HttpResponse.json({
-            data: [{ id: 1, attributes: { UID: 'Selected', Description: 'Editorial text.' } }],
+            data: [{ id: 1, UID: 'Selected', Description: 'Editorial text.' }],
             meta: { pagination: { page: 1, pageSize: 1, pageCount: 1, total: 1 } },
           })
         );
@@ -214,11 +214,9 @@ describe('GET /app/indicator-details/:id', () => {
           data: [
             {
               id: 8,
-              attributes: {
-                UID: 'Heat / wet days?',
+              UID: 'Heat / wet days?',
                 Description: 'Editorial indicator text.',
                 PrivateNotes: 'must stay private',
-              },
             },
           ],
           meta: { pagination: { page: 1, pageSize: 1, pageCount: 1, total: 1 } },

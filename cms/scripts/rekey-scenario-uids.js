@@ -11,10 +11,6 @@
  *
  *   node scripts/rekey-scenario-uids.js            # apply
  *   DRY_RUN=1 node scripts/rekey-scenario-uids.js  # print the plan only
- *
- * On Fly (idle instance):
- *   fly ssh console -a provide-cms -C \
- *     "/bin/sh -c 'cd /app && node scripts/rekey-scenario-uids.js'"
  */
 const { planScenarioRekey } = require('./lib/scenario-uid-map');
 
@@ -22,40 +18,48 @@ const UID = 'api::scenario.scenario';
 const LOCALES = ['en', 'en-EU'];
 const DRY_RUN = Boolean(process.env.DRY_RUN);
 
-async function main() {
-  const strapi = await require('@strapi/strapi')().load();
-  const log = (m) => strapi.log.info(`[scenario-uid] ${m}`);
-  try {
-    for (const locale of LOCALES) {
-      const entries = await strapi.entityService.findMany(UID, { locale, fields: ['UID'], limit: -1 });
-      const rows = (Array.isArray(entries) ? entries : [entries]).filter(Boolean);
-      const plan = planScenarioRekey(rows.map((e) => ({ id: e.id, locale, UID: e.UID })));
+async function rekeyScenarios(strapi, { dryRun = false, log = () => {} } = {}) {
+  for (const locale of LOCALES) {
+    const rows = await strapi.db.query(UID).findMany({ where: { locale }, select: ['id', 'UID', 'locale'] });
+    const plan = planScenarioRekey(rows);
 
-      if (!plan.length) {
-        log(`${locale}: ${rows.length} scenarios, nothing to change`);
+    if (!plan.length) {
+      log(`${locale}: ${rows.length} scenarios, nothing to change`);
+      continue;
+    }
+
+    for (const { id, from, to } of plan) {
+      if (dryRun) {
+        log(`${locale}: would rename ${from} -> ${to}`);
         continue;
       }
-
-      for (const { id, from, to } of plan) {
-        if (DRY_RUN) {
-          log(`${locale}: would rename ${from} -> ${to}`);
-          continue;
-        }
-        await strapi.entityService.update(UID, id, { data: { UID: to } });
-        log(`${locale}: ${from} -> ${to}`);
-      }
-      const skipped = rows.length - plan.length;
-      log(`${locale}: ${plan.length} renamed, ${skipped} unchanged`);
+      // Rename each stored variant without publishing an editor's draft.
+      await strapi.db.query(UID).update({ where: { id }, data: { UID: to } });
+      log(`${locale}: ${from} -> ${to}`);
     }
+    const skipped = rows.length - plan.length;
+    log(`${locale}: ${plan.length} renamed, ${skipped} unchanged`);
+  }
+}
+
+async function main() {
+  const strapi = await require('@strapi/strapi').createStrapi().load();
+  const log = (m) => strapi.log.info(`[scenario-uid] ${m}`);
+  try {
+    await rekeyScenarios(strapi, { dryRun: DRY_RUN, log });
     log(DRY_RUN ? 'dry run complete — nothing written' : 'done');
   } finally {
     await strapi.destroy();
   }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+module.exports = { rekeyScenarios };
+
+if (require.main === module) {
+  main()
+    .then(() => process.exit(0))
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
+}

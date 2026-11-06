@@ -16,8 +16,11 @@
       const uid = context.data?.selection?.[key]?.uid;
       if (uid) params.set(key, uid);
     }
+    const indicatorsView = target.pathname.replace(/\/$/, '').endsWith('/indicators');
+    if (!indicatorsView) params.delete('region');
     target.search = params.toString();
-    return `${target.pathname}${target.search}`;
+    if (indicatorsView && context.url.hash.startsWith('#preview')) target.hash = context.url.hash;
+    return `${target.pathname}${target.search}${target.hash}`;
   }
 </script>
 

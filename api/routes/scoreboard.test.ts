@@ -140,7 +140,7 @@ describe('scoreboard requests', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      definition: { name: 'Maximum Air Temperature', variable, type: 'choropleth', level: 'NUTS2' },
+      definition: { name: 'Maximum Air Temperature', variable, type: 'choropleth', europeLevel: 'NUTS2', level: 'NUTS2' },
       status: 'ready',
       values: [{ region: 'AT11', value: 0 }],
       metadata: { variable, model: 'RIME-X v1.0.0', unit: '°C' },
@@ -156,7 +156,7 @@ describe('scoreboard requests', () => {
   });
 
   test('uses the configured source variable when its display name is unrelated', async () => {
-    const indicator = { name: 'Population overview', variable: 'Population', type: 'choropleth', level: 'NUTS2' };
+    const indicator = { name: 'Population overview', variable: 'Population', type: 'choropleth', europeLevel: 'NUTS0', level: 'NUTS2' };
     const scoreboard = getScoreboard('testing');
     const indicators = scoreboard.map.indicators;
     indicators.push(indicator);
@@ -183,7 +183,7 @@ describe('scoreboard requests', () => {
   });
 
   test('rejects a blank configured source variable before querying the source', async () => {
-    const indicator = { name: 'Broken map', variable: '   ', type: 'choropleth', level: 'NUTS2' };
+    const indicator = { name: 'Broken map', variable: '   ', type: 'choropleth', europeLevel: 'NUTS0', level: 'NUTS2' };
     const scoreboard = getScoreboard('testing');
     const indicators = scoreboard.map.indicators;
     indicators.push(indicator);
@@ -205,7 +205,7 @@ describe('scoreboard requests', () => {
     tabulate.mockResolvedValue(frame([]));
 
     expect(await (await request(mapPath())).json()).toEqual({
-      definition: { name: 'Maximum Air Temperature', variable, type: 'choropleth', level: 'NUTS2' },
+      definition: { name: 'Maximum Air Temperature', variable, type: 'choropleth', europeLevel: 'NUTS2', level: 'NUTS2' },
       status: 'empty',
       values: [],
       metadata: null,
@@ -334,11 +334,12 @@ describe('scoreboard requests', () => {
   });
 });
 
-test('asks for countries, not regions, on the all-country map', async () => {
+test('queries country rows when the Europe level is NUTS0', async () => {
+  const configured = getScoreboard('testing');
+  const indicator = { ...configured.indicator, europeLevel: 'NUTS0' };
+  vi.spyOn(controller, 'getScoreboard').mockReturnValue({ ...configured, indicator } as never);
   const response = await request(mapPath({ region: 'all' }));
   expect(response.status).toBe(200);
-  // The data layer is drawn per country at that zoom, and this indicator has
-  // country rows of its own, so the NUTS level is not involved at all.
   const regions = tabulate.mock.calls[0][0].region.name_in;
   expect(regions).toContain('Austria');
   expect(regions).toContain('France');
@@ -346,7 +347,7 @@ test('asks for countries, not regions, on the all-country map', async () => {
 });
 
 test('totals regions into countries for an indicator published only at NUTS level', async () => {
-  const indicator = { name: 'Heat wave fatalities', variable: 'Vulnerability|Fatalities', type: 'choropleth', level: 'NUTS2', aggregate: 'sum' };
+  const indicator = { name: 'Heat wave fatalities', variable: 'Vulnerability|Fatalities', type: 'choropleth', europeLevel: 'NUTS0', level: 'NUTS2', aggregate: 'sum' };
   vi.spyOn(controller, 'getScoreboard').mockReturnValue({
     ...getScoreboard('testing'),
     indicator,

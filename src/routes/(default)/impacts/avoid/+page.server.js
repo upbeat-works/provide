@@ -7,7 +7,7 @@ export const load = async ({ fetch }) => {
   // Avoid runs on the frozen legacy /meta (avoidMeta) — no ixmp4 catalog. The
   // case-study join happens client-side.
   const [caseStudiesRaw, avoidMeta] = await Promise.all([
-    loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*&populate[Covers]=*'),
+    loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=true&populate[Covers]=true'),
     loadAvoidMeta(fetch),
   ]);
 

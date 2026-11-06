@@ -6,7 +6,7 @@ import { LABEL_ABOUT } from '$config';
 
 export const load = async ({ fetch }) => {
   const data = await loadFromStrapi('about', fetch);
-  const { Section } = data.attributes;
+  const { Section } = data;
 
   const title = generatePageTitle(LABEL_ABOUT);
 

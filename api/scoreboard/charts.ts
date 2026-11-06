@@ -7,16 +7,30 @@ import { SCOREBOARD_COUNTRIES, scoreboardCountry } from './countries';
 import { chartSeries } from './series';
 import { type Definition, type Selection, option, referenceKey, uniqueSorted } from './types';
 
+export function validateChart(definition: Definition) {
+  const text = (value: unknown) => typeof value === 'string' && value.trim().length > 0;
+  if (!text(definition?.chartId)) throw new Error('chartId is required');
+  const { chartId } = definition;
+  if (definition.hideInEuropeView !== undefined && typeof definition.hideInEuropeView !== 'boolean') throw new Error(`${chartId}: hideInEuropeView must be a boolean`);
+  if (!text(definition.title) || typeof definition.description !== 'string') throw new Error(`${chartId}: title and description are required`);
+  if (!Array.isArray(definition.data?.variables) || !definition.data.variables.every(text)) throw new Error(`${chartId}: variables must be strings`);
+  const error = definitionGroupingError(definition);
+  if (error) throw new Error(`${chartId}: ${error}`);
+}
+
 export function definitionGroupingError(definition: Definition): string | null {
-  const groupBy = definition.data.groupBy;
+  const { groupBy, regions, regionLevel, aggregate } = definition.data;
   if (groupBy !== undefined && groupBy !== 'region' && groupBy !== 'scenario') return 'Unsupported chart grouping';
   if (groupBy !== undefined && !['stacked_bar', 'bubble', 'scatter', 'box_plot'].includes(definition.chartType) && !(groupBy === 'region' && ['line', 'line_with_range'].includes(definition.chartType))) return 'Unsupported chart grouping';
+  if (regions !== undefined && (!Array.isArray(regions) || !regions.every((region) => typeof region === 'string' && region.trim().length > 0))) return 'regions must be an array of nonempty strings';
+  if (regionLevel !== undefined && !['NUTS1', 'NUTS2'].includes(regionLevel)) return 'regionLevel must be NUTS1 or NUTS2';
+  if (aggregate !== undefined && aggregate !== 'sum') return 'aggregate must be sum';
   // Aggregation rolls sub-regions into countries, so there has to be a level to
   // roll up from.
-  if (definition.data.aggregate && !definition.data.regionLevel) return 'Aggregation requires a region level';
+  if (aggregate && !regionLevel) return 'Aggregation requires a region level';
   // Percentiles do not add: the 95th percentile of a country is not the sum of
   // its regions' 95th percentiles.
-  if (definition.data.aggregate && definition.chartType === 'box_plot') return 'A box plot cannot be aggregated';
+  if (aggregate && definition.chartType === 'box_plot') return 'A box plot cannot be aggregated';
   try {
     chartSeries(definition.data, definition.chartType);
     return null;

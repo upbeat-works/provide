@@ -4,7 +4,7 @@
 // frontmatter for metadata. Read-only — NOT a re-importable Strapi dump.
 //
 //   node scripts/strapi-export/index.js
-//   BASE=https://provide-cms.herokuapp.com LOCALE=en-EU OUT=strapi-export \
+//   BASE=https://cms.climate-risk-dashboard.org LOCALE=en-EU OUT=strapi-export \
 //     node scripts/strapi-export/index.js
 //
 // Defaults come from .env (VITE_CMS_URL, VITE_STRAPI_LOCALE).
@@ -20,7 +20,7 @@ const TYPES = [
 
 // Keys that are metadata, never their own section file.
 const META_KEYS = new Set([
-  'id', 'UID', 'uid', 'slug', 'locale', 'localizations',
+  'id', 'documentId', 'UID', 'uid', 'slug', 'locale', 'localizations',
   'createdAt', 'updatedAt', 'publishedAt',
 ]);
 
@@ -90,17 +90,17 @@ function entriesToFiles(contentType, json, locale) {
   const data = json?.data;
   if (!data) return [];
 
-  // Collection type: one subdirectory per entry, keyed by UID -> slug -> id.
+  // Collection type: one subdirectory per entry, keyed by UID, slug, or documentId.
   if (Array.isArray(data)) {
     return data.flatMap((entry) => {
-      const a = entry.attributes ?? {};
-      const key = slug(a.UID ?? a.uid ?? a.slug ?? entry.id);
+      const a = entry;
+      const key = slug(a.UID ?? a.uid ?? a.slug ?? entry.documentId);
       return attributesToFiles(a, { contentType, locale, basePath: join(contentType, key) });
     });
   }
 
   // Single type: files directly under the content-type directory.
-  return attributesToFiles(data.attributes ?? {}, { contentType, locale, basePath: contentType });
+  return attributesToFiles(data, { contentType, locale, basePath: contentType });
 }
 
 // --- pure serializer: { frontmatter, body } -> file string -----------------

@@ -272,7 +272,7 @@ test('country navigation from ranking resets a previously selected indicator', a
   }
 });
 
-test.each(['All available countries', 'Austria'])('opens indicators from the geography selector: %s', async (label) => {
+test.each(['Europe', 'Austria'])('opens indicators from the geography selector: %s', async (label) => {
   render(Page, { data: dataFor('empty'), url: new URL('http://localhost/impacts/eu-scoreboard?sector=heat-stress&scenario=CurrentPolicies&year=2050') });
   await openFilter('Geography');
   await chooseOption(label);
@@ -280,4 +280,18 @@ test.each(['All available countries', 'Austria'])('opens indicators from the geo
   expect(url.pathname).toBe('/impacts/eu-scoreboard/indicators');
   expect(url.searchParams.get('region')).toBe(label === 'Austria' ? 'Austria' : 'all');
   expect(url.searchParams.get('year')).toBe('2050');
+});
+
+test.each(['', '#preview=draft'])('ranking navigation resets geography and keeps the other choices: %s', (hash) => {
+  const data = dataFor('empty');
+  data.selection.region = option('Ukraine');
+  render(Page, { data, url: new URL(`http://localhost/impacts/eu-scoreboard/indicators?sector=heat-stress&region=Ukraine${hash}`) });
+  const url = new URL(screen.getByRole('link', { name: 'Ranking' }).href);
+  const result = load({ data, url });
+  expect(result.selection.region).toEqual({ uid: 'all', label: 'Europe' });
+  expect(url.searchParams.has('region')).toBe(false);
+  expect(url.searchParams.get('sector')).toBe('heat-stress');
+  expect(url.searchParams.get('scenario')).toBe('CurrentPolicies');
+  expect(url.searchParams.get('year')).toBe('2050');
+  expect(url.hash).toBe('');
 });

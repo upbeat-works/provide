@@ -1,50 +1,29 @@
 # Provide CMS
 
-Strapi 4.24.2 CMS for the Provide website. Self-contained (its own `yarn`
+Strapi 5.60.0 CMS for the Provide website. Self-contained (its own `yarn`
 toolchain) and vendored into this monorepo under `cms/`.
 
 - **Database:** shared Postgres, `strapi` schema (the API uses the `catalog`
   schema of the same database).
-- **Media:** new uploads go to Cloudflare R2 (`@strapi/provider-upload-aws-s3`);
+- **Media:** uploads go to the configured S3-compatible store (`@strapi/provider-upload-aws-s3`);
   existing assets keep their `res.cloudinary.com` URLs.
 
 ## Local development
 
-Requires Node 20 (`nvm use 20`) and yarn. Copy `.env.example` to `.env` and fill
-in fresh local secrets (R2 vars stay unset → local upload provider). The DB
+Requires Node 26.13.0 and Yarn 1.22.22. Copy `.env.example` to `.env` and fill
+in fresh local secrets (leave S3 vars unset to use local uploads). The DB
 connects to the shared Postgres (`strapi` schema) via the discrete `DATABASE_*`
 fields in `.env`.
 
 ```
-npm run develop   # or, from the monorepo root: yarn dev:strapi
+yarn install --frozen-lockfile
+yarn develop      # or, from the monorepo root: npm run dev:strapi
 ```
 
-Seed local content from the live snapshot (via Strapi, into the configured DB).
-`seed.js` seeds every content type and then builds the methodology tab single
-types from the seeded content:
-
-```
-node scripts/fetch-snapshot.js
-node scripts/seed.js
-```
-
-Alternatively, pull the live remote CMS content into the local Postgres `strapi`
-schema in one step (from the monorepo root):
-
-```
-npm run db:cms:pull      # fetch remote DB -> export -> back up -> import -> verify
-```
-
-`db:cms:pull` copies the remote SQLite DB down (read-only), exports a Strapi
-transfer archive from it inside the cms container, backs up the local `strapi`
-schema, then imports with `--force`. Media stays on R2 (only file-entry URLs
-transfer). Stage toggles: `SKIP_FETCH=1` (reuse `cms/dumps/data-remote.db`),
-`SKIP_IMPORT=1` (build the tarball only), `SKIP_BACKUP=1`, `SKIP_VERIFY=1`,
-`KEEP_ASSETS=1` (bundle R2 media — large).
-
-The lower-level pieces are still available: `db:cms:dump` writes a standalone
-SQLite `.sql` backup of the remote (not loadable into Postgres as-is), and
-`db:cms:import` imports an existing `cms/dumps/strapi-transfer.tar.gz` on its own.
+To copy production PostgreSQL content locally, use the service-based backup and
+restore commands in [Strapi v5 migration guide](../docs/strapi-v5-migration-guide.md). Both source
+and destination must already run the same Strapi version. Strapi 5 export
+archives can also be imported with `npm run db:cms:import` from the repo root.
 
 ### Content that started life in code
 
@@ -52,7 +31,6 @@ The landing page analysis cards live in the localized `landing-analysis-card`
 collection. On first startup, Strapi ensures the locales exist, creates and links the two
 cards in each language, and grants public read access. A saved completion flag
 prevents later startups from restoring deleted cards or overwriting editor choices.
-The full snapshot seed resets this flag when it rebuilds the content.
 
 Each card's Image field selects one image from the media library. On startup,
 a separate one-time import uploads the two bundled images through the configured
@@ -62,10 +40,8 @@ library's alternative text when filled in.
 
 The landing page's "Learn about the Climate Risk Dashboard project" block is the
 `landing-project` single type (a heading plus its two fixed cards, `Intro` and
-`Highlights`). It is not in any snapshot — it was hardcoded markup before it was
-content — so a fresh database (or a `db:cms:pull` from a remote that predates it)
-has no entry, and the block simply doesn't render. Restore the shipped copy, and
-grant Public read, with:
+`Highlights`). If the entry is missing, the block does not render. Seed the default copy and
+grant Public read with:
 
 ```bash
 node scripts/seed-landing-project.js          # skips locales that already have content
@@ -81,17 +57,8 @@ docker compose run --rm cms node scripts/seed-landing-project.js
 docker compose start cms
 ```
 
-On the deployed instance, after a deploy has shipped the schema:
-
-```bash
-fly ssh console -a provide-cms -C \
-  "/bin/sh -c 'cd /app && node scripts/seed-landing-project.js'"
-```
-
-`seed.js` already runs it as one of its steps.
-
 ## Scripts
 
-- `npm run develop` — Strapi with autoReload.
-- `npm run start` — Strapi without autoReload (production).
-- `npm run build` — build the admin panel.
+- `yarn develop` — Strapi with autoReload.
+- `yarn start` — Strapi without autoReload (production).
+- `yarn build` — build the admin panel.

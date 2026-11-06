@@ -17,7 +17,7 @@ export const load = async ({ fetch }) => {
   const impact = await loadFromStrapi('impact', fetch);
   const title = generatePageTitle(LABEL_DOCUMENTATION);
 
-  const sections = impact?.attributes?.Sections ?? [];
+  const sections = impact?.Sections ?? [];
   if (!sections.length) {
     console.warn('No impact sections found. This is likely a Strapi issue. Check if you have rights to access the data.');
     return { title, methodology: [] };

@@ -2,7 +2,7 @@ const norm = (v) => String(v).toLowerCase();
 
 /** Strapi case-study entry -> the shape findCaseStudy and LinkSection need. */
 export function toCaseStudyLink(study) {
-  const a = study?.attributes ?? {};
+  const a = study ?? {};
   return {
     slug: a.Slug,
     title: a.Title,
@@ -10,7 +10,7 @@ export function toCaseStudyLink(study) {
     isDefault: Boolean(a.IsDefault),
     abstract: a.Abstract,
     category: a.Category ?? 'CASE STUDY',
-    image: a.CoverImage?.data?.attributes ?? null,
+    image: a.CoverImage ?? null,
   };
 }
 

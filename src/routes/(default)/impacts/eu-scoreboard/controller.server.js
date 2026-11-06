@@ -1,5 +1,7 @@
-import { loadFromStrapi, loadScoreboardChart, loadScoreboardMap } from '$utils/apis.js';
+import { error } from '@sveltejs/kit';
+import { catalogApiUrl, loadFromStrapi, loadScoreboardChart, loadScoreboardMap } from '$utils/apis.js';
 import { toCaseStudyLink } from '$lib/catalog/case-study-link.js';
+import { validateChart } from '../../../../../api/scoreboard/charts';
 
 function reportFailure(operation, reason) {
   console.error('Scoreboard request failed', { operation, reasonName: reason instanceof Error ? reason.name : typeof reason, status: reason?.status });
@@ -15,10 +17,39 @@ export async function loadChart({ scoreboard, fetch, selections, chartId }) {
     reportFailure('load-chart', reason);
     return { definition, status: 'error', data: [], error: 'Chart data could not be loaded.' };
   }
-  if (definition.caseStudyId && result.status === 'ready') {
+  return enrichChart(result, fetch);
+}
+
+export async function loadChartFromDefinition({ chart, fetch, selections }) {
+  let definition;
+  try {
+    definition = JSON.parse(chart);
+    validateChart(definition);
+  } catch (reason) {
+    error(400, reason instanceof SyntaxError ? 'chart must contain valid JSON.' : reason.message);
+  }
+  let result;
+  try {
+    const response = await fetch(`${catalogApiUrl('scoreboard/charts')}?${new URLSearchParams(selections)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(definition),
+    });
+    if (!response.ok) throw new Error('Chart request failed');
+    result = await response.json();
+  } catch (reason) {
+    reportFailure('load-chart-definition', reason);
+    return { definition, status: 'error', data: [], error: 'Chart data could not be loaded.' };
+  }
+  return enrichChart(result, fetch);
+}
+
+export async function enrichChart(result, fetch) {
+  const definition = result.definition;
+  if (definition?.caseStudyId && result.status === 'ready') {
     try {
-      const studies = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=*&populate[Covers]=*', `filters[id][$eq]=${encodeURIComponent(definition.caseStudyId)}`);
-      const study = studies.find(({ id }) => String(id) === String(definition.caseStudyId));
+      const studies = await loadFromStrapi('case-study-dynamics', fetch, 'populate[CoverImage]=true&populate[Covers]=true', `filters[documentId][$eq]=${encodeURIComponent(definition.caseStudyId)}`);
+      const study = studies.find(({ documentId }) => documentId === String(definition.caseStudyId));
       if (study) result = { ...result, caseStudy: toCaseStudyLink(study) };
     } catch (reason) {
       reportFailure('load-case-study', reason);

@@ -1,10 +1,9 @@
 export function toAnalysisCards(entries = [], cmsUrl) {
   return (entries ?? [])
-    .map((entry) => entry?.attributes ?? entry)
     .filter((card) => card?.Path && card?.Description)
     .sort((left, right) => left.SortOrder - right.SortOrder)
     .map((card) => {
-      const media = card.Image?.data?.attributes;
+      const media = card.Image;
       return {
         path: card.Path,
         image: media?.url ? new URL(media.url, cmsUrl).href : null,
