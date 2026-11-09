@@ -296,6 +296,32 @@ describe('focused catalog consumers', () => {
     }
   });
 
+  test('case-study live charts load a safe embed path and drop unusable links', async () => {
+    const { loaderFetch, requests } = createLoaderFetch({ mainContent: [
+      {
+        __component: 'live-chart.live-chart',
+        Title: 'Heat over time',
+        Description: 'Days above **35°C**.',
+        EmbedUrl: 'https://climate-risk-dashboard.iiasa.ac.at/embed/impact-time?indicator=Heat&instance=provide-internal&geography=PT001',
+        ExplorerUrl: '/impacts/explore?geography=PT001',
+      },
+      { __component: 'live-chart.live-chart', Title: 'Broken', EmbedUrl: 'https://evil.example/about' },
+    ] });
+    const { load } = await import('./(default)/case-studies/[slug]/+page.server.js');
+
+    const detail = await load({ fetch: loaderFetch, params: { slug: 'PT001' } });
+
+    expect(detail.caseStudy.mainContent).toEqual([{
+      type: 'live-chart',
+      title: 'Heat over time',
+      description: '<p>Days above <strong>35°C</strong>.</p>\n',
+      embedUrl: '/embed/impact-time?indicator=Heat&instance=provide-internal&geography=PT001&inline=true',
+      explorerUrl: '/impacts/explore?geography=PT001',
+    }]);
+    const request = requests.find((url) => url.pathname === '/api/case-study-dynamics');
+    expect(request.searchParams.get('populate[MainContent][on][live-chart.live-chart][populate]')).toBe('*');
+  });
+
   test('case-study snapshots require an instance when an indicator ID exists in several sources', async () => {
     const futureImpacts = {
       __component: 'future-impacts.future-impacts',

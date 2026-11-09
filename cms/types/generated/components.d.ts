@@ -196,6 +196,21 @@ export interface LandingProjectIntro extends Struct.ComponentSchema {
   };
 }
 
+export interface LiveChartLiveChart extends Struct.ComponentSchema {
+  collectionName: 'components_live_chart_live_charts';
+  info: {
+    description: 'An interactive chart loaded from a PROVIDE embed link (/embed/...).';
+    displayName: 'LiveChart';
+    icon: 'chart-line';
+  };
+  attributes: {
+    Description: Schema.Attribute.RichText;
+    EmbedUrl: Schema.Attribute.Text & Schema.Attribute.Required;
+    ExplorerUrl: Schema.Attribute.Text;
+    Title: Schema.Attribute.String;
+  };
+}
+
 export interface MediaPublication extends Struct.ComponentSchema {
   collectionName: 'components_media_publications';
   info: {
@@ -366,6 +381,7 @@ declare module '@strapi/strapi' {
       'landing.project-highlight': LandingProjectHighlight;
       'landing.project-highlights': LandingProjectHighlights;
       'landing.project-intro': LandingProjectIntro;
+      'live-chart.live-chart': LiveChartLiveChart;
       'media.publication': MediaPublication;
       'methodology-data-type.data-type': MethodologyDataTypeDataType;
       'methodology-impact.impact-section': MethodologyImpactImpactSection;

@@ -6,6 +6,7 @@
   import { snakeCase, delay } from 'lodash-es';
   import { browser } from '$app/environment';
   import saveAs from 'file-saver';
+  import CopyLink from '$lib/components/ui/CopyLink.svelte';
 
   export let graphParams = {};
   export let filename = undefined;
@@ -54,6 +55,8 @@
   }
 
   $: graphUrl = buildGraphURL(embedUid, graphQuery);
+  // Same chart with its controls: what editors paste into a case study's live-chart block.
+  $: embedLink = buildGraphURL(embedUid, stringify(graphParams))?.href;
 
   function buildScreenshotUrl(format, width, processingIntensity, graphUrl) {
     if (!graphUrl) {
@@ -134,25 +137,30 @@
   }
 </script>
 
-{#if isDownloadAvailable}
-  <PopoverButton label="Download graph">
+{#if isDownloadAvailable || embedLink}
+  <PopoverButton label={isDownloadAvailable ? 'Download graph' : 'Embed graph'}>
     <div class="max-w-xs px-3 py-3 flex gap-y-4 flex-col">
-      <div class="flex gap-2 items-center">
-        <span class="text-contour-weak text-sm">Format</span>
-        <div>
-          <PillGroup size="sm" allowWrap={false} options={formatOptions} bind:currentUid={format} />
+      {#if isDownloadAvailable}
+        <div class="flex gap-2 items-center">
+          <span class="text-contour-weak text-sm">Format</span>
+          <div>
+            <PillGroup size="sm" allowWrap={false} options={formatOptions} bind:currentUid={format} />
+          </div>
         </div>
-      </div>
-      <button
-        data-screenshot={screenshotUrl}
-        data-graph={graphUrl}
-        disabled={isDisabled}
-        on:click={downloadImage}
-        class="transition-colors bg-petrol-800 text-white hover:enabled:bg-petrol-900 disabled:text-white disabled:bg-theme-weaker w-full py-2 text-sm px-3 grid grid-cols-[15px_auto_15px] gap-x-3 items-center"
-      >
-        {#if status === STATUS_LOADING}<Spinner color="stroke-white" size={15} strokeWidth={2} />{/if}
-        <span class="col-start-2 block min-w-[200px] font-bold">{label}</span>
-      </button>
+        <button
+          data-screenshot={screenshotUrl}
+          data-graph={graphUrl}
+          disabled={isDisabled}
+          on:click={downloadImage}
+          class="transition-colors bg-petrol-800 text-white hover:enabled:bg-petrol-900 disabled:text-white disabled:bg-theme-weaker w-full py-2 text-sm px-3 grid grid-cols-[15px_auto_15px] gap-x-3 items-center"
+        >
+          {#if status === STATUS_LOADING}<Spinner color="stroke-white" size={15} strokeWidth={2} />{/if}
+          <span class="col-start-2 block min-w-[200px] font-bold">{label}</span>
+        </button>
+      {/if}
+      {#if embedLink}
+        <CopyLink href={embedLink} label="Copy embed link" />
+      {/if}
     </div>
   </PopoverButton>
 {/if}

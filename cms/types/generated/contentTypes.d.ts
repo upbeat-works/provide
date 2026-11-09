@@ -464,7 +464,7 @@ export interface ApiCaseStudyDynamicCaseStudyDynamic extends Struct.CollectionTy
       Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::case-study-dynamic.case-study-dynamic'>;
-    MainContent: Schema.Attribute.DynamicZone<['avoiding-impacts.avoiding-impacts', 'future-impacts.future-impacts', 'image-slider.image-slider', 'section.section']> &
+    MainContent: Schema.Attribute.DynamicZone<['avoiding-impacts.avoiding-impacts', 'future-impacts.future-impacts', 'image-slider.image-slider', 'live-chart.live-chart', 'section.section']> &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
