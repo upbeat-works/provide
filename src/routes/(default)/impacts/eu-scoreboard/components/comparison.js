@@ -31,6 +31,14 @@ export function mapValues(result = {}) {
 
 export const combinedValues = (results = []) => results.flatMap(mapValues);
 
+// The eyebrow over each chart. Charts always draw the filter selection, which
+// the left map opens on but does not change, so while comparing they name it in
+// full: scrolled past the maps, the reader otherwise cannot tell what they show.
+export function chartEyebrow(selection = {}, comparing = false) {
+  if (!comparing) return selection.region?.label ?? 'No region';
+  return legendParts(selection).map(({ label }) => label).join(' · ') || 'No region';
+}
+
 // The label row on a map's legend card: the whole selection, so two cards side
 // by side say what makes them different, with the compared part picked out.
 export function legendParts(view = {}, compared = undefined) {
