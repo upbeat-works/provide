@@ -5,6 +5,7 @@
   import AvoidingImpacts from './sections/AvoidingImpacts.svelte';
   import FutureImpacts from './sections/FutureImpacts.svelte';
   import ImageSlider from './sections/ImageSlider.svelte';
+  import LiveChart from './sections/LiveChart.svelte';
   import SidebarMetadata from './sections/SidebarMetadata.svelte';
   import CaseStudyCard from '../../landing-page/components/CaseStudiesCarousel/CaseStudyCard.svelte';
   import { PATH_ADAPTATION } from '$src/config.js';
@@ -30,6 +31,7 @@
     'image-slider': { component: ImageSlider },
     'avoiding-impacts': { component: AvoidingImpacts, omitBorder: true },
     'future-impacts': { component: FutureImpacts },
+    'live-chart': { component: LiveChart },
     section: { component: SectionContent },
   };
 
