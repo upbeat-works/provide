@@ -50,3 +50,26 @@ test('promises a click only where one is handled', async () => {
   component.fire('mousemove', { features: [{ properties: { geoId: 'ITA' } }] });
   expect(component.cursor()).toBe('');
 });
+
+const borderLayer = () => calls.find(([name, layer]) => name === 'addLayer' && layer.id.startsWith('country-choropleth-border-'))[1];
+
+test('keeps country borders hidden while countries carry their own fills', () => {
+  render(Fixture, { shape, values, classes });
+  expect(borderLayer().layout.visibility).toBe('none');
+});
+
+test('outlines only the listed countries over a regional or raster map', () => {
+  render(Fixture, { shape, borders: true, borderCountries: ['ITA', 'AUT'] });
+  expect(borderLayer().layout.visibility).toBe('visible');
+  expect(borderLayer().filter).toEqual(['in', COUNTRY_CODE, ['literal', ['ITA', 'AUT']]]);
+});
+
+test('shows, hides and refilters the borders as the map changes', async () => {
+  const { component } = render(Fixture, { shape, values, classes });
+  const id = borderLayer().id;
+  await component.$set({ borders: true, borderCountries: ['ITA'] });
+  expect(calls.filter(([name, layer]) => name === 'setLayoutProperty' && layer === id).at(-1)).toEqual(['setLayoutProperty', id, 'visibility', 'visible']);
+  expect(calls.filter(([name, layer]) => name === 'setFilter' && layer === id).at(-1)[2]).toEqual(['in', COUNTRY_CODE, ['literal', ['ITA']]]);
+  await component.$set({ borders: false });
+  expect(calls.filter(([name, layer]) => name === 'setLayoutProperty' && layer === id).at(-1)).toEqual(['setLayoutProperty', id, 'visibility', 'none']);
+});

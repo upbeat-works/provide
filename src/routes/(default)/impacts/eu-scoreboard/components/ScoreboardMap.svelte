@@ -5,7 +5,7 @@
   import NutsChoropleth from './NutsChoropleth.svelte';
   import RegionalChoropleth from './RegionalChoropleth.svelte';
   import RasterGrid from './RasterGrid.svelte';
-  import { countriesBounds, countryValues, COUNTRY_SOURCE } from './choropleth.js';
+  import { countriesBounds, countriesWithRegionalData, countryValues, COUNTRY_SOURCE } from './choropleth.js';
   import { loadRegionalBoundaries } from '../../../../../../api/scoreboard/boundaries.ts';
   import { SCOREBOARD_COUNTRIES, scoreboardCountry } from '../../../../../../api/scoreboard/countries.ts';
   import MapLoading from './MapLoading.svelte';
@@ -89,6 +89,7 @@
   // ZoomControl for zooming and clicks going straight through to selection —
   // unless it asks for `activation`.
   let interactive = false;
+  const SCOREBOARD_ISO3 = SCOREBOARD_COUNTRIES.map(({ iso3 }) => iso3).filter(Boolean);
   const zoomRange = [-1, 14];
 </script>
 
@@ -111,6 +112,8 @@
         values={regional || raster ? [] : countryValues(values, SCOREBOARD_COUNTRIES)}
         classes={regional || raster ? [] : classes}
         highlight={selectedIso3}
+        borders={regional || raster}
+        borderCountries={regional ? countriesWithRegionalData(values, SCOREBOARD_COUNTRIES) : SCOREBOARD_ISO3}
         {selectable}
         on:select
       />

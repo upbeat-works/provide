@@ -12,6 +12,13 @@
   export let fillOpacity = 0.8;
   export let highlight = undefined;
   export let selectable = false;
+  // Outline every country above whatever is drawn underneath. Set when the map
+  // is coloured by NUTS region or raster cell: without it the regions' borders
+  // are all one weight and nothing shows where one country ends.
+  export let borders = false;
+  // The countries to outline: the scoreboard's own, so the basemap's
+  // neighbours (Norway, Ukraine, ...) are not drawn as if they had data.
+  export let borderCountries = [];
 
   const { map } = getContext('mapbox');
   const theme = getContext('theme');
@@ -21,6 +28,7 @@
   const fillLayerId = `country-choropleth-fill-${instance}`;
   const lineLayerId = `country-choropleth-line-${instance}`;
   const highlightLayerId = `country-choropleth-highlight-${instance}`;
+  const borderLayerId = `country-choropleth-border-${instance}`;
   instance++;
 
   const symbolLayers = () => $map.getStyle().layers.filter(({ type }) => type === 'symbol');
@@ -75,6 +83,23 @@
         paint: {
           'line-color': $theme.color.surface.base,
           'line-width': 0.8,
+        },
+      },
+      before
+    );
+  }
+
+  if (!$map.getLayer(borderLayerId)) {
+    $map.addLayer(
+      {
+        id: borderLayerId,
+        type: 'line',
+        source: sourceId,
+        filter: countryFilter(borderCountries),
+        layout: { 'line-join': 'round', visibility: borders ? 'visible' : 'none' },
+        paint: {
+          'line-color': $theme.color.contour.base,
+          'line-width': 1,
         },
       },
       before
@@ -142,6 +167,11 @@
     $map.setFilter(lineLayerId, scoredCountryFilter(values, classes));
   }
 
+  $: if ($map.getLayer(borderLayerId)) {
+    $map.setLayoutProperty(borderLayerId, 'visibility', borders ? 'visible' : 'none');
+    $map.setFilter(borderLayerId, countryFilter(borderCountries));
+  }
+
   $: if ($map.getLayer(highlightLayerId)) {
     $map.setFilter(highlightLayerId, countryFilter(highlight ? [highlight] : []));
   }
@@ -153,6 +183,7 @@
       $map.off('mouseleave', fillLayerId, clearCursor);
       clearCursor();
       $map.getLayer(highlightLayerId) && $map.removeLayer(highlightLayerId);
+      $map.getLayer(borderLayerId) && $map.removeLayer(borderLayerId);
       $map.getLayer(lineLayerId) && $map.removeLayer(lineLayerId);
       $map.getLayer(fillLayerId) && $map.removeLayer(fillLayerId);
       $map.getSource(sourceId) && $map.removeSource(sourceId);
