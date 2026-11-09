@@ -91,6 +91,18 @@ test('reports malformed JSON and an empty topic directory', () => {
   expect(() => load()).toThrow(/broken\.json/);
 });
 
+test.each([-1, 1.5, 7, '2', null])('rejects decimals value %s', (decimals) => {
+  const value = topic();
+  save('flood-risk.json', { ...value, charts: value.charts.map((chart) => ({ ...chart, decimals })) });
+  expect(() => load()).toThrow('decimals must be a whole number from 0 to 6');
+});
+
+test.each([0, 2, 6])('accepts decimals value %s', (decimals) => {
+  const value = topic();
+  save('flood-risk.json', { ...value, charts: value.charts.map((chart) => ({ ...chart, decimals })) });
+  expect(() => load()).not.toThrow();
+});
+
 test.each(['true', 1, null])('rejects hideInEuropeView value %s', (hideInEuropeView) => {
   const value = topic();
   save('flood-risk.json', { ...value, charts: value.charts.map((chart) => ({ ...chart, hideInEuropeView })) });
