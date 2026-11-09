@@ -19,6 +19,9 @@
   // Accepted from the adapter but intentionally unrendered: the year is already
   // stated by the panel's filters, so a pill on the chart just repeats it.
   export let selectedYear = undefined;
+  // Fixed decimal places for values, from the chart definition's `decimals`.
+  // Unset, the fewest decimals that keep distinct values distinct are used.
+  export let decimals = undefined;
 
   // Row names are drawn leftwards from the plot's edge, so the left gutter has to
   // be wide enough for the longest one or it runs off the container. Measured by
@@ -56,7 +59,7 @@
   // a natural-language unit would otherwise be suffixed onto every tick.
   $: formatTick = (d) => formatValue(d, unit, { addSuffix: false, decimals: tickDecimals });
 
-  $: decimals = findDecimalsForDistinctValues(
+  $: valueDecimals = decimals ?? findDecimalsForDistinctValues(
     rows.flatMap(({ values = [] }) => values.map(({ end }) => end)),
     unit,
     0,
@@ -70,7 +73,7 @@
       popoverContent: renderTemplate(popoverTemplate, {
         label: row.label,
         // Same again in the tooltip, which prints `unitLabel` beside the value.
-        formattedValue: formatValue(segment.value, unit, { decimals, addSuffix: false }),
+        formattedValue: formatValue(segment.value, unit, { decimals: valueDecimals, addSuffix: false }),
         unitLabel: unitLabel ?? '',
         scenario: segment.scenario ?? segment.name,
       }),
