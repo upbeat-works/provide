@@ -8,9 +8,7 @@ Strapi is the admin tool where the site's written content lives — page text, c
 
 ## Logging in
 
-Go to **https://provide-cms.fly.dev/admin** and sign in.
-
-The CMS "sleeps" when nobody's used it for a while, so the very first page load after a quiet period can take 10–20 seconds. That's normal — just wait for it.
+Go to **https://cms.climate-risk-dashboard.org/admin** and sign in.
 
 If you don't have a login yet, ask a developer on the project to create one for you.
 
@@ -101,10 +99,11 @@ The most involved content type. Top-level fields:
 
 - **Title**, **Abstract** (long text), **Authors** (plain text), **CoverImage** (picture), **PublicationDate**.
 - **Topics**, **Project**, **Geography**, **Scenarios** — links to other items. These don't hold text directly; you're picking existing **Topic** / **Project** / **Geography** / **Scenario (Simplified)** entries to tag this case study with. If the tag you want doesn't exist yet, create it in that content type first, then come back and select it here.
-- **MainContent** — a List where each entry is one of four block types, and you choose the type when you add a block. This is what actually builds the body of the case study page, top to bottom, in the order you arrange them:
+- **MainContent** — a List where each entry is one of five block types, and you choose the type when you add a block. This is what actually builds the body of the case study page, top to bottom, in the order you arrange them:
   - **Section** — a plain **Title** + **Text** (rich text) block, same as elsewhere.
-  - **AvoidingImpacts** — **Title**, **Description** (rich text), **ExplorerUrl** (a link into the interactive explorer tool), plus lists of **Indicators** and **StudyLocations**, each of which is just a **Uid** field that must match an id from the climate-data system exactly — get this from a developer if you're not sure of the right value, since a wrong id just fails to show data rather than erroring visibly.
-  - **FutureImpacts** — **ImpactTimeDescription** and **ImpactGeoDescription** (rich text), **ExplorerUrl**, plus two picture galleries: **ImpactTimeSnapshot** (Indicator name + an image/video) and **ImpactGeoSnapshot** (Indicator name + Year + an image) — these are literally uploaded picture snapshots, not live charts.
+  - **LiveChart** — a live, interactive chart. Paste the link from a chart's **Copy embed link** menu item into **EmbedUrl** (required); **Title**, **Description** (rich text) and **ExplorerUrl** are optional. See [Embedding interactive charts in case studies](case-study-charts.md).
+  - **AvoidingImpacts** — **Title**, **Description** (rich text), **ExplorerUrl** (a link into the interactive explorer tool), plus lists of **Indicators** (a **Uid** and an **Instance**) and **StudyLocations** (a **Uid**). These values must match an id from the climate-data system exactly — get this from a developer if you're not sure of the right value, since a wrong id just fails to show data rather than erroring visibly.
+  - **FutureImpacts** — **ImpactTimeDescription** and **ImpactGeoDescription** (rich text), **ExplorerUrl**, plus two picture galleries: **ImpactTimeSnapshot** (Indicator + Instance + an image) and **ImpactGeoSnapshot** (Indicator + Instance + Year + an image) — these are uploaded picture snapshots. Use **LiveChart** for a live chart.
   - **ImageSlider** — a before/after image comparison. **AttributeLabel** and **GroupingLabel** (plain text, used for labeling/grouping), **ExplorerUrl**, two toggles (**ShowThumbnails**, **AllowImageSelection**), and a list of **ImageSliderPair**s, each with **Image1** (required), **Image2** (optional), plus **AttributeValue**, **GroupValue**, and **Description** (all plain text) to label that pair.
 
   Within MainContent you can add as many blocks of any type as you like, in any order, and drag to reorder them — that ordering is exactly the reading order visitors see on the page.
