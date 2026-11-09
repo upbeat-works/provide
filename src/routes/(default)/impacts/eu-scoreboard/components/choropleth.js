@@ -181,6 +181,16 @@ export const countryValues = (values = [], countries = []) =>
     const iso3 = countries.find(({ name }) => name === entry.region)?.iso3;
     return iso3 ? [{ uid: iso3, value: entry.value }] : [];
   });
+// The countries to outline over a regional map: those with at least one region
+// that has a value. A NUTS ID begins with its country's NUTS code (AT11 is
+// Austria's), so the country is read off the ID. Countries in the scoreboard
+// with no data for the indicator are left unoutlined rather than drawn as if
+// they belonged to the map.
+export function countriesWithRegionalData(values = [], countries = []) {
+  const codes = new Set(values.flatMap(({ region, value }) => (typeof region === 'string' && Number.isFinite(value) ? [region.slice(0, 2)] : [])));
+  return countries.flatMap(({ code, iso3 }) => (iso3 && codes.has(code) ? [iso3] : []));
+}
+
 export const regionalFillColor = (values, classes) => fillColor(NUTS_ID, regionalValues(values), classes);
 export const regionalFilter = (values, classes) => scoredFilter(NUTS_ID, regionalValues(values), classes);
 
