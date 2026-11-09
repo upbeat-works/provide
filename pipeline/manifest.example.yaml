@@ -1,0 +1,30 @@
+# PROVIDE pipeline manifest — one file describes a whole dataset drop.
+#
+# Copy this next to your data, adjust the paths, then:
+#
+#   provide-pipeline run-all --manifest manifest.yaml
+#
+# Every scenario x product x indicator x reference (x frequency) combination
+# becomes one output JSON in `out`. Paths are relative to this file.
+#
+# As committed, this runs on the BUNDLED synthetic data, so you can try the
+# whole workflow without any real MESMER files.
+
+data_dir: data/mesmer            # directory holding <scenario>.nc MESMER cubes
+shapefile: data/countries.geojson
+geographies: data/geographies.csv
+out: ./out
+
+scenarios: [GS, CurPol, SP]
+
+products:
+  - product: impact-time
+    indicators: [mean-temperature, hot-extreme, cold-extreme]
+    references: [pre-industrial]   # optional; this is the default
+    frequencies: [0.1]             # extreme indicators only (0.1 = hottest/coldest 10 %)
+
+  - product: impact-geo
+    indicators: [mean-temperature]
+
+  - product: unavoidable-risk
+    indicators: [mean-temperature]
