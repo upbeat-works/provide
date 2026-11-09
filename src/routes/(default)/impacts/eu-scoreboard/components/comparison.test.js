@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { combinedValues, comparisonViews, mapValues, seedComparison } from './comparison.js';
+import { chartEyebrow, combinedValues, comparisonViews, mapValues, seedComparison } from './comparison.js';
 
 const options = [{ uid: 'a' }, { uid: 'b' }, { uid: 'c' }];
 
@@ -46,4 +46,29 @@ test('uses finite raster cells when two maps share a colour scale', () => {
   expect(combinedValues([raster, { grid: { data: [[4]] } }])).toEqual([
     { value: 1 }, { value: 2 }, { value: 3 }, { value: 4 },
   ]);
+});
+
+describe('chartEyebrow', () => {
+  const selection = {
+    region: { uid: 'Austria', label: 'Austria' },
+    scenario: { uid: 'CurrentPolicies', label: 'Current Policies' },
+    year: { uid: '2050', label: '2050' },
+  };
+
+  test('names only the region outside a comparison', () => {
+    expect(chartEyebrow(selection)).toBe('Austria');
+  });
+
+  test('adds the scenario and year while comparing', () => {
+    expect(chartEyebrow(selection, true)).toBe('Austria · Current Policies · 2050');
+  });
+
+  test('falls back to the uid for an unlabelled value', () => {
+    expect(chartEyebrow({ ...selection, year: { uid: '2080' } }, true)).toBe('Austria · Current Policies · 2080');
+  });
+
+  test('says so when nothing is selected', () => {
+    expect(chartEyebrow({})).toBe('No region');
+    expect(chartEyebrow({}, true)).toBe('No region');
+  });
 });

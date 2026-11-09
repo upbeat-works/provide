@@ -49,6 +49,16 @@ test('announces loading until the requested chart is ready', async () => {
   expect(screen.getByText(definition.description)).toBeTruthy();
 });
 
+test('names the scenario and year above the chart only while comparing', () => {
+  render(ChartPanel, props);
+  expect(screen.getByText('all')).toBeTruthy();
+  expect(screen.queryByText(/CurrentPolicies/)).toBeNull();
+  cleanup();
+
+  render(ChartPanel, { ...props, comparing: true });
+  expect(screen.getByText('all · CurrentPolicies · 2040')).toBeTruthy();
+});
+
 test('renders the chart alongside the picker for a grouped result', () => {
   render(ChartPanel, props);
   expect(screen.getByRole('heading', { name: 'Mean air temperature' })).toBeTruthy();
