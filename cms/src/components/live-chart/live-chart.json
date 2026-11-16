@@ -1,0 +1,24 @@
+{
+  "collectionName": "components_live_chart_live_charts",
+  "info": {
+    "displayName": "LiveChart",
+    "icon": "chart-line",
+    "description": "An interactive chart loaded from a PROVIDE embed link (/embed/...)."
+  },
+  "options": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "richtext"
+    },
+    "EmbedUrl": {
+      "type": "text",
+      "required": true
+    },
+    "ExplorerUrl": {
+      "type": "text"
+    }
+  }
+}

@@ -132,6 +132,21 @@ describe('impact time embed', () => {
     expect(globalThis.fetch.mock.calls.every(([input]) => new URL(String(input)).pathname === '/api/impact-time/')).toBe(true);
   });
 
+  test('drops the branding footer when shown inline in a case study', async () => {
+    await renderEmbed();
+    await waitFor(expectRenderedChart);
+    expect(screen.getByRole('link', { name: 'provide.example' })).toBeTruthy();
+    cleanup();
+
+    const inline = embedPage();
+    inline.url.searchParams.set('inline', 'true');
+    pageState.store.set(inline);
+    await renderEmbed();
+
+    await waitFor(expectRenderedChart);
+    expect(screen.queryByRole('link', { name: 'provide.example' })).toBeNull();
+  });
+
   test('loads the chart after its data request recovers', async () => {
     await renderEmbed({ failChartOnce: true });
 

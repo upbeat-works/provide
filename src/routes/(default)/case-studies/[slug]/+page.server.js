@@ -3,6 +3,7 @@ import { loadCuration, loadFromStrapi, loadGeographies, loadIndicatorIndex, load
 import { parse } from 'marked';
 import { loadCaseStudyAvoidingTables } from '$lib/server/case-study-avoiding.js';
 import { safeCaseStudyExplorerUrl } from '$lib/catalog/case-study-explorer-url.js';
+import { safeCaseStudyEmbedUrl } from '$lib/catalog/case-study-embed-url.js';
 
 export const load = async ({ fetch, params }) => {
   const [geographies, indicatorIndex, caseStudiesRaw, caseStudyOutroRaw] = await Promise.all([
@@ -19,6 +20,7 @@ export const load = async ({ fetch, params }) => {
         `populate[MainContent][on][image-slider.image-slider][populate][ImageSliderPair][populate][Image2]=true`,
         `populate[MainContent][on][avoiding-impacts.avoiding-impacts][populate]=*`,
         `populate[MainContent][on][section.section][populate]=*`,
+        `populate[MainContent][on][live-chart.live-chart][populate]=*`,
         `populate[Topics]=true`,
         `populate[Project]=true`,
         `populate[Geography]=true`,
@@ -106,6 +108,17 @@ export const load = async ({ fetch, params }) => {
                 impactTimeDescription: c.ImpactTimeDescription,
                 impactGeoSnapshots,
                 impactTimeSnapshots,
+              };
+            }
+            case 'live-chart': {
+              const embedUrl = safeCaseStudyEmbedUrl(c.EmbedUrl);
+              if (!embedUrl) return null;
+              return {
+                type,
+                title: c.Title,
+                description: c.Description ? parse(c.Description) : undefined,
+                embedUrl,
+                explorerUrl: safeCaseStudyExplorerUrl(c.ExplorerUrl, indicatorIndex),
               };
             }
             case 'image-slider':

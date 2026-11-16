@@ -38,6 +38,8 @@
     return { chartContext: context };
   }
   $: urlParams = parseEmbedParams($page.url);
+  // Set by case-study live-chart blocks: the chart sits inside a PROVIDE page, so skip the branding footer.
+  $: inline = $page.url.searchParams.get('inline') === 'true';
   $: baseContext = embedChartContext(urlParams, $theme.color.category);
   $: if ($page.params.embed === 'impact-geo' && data.mapView) baseContext.mapView = data.mapView;
   $: chartContext = contextForEmbed($page.params.embed, baseContext);
@@ -65,18 +67,21 @@
   const url = generateUrl();
 </script>
 
-<div class="embed p-6 pb-0">
+<!-- flow-root keeps the chart's trailing margins inside .embed, which a case study's frame measures to size itself. -->
+<div class="embed" class:p-6={!inline} class:pb-0={!inline} class:flow-root={inline}>
   {#if component && (chartContext.view.status === 'ready' || ($page.params.embed === 'impact-geo' && chartContext.view.status === 'failure') || $page.params.embed === EMBED_UID)}
     <svelte:component this={component} {...componentParams} />
   {:else if !($page.params.embed === 'impact-geo' && chartContext.view.status === 'empty' && chartContext.view.selection)}
     <p role="alert">The chart URL is incomplete.</p>
   {/if}
-  <div class="flex justify-between text-sm text-contour-weak border-t border-contour-weak pt-3 pb-4">
-    <Logo size="sm" color="petrol-800" />
-    {#if url}
-      <div>
-        Visit <a class="text-theme-base" href={url.url}>{url.host}</a> for more information
-      </div>
-    {/if}
-  </div>
+  {#if !inline}
+    <div class="flex justify-between text-sm text-contour-weak border-t border-contour-weak pt-3 pb-4">
+      <Logo size="sm" color="petrol-800" />
+      {#if url}
+        <div>
+          Visit <a class="text-theme-base" href={url.url}>{url.host}</a> for more information
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
