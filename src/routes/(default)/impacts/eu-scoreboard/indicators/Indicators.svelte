@@ -88,7 +88,7 @@
 
   <div bind:this={contentRef}>
     {#each charts as chart (chart.definition.chartId)}
-      <ChartPanel {preview} {...chart} selection={data.selection} sector={data.scoreboard.sector.uid} />
+      <ChartPanel {preview} {...chart} selection={data.selection} sector={data.scoreboard.sector.uid} comparing={Boolean(compareBy)} />
     {/each}
   </div>
 </ScoreboardLayout>

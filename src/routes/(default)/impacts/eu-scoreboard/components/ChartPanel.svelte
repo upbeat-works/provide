@@ -6,6 +6,7 @@
   import { isChartVisible } from './charts/adapter.js';
   import { PATH_ADAPTATION } from '$config';
   import { loadResource } from './resource.js';
+  import { chartEyebrow } from './comparison.js';
   import { assignColors, colorOf, defaultSelection, filterGroups, groupsOf, isPickable, SERIES_COLORS } from './series-filter.js';
 
   export let definition;
@@ -13,6 +14,8 @@
   export let selection;
   export let sector;
   export let preview = undefined;
+  // True while the page compares two maps; the eyebrow then names the scenario and year too.
+  export let comparing = false;
 
   // The result is resolved into a variable rather than awaited in the markup:
   // the picker's state is derived from the groups it carries, and an `{#await}`
@@ -23,6 +26,7 @@
   let slots = {};
   let groupsKey;
 
+  $: eyebrow = chartEyebrow(selection, comparing);
   $: sync(result);
   $: groups = groupsOf(chart);
   $: syncSelection(groups);
@@ -75,7 +79,7 @@
 </script>
 
 {#if !chart || chart.status === 'loading'}
-  <ScoreboardSection eyebrow={selection.region?.label ?? 'No region'} slug={definition.chartId} title={definition.title} description={definition.description}>
+  <ScoreboardSection {eyebrow} slug={definition.chartId} title={definition.title} description={definition.description}>
     <div class="flex min-h-[360px] items-center justify-center" aria-busy="true">
       <LoadingPlaceholder />
     </div>
@@ -85,7 +89,7 @@
     <p role="status">No chart data for this selection.</p>
   </ScoreboardSection>
 {:else if isChartVisible(chart, selection)}
-  <ScoreboardSection eyebrow={selection.region?.label ?? 'No region'} slug={definition.chartId} title={definition.title} description={definition.description}>
+  <ScoreboardSection {eyebrow} slug={definition.chartId} title={definition.title} description={definition.description}>
     {#if chart.caseStudy?.slug}
       <a class="mb-4 block text-sm font-bold text-theme-base" href="/{PATH_ADAPTATION}/{chart.caseStudy.slug}">See {chart.caseStudy.title ?? 'case study'} →</a>
     {/if}
