@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import bbox from '@turf/bbox';
 import {
+  countriesWithRegionalData,
   classOf,
   formatValue,
   colorFor,
@@ -278,5 +279,28 @@ describe('countryValues', () => {
   test('leaves values that already carry their own uid alone', () => {
     const scored = [{ uid: 'FRA', value: 2 }];
     expect(countryValues(scored, countries)).toEqual(scored);
+  });
+});
+
+describe('countriesWithRegionalData', () => {
+  const countries = [
+    { name: 'Austria', code: 'AT', iso3: 'AUT' },
+    { name: 'Greece', code: 'EL', iso3: 'GRC' },
+    { name: 'Norway', code: 'NO', iso3: 'NOR' },
+  ];
+
+  test('lists the countries whose regions carry a value, by NUTS code', () => {
+    const values = [{ region: 'AT11', value: 1 }, { region: 'EL30', value: 2 }, { region: 'AT12', value: 3 }];
+    expect(countriesWithRegionalData(values, countries)).toEqual(['AUT', 'GRC']);
+  });
+
+  test('leaves out a country whose regions have no finite value', () => {
+    const values = [{ region: 'AT11', value: 1 }, { region: 'NO08', value: null }, { region: 'EL30', value: Number.NaN }];
+    expect(countriesWithRegionalData(values, countries)).toEqual(['AUT']);
+  });
+
+  test('skips a country without an ISO3 code and survives no values', () => {
+    expect(countriesWithRegionalData([{ region: 'AT11', value: 1 }], [{ code: 'AT' }])).toEqual([]);
+    expect(countriesWithRegionalData(undefined, countries)).toEqual([]);
   });
 });

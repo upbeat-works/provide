@@ -12,6 +12,8 @@
   export let classes = [];
   export let highlight = undefined;
   export let selectable = false;
+  export let borders = false;
+  export let borderCountries = [];
   const layers = new Set();
   const sources = new Set();
   const handlers = new Map();
@@ -55,4 +57,4 @@
   setContext('theme', readable({ color: { surface: { base: '#fff' }, contour: { base: '#000' } } }));
 </script>
 
-<NutsChoropleth {shape} {values} {classes} {highlight} {selectable} on:select />
+<NutsChoropleth {shape} {values} {classes} {highlight} {selectable} {borders} {borderCountries} on:select />
