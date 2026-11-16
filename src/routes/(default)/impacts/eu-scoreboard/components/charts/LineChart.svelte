@@ -15,6 +15,9 @@
   export let yDomain = undefined;
   export let height = 'h-[360px]';
   export let selectedYear = undefined;
+  // Fixed decimal places for values, from the chart definition's `decimals`.
+  // Unset, the fewest decimals that keep distinct values distinct are used.
+  export let decimals = undefined;
 
   export let rangeLabel = 'Range';
 
@@ -23,13 +26,13 @@
 
   $: unitUID = unit?.uid ?? unit ?? DEFAULT_FORMAT_UID;
 
-  $: decimals = findDecimalsForDistinctValues(
+  $: valueDecimals = decimals ?? findDecimalsForDistinctValues(
     series.flatMap(({ values = [] }) => values.map(({ value }) => value)),
     unitUID,
     0,
     2
   );
-  $: format = (d) => formatValue(d, unitUID, { decimals });
+  $: format = (d) => formatValue(d, unitUID, { decimals: valueDecimals });
 
   const bandRow = (d, format, rangeLabel) => (Number.isFinite(d.min) && Number.isFinite(d.max) ? renderTemplate(rangeRowTemplate, { rangeLabel, range: `${format(d.min)} – ${format(d.max)}` }) : '');
 

@@ -371,8 +371,13 @@ export function adaptChartResult(result, selection = {}, { colorFor } = {}) {
   if ((definition.chartType === 'stacked_bar' && !props.rows.some(({ values }) => values.length)) || (pointChart && !props.points.length) || (definition.chartType === 'box_plot' && !props.rows.length)) return { ...base, status: 'empty' };
   const selectedYear = Number(selection?.year?.uid ?? selection?.year);
   if (Number.isFinite(selectedYear) && selectedYear > 0) props.selectedYear = selectedYear;
+  if (isDecimals(definition.decimals)) props.decimals = definition.decimals;
   return { ...base, kind: definition.chartType, props, info: infoFor(definition) };
 }
+
+// A chart definition's optional `decimals`: whole decimal places for values.
+export const MAX_DECIMALS = 6;
+export const isDecimals = (value) => Number.isInteger(value) && value >= 0 && value <= MAX_DECIMALS;
 
 export const isChartVisible = (result, selection = {}) => adaptChartResult(result, selection).status !== 'empty';
 

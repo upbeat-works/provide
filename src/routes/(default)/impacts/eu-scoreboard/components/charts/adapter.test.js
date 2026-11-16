@@ -115,6 +115,21 @@ describe('chart result adapter', () => {
     expect(adaptChartResult(scatter, selection).props.selectedYear).toBe(2050);
   });
 
+  test('passes a valid decimals setting to every chart kind and ignores an invalid one', () => {
+    const withDecimals = (input, decimals) => ({ ...input, definition: { ...input.definition, decimals } });
+    const charts = [
+      result('line', [{ line: ref('Temperature') }], [{ line: [{ year: 2030, value: 1 }] }]),
+      result('stacked_bar', [{ segment: ref('People', 'people') }], [{ segment: 2 }]),
+      result('scatter', [{ x: ref('Low'), y: ref('High') }], [{ x: 1, y: 2 }]),
+    ];
+    for (const chart of charts) {
+      expect(adaptChartResult(withDecimals(chart, 2)).props.decimals).toBe(2);
+      expect(adaptChartResult(withDecimals(chart, 0)).props.decimals).toBe(0);
+      expect(adaptChartResult(chart).props).not.toHaveProperty('decimals');
+      expect(adaptChartResult(withDecimals(chart, 1.5)).props).not.toHaveProperty('decimals');
+    }
+  });
+
   test('shows one line per region and leaves out regions with no values', () => {
     const input = result('line', [{ line: ref('Vulnerability|Fatalities|Heat Waves|Return Period|1 Year', 'people') }], [
       { region: { uid: 'AT11', label: 'Mittelburgenland' }, series: [{ line: [{ year: 2030, value: 1 }, { year: 2050, value: 2 }] }] },

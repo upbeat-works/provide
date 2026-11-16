@@ -22,6 +22,9 @@
   // Accepted from the adapter but intentionally unrendered: the year is already
   // stated by the panel's filters, so a pill on the chart just repeats it.
   export let selectedYear = undefined;
+  // Fixed decimal places for values, from the chart definition's `decimals`.
+  // Unset, the fewest decimals that keep distinct values distinct are used.
+  export let decimals = undefined;
 
   // Row names are drawn leftwards from the plot's edge, so the gutter is sized
   // to the longest one — the same measure the stacked bars use.
@@ -35,13 +38,13 @@
   $: gutter = Math.min(MAX_GUTTER, Math.max(MIN_GUTTER, Math.ceil(longestLabel * CHAR_WIDTH) + LABEL_GAP + 6));
   $: padding = { top: 4, right: 16, bottom: 28, left: gutter };
 
-  $: decimals = findDecimalsForDistinctValues(
+  $: valueDecimals = decimals ?? findDecimalsForDistinctValues(
     rows.flatMap((row) => Object.keys(labels).map((role) => row[role])),
     unit,
     0,
     2
   );
-  $: format = (d) => formatValue(d, unit, { decimals, addSuffix: false });
+  $: format = (d) => formatValue(d, unit, { decimals: valueDecimals, addSuffix: false });
   // Bare, compact numbers on the axis: the caption under it names the unit.
   $: formatTick = (d) => formatCompact(d, unit);
 

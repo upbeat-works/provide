@@ -12,6 +12,7 @@ export function validateChart(definition: Definition) {
   if (!text(definition?.chartId)) throw new Error('chartId is required');
   const { chartId } = definition;
   if (definition.hideInEuropeView !== undefined && typeof definition.hideInEuropeView !== 'boolean') throw new Error(`${chartId}: hideInEuropeView must be a boolean`);
+  if (definition.decimals !== undefined && !(Number.isInteger(definition.decimals) && definition.decimals >= 0 && definition.decimals <= 6)) throw new Error(`${chartId}: decimals must be a whole number from 0 to 6`);
   if (!text(definition.title) || typeof definition.description !== 'string') throw new Error(`${chartId}: title and description are required`);
   if (!Array.isArray(definition.data?.variables) || !definition.data.variables.every(text)) throw new Error(`${chartId}: variables must be strings`);
   const error = definitionGroupingError(definition);

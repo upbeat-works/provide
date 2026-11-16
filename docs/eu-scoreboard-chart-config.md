@@ -21,6 +21,7 @@ topic ID or a rendering component name.
 | `description` | Text explaining what the reader sees. |
 | `chartType` | One of the types below. |
 | `hideInEuropeView` | Optional boolean. Set to `true` to hide the chart and its menu link when Geography is Europe (`region=all`). Its data is not requested in that view. Omitted or `false` keeps it visible. Applies to saved topics and JSON previews. |
+| `decimals` | Optional whole number from 0 to 6. Fixes the decimal places of values in tooltips, such as `1` for 12.3. Omit it to use the fewest decimals that keep different values distinct. Axis ticks are not affected. |
 | `data` | Source variables and the settings that assign, group and display them. |
 | `caseStudyId` | Optional Strapi case-study `documentId` string from the migrated CMS. Omit when there is no linked study. |
 

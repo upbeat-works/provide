@@ -61,3 +61,38 @@ test.each([
   if (chartType === 'line_with_range') expect(within(tooltip).getByText('Range')).toBeTruthy();
   if (chartType === 'box_plot') expect(within(tooltip).getByText('Low – High')).toBeTruthy();
 });
+
+test.each([
+  ['scatter', { variables: ['Value|X', 'Value|Y'], x: 'X', y: 'Y' }],
+  ['bubble', { variables: ['Value|X', 'Value|Y', 'Value|Size'], x: 'X', y: 'Y', size: 'Size' }],
+  ['line', { variables: ['Value|Mean'] }],
+  ['line_with_range', { variables: ['Value|Mean', 'Value|Low', 'Value|High'], line: 'Mean', rangeLow: 'Low', rangeHigh: 'High' }],
+  ['stacked_bar', { variables: ['Value|Part A', 'Value|Part B'] }],
+  ['box_plot', { variables: ['Value|Mean', 'Value|Low', 'Value|High'], median: 'Mean', boxLow: 'Low', boxHigh: 'High' }],
+])('formats %s tooltip values to the configured decimals', async (chartType, data) => {
+  const values = { X: 1.25, Y: 2.5, Size: 3, Mean: 2.5, Low: 1.25, High: 3, 'Part A': 1.25, 'Part B': 2.5 };
+  const tabulate = vi.fn(async (query) => {
+    const value = values[query.variable.name.split('|').at(-1)];
+    return {
+      columns: ['variable', 'scenario', 'region', 'model', 'unit', '2040', '2050'],
+      values: [[query.variable.name, query.scenario.name, 'Austria', 'Model', 'days/yr', value, value]],
+    };
+  });
+  vi.spyOn(platform, 'createPlatform').mockResolvedValue({ iamc: { tabulate } });
+  const chart = {
+    chartId: 'decimals', title: 'Decimals', description: '', chartType, decimals: 3,
+    data: { ...data, groupBy: 'region', regions: ['Austria'] },
+  };
+  const url = new URL(`https://example.test/embed/eu-scoreboard-chart?${new URLSearchParams({ chart: JSON.stringify(chart), ...selections })}`);
+  const fetch = (input, init) => {
+    const target = new URL(input, url);
+    return api.request(`${target.pathname}${target.search}`, init, { DB: {}, IXMP4_USERNAME: 'test', IXMP4_PASSWORD: 'test' });
+  };
+  const loaded = await load({ fetch, params: { embed: 'eu-scoreboard-chart' }, url });
+  render(Fixture, { result: loaded.scoreboardChart, selection: loaded.selection });
+
+  const point = await waitFor(() => within(screen.getByRole('figure')).getAllByLabelText(/Austria/)[0]);
+  await fireEvent.mouseEnter(point);
+  const tooltip = await screen.findByRole('tooltip');
+  expect(tooltip.textContent).toMatch(/\b(1\.250|2\.500)\b/);
+});

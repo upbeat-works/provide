@@ -19,11 +19,14 @@
   export let yUnit = undefined;
   export let sizeUnit = undefined;
   export let xDomain = undefined;
+  // Fixed decimal places for values, from the chart definition's `decimals`.
+  // Unset, each unit's default format is used.
+  export let decimals = undefined;
   // Tooltips name each value, so they carry the unit; the axes already caption
   // it, so their ticks are bare numbers rather than repeating it on every one.
-  export let formatX = (d) => formatValue(d, xUnit);
-  export let formatY = (d) => formatValue(d, yUnit);
-  export let formatSize = (d) => formatValue(d, sizeUnit);
+  export let formatX = (d) => formatValue(d, xUnit, { decimals });
+  export let formatY = (d) => formatValue(d, yUnit, { decimals });
+  export let formatSize = (d) => formatValue(d, sizeUnit, { decimals });
   // Ticks are the tightest space on the figure, so they take SI prefixes (42k)
   // while the tooltip above spells the value out in full.
   export let formatXTick = (d) => formatCompact(d, xUnit);

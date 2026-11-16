@@ -56,6 +56,7 @@ export type Definition = {
   chartId: string;
   chartType: string;
   hideInEuropeView?: boolean;
+  decimals?: number;
   data: ChartData;
   [key: string]: unknown;
 };
