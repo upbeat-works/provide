@@ -1,0 +1,60 @@
+{
+  "label": "Heat stress",
+  "order": 10,
+  "map": {
+    "defaultIndicator": "High Heat Risk",
+    "ranking": {
+      "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+      "bins": [
+        2,
+        6,
+        23
+      ]
+    },
+    "indicators": [
+      {
+        "name": "High Heat Risk",
+        "unit": "days/yr",
+        "variable": "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+        "type": "choropleth",
+        "europeLevel": "NUTS2",
+        "level": "NUTS2"
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "CurrentPolicies"
+      },
+      {
+        "id": "1.5C"
+      }
+    ],
+    "years": [
+      2020,
+      2030,
+      2040,
+      2050,
+      2075,
+      2100
+    ]
+  },
+  "charts": [
+    {
+      "chartId": "high-heat-risk-range",
+      "title": "High heat risk",
+      "description": "",
+      "chartType": "line_with_range",
+      "data": {
+        "unit": "days/yr",
+        "variables": [
+          "High Heat Risk|Absolute Values (No Change)|Annual|Area|50th Percentile",
+          "High Heat Risk|Absolute Values (No Change)|Annual|Area|5th Percentile",
+          "High Heat Risk|Absolute Values (No Change)|Annual|Area|95th Percentile"
+        ],
+        "line": "50th Percentile",
+        "rangeLow": "5th Percentile",
+        "rangeHigh": "95th Percentile"
+      }
+    }
+  ]
+}

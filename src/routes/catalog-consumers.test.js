@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createRuntimeCatalog } from '$stores/runtime-catalog.js';
 import { createCatalogFlow } from '$stores/catalog-flow.js';
 import { parseCatalogUrlSelection } from '$lib/utils/url.js';
+import { scoreboardTopicsDirectory } from '../../test/fixtures/scoreboard.js';
 
 vi.mock('$app/stores', async () => {
   const { readable } = await import('svelte/store');
@@ -24,6 +25,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.resetModules();
 });
@@ -237,6 +239,9 @@ describe('focused catalog consumers', () => {
   });
 
   test.each(['heat-stress', 'testing'])('scoreboard %s loads its topic definition without the shared catalog', async (sector) => {
+    const topics = await import('../../api/scoreboard/topics.js');
+    const readTopics = topics.readTopics;
+    vi.spyOn(topics, 'readTopics').mockImplementation(() => readTopics(scoreboardTopicsDirectory));
     const { loaderFetch, requests } = createLoaderFetch();
     const [{ load: loadServerLayout }, { load: loadClientLayout }, { load: loadRanking }, { load: loadIndicators }] = await Promise.all([
       import('./(default)/impacts/eu-scoreboard/+layout.server.js'),

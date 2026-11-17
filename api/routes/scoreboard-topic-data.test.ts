@@ -1,7 +1,11 @@
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { scoreboard } from './scoreboard';
 import * as platform from '../platform';
+import * as topics from '../scoreboard/topics.js';
+import { scoreboardTopicsDirectory } from '../../test/fixtures/scoreboard.js';
 
+const readTopics = topics.readTopics;
+beforeEach(() => vi.spyOn(topics, 'readTopics').mockImplementation(() => readTopics(scoreboardTopicsDirectory)));
 const unitsFor = (variable: string) => variable.startsWith('High Heat Risk|') ? ['days/yr', '°C'] : ['°C'];
 afterEach(() => vi.restoreAllMocks());
 
@@ -10,7 +14,7 @@ test.each([
   ['heat-stress', 'map', 'High Heat Risk'],
   ['testing', 'charts/high-heat-risk-by-country'],
   ['testing', 'charts/temperature-and-heat-risk'],
-])('loads the saved %s %s config when heat risk has two source units', async (sector, resource, indicator) => {
+])('loads %s %s with a configured unit when the source has two units', async (sector, resource, indicator) => {
   const tabulate = vi.fn(async (query) => ({
     columns: ['variable', 'scenario', 'region', 'model', 'unit', '2050'],
     values: query.region.name_in.flatMap((region) => unitsFor(query.variable.name)

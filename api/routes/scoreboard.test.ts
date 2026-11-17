@@ -3,7 +3,10 @@ import { writeArrayBuffer } from 'geotiff';
 import * as platformModule from '../platform';
 import { getScoreboard } from '../scoreboard/controller.js';
 import * as controller from '../scoreboard/controller.js';
+import * as topics from '../scoreboard/topics.js';
+import { scoreboardTopicsDirectory } from '../../test/fixtures/scoreboard.js';
 
+const readTopics = topics.readTopics;
 const tabulate = vi.fn();
 let createPlatform;
 
@@ -44,6 +47,7 @@ function recordedFrame(query) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(topics, 'readTopics').mockImplementation(() => readTopics(scoreboardTopicsDirectory));
   createPlatform = vi.spyOn(platformModule, 'createPlatform');
   createPlatform.mockResolvedValue({ iamc: { tabulate } });
   tabulate.mockResolvedValue(
@@ -83,24 +87,28 @@ describe('scoreboard requests', () => {
     expect(createPlatform).not.toHaveBeenCalled();
   });
 
-  test.each([
-    ['Heat wave fatalities', 'Vulnerability|Fatalities|Heat Waves|Return Period|1 Year'],
-    ['Heat wave economic losses', 'Vulnerability|Economic Losses|Heat Waves|Return Period|1 Year'],
-  ])('loads %s for the selected socioeconomic map region and year', async (indicator, sourceVariable) => {
+  test('loads a configured map variable for the selected scenario, region and year', async () => {
+    const indicator = { name: 'People at risk', variable: 'Population|Exposure', type: 'choropleth', europeLevel: 'NUTS0', level: 'NUTS2' };
+    const configured = getScoreboard('testing');
+    vi.spyOn(controller, 'getScoreboard').mockReturnValue({
+      ...configured,
+      indicator,
+      map: { indicators: [indicator], scenarios: [{ id: 'SSP2' }], years: [2050] },
+    });
     tabulate.mockResolvedValue(frame([
-      [sourceVariable, 'SSP2', 'AT11', 'Vulnerability Model v1.0.0', 'percent', null, 12, null],
+      [indicator.variable, 'SSP2', 'AT11', 'Population model', 'percent', null, 12, null],
     ]));
 
-    const response = await request(mapPath({ sector: 'socioeconomic', indicator, scenario: 'SSP2' }));
+    const response = await request(mapPath({ indicator: indicator.name, scenario: 'SSP2' }));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
       status: 'ready',
       values: [{ region: 'AT11', value: 12 }],
-      metadata: { variable: sourceVariable, model: 'Vulnerability Model v1.0.0', unit: 'percent' },
+      metadata: { variable: indicator.variable, model: 'Population model', unit: 'percent' },
     });
     expect(tabulate).toHaveBeenCalledWith(expect.objectContaining({
-      variable: { name: sourceVariable },
+      variable: { name: indicator.variable },
       scenario: { name: 'SSP2' },
       region: { name_in: ['AT12', 'AT13', 'AT21', 'AT22', 'AT31', 'AT32', 'AT33', 'AT34', 'AT11'] },
       stepYear: 2050,

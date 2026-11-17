@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { loadChart, loadMap } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
 import { GET as getMap } from './map/+server.js';
 import { GET as getChart } from './charts/[chartId]/+server.js';
-import { getScoreboard } from '../../../../api/scoreboard/controller.js';
+import { getTestScoreboard as getScoreboard } from '../../../../test/fixtures/scoreboard.js';
 
 vi.mock('$routes/(default)/impacts/eu-scoreboard/controller.server.js', async (source) => {
   const actual = await source();

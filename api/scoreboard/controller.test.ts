@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { getScoreboard, resolveScoreboardChoices, SCOREBOARD_COUNTRIES } from './controller.js';
+import { getTestScoreboard } from '../../test/fixtures/scoreboard.js';
 
 describe('scoreboard config', () => {
   test('uses the configured default indicator unless a valid indicator is requested', () => {
@@ -18,7 +19,7 @@ describe('scoreboard config', () => {
   });
 
   test('selects a named map indicator and returns the sector charts', () => {
-    const scoreboard = getScoreboard('testing', 'Mean Air Temperature');
+    const scoreboard = getTestScoreboard('testing', 'Mean Air Temperature');
 
     expect(scoreboard.indicator).toEqual({
       name: 'Mean Air Temperature',
@@ -31,7 +32,7 @@ describe('scoreboard config', () => {
   });
 
   test('keeps valid URL choices and defaults invalid choices locally', () => {
-    const scoreboard = getScoreboard('testing');
+    const scoreboard = getTestScoreboard('testing');
 
     expect(
       resolveScoreboardChoices(scoreboard, {
@@ -66,7 +67,7 @@ describe('scoreboard config', () => {
   });
 
   test('keeps chart choices usable when a sector has no map indicators', () => {
-    const scoreboard = getScoreboard('testing');
+    const scoreboard = getTestScoreboard('testing');
     const chartsOnly = { ...scoreboard, map: { ...scoreboard.map, indicators: [] } };
 
     expect(resolveScoreboardChoices(chartsOnly, { indicator: 'Mean Air Temperature', scenario: '1.5C', region: 'Germany', year: '2100' })).toEqual({

@@ -1,7 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { loadScenarioLabels } from '$lib/server/catalog-content.js';
 import { load } from './+layout.server.js';
-import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
+import { getTestScoreboard as getScoreboard } from '../../../../../test/fixtures/scoreboard.js';
 
 vi.mock('$lib/server/catalog-content.js', () => ({ loadScenarioLabels: vi.fn() }));
 

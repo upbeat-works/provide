@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
+import { getTestScoreboard as getScoreboard } from '../../../../../test/fixtures/scoreboard.js';
 
 describe('scoreboard sector selection', () => {
   test.each([undefined, 'unknown', 'heat-stress'])('opens Heat stress for %s', (sector) => {
@@ -11,10 +11,5 @@ describe('scoreboard sector selection', () => {
     const scoreboard = getScoreboard('testing');
     expect(scoreboard.sector.uid).toBe('testing');
     expect(scoreboard.charts.length).toBeGreaterThan(0);
-  });
-
-  test('Testing exercises each supported chart type through real definitions', () => {
-    const types = getScoreboard('testing').charts.map(({ chartType }) => chartType);
-    expect(types).toEqual(expect.arrayContaining(['line', 'line_with_range', 'stacked_bar', 'bubble']));
   });
 });

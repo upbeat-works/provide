@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest';
 import { createScoreboardOptions, resolveSelection } from './selection.js';
-import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
 
 describe('scoreboard choices', () => {
   const scoreboard = {
@@ -73,24 +72,29 @@ describe('scoreboard choices', () => {
     });
   });
 
-  test.each(['heat-stress', 'socioeconomic', 'testing'])('offers 2040 and 2075 for %s', (sector) => {
-    const scoreboard = getScoreboard(sector);
+  test('offers the configured years and accepts a year between decades', () => {
+    const configured = { ...scoreboard, map: { ...scoreboard.map, years: [2040, 2075] } };
+    const options = createScoreboardOptions(configured);
+    expect(options.years).toEqual([{ uid: '2040', label: '2040' }, { uid: '2075', label: '2075' }]);
+    expect(resolveSelection(configured, options, { year: '2075' }).year).toEqual({ uid: '2075', label: '2075' });
+  });
+
+  test('uses the display name for indicator choices and URL selection', () => {
+    const configured = {
+      ...scoreboard,
+      map: {
+        ...scoreboard.map,
+        indicators: [{ name: 'People at risk', variable: 'Population|Exposure' }],
+      },
+    };
+    const options = createScoreboardOptions(configured);
+
+    expect(options.indicators).toEqual([{ uid: 'People at risk', label: 'People at risk' }]);
+    expect(resolveSelection(configured, options, { indicator: 'People at risk' }).indicator).toEqual(options.indicators[0]);
+  });
+
+  test('keeps the Europe-wide selection when loading a shared URL', () => {
     const options = createScoreboardOptions(scoreboard);
-    expect(options.years.map(({ uid }) => uid)).toEqual(['2020', '2030', '2040', '2050', '2075', '2100']);
-    expect(resolveSelection(scoreboard, options, { year: '2075' }).year).toEqual({ uid: '2075', label: '2075' });
+    expect(resolveSelection(scoreboard, options, { region: 'all' }).region).toEqual({ uid: 'all', label: 'Europe' });
   });
-
-  test('shows a clear map indicator name while keeping its data variable', () => {
-    const socioeconomic = getScoreboard('socioeconomic');
-    const options = createScoreboardOptions(socioeconomic);
-
-    expect(options.indicators).toContainEqual({ uid: 'Population aged 65 and over', label: 'Population aged 65 and over' });
-    expect(socioeconomic.indicator.variable).toBe('Population|Age 65+');
-  });
-});
-
-test('keeps the Europe-wide selection when loading a shared URL', () => {
-  const scoreboard = getScoreboard('testing');
-  const options = createScoreboardOptions(scoreboard);
-  expect(resolveSelection(scoreboard, options, { region: 'all' }).region).toEqual({ uid: 'all', label: 'Europe' });
 });

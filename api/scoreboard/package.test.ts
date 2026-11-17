@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from 'vitest';
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import testTopic from '../../test/fixtures/scoreboard/topics/testing.json';
 
 const copies: string[] = [];
 afterEach(async () => Promise.all(copies.splice(0).map((copy) => rm(copy, { recursive: true, force: true }))));
@@ -18,8 +19,7 @@ describe('API package boundary', () => {
 
     expect(output).toContain('index.js');
 
-    const topic = JSON.parse(await readFile(path.join(copy, 'api/scoreboard/topics/testing.json'), 'utf8'));
-    topic.label = 'Packaged topic';
+    const topic = { ...testTopic, label: 'Packaged topic' };
     await writeFile(path.join(copy, 'api/scoreboard/topics/packaged-topic.json'), JSON.stringify(topic));
     const result = execFileSync('bun', ['-e', `
       import { api } from './api/index.ts';

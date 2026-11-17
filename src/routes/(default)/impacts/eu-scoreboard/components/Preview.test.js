@@ -3,7 +3,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { page } from '$app/stores';
 import { goto } from '$app/navigation';
-import { getScoreboard, previewScoreboard } from '../../../../../../api/scoreboard/controller.js';
+import { previewScoreboard } from '../../../../../../api/scoreboard/controller.js';
+import { getTestScoreboard as getScoreboard } from '../../../../../../test/fixtures/scoreboard.js';
 import { decodePreview, encodePreview } from '../preview.js';
 import Preview from './Preview.svelte';
 

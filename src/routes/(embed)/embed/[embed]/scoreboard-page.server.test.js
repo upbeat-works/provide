@@ -2,7 +2,7 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { Hono } from 'hono';
 import { scoreboard } from '../../../../../api/routes/scoreboard';
-import { getScoreboard } from '../../../../../api/scoreboard/controller.js';
+import { getTestScoreboard as getScoreboard } from '../../../../../test/fixtures/scoreboard.js';
 import * as platform from '../../../../../api/platform';
 import { graphParamsFor, EMBED_UID } from '$routes/(default)/impacts/eu-scoreboard/components/charts/catalog.js';
 import { load } from './+page.server.js';
