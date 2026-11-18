@@ -8,6 +8,7 @@ import {
   fetchImpactGeoRaster,
   ImpactGeoCoverageNotFoundError,
   ImpactGeoConfigurationError,
+  ImpactGeoUpstreamError,
   type ImpactGeoParams,
   type ImpactGeoSelection,
   type GeoServerConfig,
@@ -46,23 +47,49 @@ function invalidOptionalParams(c: Context<Env>): string | null {
   return null;
 }
 
-function errorResponse(c: Context<Env>, error: unknown) {
-  if (error instanceof ImpactGeoConfigurationError) {
-    return c.json({ error: error.message }, 503);
-  }
+function errorResponse(c: Context<Env>, error: unknown, started: number) {
   if (error instanceof ImpactGeoCoverageNotFoundError) {
     return c.json({ message: error.message, isExpected: true }, 404);
   }
-  const message = error instanceof Error ? error.message : 'GeoServer request failed';
-  return c.json({ error: message }, 502);
+  let status: 502 | 503 | 504 = 502;
+  let code = 'GEOSERVER_UPSTREAM_ERROR';
+  let message = 'GeoServer request failed. Please try again.';
+  if (error instanceof ImpactGeoConfigurationError) {
+    status = 503;
+    code = 'GEOSERVER_CONFIGURATION_ERROR';
+    message = error.message;
+  }
+  const upstream = error instanceof ImpactGeoUpstreamError ? error : undefined;
+  if (upstream) {
+    code = upstream.code;
+    message = upstream.message;
+    if (code === 'GEOSERVER_TIMEOUT') status = 504;
+  }
+  const requestId = crypto.randomUUID();
+  let geoserverHost: string | undefined;
+  try {
+    geoserverHost = new URL(c.env.GEOSERVER_URL ?? '').hostname;
+  } catch {}
+  const details = { upstreamStatus: upstream?.upstreamStatus, timeoutMs: upstream?.timeoutMs };
+  console.error(JSON.stringify({
+    event: 'geoserver_request_failed', requestId, cfRay: c.req.header('cf-ray'),
+    method: c.req.method, path: c.req.path,
+    operation: c.req.path.replace(/\/$/, '').endsWith('/availability') ? 'GetCapabilities' : 'GetCoverage',
+    status, code, message, ...details, elapsedMs: Math.round(performance.now() - started),
+    geoserverHost, workspace: c.env.GEOSERVER_WORKSPACE || 'provide',
+    selection: { ...selection(c), scenarios: c.req.queries('scenarios'), scenario: c.req.query('scenario'), year: c.req.query('year'), format: c.req.query('format') },
+  }));
+  c.header('x-request-id', requestId);
+  c.header('cache-control', 'no-store');
+  return c.json({ error: message, code, requestId, ...details }, status);
 }
 
-function geoServerConfig(c: Context<Env>): GeoServerConfig | Response {
-  if (!c.env.GEOSERVER_URL) return c.json({ error: 'GEOSERVER_URL is not configured' }, 503);
+function geoServerConfig(c: Context<Env>): GeoServerConfig {
+  if (!c.env.GEOSERVER_URL) throw new ImpactGeoConfigurationError('GEOSERVER_URL is not configured');
   const username = c.env.GEOSERVER_USERNAME || undefined;
   const password = c.env.GEOSERVER_PASSWORD || undefined;
   if (Boolean(username) !== Boolean(password)) {
-    return c.json({ error: 'GeoServer username and password must be configured together' }, 503);
+    throw new ImpactGeoConfigurationError('GeoServer username and password must be configured together');
   }
   return {
     url: c.env.GEOSERVER_URL,
@@ -73,6 +100,7 @@ function geoServerConfig(c: Context<Env>): GeoServerConfig | Response {
 }
 
 impactGeo.get('/availability', async (c) => {
+  const started = performance.now();
   const selected = selection(c);
   const scenarios = c.req.queries('scenarios') ?? [];
   const status = instanceStatus(c.req.query('instance'));
@@ -85,16 +113,16 @@ impactGeo.get('/availability', async (c) => {
   if (status === 'unavailable') {
     return c.json({ scenarios: Object.fromEntries(scenarios.map((scenario) => [scenario, []])) });
   }
-  const config = geoServerConfig(c);
-  if (config instanceof Response) return config;
   try {
+    const config = geoServerConfig(c);
     return c.json({ scenarios: await fetchImpactGeoAvailability(config, selected, scenarios) });
   } catch (error) {
-    return errorResponse(c, error);
+    return errorResponse(c, error, started);
   }
 });
 
 impactGeo.get('/', async (c) => {
+  const started = performance.now();
   const selected = selection(c);
   const scenario = c.req.query('scenario');
   const rawYear = c.req.query('year');
@@ -107,10 +135,9 @@ impactGeo.get('/', async (c) => {
   if (status === 'unavailable') return c.json({ message: 'Map unavailable for this instance', isExpected: true }, 404);
   const optionalError = invalidOptionalParams(c);
   if (optionalError) return c.json({ error: optionalError }, 400);
-  const config = geoServerConfig(c);
-  if (config instanceof Response) return config;
   const params: ImpactGeoParams = { ...selected, scenario, year };
   try {
+    const config = geoServerConfig(c);
     const format = c.req.query('format');
     if (format === 'geotiff' || format === 'netcdf') {
       const raster = await fetchImpactGeoDownload(config, params, format);
@@ -130,7 +157,7 @@ impactGeo.get('/', async (c) => {
       headers: { 'content-type': raster.headers.get('content-type') ?? 'image/tiff' },
     });
   } catch (error) {
-    return errorResponse(c, error);
+    return errorResponse(c, error, started);
   }
 });
 

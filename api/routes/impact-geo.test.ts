@@ -34,6 +34,51 @@ afterEach(() => {
 });
 
 describe('GET /api/impact-geo/availability', () => {
+  test.each([
+    { code: 'GEOSERVER_TIMEOUT', status: 504, timeoutMs: 15000, upstreamStatus: undefined, message: 'GeoServer did not respond within 15 seconds. Please try again.' },
+    { code: 'GEOSERVER_HTTP_ERROR', status: 502, timeoutMs: undefined, upstreamStatus: 403, message: 'GeoServer capabilities failed with HTTP 403' },
+  ])('explains and logs $code with a request ID', async ({ code, status, timeoutMs, upstreamStatus, message }) => {
+    const log = spyOn(console, 'error').mockImplementation(() => {});
+    availabilitySpy.mockRejectedValueOnce(Object.assign(new view.ImpactGeoUpstreamError(message), { code, timeoutMs, upstreamStatus }));
+    try {
+      const response = await api.request(`/api/impact-geo/availability?${base}&scenarios=Low&token=private`, {
+        headers: { 'cf-ray': 'test-ray', authorization: 'Basic private' },
+      }, env);
+      const body = await response.json();
+      expect(response.status).toBe(status);
+      expect(body).toMatchObject({ error: message, code });
+      expect(typeof body.requestId).toBe('string');
+      expect(response.headers.get('x-request-id')).toBe(body.requestId);
+      const event = JSON.parse(log.mock.calls[0][0]);
+      expect(event).toMatchObject({
+        event: 'geoserver_request_failed', requestId: body.requestId, cfRay: 'test-ray',
+        code, status, operation: 'GetCapabilities', elapsedMs: expect.any(Number),
+        geoserverHost: 'geo.test', workspace: 'climate-risk-dashboard',
+        selection: { indicator: 'Mean Temperature', geography: 'Cameroon', time: 'Annual', scenarios: ['Low'] },
+      });
+      if (timeoutMs) expect(body.timeoutMs).toBe(timeoutMs);
+      if (upstreamStatus) expect(body.upstreamStatus).toBe(upstreamStatus);
+      expect(JSON.stringify([body, log.mock.calls])).not.toMatch(/secret|map-reader|private/);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  test('does not expose unexpected exception text in its response or logs', async () => {
+    const log = spyOn(console, 'error').mockImplementation(() => {});
+    availabilitySpy.mockRejectedValueOnce(new Error('http://map-reader:secret@geo.test/private'));
+    try {
+      const response = await api.request(`/api/impact-geo/availability?${base}&scenarios=Low`, {}, env);
+      const body = await response.json();
+      expect(response.status).toBe(502);
+      expect(body).toMatchObject({ code: 'GEOSERVER_UPSTREAM_ERROR' });
+      expect(typeof body.requestId).toBe('string');
+      expect(JSON.stringify([body, log.mock.calls])).not.toMatch(/secret|map-reader|private/);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   test('loads all scenario years in one adapter call', async () => {
     const response = await api.request(`/api/impact-geo/availability?${base}&scenarios=2020%20Climate%20Policies&scenarios=Low`, {}, env);
     expect(response.status).toBe(200);

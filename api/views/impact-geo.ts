@@ -13,6 +13,7 @@ export interface GeoServerConfig {
   workspace: string;
   username?: string;
   password?: string;
+  timeoutMs?: number;
 }
 
 export interface ImpactGeoParams extends ImpactGeoSelection {
@@ -23,7 +24,18 @@ export interface ImpactGeoParams extends ImpactGeoSelection {
 export type ImpactGeoDownloadFormat = 'netcdf' | 'geotiff';
 
 export class ImpactGeoCoverageNotFoundError extends Error {}
-export class ImpactGeoUpstreamError extends Error {}
+export class ImpactGeoUpstreamError extends Error {
+  readonly code: string;
+  readonly upstreamStatus?: number;
+  readonly timeoutMs?: number;
+
+  constructor(message: string, details: { code?: string; upstreamStatus?: number; timeoutMs?: number } = {}) {
+    super(message);
+    this.code = details.code ?? 'GEOSERVER_UPSTREAM_ERROR';
+    this.upstreamStatus = details.upstreamStatus;
+    this.timeoutMs = details.timeoutMs;
+  }
+}
 export class ImpactGeoConfigurationError extends Error {}
 
 const WCS_TIMEOUT_MS = 15_000;
@@ -88,7 +100,7 @@ function buildCapabilitiesUrl(config: GeoServerConfig): URL {
   return url;
 }
 
-async function boundedFetch(url: URL, config: GeoServerConfig, fetcher: typeof fetch): Promise<Response> {
+async function boundedRequest<T>(url: URL, config: GeoServerConfig, fetcher: typeof fetch, consume: (response: Response) => Promise<T>): Promise<T> {
   if (Boolean(config.username) !== Boolean(config.password)) {
     throw new ImpactGeoConfigurationError('GeoServer username and password must be configured together');
   }
@@ -96,26 +108,55 @@ async function boundedFetch(url: URL, config: GeoServerConfig, fetcher: typeof f
   if (config.username !== undefined && config.password !== undefined) {
     headers.set('authorization', `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`);
   }
+  const timeoutMs = config.timeoutMs ?? WCS_TIMEOUT_MS;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  let response: Response | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      const error = new ImpactGeoUpstreamError(`GeoServer did not respond within ${timeoutMs / 1000} seconds. Please try again.`, {
+        code: 'GEOSERVER_TIMEOUT', timeoutMs,
+      });
+      reject(error);
+      controller.abort(error);
+    }, timeoutMs);
+  });
   try {
-    return await fetcher(url, { headers, signal: AbortSignal.timeout(WCS_TIMEOUT_MS) });
-  } catch {
-    throw new ImpactGeoUpstreamError('GeoServer WCS request failed');
+    const request = (async () => {
+      response = await fetcher(url, { headers, signal: controller.signal });
+      if (controller.signal.aborted) {
+        void response.body?.cancel().catch(() => {});
+        throw controller.signal.reason;
+      }
+      return consume(response);
+    })();
+    return await Promise.race([request, deadline]);
+  } catch (error) {
+    void response?.body?.cancel().catch(() => {});
+    if (error instanceof ImpactGeoUpstreamError || error instanceof ImpactGeoCoverageNotFoundError) throw error;
+    const message = response ? 'Could not read the GeoServer response.' : 'Could not connect to GeoServer.';
+    throw new ImpactGeoUpstreamError(message, { code: 'GEOSERVER_NETWORK_ERROR', upstreamStatus: response?.status });
+  } finally {
+    clearTimeout(timer!);
   }
 }
 
 export async function fetchImpactGeoAvailability(
   config: GeoServerConfig, selection: ImpactGeoSelection, scenarios: string[], fetcher: typeof fetch = fetch,
 ): Promise<Record<string, number[]>> {
-  const response = await boundedFetch(buildCapabilitiesUrl(config), config, fetcher);
-  if (!response.ok) throw new ImpactGeoUpstreamError(`GeoServer capabilities failed with HTTP ${response.status}`);
-  const body = await response.text();
-  if (/<(?:[\w.-]+:)?(?:ExceptionReport|ServiceExceptionReport)\b/i.test(body)) {
-    throw new ImpactGeoUpstreamError('GeoServer returned a WCS exception for capabilities');
-  }
-  if (!/<(?:[\w.-]+:)?WCS_Capabilities\b/i.test(body)) {
-    throw new ImpactGeoUpstreamError('GeoServer returned malformed WCS capabilities');
-  }
-  return availableYearsByScenario(body, selection, scenarios, config.workspace);
+  return boundedRequest(buildCapabilitiesUrl(config), config, fetcher, async (response) => {
+    if (!response.ok) throw new ImpactGeoUpstreamError(`GeoServer capabilities failed with HTTP ${response.status}`, {
+      code: 'GEOSERVER_HTTP_ERROR', upstreamStatus: response.status,
+    });
+    const body = await response.text();
+    if (/<(?:[\w.-]+:)?(?:ExceptionReport|ServiceExceptionReport)\b/i.test(body)) {
+      throw new ImpactGeoUpstreamError('GeoServer returned a WCS exception for capabilities', { code: 'GEOSERVER_WCS_ERROR' });
+    }
+    if (!/<(?:[\w.-]+:)?WCS_Capabilities\b/i.test(body)) {
+      throw new ImpactGeoUpstreamError('GeoServer returned malformed WCS capabilities', { code: 'GEOSERVER_INVALID_RESPONSE' });
+    }
+    return availableYearsByScenario(body, selection, scenarios, config.workspace);
+  });
 }
 
 function wcsExceptionCode(body: string): string | undefined {
@@ -137,24 +178,29 @@ async function fetchImpactGeoCoverage(
   config: GeoServerConfig, params: ImpactGeoParams, format: ImpactGeoDownloadFormat, fetcher: typeof fetch,
 ): Promise<Response> {
   const id = coverageId(params);
-  const response = await boundedFetch(buildGetCoverageUrl(config, id, format), config, fetcher);
-  const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
-  let isExpectedFormat = contentType.includes('image/tiff') || contentType.includes('application/octet-stream');
-  if (format === 'netcdf') isExpectedFormat = contentType.includes('application/x-netcdf');
-  if (!isExpectedFormat) {
-    const body = await response.text();
-    const exceptionCode = wcsExceptionCode(body);
-    if (isMissingCoverageCode(exceptionCode)) {
-      throw new ImpactGeoCoverageNotFoundError(`GeoServer has no coverage for ${id}`);
+  return boundedRequest(buildGetCoverageUrl(config, id, format), config, fetcher, async (response) => {
+    const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+    let isExpectedFormat = contentType.includes('image/tiff') || contentType.includes('application/octet-stream');
+    if (format === 'netcdf') isExpectedFormat = contentType.includes('application/x-netcdf');
+    if (!isExpectedFormat) {
+      const body = await response.text();
+      const exceptionCode = wcsExceptionCode(body);
+      if (isMissingCoverageCode(exceptionCode)) {
+        throw new ImpactGeoCoverageNotFoundError(`GeoServer has no coverage for ${id}`);
+      }
+      if (exceptionCode || /ExceptionReport|ServiceException/i.test(body)) {
+        throw new ImpactGeoUpstreamError('GeoServer returned a WCS exception for the map', { code: 'GEOSERVER_WCS_ERROR' });
+      }
+      if (!response.ok) throw new ImpactGeoUpstreamError(`GeoServer WCS request failed with HTTP ${response.status}`, {
+        code: 'GEOSERVER_HTTP_ERROR', upstreamStatus: response.status,
+      });
+      throw new ImpactGeoUpstreamError(`GeoServer returned an invalid ${format} WCS response`, { code: 'GEOSERVER_INVALID_RESPONSE' });
     }
-    if (exceptionCode || /ExceptionReport|ServiceException/i.test(body)) {
-      throw new ImpactGeoUpstreamError(`GeoServer WCS exception${exceptionCode ? `: ${exceptionCode}` : ''}`);
-    }
-    if (!response.ok) throw new ImpactGeoUpstreamError(`GeoServer WCS request failed with HTTP ${response.status}`);
-    throw new ImpactGeoUpstreamError(`GeoServer returned an invalid ${format} WCS response`);
-  }
-  if (!response.ok) throw new ImpactGeoUpstreamError(`GeoServer WCS request failed with HTTP ${response.status}`);
-  return response;
+    if (!response.ok) throw new ImpactGeoUpstreamError(`GeoServer WCS request failed with HTTP ${response.status}`, {
+      code: 'GEOSERVER_HTTP_ERROR', upstreamStatus: response.status,
+    });
+    return response;
+  });
 }
 
 export async function fetchImpactGeoDownload(

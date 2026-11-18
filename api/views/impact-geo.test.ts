@@ -121,6 +121,57 @@ test('treats failed authentication as an upstream error rather than empty availa
     .rejects.toBeInstanceOf(ImpactGeoUpstreamError);
 });
 
+test('reports an upstream HTTP failure without returning its response body', async () => {
+  const fetcher = (async () => new Response('private upstream details', { status: 403 })) as typeof fetch;
+  await expect(fetchImpactGeoAvailability(geoserver, params, ['Low Demand'], fetcher))
+    .rejects.toMatchObject({ code: 'GEOSERVER_HTTP_ERROR', upstreamStatus: 403 });
+});
+
+test('distinguishes connection failures without exposing the original error', async () => {
+  const fetcher = (async () => { throw new Error('http://map-reader:secret@geo.test/private'); }) as typeof fetch;
+  await expect(fetchImpactGeoAvailability(geoserver, params, ['Low Demand'], fetcher))
+    .rejects.toMatchObject({ code: 'GEOSERVER_NETWORK_ERROR', message: 'Could not connect to GeoServer.' });
+});
+
+test('bounds the complete capabilities response, including a slow response body', async () => {
+  let signal: AbortSignal | undefined;
+  const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    signal = init?.signal ?? undefined;
+    return new Response(new ReadableStream({
+      start(controller) {
+        const timer = setTimeout(() => {
+          controller.enqueue(new TextEncoder().encode('<WCS_Capabilities/>'));
+          controller.close();
+        }, 100);
+        signal?.addEventListener('abort', () => {
+          clearTimeout(timer);
+          controller.error(signal?.reason);
+        }, { once: true });
+      },
+    }));
+  }) as typeof fetch;
+  await expect(fetchImpactGeoAvailability({ ...geoserver, timeoutMs: 20 }, params, ['Low Demand'], fetcher))
+    .rejects.toMatchObject({ code: 'GEOSERVER_TIMEOUT', timeoutMs: 20 });
+  expect(signal?.aborted).toBe(true);
+});
+
+test('aborts a GeoServer request that has not returned headers before the deadline', async () => {
+  let signal: AbortSignal | undefined;
+  const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    signal = init?.signal ?? undefined;
+    return new Promise<Response>((resolve, reject) => {
+      const timer = setTimeout(() => resolve(new Response('<WCS_Capabilities/>')), 100);
+      signal?.addEventListener('abort', () => {
+        clearTimeout(timer);
+        reject(signal?.reason);
+      }, { once: true });
+    });
+  }) as typeof fetch;
+  await expect(fetchImpactGeoAvailability({ ...geoserver, timeoutMs: 20 }, params, ['Low Demand'], fetcher))
+    .rejects.toMatchObject({ code: 'GEOSERVER_TIMEOUT', timeoutMs: 20 });
+  expect(signal?.aborted).toBe(true);
+});
+
 test('rejects WCS exceptions and malformed capabilities instead of reporting empty availability', async () => {
   for (const body of [
     '<ows:ExceptionReport><ows:Exception exceptionCode="NoApplicableCode"/></ows:ExceptionReport>',
@@ -133,6 +184,20 @@ test('rejects WCS exceptions and malformed capabilities instead of reporting emp
 });
 
 describe('WCS raster boundary', () => {
+  test('keeps an accepted raster stream open beyond the response deadline', async () => {
+    let controller: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({ start(value) { controller = value; } });
+    const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      init?.signal?.addEventListener('abort', () => controller.error(init.signal?.reason), { once: true });
+      return new Response(body, { headers: { 'content-type': 'image/tiff' } });
+    }) as typeof fetch;
+    const response = await fetchImpactGeoRaster({ ...geoserver, timeoutMs: 20 }, params, fetcher);
+    await Bun.sleep(40);
+    controller!.enqueue(new Uint8Array([1, 2]));
+    controller!.close();
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2]));
+  });
+
   const tiff = writeArrayBuffer(new Float32Array([3, -9999, 1, 2]), {
     width: 2,
     height: 2,

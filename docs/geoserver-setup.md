@@ -88,6 +88,36 @@ and must be updated before maps are enabled there.
 
 ## API contract
 
+### Failures and timeouts
+
+GeoServer requests have a 15-second deadline. Availability requests must finish
+reading the map list within that time. Raster requests must return a valid
+response within that time; accepted downloads continue streaming afterward.
+
+The API server returns a JSON timeout after 45 seconds if a handler has not
+returned a response. Its connection idle timeout is 60 seconds. Production proxy
+timeouts must allow more than 45 seconds for this JSON response to reach the
+client. Once a download has started, its response cannot be replaced with JSON.
+
+Map failures include `error`, `code`, and `requestId`. The same ID is sent in
+`X-Request-ID` and a JSON server log. Logs include the operation, selection,
+GeoServer host and workspace, elapsed time, and incoming `CF-Ray` when present.
+Credentials, upstream response bodies, and unexpected exception messages are
+excluded.
+
+| Code | HTTP status | Meaning |
+| --- | --- | --- |
+| `GEOSERVER_TIMEOUT` | 504 | GeoServer exceeded its deadline; `timeoutMs` gives the limit. |
+| `GEOSERVER_NETWORK_ERROR` | 502 | Connecting to GeoServer or reading its response failed. |
+| `GEOSERVER_HTTP_ERROR` | 502 | GeoServer returned a failed status; `upstreamStatus` gives it. |
+| `GEOSERVER_WCS_ERROR` | 502 | GeoServer returned a WCS exception. |
+| `GEOSERVER_INVALID_RESPONSE` | 502 | GeoServer returned an unexpected response format. |
+| `GEOSERVER_CONFIGURATION_ERROR` | 503 | The API's GeoServer configuration is incomplete. |
+| `GEOSERVER_UPSTREAM_ERROR` | 502 | An unexpected map request failure occurred. |
+| `REQUEST_TIMEOUT` | 504 | The API exceeded its response deadline; `timeoutMs` gives the limit. |
+
+An unavailable selection still returns an empty scenario-year list with HTTP 200.
+
 Availability reads capabilities once for all repeated `scenarios` query keys:
 
 ```json
