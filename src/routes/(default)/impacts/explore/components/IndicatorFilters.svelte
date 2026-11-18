@@ -17,7 +17,7 @@
       ...parameter,
       value: $CURRENT_INDICATOR_OPTION_VALUES[parameter.uid],
     }))
-    .filter((d) => d.options.length > 1);
+    .filter((d) => d.options.length > 0);
 
   // Some indicators have a special parameter that determines their specific value
   // This parameter should be listed first
@@ -35,7 +35,7 @@
 </script>
 
 {#each parametersSorted as parameter}
-  <Select disabled={!$IS_COMBINATION_AVAILABLE_INDICATOR} {...parameter} wrapperClass={`flex-col`} on:change={handleChange} />
+  <Select disabled={!$IS_COMBINATION_AVAILABLE_INDICATOR || parameter.options.length === 1} {...parameter} wrapperClass={`flex-col`} on:change={handleChange} />
 {/each}
 
 {#if $PERCENTILE_SCENARIO_AVAILABILITY_REQUEST.status === 'failure'}
