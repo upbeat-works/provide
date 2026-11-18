@@ -193,15 +193,9 @@
 {:else if percentileView.status === 'loading'}
   <LoadingPlaceholder />
 {:else if percentileView.status === 'failure'}
-  {#if percentileView.failedRequest === 'indicatorScope'}
-    <Message headline="Indicators could not be loaded for this selection">
-      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
-    </Message>
-  {:else}
-    <Message headline="Scenario availability could not be loaded">
-      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry chart scenarios</Button>
-    </Message>
-  {/if}
+  <Message headline="Data could not be loaded for this graph">
+    <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry</Button>
+  </Message>
 {:else if percentileView.status === 'empty'}
   <Message headline="There is no scenario data for this selection" />
 {/if}

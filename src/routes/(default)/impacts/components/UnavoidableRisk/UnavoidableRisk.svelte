@@ -253,13 +253,7 @@
 {:else if warmingView.status === 'loading'}
   <LoadingPlaceholder />
 {:else if warmingView.status === 'failure'}
-  {#if warmingView.failedRequest === 'indicatorScope'}
-    <Message headline="Indicators could not be loaded for this selection">
-      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
-    </Message>
-  {:else}
-    <Message headline="Warming availability could not be loaded">
-      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry warming data</Button>
-    </Message>
-  {/if}
+  <Message headline="Data could not be loaded for this graph">
+    <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry</Button>
+  </Message>
 {/if}

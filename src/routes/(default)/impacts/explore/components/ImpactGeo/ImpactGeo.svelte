@@ -273,13 +273,7 @@
 {:else if mapView.status === 'loading'}
   <LoadingPlaceholder />
 {:else if mapView.status === 'failure'}
-  {#if mapView.failedRequest === 'indicatorScope'}
-    <Message headline="Indicators could not be loaded for this selection">
-      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry indicators</Button>
-    </Message>
-  {:else}
-    <Message headline="Scenario availability could not be loaded">
-      <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry map scenarios</Button>
-    </Message>
-  {/if}
+  <Message headline="Data could not be loaded for this graph">
+    <Button class="self-center" variant="secondary" on:click={retryAvailability}>Retry</Button>
+  </Message>
 {/if}

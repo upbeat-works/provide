@@ -147,7 +147,6 @@
       {:else if requestView.status === 'failure'}
         <div role="alert">
           <p>Scenarios could not be loaded.</p>
-          <Button class="mt-3" variant="secondary" on:click={() => catalogFlow.retryPercentileAvailability()}>Retry scenarios</Button>
         </div>
       {:else if requestView.status === 'empty'}
         <p class="text-sm text-text-weaker" role="status">No scenarios are available.</p>
