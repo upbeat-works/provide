@@ -7,14 +7,7 @@ import { derived } from 'svelte/store';
 import { ciKeyBy } from '$lib/utils/case-insensitive.js';
 import { runtimeCatalog } from './runtime-catalog.js';
 
-export const RUNTIME_INDICATORS = derived(
-  runtimeCatalog.indicatorIndex,
-  ($request, set) => {
-    if ($request.status === 'idle') set([]);
-    if ($request.status === 'success') set($request.data.indicators ?? []);
-  },
-  []
-);
+export const RUNTIME_INDICATORS = runtimeCatalog.indicators;
 
 export const RUNTIME_FILTER_GROUPS = derived(
   runtimeCatalog.filterGroups,

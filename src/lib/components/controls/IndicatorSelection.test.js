@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { get } from 'svelte/store';
 import IndicatorSelection from './IndicatorSelection.svelte';
 import { runtimeCatalog } from '$stores/runtime-catalog.js';
-import { SELECTION_MODE } from '$stores/state.js';
+import { CURRENT_INDICATOR, SELECTION_MODE } from '$stores/state.js';
 
 const nativeFetch = globalThis.fetch;
 const indicator = {
@@ -46,6 +46,73 @@ afterEach(() => {
 });
 
 describe('IndicatorSelection', () => {
+  test('keeps a recovered selection through another geography source failure', async () => {
+    const heat = { id: 'Heat', label: 'Heat', instance: 'source-b', unit: 'days' };
+    globalThis.fetch = vi.fn(async (input) => {
+      const url = new URL(String(input), 'http://localhost');
+      if (url.pathname.startsWith('/app/indicator-details/')) return Response.json({ ...heat, parameters: [] });
+      if (url.pathname.endsWith('/api/geography-availability')) return Response.json({ geographyIds: ['Austria'] });
+      if (url.pathname.endsWith('/api/scenario-availability')) return Response.json({ scenarios: [] });
+      if (!url.pathname.endsWith('/api/indicators')) throw new Error(`Unexpected request: ${url}`);
+      if (!url.searchParams.has('region')) {
+        return Response.json({ indicators: [], failedInstances: [{ instance: 'source-b', code: 'unavailable' }] });
+      }
+      if (url.searchParams.get('region') === 'Austria') return Response.json({ indicators: [heat], failedInstances: [] });
+      return Response.json({ indicators: [], failedInstances: [{ instance: 'source-b', code: 'unavailable' }] });
+    });
+    SELECTION_MODE.set('geography');
+    runtimeCatalog.selectGeography('Germany');
+    await runtimeCatalog.loadIndicatorIndex();
+    render(IndicatorSelection);
+    await fireEvent.click(screen.getByRole('button', { name: 'Select an indicator' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Retry missing sources' })).toBeTruthy());
+
+    runtimeCatalog.selectGeography('Austria');
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Heat' })).toBeTruthy());
+    expect(screen.queryByText('No indicators found.')).toBeNull();
+    await fireEvent.click(screen.getByRole('radio', { name: 'Heat' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    expect(get(runtimeCatalog.selection).indicator).toEqual({ id: 'Heat', instance: 'source-b' });
+    await waitFor(() => expect(get(runtimeCatalog.indicatorDetails).status).toBe('success'));
+
+    runtimeCatalog.selectGeography('France');
+    await fireEvent.click(screen.getByRole('button', { name: 'Heat' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Retry missing sources' })).toBeTruthy());
+    expect(screen.getByRole('radio', { name: 'Heat' })).toBeTruthy();
+    expect(get(CURRENT_INDICATOR).unit.uid).toBe('days');
+    expect(get(runtimeCatalog.selection).indicator).toEqual({ id: 'Heat', instance: 'source-b' });
+  });
+
+  test('uses fresh units and removes withdrawn indicators after switching mode and refreshing the index', async () => {
+    const heat = { id: 'Heat', label: 'Heat', instance: 'source-b', unit: 'days' };
+    const flood = { id: 'Flood', label: 'Flood', instance: 'source-b', unit: 'm' };
+    let index = [heat, flood];
+    globalThis.fetch = vi.fn(async (input) => {
+      const url = new URL(String(input), 'http://localhost');
+      if (!url.pathname.endsWith('/api/indicators')) throw new Error(`Unexpected request: ${url}`);
+      const indicators = url.searchParams.has('region') ? [heat, flood] : index;
+      return Response.json({ indicators, failedInstances: [] });
+    });
+    SELECTION_MODE.set('geography');
+    runtimeCatalog.selectGeography('Austria');
+    await runtimeCatalog.loadIndicatorIndex();
+    render(IndicatorSelection);
+    await fireEvent.click(screen.getByRole('button', { name: 'Select an indicator' }));
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Flood' })).toBeTruthy());
+    runtimeCatalog.selectIndicator({ id: heat.id, instance: heat.instance });
+
+    SELECTION_MODE.set('indicator');
+    await waitFor(() => expect(get(runtimeCatalog.filteredIndicators).status).toBe('idle'));
+    index = [{ ...heat, unit: 'hours' }];
+    await runtimeCatalog.loadIndicatorIndex();
+
+    await waitFor(() => expect(get(CURRENT_INDICATOR).unit.uid).toBe('hours'));
+    expect(screen.queryByRole('radio', { name: 'Flood' })).toBeNull();
+    expect(screen.getByRole('radio', { name: 'Heat' })).toBeTruthy();
+  });
+
   test('shows progress beside the filters while a filtered list loads', async () => {
     const heat = { id: 'Heat', label: 'Heat', instance: 'source-b', unit: 'days' };
     const filters = [

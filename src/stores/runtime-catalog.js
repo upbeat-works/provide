@@ -26,6 +26,14 @@ function sameIndicator(left, right) {
   return left?.id === right?.id && left?.instance === right?.instance;
 }
 
+function mergeIndicatorEntries(current, incoming) {
+  const entries = new Map();
+  for (const indicator of [...current, ...incoming]) {
+    entries.set(JSON.stringify([indicator.instance, indicator.id]), indicator);
+  }
+  return [...entries.values()];
+}
+
 function normalizeIndicator(indicator) {
   if (typeof indicator?.id !== 'string' || !indicator.id.trim()) return undefined;
   if (typeof indicator.instance !== 'string' || !indicator.instance.trim()) return undefined;
@@ -207,7 +215,9 @@ export function createRuntimeCatalog({
   });
   const pendingSelectionStore = writable(initialPendingSelection);
   const indicatorFiltersStore = writable({});
+  const indicatorsStore = writable([]);
   const filteredIndicatorCache = new Map();
+  let indicatorIndexRevision = 0;
 
   const indicatorIndexRequest = createLatestRequest(() => getJson(requestFetch, joinUrl(apiUrl, 'indicators')));
   const filterGroupsRequest = createLatestRequest(() => {
@@ -215,12 +225,27 @@ export function createRuntimeCatalog({
     return getJson(requestFetch, `${joinUrl(apiUrl, 'indicators')}?${query}`);
   });
   const filteredIndicatorsRequest = createLatestRequest(async (input) => {
+    const revision = indicatorIndexRevision;
     const query = indicatorQuery(input);
     if (filteredIndicatorCache.has(query)) return filteredIndicatorCache.get(query);
     const response = await getJson(requestFetch, `${joinUrl(apiUrl, 'indicators')}${query}`);
     const result = filteredIndicatorResult(response, input);
-    if (!(response.failedInstances ?? []).length) filteredIndicatorCache.set(query, result);
+    if (revision === indicatorIndexRevision && !(response.failedInstances ?? []).length) filteredIndicatorCache.set(query, result);
     return result;
+  });
+  indicatorIndexRequest.state.subscribe((request) => {
+    if (request.status !== 'success') return;
+    indicatorIndexRevision += 1;
+    filteredIndicatorCache.clear();
+    filteredIndicatorsRequest.clear();
+    indicatorsStore.update((current) => mergeIndicatorEntries(
+      current.filter((indicator) => instanceFailed(request.data, indicator.instance)),
+      request.data.indicators ?? []
+    ));
+  });
+  filteredIndicatorsRequest.state.subscribe((request) => {
+    if (request.status !== 'success') return;
+    indicatorsStore.update((current) => mergeIndicatorEntries(current, request.data.indicators ?? []));
   });
   const geographyIndexRequest = createLatestRequest(async () => {
     const [geographies, geographyTypes] = await Promise.all([getJson(requestFetch, joinUrl(apiUrl, 'geographies')), getJson(requestFetch, joinUrl(apiUrl, 'geographies/types'))]);
@@ -372,8 +397,8 @@ export function createRuntimeCatalog({
     await indicatorIndexRequest.run();
     const state = get(indicatorIndexRequest.state);
     if (state.status === 'success') {
-      filteredIndicatorCache.clear();
       applyIndicatorIndex(state.data);
+      if (currentFilteredIndicatorInput) await loadFilteredIndicators(currentFilteredIndicatorInput);
     }
     const geographyIndex = get(geographyIndexRequest.state);
     if (geographyRevision === geographySelectionRevision && geographyIndex.status === 'success') applyGeographyIndex(geographyIndex.data);
@@ -558,6 +583,7 @@ export function createRuntimeCatalog({
   }
 
   return {
+    indicators: readonly(indicatorsStore),
     selection: readonly(selectionStore),
     pendingSelection: readonly(pendingSelectionStore),
     selectedInstance: derived(selectionStore, ($selection) => $selection.indicator?.instance),

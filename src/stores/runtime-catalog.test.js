@@ -37,6 +37,74 @@ function memoryStorage(entries = []) {
 }
 
 describe('runtime catalog selection', () => {
+  test.each(['active', 'cleared'])('a delayed %s geography request cannot undo a full index refresh or refill its cache', async (scope) => {
+    const oldIndicators = [indicator('Heat'), indicator('Flood')];
+    const freshIndicators = [{ ...indicator('Heat'), unit: 'hours' }];
+    let index = oldIndicators;
+    let regionRequests = 0;
+    let finishOldRequest;
+    const oldResponse = new Promise((resolve) => { finishOldRequest = resolve; });
+    const catalog = createCatalog({
+      fetch: async (input) => {
+        const url = new URL(input);
+        if (url.searchParams.has('region')) {
+          regionRequests += 1;
+          if (regionRequests === 1) return oldResponse;
+          return Response.json({ indicators: freshIndicators, failedInstances: [] });
+        }
+        return Response.json({ indicators: index, failedInstances: [] });
+      },
+    });
+    await catalog.loadIndicatorIndex();
+    catalog.selectGeography('Austria');
+    const pending = catalog.loadFilteredIndicators({ region: 'Austria' });
+    if (scope === 'cleared') catalog.clearFilteredIndicators();
+
+    index = freshIndicators;
+    await catalog.loadIndicatorIndex();
+    finishOldRequest(Response.json({ indicators: oldIndicators, failedInstances: [] }));
+    await pending;
+
+    expect(get(catalog.indicators)).toEqual(freshIndicators);
+    if (scope === 'active') {
+      expect(get(catalog.filteredIndicators)).toMatchObject({ status: 'success', data: { indicators: freshIndicators } });
+    } else {
+      expect(get(catalog.filteredIndicators).status).toBe('idle');
+      expect(regionRequests).toBe(1);
+    }
+
+    await catalog.loadFilteredIndicators({ region: 'Austria' });
+    await catalog.loadFilteredIndicators({ region: 'Austria' });
+
+    expect(get(catalog.indicators)).toEqual(freshIndicators);
+    expect(get(catalog.filteredIndicators)).toMatchObject({ status: 'success', data: { indicators: freshIndicators } });
+    expect(regionRequests).toBe(2);
+  });
+
+  test('a full index refresh replaces successful sources and keeps known entries for failed sources', async () => {
+    const provideHeat = indicator('Heat');
+    const sparccleHeat = { ...indicator('Heat', 'sparccle-internal'), unit: 'hours' };
+    let response = { indicators: [provideHeat, sparccleHeat], failedInstances: [] };
+    server.use(http.get(`${API_URL}/indicators`, () => HttpResponse.json(response)));
+    const catalog = createCatalog();
+    await catalog.loadFilteredIndicators({ region: 'Austria' });
+
+    const updatedHeat = { ...provideHeat, unit: '°C' };
+    response = {
+      indicators: [updatedHeat],
+      failedInstances: [{ instance: 'sparccle-internal', code: 'unavailable' }],
+    };
+    await catalog.loadIndicatorIndex();
+
+    expect(get(catalog.indicators)).toHaveLength(2);
+    expect(get(catalog.indicators)).toEqual(expect.arrayContaining([updatedHeat, sparccleHeat]));
+
+    response = { indicators: [updatedHeat], failedInstances: [] };
+    await catalog.loadIndicatorIndex();
+
+    expect(get(catalog.indicators)).toEqual([updatedHeat]);
+  });
+
   test('loads the two geography index resources into one focused state', async () => {
     server.use(
       http.get(`${API_URL}/geographies`, () => HttpResponse.json([{ id: 'DEU', label: 'Germany', geographyType: 'admin0' }])),
