@@ -21,12 +21,17 @@ test('adds missing sector links without losing metadata when repeated', async ()
   expect(rows).toEqual(
     expect.arrayContaining([
       { id: 'Days with Maximum Temperatures above 30 °C', sector: 'urban-climate', legacyUid: null },
-      { id: 'Heat-Wave Magnitude Index daily (HMWId)', sector: 'urban-climate', legacyUid: null },
+      { id: 'Heat-Wave Magnitude Index daily (HWMId)', sector: 'urban-climate', legacyUid: null },
++     { id: 'Global Mean Temperature', sector: 'global', legacyUid: null },
       { id: 'Glacier Runoff', sector: 'glacier', legacyUid: 'glacier-runoff' },
       { id: 'Custom Indicator', sector: 'custom', legacyUid: null },
     ])
   );
-
+  
+  for (const id of ['Maximum Air Temperature', 'Mean Air Temperature', 'High Heat Risk']) {
+    expect(rows.map((row) => row.id)).not.toContain(id);
+  }  
+  
   await env.DB.execute(sql.raw(migration));
   expect(await env.DB.select().from(schema.indicators).orderBy(schema.indicators.id)).toEqual(rows);
 });
