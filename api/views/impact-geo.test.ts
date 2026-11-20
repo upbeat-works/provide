@@ -1,12 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { writeArrayBuffer } from 'geotiff';
 import {
-  availableYearsByScenario,
   buildGetCoverageUrl,
   coverageId,
   coverageIdSegment,
   fetchImpactGeoDownload,
-  fetchImpactGeoAvailability,
   fetchImpactGeoRaster,
   ImpactGeoCoverageNotFoundError,
   ImpactGeoUpstreamError,
@@ -45,50 +43,15 @@ test('builds exact convention coverage ids and WCS 2 raster requests', () => {
   });
 });
 
-test('matches exact workspace coverage families and sorts years per scenario', () => {
-  const other = expectedId.replace('2020-climate-policies', 'low-demand');
-  const xml = `<name>provide:${expectedId.replace('2030', '2050')}</name>
-    <name>provide:${expectedId}</name><name>other:${expectedId.replace('2030', '2100')}</name>
-    <name>provide:${expectedId.replace('mean-temperature', 'mean-temperature-extra').replace('2030', '2100')}</name>
-    <CoverageId>provide__${other}</CoverageId>`;
-  expect(availableYearsByScenario(xml, params, ['2020 Climate Policies', 'Low Demand', 'Missing'], 'provide')).toEqual({
-    '2020 Climate Policies': [2030, 2050],
-    'Low Demand': [2030],
-    Missing: [],
-  });
-});
-
-test('matches convention coverage years in the configured workspace', () => {
-  const lowDemand2050 = expectedId.replace('2020-climate-policies', 'low-demand').replace('2030', '2050');
-  const xml = `<WCS_Capabilities><name>climate-risk-dashboard:${expectedId}</name>
-    <name>climate-risk-dashboard:${lowDemand2050}</name>
-    <name>other:${expectedId.replace('2030', '2100')}</name></WCS_Capabilities>`;
-  expect(availableYearsByScenario(xml, params, ['2020 Climate Policies', 'Low Demand'], 'climate-risk-dashboard')).toEqual({
-    '2020 Climate Policies': [2030],
-    'Low Demand': [2050],
-  });
-});
-
-test('reads capabilities once for every requested scenario', async () => {
-  let calls = 0;
-  const fetcher = (async () => {
-    calls += 1;
-    return new Response(`<WCS_Capabilities><name>provide:${expectedId}</name></WCS_Capabilities>`);
-  }) as typeof fetch;
-  const result = await fetchImpactGeoAvailability(localGeoserver, params, ['2020 Climate Policies', 'Low Demand'], fetcher);
-  expect(calls).toBe(1);
-  expect(result).toEqual({ '2020 Climate Policies': [2030], 'Low Demand': [] });
-});
-
 test('authenticates WCS requests without putting credentials in their URL', async () => {
   let input: RequestInfo | URL | undefined;
   let init: RequestInit | undefined;
   const fetcher = (async (nextInput: RequestInfo | URL, nextInit?: RequestInit) => {
     input = nextInput;
     init = nextInit;
-    return new Response(`<WCS_Capabilities><name>climate-risk-dashboard:${expectedId}</name></WCS_Capabilities>`);
+    return new Response(new Uint8Array([1]), { headers: { 'content-type': 'image/tiff' } });
   }) as typeof fetch;
-  await fetchImpactGeoAvailability(geoserver, params, ['2020 Climate Policies'], fetcher);
+  await fetchImpactGeoRaster(geoserver, params, fetcher);
   expect(String(input)).not.toContain('map-reader');
   expect(new Headers(init?.headers).get('authorization')).toBe(`Basic ${btoa('map-reader:secret')}`);
 });
@@ -97,9 +60,9 @@ test('supports anonymous GeoServer requests when both credentials are absent', a
   let init: RequestInit | undefined;
   const fetcher = (async (_input: RequestInfo | URL, nextInit?: RequestInit) => {
     init = nextInit;
-    return new Response(`<WCS_Capabilities><name>provide:${expectedId}</name></WCS_Capabilities>`);
+    return new Response(new Uint8Array([1]), { headers: { 'content-type': 'image/tiff' } });
   }) as typeof fetch;
-  await fetchImpactGeoAvailability({ url: geoserver.url, workspace: 'provide' }, params, ['2020 Climate Policies'], fetcher);
+  await fetchImpactGeoRaster({ url: geoserver.url, workspace: 'provide' }, params, fetcher);
   expect(new Headers(init?.headers).has('authorization')).toBe(false);
 });
 
@@ -110,37 +73,37 @@ test('rejects partial credentials before sending a GeoServer request', async () 
     tracked.calls += 1;
     return tracked(...args);
   }) as typeof fetch;
-  await expect(fetchImpactGeoAvailability({ ...geoserver, password: undefined }, params, ['2020 Climate Policies'], countFetch))
+  await expect(fetchImpactGeoRaster({ ...geoserver, password: undefined }, params, countFetch))
     .rejects.toThrow('GeoServer username and password must be configured together');
   expect(tracked.calls).toBe(0);
 });
 
-test('treats failed authentication as an upstream error rather than empty availability', async () => {
+test('treats failed authentication as an upstream error', async () => {
   const unauthorized = (() => Promise.resolve(new Response('Unauthorized', { status: 401 }))) as typeof fetch;
-  await expect(fetchImpactGeoAvailability(geoserver, params, ['2020 Climate Policies'], unauthorized))
+  await expect(fetchImpactGeoRaster(geoserver, params, unauthorized))
     .rejects.toBeInstanceOf(ImpactGeoUpstreamError);
 });
 
 test('reports an upstream HTTP failure without returning its response body', async () => {
   const fetcher = (async () => new Response('private upstream details', { status: 403 })) as typeof fetch;
-  await expect(fetchImpactGeoAvailability(geoserver, params, ['Low Demand'], fetcher))
+  await expect(fetchImpactGeoRaster(geoserver, params, fetcher))
     .rejects.toMatchObject({ code: 'GEOSERVER_HTTP_ERROR', upstreamStatus: 403 });
 });
 
 test('distinguishes connection failures without exposing the original error', async () => {
   const fetcher = (async () => { throw new Error('http://map-reader:secret@geo.test/private'); }) as typeof fetch;
-  await expect(fetchImpactGeoAvailability(geoserver, params, ['Low Demand'], fetcher))
+  await expect(fetchImpactGeoRaster(geoserver, params, fetcher))
     .rejects.toMatchObject({ code: 'GEOSERVER_NETWORK_ERROR', message: 'Could not connect to GeoServer.' });
 });
 
-test('bounds the complete capabilities response, including a slow response body', async () => {
+test('bounds a slow WCS error response body', async () => {
   let signal: AbortSignal | undefined;
   const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => {
     signal = init?.signal ?? undefined;
     return new Response(new ReadableStream({
       start(controller) {
         const timer = setTimeout(() => {
-          controller.enqueue(new TextEncoder().encode('<WCS_Capabilities/>'));
+          controller.enqueue(new TextEncoder().encode('<ows:ExceptionReport/>'));
           controller.close();
         }, 100);
         signal?.addEventListener('abort', () => {
@@ -150,7 +113,7 @@ test('bounds the complete capabilities response, including a slow response body'
       },
     }));
   }) as typeof fetch;
-  await expect(fetchImpactGeoAvailability({ ...geoserver, timeoutMs: 20 }, params, ['Low Demand'], fetcher))
+  await expect(fetchImpactGeoRaster({ ...geoserver, timeoutMs: 20 }, params, fetcher))
     .rejects.toMatchObject({ code: 'GEOSERVER_TIMEOUT', timeoutMs: 20 });
   expect(signal?.aborted).toBe(true);
 });
@@ -160,25 +123,25 @@ test('aborts a GeoServer request that has not returned headers before the deadli
   const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => {
     signal = init?.signal ?? undefined;
     return new Promise<Response>((resolve, reject) => {
-      const timer = setTimeout(() => resolve(new Response('<WCS_Capabilities/>')), 100);
+      const timer = setTimeout(() => resolve(new Response('<ows:ExceptionReport/>')), 100);
       signal?.addEventListener('abort', () => {
         clearTimeout(timer);
         reject(signal?.reason);
       }, { once: true });
     });
   }) as typeof fetch;
-  await expect(fetchImpactGeoAvailability({ ...geoserver, timeoutMs: 20 }, params, ['Low Demand'], fetcher))
+  await expect(fetchImpactGeoRaster({ ...geoserver, timeoutMs: 20 }, params, fetcher))
     .rejects.toMatchObject({ code: 'GEOSERVER_TIMEOUT', timeoutMs: 20 });
   expect(signal?.aborted).toBe(true);
 });
 
-test('rejects WCS exceptions and malformed capabilities instead of reporting empty availability', async () => {
+test('rejects WCS exceptions and unexpected raster responses', async () => {
   for (const body of [
     '<ows:ExceptionReport><ows:Exception exceptionCode="NoApplicableCode"/></ows:ExceptionReport>',
     '<html>proxy error</html>',
   ]) {
     const fetcher = (() => Promise.resolve(new Response(body, { status: 200 }))) as typeof fetch;
-    await expect(fetchImpactGeoAvailability(geoserver, params, ['Low Demand'], fetcher))
+    await expect(fetchImpactGeoRaster(geoserver, params, fetcher))
       .rejects.toBeInstanceOf(ImpactGeoUpstreamError);
   }
 });

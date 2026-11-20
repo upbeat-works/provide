@@ -24,10 +24,8 @@ Compose runs no local GeoServer. Configure the API to use an existing server
 through `GEOSERVER_URL` (including `/geoserver`) and `GEOSERVER_WORKSPACE`.
 The fixture tools remain available for checks against a separate test server.
 
-The publication check uses WCS 1.0 capabilities. On GeoServer 2.28.4, WCS 2.0
-capabilities advertised only the first of four valid NetCDF layers, while WCS
-1.0 listed all four. Raster requests still use WCS 2.0.1 and the `provide__`
-coverage prefix.
+The fixture publication script checks WCS 1.0 capabilities. Map requests use
+WCS 2.0.1 and a coverage ID prefixed with the workspace followed by `__`.
 
 For a remote read-only GeoServer, set `GEOSERVER_WORKSPACE` to its workspace and
 set both `GEOSERVER_USERNAME` and `GEOSERVER_PASSWORD`. The API sends them in a
@@ -90,9 +88,8 @@ and must be updated before maps are enabled there.
 
 ### Failures and timeouts
 
-GeoServer requests have a 15-second deadline. Availability requests must finish
-reading the map list within that time. Raster requests must return a valid
-response within that time; accepted downloads continue streaming afterward.
+GeoServer requests have a 15-second deadline to return a valid raster response
+or finish reading an error response. Accepted downloads continue streaming afterward.
 
 The API server returns a JSON timeout after 45 seconds if a handler has not
 returned a response. Its connection idle timeout is 60 seconds. Production proxy
@@ -116,18 +113,14 @@ excluded.
 | `GEOSERVER_UPSTREAM_ERROR` | 502 | An unexpected map request failure occurred. |
 | `REQUEST_TIMEOUT` | 504 | The API exceeded its response deadline; `timeoutMs` gives the limit. |
 
-An unavailable selection still returns an empty scenario-year list with HTTP 200.
+### Map requests
 
-Availability reads capabilities once for all repeated `scenarios` query keys:
-
-```json
-{
-  "scenarios": {
-    "2020 Climate Policies": [2030, 2050],
-    "Low Demand": [2030, 2050]
-  }
-}
-```
+Explorer and embedded maps offer the fixed years 2030, 2050, 2070, 2090, 2100,
+2200, and 2300. The default is 2030. They request the selected year directly
+without reading a GeoServer layer list. A missing coverage returns HTTP 404
+with `isExpected: true`; a service failure appears in the chart placeholder
+with one Retry button. The year selector stays available when a map is missing
+or fails to load.
 
 The map route fetches its coverage directly and streams GeoTIFF (`image/tiff`).
 The API does not decode the raster or build a JSON grid. GeoServer credentials
@@ -167,7 +160,7 @@ Add `format=netcdf` or `format=geotiff` to stream the same WCS coverage as an
 `.nc` or `.tif` attachment. Downloads accept an omitted resolution or
 `resolution=native`; other values return `400` because the API does not resample
 the source coverage. GeoServer needs its `netcdf-out` extension for NetCDF WCS
-output. Both routes
+output. Map and download requests
 require `instance`; only `provide-internal` has published maps. Other configured
-instances have empty availability and a missing map response. Unknown instances
+instances have a missing map response. Unknown instances
 return `404`; missing or invalid selection fields return `400`.

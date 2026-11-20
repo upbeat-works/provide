@@ -11,14 +11,10 @@ const env = {
   GEOSERVER_USERNAME: 'map-reader',
   GEOSERVER_PASSWORD: 'secret',
 } as Env['Bindings'];
-let availabilitySpy: ReturnType<typeof spyOn<typeof view, 'fetchImpactGeoAvailability'>>;
 let rasterSpy: ReturnType<typeof spyOn<typeof view, 'fetchImpactGeoRaster'>>;
 let downloadSpy: ReturnType<typeof spyOn<typeof view, 'fetchImpactGeoDownload'>>;
 
 beforeEach(() => {
-  availabilitySpy = spyOn(view, 'fetchImpactGeoAvailability').mockResolvedValue({
-    '2020 Climate Policies': [2030, 2050], Low: [],
-  });
   rasterSpy = spyOn(view, 'fetchImpactGeoRaster').mockImplementation(async () =>
     new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'image/tiff' } }));
   downloadSpy = spyOn(view, 'fetchImpactGeoDownload').mockImplementation(async (_config, _params, format) => {
@@ -28,20 +24,19 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  availabilitySpy.mockRestore();
   rasterSpy.mockRestore();
   downloadSpy.mockRestore();
 });
 
-describe('GET /api/impact-geo/availability', () => {
+describe('GET /api/impact-geo errors', () => {
   test.each([
     { code: 'GEOSERVER_TIMEOUT', status: 504, timeoutMs: 15000, upstreamStatus: undefined, message: 'GeoServer did not respond within 15 seconds. Please try again.' },
-    { code: 'GEOSERVER_HTTP_ERROR', status: 502, timeoutMs: undefined, upstreamStatus: 403, message: 'GeoServer capabilities failed with HTTP 403' },
+    { code: 'GEOSERVER_HTTP_ERROR', status: 502, timeoutMs: undefined, upstreamStatus: 403, message: 'GeoServer WCS request failed with HTTP 403' },
   ])('explains and logs $code with a request ID', async ({ code, status, timeoutMs, upstreamStatus, message }) => {
     const log = spyOn(console, 'error').mockImplementation(() => {});
-    availabilitySpy.mockRejectedValueOnce(Object.assign(new view.ImpactGeoUpstreamError(message), { code, timeoutMs, upstreamStatus }));
+    rasterSpy.mockRejectedValueOnce(Object.assign(new view.ImpactGeoUpstreamError(message), { code, timeoutMs, upstreamStatus }));
     try {
-      const response = await api.request(`/api/impact-geo/availability?${base}&scenarios=Low&token=private`, {
+      const response = await api.request(`/api/impact-geo?${gridQuery}&token=private`, {
         headers: { 'cf-ray': 'test-ray', authorization: 'Basic private' },
       }, env);
       const body = await response.json();
@@ -52,9 +47,9 @@ describe('GET /api/impact-geo/availability', () => {
       const event = JSON.parse(log.mock.calls[0][0]);
       expect(event).toMatchObject({
         event: 'geoserver_request_failed', requestId: body.requestId, cfRay: 'test-ray',
-        code, status, operation: 'GetCapabilities', elapsedMs: expect.any(Number),
+        code, status, operation: 'GetCoverage', elapsedMs: expect.any(Number),
         geoserverHost: 'geo.test', workspace: 'climate-risk-dashboard',
-        selection: { indicator: 'Mean Temperature', geography: 'Cameroon', time: 'Annual', scenarios: ['Low'] },
+        selection: { indicator: 'Mean Temperature', geography: 'Cameroon', time: 'Annual', scenario: '2020 Climate Policies' },
       });
       if (timeoutMs) expect(body.timeoutMs).toBe(timeoutMs);
       if (upstreamStatus) expect(body.upstreamStatus).toBe(upstreamStatus);
@@ -66,9 +61,9 @@ describe('GET /api/impact-geo/availability', () => {
 
   test('does not expose unexpected exception text in its response or logs', async () => {
     const log = spyOn(console, 'error').mockImplementation(() => {});
-    availabilitySpy.mockRejectedValueOnce(new Error('http://map-reader:secret@geo.test/private'));
+    rasterSpy.mockRejectedValueOnce(new Error('http://map-reader:secret@geo.test/private'));
     try {
-      const response = await api.request(`/api/impact-geo/availability?${base}&scenarios=Low`, {}, env);
+      const response = await api.request(`/api/impact-geo?${gridQuery}`, {}, env);
       const body = await response.json();
       expect(response.status).toBe(502);
       expect(body).toMatchObject({ code: 'GEOSERVER_UPSTREAM_ERROR' });
@@ -77,20 +72,6 @@ describe('GET /api/impact-geo/availability', () => {
     } finally {
       log.mockRestore();
     }
-  });
-
-  test('loads all scenario years in one adapter call', async () => {
-    const response = await api.request(`/api/impact-geo/availability?${base}&scenarios=2020%20Climate%20Policies&scenarios=Low`, {}, env);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ scenarios: { '2020 Climate Policies': [2030, 2050], Low: [] } });
-    expect(availabilitySpy).toHaveBeenCalledTimes(1);
-  });
-
-  test('returns no availability for another configured instance', async () => {
-    const response = await api.request(`/api/impact-geo/availability?${base.replace('provide-internal', 'sparccle-internal')}&scenarios=Low`, {}, env);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ scenarios: { Low: [] } });
-    expect(availabilitySpy).not.toHaveBeenCalled();
   });
 });
 
@@ -144,7 +125,7 @@ describe('GET /api/impact-geo', () => {
   });
 
   test('validates instance, selection params, format, resolution, frequency, and threshold', async () => {
-    for (const query of [gridQuery.replace('provide-internal', 'unknown'), `${gridQuery}&format=png`, `${gridQuery}&format=`, `${gridQuery}&frequency=1`, `${gridQuery}&resolution=2`, `${gridQuery}&threshold=90th%20Percentile`, `${gridQuery}&indicator_value=35`, base]) {
+    for (const query of [gridQuery.replace('provide-internal', 'unknown'), gridQuery.replace('provide-internal', 'sparccle-internal'), `${gridQuery}&format=png`, `${gridQuery}&format=`, `${gridQuery}&frequency=1`, `${gridQuery}&resolution=2`, `${gridQuery}&threshold=90th%20Percentile`, `${gridQuery}&indicator_value=35`, base]) {
       const response = await api.request(`/api/impact-geo?${query}`, {}, env);
       expect([400, 404]).toContain(response.status);
     }

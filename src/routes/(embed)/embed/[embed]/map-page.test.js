@@ -6,13 +6,13 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { writeArrayBuffer } from 'geotiff';
 import { processMapRequests } from '$lib/maps/impact-geo-grid.js';
 
-const state = vi.hoisted(() => ({ page: undefined, invalidateAll: vi.fn() }));
+const state = vi.hoisted(() => ({ page: undefined }));
+let failMapRequests = false;
 
 vi.mock('$app/stores', async () => {
   state.page = writable();
   return { page: state.page, navigating: readable(null), updated: readable(false) };
 });
-vi.mock('$app/navigation', () => ({ invalidateAll: state.invalidateAll, goto: vi.fn() }));
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('mapbox-gl', () => ({ Map: class { constructor() { this.scrollZoom = this.boxZoom = this.dragRotate = this.dragPan = this.keyboard = this.doubleClickZoom = this.touchZoomRotate = { enable() {}, disable() {} }; } on(event, callback) { if (event === 'load') queueMicrotask(callback); } setStyle() {} fitBounds() {} flyTo() {} setPaintProperty() {} } }));
 vi.mock('@mapbox/mapbox-gl-sync-move', () => ({ default: vi.fn() }));
@@ -33,12 +33,13 @@ const embedUrl = new URL('https://provide.example/embed/impact-geo?indicator=Mea
 
 beforeEach(() => {
   state.page.set({ url: embedUrl, params: { embed: 'impact-geo' }, data: {} });
-  state.invalidateAll.mockClear();
+  failMapRequests = false;
   vi.stubEnv('VITE_API_URL', 'https://provide.example/api');
   vi.stubEnv('VITE_DATA_API_URL', 'https://data.example/api');
   vi.stubGlobal('fetch', vi.fn(async (input) => {
     const url = new URL(String(input));
     if (url.pathname === '/api/impact-geo/') {
+      if (failMapRequests) return Response.json({ error: 'GeoServer unavailable' }, { status: 502 });
       const tiff = writeArrayBuffer(new Float32Array([1, 2, 3, 4]), {
         width: 2, height: 2, ModelPixelScale: [1, 1, 0], ModelTiepoint: [0, 0, 0, -0.5, 1.5, 0],
         GeographicTypeGeoKey: 4326, GTModelTypeGeoKey: 2, GTRasterTypeGeoKey: 1,
@@ -61,20 +62,28 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test('uses server-discovered years when a ready map embed loads its grid', async () => {
+test('loads a map embed directly and defaults an unsupported year to 2030', async () => {
   const { default: Fixture } = await import('./map-page.test.fixture.svelte');
-  render(Fixture, { data: { mapView: { status: 'ready', years: [2030, 2050], selection: { indicator: 'Mean Temperature', instance: 'provide-internal', geography: 'Cameroon', reference: 'Present', time: 'Annual', spatial: 'Area', scenarios: ['Low Demand'] } } } });
+  render(Fixture);
   await screen.findByRole('heading', { name: 'Mean Temperature map 2030' });
   const request = globalThis.fetch.mock.calls.map(([input]) => new URL(String(input))).find((url) => url.pathname === '/api/impact-geo/');
   expect(request.searchParams.get('year')).toBe('2030');
+  expect([...screen.getByRole('combobox', { name: 'Year' }).options].map((option) => option.value)).toEqual(['2030', '2050', '2070', '2090', '2100', '2200', '2300']);
 });
 
-test('shows map failures with retry and hides valid empty availability', async () => {
+test('retries the selected map year after a raster request fails', async () => {
+  failMapRequests = true;
+  const url = new URL(embedUrl);
+  url.searchParams.set('year', '2300');
+  state.page.set({ url, params: { embed: 'impact-geo' }, data: {} });
   const { default: Fixture } = await import('./map-page.test.fixture.svelte');
-  const view = render(Fixture, { data: { mapView: { status: 'failure', message: 'GeoServer unavailable', selection: { indicator: 'Mean Temperature' } } } });
-  await fireEvent.click(screen.getByRole('button', { name: 'Retry map scenarios' }));
-  expect(state.invalidateAll).toHaveBeenCalledTimes(1);
-  await view.rerender({ data: { mapView: { status: 'empty', selection: { indicator: 'Mean Temperature' } } } });
-  await waitFor(() => expect(screen.queryByText('Scenario availability could not be loaded')).toBeNull());
-  expect(screen.queryByText('The chart URL is incomplete.')).toBeNull();
+  render(Fixture);
+  await screen.findByText('GeoServer unavailable');
+  failMapRequests = false;
+  await fireEvent.click(screen.getByRole('button', { name: 'Retry', exact: true }));
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2300' });
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  const requests = globalThis.fetch.mock.calls.map(([input]) => new URL(String(input)));
+  expect(requests.filter((url) => url.pathname === '/api/impact-geo/').map((url) => url.searchParams.get('year'))).toEqual(['2300', '2300']);
+  expect(requests.some((url) => url.pathname.includes('availability'))).toBe(false);
 });

@@ -23,7 +23,6 @@
   $: chartContext = {
     view: {
       status: 'ready',
-      years: [2050, 2100],
       selection: {
         geography: 'Cameroon',
         indicator: 'Mean Temperature',
@@ -34,7 +33,6 @@
         scenarios: scenarios.map(({ uid }) => uid),
       },
     },
-    availableYears: [2050, 2100],
     geography: { uid: 'Cameroon', label: 'Cameroon', geoId: 'CMR', geographyType: 'admin0' },
     indicator: {
       uid: 'Mean Temperature',

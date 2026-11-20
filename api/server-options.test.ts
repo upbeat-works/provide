@@ -11,7 +11,7 @@ describe('API server', () => {
     const timer = setTimeout(() => finish!(Response.json({ late: true })), 100);
     try {
       const options = apiServerOptions(() => pending, 0, { requestTimeoutMs: 20 });
-      const response = await options.fetch(new Request('http://localhost/api/impact-geo/availability?token=private', {
+      const response = await options.fetch(new Request('http://localhost/api/impact-geo?token=private', {
         headers: { 'cf-ray': 'test-ray', authorization: 'Basic private' },
       }));
       expect(response.status).toBe(504);
@@ -20,7 +20,7 @@ describe('API server', () => {
       expect(typeof body.requestId).toBe('string');
       expect(response.headers.get('x-request-id')).toBe(body.requestId);
       const event = JSON.parse(log.mock.calls[0][0]);
-      expect(event).toMatchObject({ code: 'REQUEST_TIMEOUT', requestId: body.requestId, path: '/api/impact-geo/availability', cfRay: 'test-ray' });
+      expect(event).toMatchObject({ code: 'REQUEST_TIMEOUT', requestId: body.requestId, path: '/api/impact-geo', cfRay: 'test-ray' });
       expect(JSON.stringify(log.mock.calls)).not.toContain('private');
     } finally {
       clearTimeout(timer);

@@ -6,9 +6,8 @@ import { derived, writable } from 'svelte/store';
 import { extractEndYearFromScenarios } from '$lib/utils/utils.js';
 import { ciGet } from '$lib/utils/case-insensitive.js';
 import { selectionUrlParams } from '$lib/catalog/selection-url.js';
-import { canonicalMapSelection, startMapAvailability } from '$lib/catalog/map-request.js';
+import { canonicalMapSelection } from '$lib/catalog/map-request.js';
 import { colorScenarios } from '$lib/charts/scenarios.js';
-import { browser } from '$app/environment';
 
 import { FACETS_INITIAL, GEOGRAPHY_TYPES, INDICATORS, DICTIONARY_INDICATOR_PARAMETERS, DICTIONARY_SCENARIOS, GEOGRAPHIES, INDICATOR_PARAMETERS, SCENARIOS } from './meta.js';
 import { activeFacetGroupCount } from './facet-selection.js';
@@ -387,8 +386,6 @@ export const WARMING_CHART_VIEW = derived(
     })
 );
 
-const MAP_AVAILABILITY_REVISION = writable(0);
-
 export const MAP_CHART_VIEW = derived(
   [
     IS_COMBINATION_AVAILABLE,
@@ -400,9 +397,8 @@ export const MAP_CHART_VIEW = derived(
     CURRENT_INDICATOR,
     CURRENT_SCENARIOS,
     CURRENT_INDICATOR_OPTION_VALUES,
-    MAP_AVAILABILITY_REVISION,
   ],
-  ([$combinationAvailable, $availability, $indicatorScopeRequest, $indicatorScopeContext, $selection, $geography, $indicator, $scenarios, $optionValues], set) => {
+  ([$combinationAvailable, $availability, $indicatorScopeRequest, $indicatorScopeContext, $selection, $geography, $indicator, $scenarios, $optionValues]) => {
     const chartView = percentileChartView({
       combinationAvailable: $combinationAvailable,
       availability: $availability,
@@ -410,27 +406,12 @@ export const MAP_CHART_VIEW = derived(
       indicatorScopeContext: $indicatorScopeContext,
       selection: $selection,
     });
-    if (chartView.status !== 'ready') {
-      set(chartView);
-      return;
-    }
+    if (chartView.status !== 'ready') return chartView;
     const mapSelection = canonicalMapSelection({ indicator: $indicator, geography: $geography, scenarios: $scenarios, parameters: $optionValues });
-    if (!mapSelection) {
-      set({ status: 'empty' });
-      return;
-    }
-    if (!browser) {
-      set({ status: 'loading', selection: mapSelection });
-      return;
-    }
-    return startMapAvailability(mapSelection, set);
+    return mapSelection ? { status: 'ready', selection: mapSelection } : { status: 'empty' };
   },
   { status: 'loading' }
 );
-
-export function retryMapAvailability() {
-  MAP_AVAILABILITY_REVISION.update((revision) => revision + 1);
-}
 
 export const TEMPLATE_PROPS = derived(
   [CURRENT_GEOGRAPHY, CURRENT_INDICATOR, CURRENT_SCENARIOS, CURRENT_INDICATOR_OPTIONS, CURRENT_INDICATOR_UNIT, CURRENT_INDICATOR_LABEL],

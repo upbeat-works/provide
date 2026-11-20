@@ -34,6 +34,7 @@ let requests = [];
 let mismatchComparison = false;
 let rasterUnit;
 let failMapRequests = false;
+let unavailableMapStatus;
 
 vi.mock('$workers/geomask.js?worker', () => ({
   default: class {
@@ -63,6 +64,7 @@ vi.mock('$lib/workers/impact-geo.js?worker', () => ({
 }));
 
 beforeEach(() => {
+  unavailableMapStatus = undefined;
   vi.stubEnv('VITE_DATA_API_URL', 'https://data.example/api');
   vi.stubEnv('VITE_API_URL', 'https://app.example/api');
   vi.stubGlobal('fetch', vi.fn(async (input) => {
@@ -71,6 +73,9 @@ beforeEach(() => {
     if (url.pathname === '/api/impact-geo/') {
       if (failMapRequests) return Response.json({ error: 'GeoServer unavailable' }, { status: 502 });
       const year = Number(url.searchParams.get('year'));
+      if (year === 2030 && unavailableMapStatus) {
+        return Response.json({ message: 'Map could not be loaded', isExpected: unavailableMapStatus === 404 }, { status: unavailableMapStatus });
+      }
       let longitude = -0.5;
       if (mismatchComparison && url.searchParams.get('scenario') === 'Delayed Transition') longitude = 0.5;
       const tiff = writeArrayBuffer(new Float32Array([year, year + 1, year + 2, year + 3]), {
@@ -135,11 +140,35 @@ test('settles map processing after the request and a year change', async () => {
   expect(requests.some((url) => url.pathname.includes('availability'))).toBe(false);
 });
 
-test('uses the first shared year when the requested year is unavailable', async () => {
+test('uses 2030 when the requested year is outside the supported map years', async () => {
   const { default: Fixture } = await import('./ImpactGeo.test.fixture.svelte');
   render(Fixture, { year: 2040 });
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2030' });
+  expect(screen.getByRole('combobox', { name: 'Year' }).value).toBe('2030');
+});
+
+test('offers the fixed map years and loads the chosen year directly', async () => {
+  const { default: Fixture } = await import('./ImpactGeo.test.fixture.svelte');
+  render(Fixture, { year: 2050 });
   await screen.findByRole('heading', { name: 'Mean Temperature map 2050' });
-  expect(screen.getByRole('combobox', { name: 'Year' }).value).toBe('2050');
+  const year = screen.getByRole('combobox', { name: 'Year' });
+  expect([...year.options].map((option) => option.value)).toEqual(['2030', '2050', '2070', '2090', '2100', '2200', '2300']);
+  await fireEvent.change(year, { target: { value: '2300' } });
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2300' });
+  expect(requests.filter((url) => url.pathname === '/api/impact-geo/').map((url) => url.searchParams.get('year'))).toEqual(['2050', '2300']);
+  expect(requests.some((url) => url.pathname.includes('availability'))).toBe(false);
+});
+
+test.each([404, 502])('allows another year to be selected after the map returns HTTP %s', async (status) => {
+  unavailableMapStatus = status;
+  const { default: Fixture } = await import('./ImpactGeo.test.fixture.svelte');
+  render(Fixture, { year: 2030 });
+  await screen.findByText('Map could not be loaded');
+  await fireEvent.change(screen.getByRole('combobox', { name: 'Year' }), { target: { value: '2050' } });
+  await screen.findByRole('heading', { name: 'Mean Temperature map 2050' });
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  expect(screen.getAllByRole('combobox', { name: 'Year' })).toHaveLength(1);
+  expect(requests.filter((url) => url.pathname === '/api/impact-geo/').map((url) => url.searchParams.get('year'))).toEqual(['2030', '2050']);
 });
 
 test('downloads the selected map in NetCDF or GeoTIFF at its native resolution', async () => {

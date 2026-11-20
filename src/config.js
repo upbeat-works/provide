@@ -152,34 +152,8 @@ export const DIVERGING_RANGE = ['#437E8E', '#F4E4D6', '#C91C1C'];
 
 export const MAX_NUMBER_SELECTABLE_SCENARIOS = 3;
 
-// TODO: Not sure if this is the best place for these options since they are not global
 export const DEFAULT_IMPACT_GEO_YEAR = 2030;
-export const IMPACT_GEO_YEARS = [
-  {
-    uid: 2020,
-    label: '2020',
-  },
-  {
-    uid: 2030,
-    label: '2030',
-  },
-  {
-    uid: 2050,
-    label: '2050',
-  },
-  {
-    uid: 2100,
-    label: '2100',
-  },
-  {
-    uid: 2200,
-    label: '2200',
-  },
-  {
-    uid: 2300,
-    label: '2300',
-  },
-];
+export const IMPACT_GEO_YEARS = [2030, 2050, 2070, 2090, 2100, 2200, 2300];
 
 export const IMPACT_GEO_KEY_DIFFERENCE = 'difference';
 export const IMPACT_GEO_KEY_SIDE_BY_SIDE = 'side-by-side';

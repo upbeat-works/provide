@@ -9,7 +9,7 @@ const parameterKeys = ['time', 'reference', 'frequency', 'spatial', 'indicator_v
 export function parseEmbedParams(url) {
   const params = parse(url.search.replace(/^\?/, ''));
   for (const key of ['year', 'threshold', 'timeframe']) {
-    if (typeof params[key] === 'string' && params[key].trim()) params[key] = Number(params[key]);
+    if (typeof params[key] === 'string' && params[key].trim() && Number.isFinite(Number(params[key]))) params[key] = Number(params[key]);
   }
   params.static = params.static === 'true';
   params.showSatellite = params.showSatellite === 'true';
@@ -65,8 +65,8 @@ export function embedChartContext(params, colors) {
     view: indicator && geography && scenarios.length ? { status: 'ready' } : { status: 'empty' },
   };
   context.scenarioList = formatReadableList(scenarios, 'label');
-  const mapSelection = canonicalMapSelection({ geography, indicator, scenarios, parameters });
-  context.mapView = mapSelection ? { status: 'loading', selection: mapSelection } : { status: 'empty' };
+  const mapSelection = canonicalMapSelection({ geography, indicator, scenarios, parameters: { ...parameters, threshold: params.threshold } });
+  context.mapView = mapSelection ? { status: 'ready', selection: mapSelection } : { status: 'empty' };
   const warmingReady = context.view.status === 'ready' && allScenarios.length && Number.isFinite(params.timeframe);
   context.warmingView = warmingReady ? { status: 'ready' } : { status: 'empty' };
   return context;

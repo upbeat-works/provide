@@ -22,8 +22,17 @@ describe('embed chart URL context', () => {
     );
 
     expect(result.mapView).toMatchObject({
-      status: 'loading',
+      status: 'ready',
       selection: { indicator: 'Mean Temperature', instance: 'provide-internal', geography: 'Cameroon', scenarios: ['Low Demand'] },
     });
+  });
+
+  test.each([
+    ['50th Percentile', 'ready'],
+    ['95th Percentile', 'empty'],
+    ['35', 'empty'],
+  ])('checks the map threshold %s before requesting a raster', (threshold, status) => {
+    const result = context(`indicator=Mean%20Temperature&instance=provide-internal&geography=Cameroon&scenarios[0]=Low%20Demand&time=Annual&reference=Present&spatial=Area&threshold=${encodeURIComponent(threshold)}`);
+    expect(result.mapView.status).toBe(status);
   });
 });

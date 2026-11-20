@@ -3,7 +3,6 @@ import { instances } from '../instances';
 import type { Env } from '../types';
 import {
   coverageIdSegment,
-  fetchImpactGeoAvailability,
   fetchImpactGeoDownload,
   fetchImpactGeoRaster,
   ImpactGeoCoverageNotFoundError,
@@ -74,10 +73,10 @@ function errorResponse(c: Context<Env>, error: unknown, started: number) {
   console.error(JSON.stringify({
     event: 'geoserver_request_failed', requestId, cfRay: c.req.header('cf-ray'),
     method: c.req.method, path: c.req.path,
-    operation: c.req.path.replace(/\/$/, '').endsWith('/availability') ? 'GetCapabilities' : 'GetCoverage',
+    operation: 'GetCoverage',
     status, code, message, ...details, elapsedMs: Math.round(performance.now() - started),
     geoserverHost, workspace: c.env.GEOSERVER_WORKSPACE || 'provide',
-    selection: { ...selection(c), scenarios: c.req.queries('scenarios'), scenario: c.req.query('scenario'), year: c.req.query('year'), format: c.req.query('format') },
+    selection: { ...selection(c), scenario: c.req.query('scenario'), year: c.req.query('year'), format: c.req.query('format') },
   }));
   c.header('x-request-id', requestId);
   c.header('cache-control', 'no-store');
@@ -98,28 +97,6 @@ function geoServerConfig(c: Context<Env>): GeoServerConfig {
     password,
   };
 }
-
-impactGeo.get('/availability', async (c) => {
-  const started = performance.now();
-  const selected = selection(c);
-  const scenarios = c.req.queries('scenarios') ?? [];
-  const status = instanceStatus(c.req.query('instance'));
-  if (!selected || scenarios.length === 0 || status === 'missing') {
-    return c.json({ error: 'Missing required selection params, scenarios, or instance' }, 400);
-  }
-  if (status === 'unknown') return c.json({ error: `Unknown instance: ${c.req.query('instance')}` }, 404);
-  const optionalError = invalidOptionalParams(c);
-  if (optionalError) return c.json({ error: optionalError }, 400);
-  if (status === 'unavailable') {
-    return c.json({ scenarios: Object.fromEntries(scenarios.map((scenario) => [scenario, []])) });
-  }
-  try {
-    const config = geoServerConfig(c);
-    return c.json({ scenarios: await fetchImpactGeoAvailability(config, selected, scenarios) });
-  } catch (error) {
-    return errorResponse(c, error, started);
-  }
-});
 
 impactGeo.get('/', async (c) => {
   const started = performance.now();

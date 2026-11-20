@@ -55,29 +55,6 @@ export function coverageId(params: ImpactGeoParams): string {
   return `${coverageFamily(params, params.scenario)}_${params.year}`;
 }
 
-function advertisedCoverageIds(xml: string): string[] {
-  const ids: string[] = [];
-  const elements = xml.matchAll(/<(?:[\w.-]+:)?(?:name|CoverageId)>([^<]+)<\/(?:[\w.-]+:)?(?:name|CoverageId)>/gi);
-  for (const element of elements) ids.push(element[1].trim());
-  return ids;
-}
-
-export function availableYearsByScenario(xml: string, selection: ImpactGeoSelection, scenarios: string[], workspace: string): Record<string, number[]> {
-  const published = advertisedCoverageIds(xml);
-  const escapedWorkspace = workspace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return Object.fromEntries(scenarios.map((scenario) => {
-    const family = coverageFamily(selection, scenario);
-    const escaped = family.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern = new RegExp(`^${escapedWorkspace}(?::|__)${escaped}_(\\d{4})$`);
-    const years = new Set<number>();
-    for (const id of published) {
-      const year = id.match(pattern)?.[1];
-      if (year) years.add(Number(year));
-    }
-    return [scenario, [...years].sort((a, b) => a - b)];
-  }));
-}
-
 function wcsUrl(config: GeoServerConfig): URL {
   return new URL(`${config.url.replace(/\/$/, '')}/${encodeURIComponent(config.workspace)}/wcs`);
 }
@@ -90,13 +67,6 @@ export function buildGetCoverageUrl(config: GeoServerConfig, id: string, format:
     service: 'WCS', version: '2.0.1', request: 'GetCoverage', coverageId: `${config.workspace}__${id}`,
     format: outputFormat, outputCrs: 'http://www.opengis.net/def/crs/EPSG/0/4326',
   }).toString();
-  return url;
-}
-
-function buildCapabilitiesUrl(config: GeoServerConfig): URL {
-  const url = wcsUrl(config);
-  // GeoServer 2.28 WCS 2 capabilities can omit valid NetCDF layers; WCS 1 lists them all.
-  url.search = new URLSearchParams({ service: 'WCS', version: '1.0.0', request: 'GetCapabilities' }).toString();
   return url;
 }
 
@@ -139,24 +109,6 @@ async function boundedRequest<T>(url: URL, config: GeoServerConfig, fetcher: typ
   } finally {
     clearTimeout(timer!);
   }
-}
-
-export async function fetchImpactGeoAvailability(
-  config: GeoServerConfig, selection: ImpactGeoSelection, scenarios: string[], fetcher: typeof fetch = fetch,
-): Promise<Record<string, number[]>> {
-  return boundedRequest(buildCapabilitiesUrl(config), config, fetcher, async (response) => {
-    if (!response.ok) throw new ImpactGeoUpstreamError(`GeoServer capabilities failed with HTTP ${response.status}`, {
-      code: 'GEOSERVER_HTTP_ERROR', upstreamStatus: response.status,
-    });
-    const body = await response.text();
-    if (/<(?:[\w.-]+:)?(?:ExceptionReport|ServiceExceptionReport)\b/i.test(body)) {
-      throw new ImpactGeoUpstreamError('GeoServer returned a WCS exception for capabilities', { code: 'GEOSERVER_WCS_ERROR' });
-    }
-    if (!/<(?:[\w.-]+:)?WCS_Capabilities\b/i.test(body)) {
-      throw new ImpactGeoUpstreamError('GeoServer returned malformed WCS capabilities', { code: 'GEOSERVER_INVALID_RESPONSE' });
-    }
-    return availableYearsByScenario(body, selection, scenarios, config.workspace);
-  });
 }
 
 function wcsExceptionCode(body: string): string | undefined {

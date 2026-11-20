@@ -9,6 +9,7 @@
     IMPACT_GEO_KEY_DIFFERENCE,
     IMPACT_GEO_KEY_SIDE_BY_SIDE,
     DEFAULT_IMPACT_GEO_YEAR,
+    IMPACT_GEO_YEARS,
     GEOGRAPHY_TYPE_CITY,
     COLOR_SCALES,
   } from '$config';
@@ -39,15 +40,15 @@
   export let retryAvailability = undefined;
 
   let isProcessing = false;
+  let isFailed = false;
 
   let IMPACT_GEO_DATA = writable([]);
   let GEO_SHAPE_DATA = writable({});
 
-  $: yearOptions = chartContext.availableYears ?? [];
-  $: defaultYear = yearOptions.includes(DEFAULT_IMPACT_GEO_YEAR) ? DEFAULT_IMPACT_GEO_YEAR : yearOptions[0];
+  const yearOptions = IMPACT_GEO_YEARS;
 
-  $: if (yearOptions.length && !yearOptions.includes(year)) {
-    year = defaultYear;
+  $: if (!yearOptions.includes(year)) {
+    year = DEFAULT_IMPACT_GEO_YEAR;
   }
 
   $: mapView = chartContext.view;
@@ -225,7 +226,13 @@
 </script>
 
 {#if mapView.status === 'ready'}
+  {#if isFailed}
+    <div class="mb-4">
+      <Controls scenarios={chartContext.scenarios} {yearOptions} displayOptions={IMPACT_GEO_DISPLAY_OPTIONS} {showSatelliteOption} staticMode={chartContext.static} bind:showSatellite bind:displayOption bind:year />
+    </div>
+  {/if}
   <LoadingWrapper
+    bind:isFailed
     retry={retryMapRequest}
     let:asyncProps
     let:props
