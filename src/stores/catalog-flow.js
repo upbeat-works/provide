@@ -101,8 +101,8 @@ export function createCatalogFlow(catalog) {
     chooseScenarios([...next].sort());
   }
 
-  async function openAdvancedFilters() {
-    await catalog.loadFilterGroups();
+  async function openAdvancedFilters({ region } = {}) {
+    await catalog.loadFilterGroups({ region });
   }
 
   async function applyFilters(filters, context) {

@@ -220,7 +220,15 @@ export function createRuntimeCatalog({
   let indicatorIndexRevision = 0;
 
   const indicatorIndexRequest = createLatestRequest(() => getJson(requestFetch, joinUrl(apiUrl, 'indicators')));
-  const filterGroupsRequest = createLatestRequest(() => getJson(requestFetch, joinUrl(apiUrl, 'indicators/filters')));
+  const filterGroupCache = new Map();
+  const filterGroupsRequest = createLatestRequest(({ region }) => {
+    if (filterGroupCache.has(region)) return filterGroupCache.get(region);
+    return getJson(requestFetch, `${joinUrl(apiUrl, 'indicators/filters')}${indicatorQuery({ region })}`).then((response) => {
+      const result = { ...response, context: { region } };
+      if (!(response.failedInstances ?? []).length) filterGroupCache.set(region, result);
+      return result;
+    });
+  });
   let pendingFilterGroups;
   const filteredIndicatorsRequest = createLatestRequest(async (input) => {
     const revision = indicatorIndexRevision;
@@ -444,14 +452,16 @@ export function createRuntimeCatalog({
     if (!allowed) selectIndicator(undefined);
   }
 
-  function loadFilterGroups() {
+  function loadFilterGroups({ region } = {}) {
     const state = get(filterGroupsRequest.state);
-    if (state.status === 'success' && !(state.data.failedInstances ?? []).length) return;
-    if (pendingFilterGroups) return pendingFilterGroups;
-    pendingFilterGroups = filterGroupsRequest.run().finally(() => {
-      pendingFilterGroups = undefined;
+    if (state.status === 'success' && state.data.context.region === region && !(state.data.failedInstances ?? []).length) return;
+    if (pendingFilterGroups && pendingFilterGroups.region === region) return pendingFilterGroups.promise;
+    const pending = { region, promise: filterGroupsRequest.run({ region }) };
+    pendingFilterGroups = pending;
+    pending.promise = pending.promise.finally(() => {
+      if (pendingFilterGroups === pending) pendingFilterGroups = undefined;
     });
-    return pendingFilterGroups;
+    return pending.promise;
   }
 
   function applyGeographyIndex(response) {

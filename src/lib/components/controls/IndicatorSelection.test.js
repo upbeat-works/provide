@@ -162,7 +162,7 @@ describe('IndicatorSelection', () => {
       const url = new URL(String(input), 'http://localhost');
       if (!url.pathname.endsWith('/api/indicators') && !url.pathname.endsWith('/api/indicators/filters')) throw new Error(`Unexpected request: ${url}`);
       if (url.searchParams.get('Sector') === 'Health') return Response.json({ indicators: [], failedInstances: [], filters: emptyFilters });
-      if (url.searchParams.get('region') === 'DEU' && !url.searchParams.has('Sector')) {
+      if (url.pathname.endsWith('/api/indicators') && url.searchParams.get('region') === 'DEU' && !url.searchParams.has('Sector')) {
         regionRequests++;
         if (regionRequests > 1) return Response.json({ error: 'Repeated region request' }, { status: 503 });
       }
@@ -175,15 +175,14 @@ describe('IndicatorSelection', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Select an indicator' }));
     await waitFor(() => expect(screen.getByRole('radio', { name: 'Heat' })).toBeTruthy());
     await fireEvent.click(screen.getByRole('button', { name: /Advanced Filters/ }));
-    const water = screen.getByRole('button', { name: 'Water' });
-    expect(water.disabled).toBe(true);
-    water.click();
+    await screen.findByRole('button', { name: 'Health 1' });
+    expect(screen.queryByRole('button', { name: /Water/ })).toBeNull();
     expect(get(runtimeCatalog.indicatorFilters)).toEqual({});
     await fireEvent.click(screen.getByRole('button', { name: /Health/ }));
     await waitFor(() => expect(screen.getByText('No indicators found.')).toBeTruthy());
 
-    expect(screen.getByRole('button', { name: 'Health' }).disabled).toBe(false);
-    await fireEvent.click(screen.getByRole('button', { name: 'Health' }));
+    expect(screen.getByRole('button', { name: 'Health 1' }).disabled).toBe(false);
+    await fireEvent.click(screen.getByRole('button', { name: 'Health 1' }));
     expect(get(runtimeCatalog.indicatorFilters)).toEqual({});
     await waitFor(() => {
       expect(screen.getByRole('radio', { name: 'Heat' })).toBeTruthy();

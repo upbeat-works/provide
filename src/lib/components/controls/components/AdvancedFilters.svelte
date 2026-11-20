@@ -2,7 +2,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import ExpandIcon from '$lib/components/icons/Expand.svelte';
   import FilterPill from '$lib/components/ui/FilterPill.svelte';
-  import { ACTIVE_INDICATOR_SCOPE_CONTEXT, FACET_FILTERS, FILTERED_INDICATORS_REQUEST, FILTER_GROUPS_REQUEST } from '$stores/state.js';
+  import { CURRENT_GEOGRAPHY_UID, SELECTION_MODE, FACET_FILTERS, FILTER_GROUPS_REQUEST } from '$stores/state.js';
   import { toggleFacetValue, clearFacetGroup, activeFacetGroupCount } from '$stores/facet-selection.js';
   import { advancedFilterControlView } from '$stores/catalog-adapters.js';
   import { catalogFlow } from '$stores/catalog-flow.js';
@@ -20,19 +20,17 @@
     gray: 'bg-gray-500',
   };
 
-  // Groups (keys, labels, colours) and their discovered values both come from
-  // the API — nothing about the vocabulary is known ahead of time here.
   $: selectedOf = (key) => $FACET_FILTERS[key] ?? [];
   $: activeGroupCount = activeFacetGroupCount($FACET_FILTERS);
+  $: region = $SELECTION_MODE === 'geography' ? $CURRENT_GEOGRAPHY_UID : undefined;
+  $: if (isOpen) void catalogFlow.openAdvancedFilters({ region });
   $: view = advancedFilterControlView({
     request: $FILTER_GROUPS_REQUEST,
-    scopeRequest: $FILTERED_INDICATORS_REQUEST,
-    context: $ACTIVE_INDICATOR_SCOPE_CONTEXT,
+    region,
   });
 
   function togglePanel() {
     isOpen = !isOpen;
-    if (isOpen) void catalogFlow.openAdvancedFilters();
   }
 
   const toggle = (key, value) => FACET_FILTERS.update(($f) => toggleFacetValue($f, key, value));
@@ -59,7 +57,7 @@
     {#if view.status === 'loading'}
       <p class="mt-3 text-sm" role="status">Loading advanced filters…</p>
     {:else if view.status === 'failure'}
-      <Button class="mt-3" variant="secondary" on:click={() => catalogFlow.openAdvancedFilters()}>Retry advanced filters</Button>
+      <Button class="mt-3" variant="secondary" on:click={() => catalogFlow.openAdvancedFilters({ region })}>Retry advanced filters</Button>
     {:else if view.status === 'empty'}
       <p class="mt-3 text-sm text-text-weaker" role="status">No advanced filters are available.</p>
     {:else}

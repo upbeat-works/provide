@@ -206,6 +206,41 @@ describe('runtime catalog selection', () => {
     });
   });
 
+  test('loads and caches filter choices per geography without applying selected facets', async () => {
+    const requests = [];
+    const catalog = createCatalog({ fetch: async (input) => {
+      const url = new URL(input);
+      requests.push(url.search);
+      const region = url.searchParams.get('region');
+      return Response.json({ filters: [{ key: 'Sector', options: [{ value: region ?? 'Global', count: 1 }] }], failedInstances: [] });
+    } });
+    catalog.indicatorFilters.set({ Sector: ['Health'] });
+
+    await catalog.loadFilterGroups({ region: 'Germany' });
+    expect(get(catalog.filterGroups).data.filters[0].options[0].value).toBe('Germany');
+    await catalog.loadFilterGroups({ region: 'France' });
+    expect(get(catalog.filterGroups).data.filters[0].options[0].value).toBe('France');
+    await catalog.loadFilterGroups({ region: 'Germany' });
+    expect(get(catalog.filterGroups).data.filters[0].options[0].value).toBe('Germany');
+    await catalog.loadFilterGroups();
+    expect(get(catalog.filterGroups).data.filters[0].options[0].value).toBe('Global');
+    expect(requests).toEqual(['?region=Germany', '?region=France', '']);
+  });
+
+  test('a delayed filter response cannot replace choices for the current geography', async () => {
+    const oldResponse = Promise.withResolvers();
+    const catalog = createCatalog({ fetch: async (input) => {
+      if (new URL(input).searchParams.get('region') === 'Germany') return oldResponse.promise;
+      return Response.json({ filters: [{ key: 'Sector', options: [{ value: 'Maritime Climate', count: 4 }] }], failedInstances: [] });
+    } });
+    const first = catalog.loadFilterGroups({ region: 'Germany' });
+    await catalog.loadFilterGroups({ region: 'France' });
+    expect(get(catalog.filterGroups)).toMatchObject({ status: 'success', data: { filters: [{ options: [{ value: 'Maritime Climate' }] }] } });
+    oldResponse.resolve(Response.json({ filters: [], failedInstances: [] }));
+    await first;
+    expect(get(catalog.filterGroups).data.filters[0].options[0].value).toBe('Maritime Climate');
+  });
+
   test('loads the full indicator index without accepting filter input', async () => {
     server.use(
       http.get(`${API_URL}/indicators`, ({ request }) => {

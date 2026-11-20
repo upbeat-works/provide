@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import { afterEach, expect, test, vi } from 'vitest';
 import { runtimeCatalog } from '$stores/runtime-catalog.js';
 import IndicatorSelection from './IndicatorSelection.svelte';
@@ -43,7 +43,8 @@ test('offers filters after the region indicator request fails', async () => {
   await fireEvent.click(screen.getByRole('button', { name: /Advanced Filters/ }));
   await fireEvent.click(await screen.findByRole('button', { name: /Health/ }));
 
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Water' }).disabled).toBe(true));
+  await screen.findByRole('radio', { name: 'Heat' });
+  expect(screen.getByRole('button', { name: 'Water 1' }).disabled).toBe(false);
   expect(screen.getByRole('radio', { name: 'Heat' })).toBeTruthy();
   expect(screen.queryByRole('radio', { name: 'Flood' })).toBeNull();
 

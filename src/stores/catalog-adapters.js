@@ -196,11 +196,15 @@ export function ownedScenarioControlView(items) {
   return listRequestView({ request: { status: 'success' }, items });
 }
 
-export function advancedFilterControlView({ request, scopeRequest, context }) {
-  if (scopeRequest && indicatorFilterInput(context) && indicatorScopeMatches(scopeRequest, context) && Array.isArray(scopeRequest.data.filters)) {
-    return listRequestView({ request: scopeRequest, items: scopeRequest.data.filters });
+export function advancedFilterControlView({ request, region }) {
+  if (request.status === 'success' && request.data.context?.region !== region) {
+    return listRequestView({ request: { status: 'loading' }, items: [] });
   }
-  return listRequestView({ request, items: request.data?.filters ?? [] });
+  const items = (request.data?.filters ?? []).map((group) => ({
+    ...group,
+    options: (group.options ?? []).filter((option) => option.count > 0),
+  }));
+  return listRequestView({ request, items });
 }
 
 export function scenarioDetailLoadKey({ scenarioId, indicator }) {
