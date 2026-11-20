@@ -8,11 +8,16 @@ import { fetchData } from './api.js';
 vi.mock('$app/environment', () => ({ browser: true }));
 
 const server = setupServer();
+const widgets = new Set();
 beforeAll(() => {
   vi.stubGlobal('window', new EventTarget());
   server.listen({ onUnhandledRequest: 'error' });
 });
-afterEach(() => server.resetHandlers());
+afterEach(() => {
+  for (const store of widgets) fetchData(store);
+  widgets.clear();
+  server.resetHandlers();
+});
 afterAll(() => {
   vi.unstubAllGlobals();
   server.close();
@@ -30,6 +35,12 @@ function request(endpoint) {
   return { base: 'https://charts.example', endpoint, params: { geography: 'Algeria' } };
 }
 
+function createWidget() {
+  const store = writable();
+  widgets.add(store);
+  return store;
+}
+
 describe('chart requests', () => {
   test('uses each grouped request base and repeated array format', async () => {
     let requested;
@@ -37,7 +48,7 @@ describe('chart requests', () => {
       requested = new URL(request.url);
       return HttpResponse.json({ values: [1] });
     }));
-    const store = writable();
+    const store = createWidget();
     fetchData(store, [{ base: 'https://maps.example', endpoint: 'impact-geo', arrayFormat: 'repeat', params: { scenarios: ['A', 'B'] } }]);
     await vi.waitFor(() => expect(get(store)[0].status).toBe('success'));
     expect(requested.searchParams.getAll('scenarios')).toEqual(['A', 'B']);
@@ -57,11 +68,8 @@ describe('chart requests', () => {
         return HttpResponse.json({ values: [2] });
       })
     );
-    const store = writable();
-    const configs = [
-      { endpoint: 'batch-one', params: {} },
-      { endpoint: 'batch-two', params: {} },
-    ];
+    const store = createWidget();
+    const configs = [request('batch-one'), request('batch-two')];
     fetchData(store, configs);
     await vi.waitFor(() => expect(get(store)[0].status).toBe('failed'));
     expect(get(store)[1].status).toBe('loading');
@@ -83,8 +91,8 @@ describe('chart requests', () => {
         return HttpResponse.json({ values: [1, 2] });
       })
     );
-    const first = writable();
-    const second = writable();
+    const first = createWidget();
+    const second = createWidget();
     fetchData(first, request('shared'));
     fetchData(second, request('shared'));
     expect(get(first).status).toBe('loading');
@@ -105,7 +113,7 @@ describe('chart requests', () => {
         return HttpResponse.json({ values: [3] });
       })
     );
-    const store = writable();
+    const store = createWidget();
     fetchData(store, request('retry'));
     await vi.waitFor(() => expect(get(store).status).toBe('failed'));
     fetchData(store, request('retry'));
@@ -122,8 +130,8 @@ describe('chart requests', () => {
       }),
       http.get('https://charts.example/new/', () => HttpResponse.json({ values: [2] }))
     );
-    const store = writable();
-    const oldStore = writable();
+    const store = createWidget();
+    const oldStore = createWidget();
     fetchData(store, request('old'));
     fetchData(oldStore, request('old'));
     fetchData(store, request('new'));
@@ -144,7 +152,7 @@ describe('chart requests', () => {
       await delayed.promise;
       return HttpResponse.json({ message: 'Unavailable' }, { status: 503 });
     }));
-    const store = writable();
+    const store = createWidget();
     const close = fetchData(store, request('stale'));
     try {
       const success = { status: 'success', data: { values: [1] } };
@@ -170,8 +178,8 @@ describe('chart requests', () => {
       await delayed.promise;
       return HttpResponse.json({ values: [1] });
     }));
-    const first = writable();
-    const second = writable();
+    const first = createWidget();
+    const second = createWidget();
     const stopFirst = fetchData(first, request('closing'));
     const stopSecond = fetchData(second, request('closing'));
     try {
