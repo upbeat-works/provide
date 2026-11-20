@@ -8,13 +8,18 @@ describe('API server', () => {
     const log = spyOn(console, 'error').mockImplementation(() => {});
     let finish: (response: Response) => void;
     const pending = new Promise<Response>((resolve) => { finish = resolve; });
+    let signal: AbortSignal | undefined;
     const timer = setTimeout(() => finish!(Response.json({ late: true })), 100);
     try {
-      const options = apiServerOptions(() => pending, 0, { requestTimeoutMs: 20 });
+      const options = apiServerOptions((request) => {
+        signal = request.signal;
+        return pending;
+      }, 0, { requestTimeoutMs: 20 });
       const response = await options.fetch(new Request('http://localhost/api/impact-geo?token=private', {
         headers: { 'cf-ray': 'test-ray', authorization: 'Basic private' },
       }));
       expect(response.status).toBe(504);
+      expect(signal?.aborted).toBe(true);
       const body = await response.json();
       expect(body).toMatchObject({ code: 'REQUEST_TIMEOUT', timeoutMs: 20 });
       expect(typeof body.requestId).toBe('string');
@@ -25,6 +30,20 @@ describe('API server', () => {
     } finally {
       clearTimeout(timer);
       finish!(Response.json({ late: true }));
+      log.mockRestore();
+    }
+  });
+
+  test('stops waiting for an unfinished handler after the client disconnects', async () => {
+    const caller = new AbortController();
+    const log = spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const options = apiServerOptions(() => new Promise<Response>(() => {}), 0, { requestTimeoutMs: 20 });
+      const result = options.fetch(new Request('http://localhost/api/impact-geo', { signal: caller.signal }));
+      caller.abort();
+      expect((await result).status).toBe(499);
+      expect(log).not.toHaveBeenCalled();
+    } finally {
       log.mockRestore();
     }
   });

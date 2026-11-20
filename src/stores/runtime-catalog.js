@@ -1,25 +1,13 @@
 import { derived, get, readonly, writable } from 'svelte/store';
-import { createLatestRequest } from './request-state.js';
+import { createCatalogRequest } from './request-state.js';
+import { createRequestResources, requestResources } from '$lib/requests/index.js';
+import { browser } from '$app/environment';
 import { parseStoredScenarios, resolveScenarioSelection } from './scenario-selection.js';
 import { DEFAULT_SCENARIOS_UID, LOCALSTORE_GEOGRAPHY, LOCALSTORE_PARAMETERS, LOCALSTORE_SCENARIOS, MAX_NUMBER_SELECTABLE_SCENARIOS } from '../config.js';
 import { buildIndex } from '$lib/components/controls/GeographySelection/geography-tree.js';
 
 function joinUrl(base, path) {
   return `${base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
-}
-
-async function getJson(requestFetch, url) {
-  const response = await requestFetch(url);
-  if (response.ok) return response.json();
-
-  let error = `Request failed with status ${response.status}`;
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string' && body.error) error = body.error;
-  } catch {
-    // The HTTP status remains useful when an upstream response is not JSON.
-  }
-  throw new Error(error);
 }
 
 function sameIndicator(left, right) {
@@ -191,6 +179,7 @@ export function createRuntimeCatalog({
   defaultScenarios = [],
   storage,
   indicatorStorageKey = 'indicator',
+  resources = createRequestResources({ fetch: requestFetch }),
 } = {}) {
   if (typeof requestFetch !== 'function') throw new TypeError('fetch is required');
 
@@ -216,34 +205,30 @@ export function createRuntimeCatalog({
   const pendingSelectionStore = writable(initialPendingSelection);
   const indicatorFiltersStore = writable({});
   const indicatorsStore = writable([]);
-  const filteredIndicatorCache = new Map();
-  let indicatorIndexRevision = 0;
-
-  const indicatorIndexRequest = createLatestRequest(() => getJson(requestFetch, joinUrl(apiUrl, 'indicators')));
-  const filterGroupCache = new Map();
-  const filterGroupsRequest = createLatestRequest(({ region }) => {
-    if (filterGroupCache.has(region)) return filterGroupCache.get(region);
-    return getJson(requestFetch, `${joinUrl(apiUrl, 'indicators/filters')}${indicatorQuery({ region })}`).then((response) => {
-      const result = { ...response, context: { region } };
-      if (!(response.failedInstances ?? []).length) filterGroupCache.set(region, result);
-      return result;
-    });
+  const catalogRequest = (path, options = {}) => createCatalogRequest(resources, path, { fetch: requestFetch, persist: true, ...options });
+  const api = (path) => joinUrl(apiUrl, path);
+  const app = (path) => joinUrl(appUrl, path);
+  const complete = (response) => !(response.failedInstances ?? []).length;
+  const indicatorIndexRequest = catalogRequest(() => api('indicators'), {
+    cacheWhen: complete,
+    onRefresh: applyRefreshedIndicatorIndex,
   });
-  let pendingFilterGroups;
-  const filteredIndicatorsRequest = createLatestRequest(async (input) => {
-    const revision = indicatorIndexRevision;
-    const query = indicatorQuery(input);
-    if (filteredIndicatorCache.has(query)) return filteredIndicatorCache.get(query);
-    const response = await getJson(requestFetch, `${joinUrl(apiUrl, 'indicators')}${query}`);
-    const result = filteredIndicatorResult(response, input);
-    if (revision === indicatorIndexRevision && !(response.failedInstances ?? []).length) filteredIndicatorCache.set(query, result);
-    return result;
+  const filterGroupsRequest = catalogRequest(({ region }) => api(`indicators/filters${indicatorQuery({ region })}`), {
+    cacheWhen: complete,
+    result: (response, { region }) => ({ ...response, context: { region } }),
   });
+  const filteredIndicatorsRequest = catalogRequest((input) => api(`indicators${indicatorQuery(input)}`), {
+    cacheWhen: complete,
+    result: filteredIndicatorResult,
+    onRefresh: applyFilteredIndicators,
+  });
+  let previousIndex;
+  let refreshFilteredIndicators = false;
   indicatorIndexRequest.state.subscribe((request) => {
-    if (request.status !== 'success') return;
-    indicatorIndexRevision += 1;
-    filteredIndicatorCache.clear();
-    filteredIndicatorsRequest.clear();
+    if (request.status !== 'success' || previousIndex === request.data) return;
+    refreshFilteredIndicators = previousIndex !== undefined;
+    previousIndex = request.data;
+    if (refreshFilteredIndicators && get(filteredIndicatorsRequest.state).status !== 'success') filteredIndicatorsRequest.clear();
     indicatorsStore.update((current) => mergeIndicatorEntries(
       current.filter((indicator) => instanceFailed(request.data, indicator.instance)),
       request.data.indicators ?? []
@@ -253,49 +238,47 @@ export function createRuntimeCatalog({
     if (request.status !== 'success') return;
     indicatorsStore.update((current) => mergeIndicatorEntries(current, request.data.indicators ?? []));
   });
-  const geographyIndexRequest = createLatestRequest(async () => {
-    const [geographies, geographyTypes] = await Promise.all([getJson(requestFetch, joinUrl(apiUrl, 'geographies')), getJson(requestFetch, joinUrl(apiUrl, 'geographies/types'))]);
-    return { geographies, geographyTypes };
-  });
-  const geographyAvailabilityRequest = createLatestRequest((indicator) => getJson(requestFetch, joinUrl(apiUrl, geographyAvailabilityPath(indicator))));
-  const indicatorDetailsRequest = createLatestRequest(async (indicator) => {
-    const details = await getJson(requestFetch, joinUrl(appUrl, indicatorDetailsPath(indicator)));
-    if (!sameIndicator(details, indicator)) {
-      throw new Error('Indicator detail response does not match the request');
+  const geographiesRequest = catalogRequest(() => api('geographies'), { onRefresh: applyRefreshedGeographyIndex });
+  const geographyTypesRequest = catalogRequest(() => api('geographies/types'), { onRefresh: applyRefreshedGeographyIndex });
+  const geographyIndexState = derived([geographiesRequest.state, geographyTypesRequest.state], ([geographies, geographyTypes]) => {
+    if (geographies.status === 'failure') return geographies;
+    if (geographyTypes.status === 'failure') return geographyTypes;
+    if (geographies.status === 'success' && geographyTypes.status === 'success') {
+      return { status: 'success', data: { geographies: geographies.data, geographyTypes: geographyTypes.data } };
     }
-    return details;
+    if (geographies.status === 'idle' && geographyTypes.status === 'idle') return { status: 'idle' };
+    return { status: 'loading' };
   });
-  const percentileAvailabilityRequest = createLatestRequest(async (input) => {
-    const response = await getJson(requestFetch, joinUrl(apiUrl, scenarioAvailabilityPath(input)));
-    return scenarioAvailabilityResult(response, input);
+  const geographyAvailabilityRequest = catalogRequest((indicator) => api(geographyAvailabilityPath(indicator)), {
+    onRefresh: applyGeographyAvailability,
   });
-  const warmingLevelAvailabilityRequest = createLatestRequest(async (input) => {
-    const response = await getJson(requestFetch, joinUrl(apiUrl, scenarioAvailabilityPath(input)));
-    return scenarioAvailabilityResult(response, input);
+  const indicatorDetailsRequest = catalogRequest((indicator) => app(indicatorDetailsPath(indicator)), {
+    onRefresh: applyRefreshedIndicatorDetails,
+    validate(details, indicator) {
+      if (!sameIndicator(details, indicator)) throw new Error('Indicator detail response does not match the request');
+    },
   });
+  const availabilityRequest = (onRefresh) => catalogRequest((input) => api(scenarioAvailabilityPath(input)), {
+    result: scenarioAvailabilityResult,
+    onRefresh,
+  });
+  const percentileAvailabilityRequest = availabilityRequest(applyPercentileAvailability);
+  const warmingLevelAvailabilityRequest = availabilityRequest();
   const scenarioDetailsCache = writable(new Map());
-  const pendingScenarioDetails = new Map();
-  const scenarioDetailsRequest = createLatestRequest(({ id, instance }) => {
-    const path = scenarioDetailsPath(id, instance);
-    const cached = get(scenarioDetailsCache).get(path);
-    if (cached) return cached;
-    if (pendingScenarioDetails.has(path)) return pendingScenarioDetails.get(path);
-    const request = getJson(requestFetch, joinUrl(appUrl, path))
-      .then((details) => {
-        if (details.id !== id || details.instance !== instance) {
-          throw new Error('Scenario detail response does not match the request');
-        }
-        scenarioDetailsCache.update((cache) => new Map(cache).set(path, details));
-        return details;
-      })
-      .finally(() => {
-        pendingScenarioDetails.delete(path);
-      });
-    pendingScenarioDetails.set(path, request);
-    return request;
+  const scenarioDetailsRequest = catalogRequest(({ id, instance }) => app(scenarioDetailsPath(id, instance)), {
+    validate(details, { id, instance }) {
+      if (details.id !== id || details.instance !== instance) throw new Error('Scenario detail response does not match the request');
+    },
+  });
+  scenarioDetailsRequest.state.subscribe((request) => {
+    if (request.status !== 'success') return;
+    const { id, instance } = request.data;
+    scenarioDetailsCache.update((cache) => new Map(cache).set(scenarioDetailsPath(id, instance), request.data));
   });
 
   let currentFilteredIndicatorInput;
+  let filteredIndicatorSelectionRevision;
+  let geographyIndexSelectionRevision;
   let currentGeographyAvailabilityInput;
   let currentIndicatorDetailsInput;
   let currentPercentileAvailabilityInput;
@@ -369,8 +352,8 @@ export function createRuntimeCatalog({
     });
     clearAllSelectionDependentRequests();
     if (!normalized) {
-      const geographyIndex = get(geographyIndexRequest.state);
-      if (geographyIndex.status === 'success') applyGeographyIndex(geographyIndex.data);
+      const geographyIndex = get(geographyIndexState);
+      if (hasFreshGeographyIndex()) applyGeographyIndex(geographyIndex.data);
     }
   }
 
@@ -412,16 +395,21 @@ export function createRuntimeCatalog({
     pendingSelectionStore.update((value) => withoutKeys(value, ['indicator', 'instance', 'parameters', 'scenarios']));
   }
 
-  async function loadIndicatorIndex() {
+  function applyRefreshedIndicatorIndex(data) {
+    applyIndicatorIndex(data);
+    if (currentFilteredIndicatorInput) void loadFilteredIndicators(currentFilteredIndicatorInput);
+  }
+
+  async function loadIndicatorIndex({ refresh = false } = {}) {
     const geographyRevision = geographySelectionRevision;
-    await indicatorIndexRequest.run();
+    await indicatorIndexRequest.run(undefined, { retry: refresh });
     const state = get(indicatorIndexRequest.state);
     if (state.status === 'success') {
-      applyIndicatorIndex(state.data);
-      if (currentFilteredIndicatorInput) await loadFilteredIndicators(currentFilteredIndicatorInput);
+      if (indicatorIndexRequest.isFresh()) applyIndicatorIndex(state.data);
+      if (currentFilteredIndicatorInput) await loadFilteredIndicators(currentFilteredIndicatorInput, { refresh });
     }
-    const geographyIndex = get(geographyIndexRequest.state);
-    if (geographyRevision === geographySelectionRevision && geographyIndex.status === 'success') applyGeographyIndex(geographyIndex.data);
+    const geographyIndex = get(geographyIndexState);
+    if (geographyRevision === geographySelectionRevision && hasFreshGeographyIndex()) applyGeographyIndex(geographyIndex.data);
   }
 
   function clearFilteredIndicators() {
@@ -435,33 +423,28 @@ export function createRuntimeCatalog({
       region,
       filters: filters ?? get(indicatorFiltersStore),
     };
-    if (refresh) filteredIndicatorCache.delete(indicatorQuery(input));
-    const selectionRevision = indicatorSelectionRevision;
+    const retry = refresh || refreshFilteredIndicators;
+    refreshFilteredIndicators = false;
+    filteredIndicatorSelectionRevision = indicatorSelectionRevision;
     currentFilteredIndicatorInput = input;
-    await filteredIndicatorsRequest.run(input);
-    if (currentFilteredIndicatorInput !== input) return;
-    if (selectionRevision !== indicatorSelectionRevision) return;
+    await filteredIndicatorsRequest.run(input, { retry });
     const state = get(filteredIndicatorsRequest.state);
-    if (state.status !== 'success') return;
+    if (filteredIndicatorsRequest.isFresh()) applyFilteredIndicators(state.data, input);
+  }
+
+  function applyFilteredIndicators(data, input) {
+    if (currentFilteredIndicatorInput !== input || filteredIndicatorSelectionRevision !== indicatorSelectionRevision) return;
 
     const selection = get(selectionStore);
     if (!selection.indicator) return;
     if (input.region && input.region !== selection.geography) return;
-    if (instanceFailed(state.data, selection.indicator.instance)) return;
-    const allowed = (state.data.indicators ?? []).some((entry) => sameIndicator(entry, selection.indicator));
+    if (instanceFailed(data, selection.indicator.instance)) return;
+    const allowed = (data.indicators ?? []).some((entry) => sameIndicator(entry, selection.indicator));
     if (!allowed) selectIndicator(undefined);
   }
 
   function loadFilterGroups({ region } = {}) {
-    const state = get(filterGroupsRequest.state);
-    if (state.status === 'success' && state.data.context.region === region && !(state.data.failedInstances ?? []).length) return;
-    if (pendingFilterGroups && pendingFilterGroups.region === region) return pendingFilterGroups.promise;
-    const pending = { region, promise: filterGroupsRequest.run({ region }) };
-    pendingFilterGroups = pending;
-    pending.promise = pending.promise.finally(() => {
-      if (pendingFilterGroups === pending) pendingFilterGroups = undefined;
-    });
-    return pending.promise;
+    return filterGroupsRequest.run({ region });
   }
 
   function applyGeographyIndex(response) {
@@ -482,7 +465,8 @@ export function createRuntimeCatalog({
     }
     const selectedIndicator = get(selectionStore).indicator;
     const indicatorIndex = get(indicatorIndexRequest.state);
-    if (selectedIndicator && (indicatorIndex.status === 'idle' || indicatorIndex.status === 'loading')) return;
+    if (selectedIndicator && (indicatorIndex.status === 'idle' || indicatorIndex.status === 'loading'
+        || (indicatorIndex.status === 'success' && !indicatorIndexRequest.isFresh()))) return;
     if (selectedIndicator && indicatorIndex.status === 'success') {
       const selectedSourceFailed = instanceFailed(indicatorIndex.data, selectedIndicator.instance);
       const selectedIndicatorExists = (indicatorIndex.data.indicators ?? []).some((entry) => sameIndicator(entry, selectedIndicator));
@@ -491,13 +475,28 @@ export function createRuntimeCatalog({
     pendingSelectionStore.update((value) => withoutKeys(value, ['geography']));
   }
 
-  async function loadGeographyIndex() {
+  function hasFreshGeographyIndex() {
+    return geographiesRequest.isFresh() && geographyTypesRequest.isFresh();
+  }
+
+  function applyRefreshedGeographyIndex() {
+    if (geographyIndexSelectionRevision !== geographySelectionRevision) return;
+    const state = get(geographyIndexState);
+    if (hasFreshGeographyIndex()) {
+      applyGeographyIndex(state.data);
+      geographyIndexSelectionRevision = geographySelectionRevision;
+    }
+  }
+
+  async function loadGeographyIndex({ refresh = false } = {}) {
     const selectionRevision = geographySelectionRevision;
-    await geographyIndexRequest.run();
+    geographyIndexSelectionRevision = selectionRevision;
+    await Promise.all([geographiesRequest.run(undefined, { retry: refresh }), geographyTypesRequest.run(undefined, { retry: refresh })]);
     if (selectionRevision !== geographySelectionRevision) return;
-    const state = get(geographyIndexRequest.state);
-    if (state.status !== 'success') return;
+    const state = get(geographyIndexState);
+    if (!hasFreshGeographyIndex()) return;
     applyGeographyIndex(state.data);
+    geographyIndexSelectionRevision = geographySelectionRevision;
   }
 
   async function loadGeographyAvailability() {
@@ -509,14 +508,17 @@ export function createRuntimeCatalog({
     const input = selection.indicator;
     currentGeographyAvailabilityInput = input;
     await geographyAvailabilityRequest.run(input);
-    if (currentGeographyAvailabilityInput !== input) return;
     const state = get(geographyAvailabilityRequest.state);
+    if (geographyAvailabilityRequest.isFresh()) applyGeographyAvailability(state.data, input);
+  }
+
+  function applyGeographyAvailability(data, input) {
     const current = get(selectionStore);
-    if (state.status !== 'success' || !sameIndicator(current.indicator, input)) return;
+    if (currentGeographyAvailabilityInput !== input || !sameIndicator(current.indicator, input)) return;
 
     const geography = reconcileConfirmedSelection({
       current: current.geography,
-      allowed: state.data.geographyIds ?? [],
+      allowed: data.geographyIds ?? [],
     });
     if (geography !== current.geography) {
       selectGeography(geography);
@@ -534,16 +536,26 @@ export function createRuntimeCatalog({
     const input = selection.indicator;
     currentIndicatorDetailsInput = input;
     await indicatorDetailsRequest.run(input);
-    if (currentIndicatorDetailsInput !== input) return;
     const state = get(indicatorDetailsRequest.state);
-    const current = get(selectionStore);
-    if (state.status !== 'success' || !sameIndicator(current.indicator, input)) return;
-    if (!sameIndicator(state.data, input)) return;
+    if (indicatorDetailsRequest.isFresh()) applyIndicatorDetails(state.data, input);
+  }
 
-    const parameters = resolveParameters(current.parameters, state.data);
+  function applyRefreshedIndicatorDetails(data, input) {
+    const warmingWasRequested = get(warmingLevelAvailabilityRequest.state).status !== 'idle';
+    if (applyIndicatorDetails(data, input)) {
+      void loadPercentileAvailability();
+      if (warmingWasRequested) void loadWarmingLevelAvailability();
+    }
+  }
+
+  function applyIndicatorDetails(data, input) {
+    const current = get(selectionStore);
+    if (currentIndicatorDetailsInput !== input || !sameIndicator(current.indicator, input)) return;
+    if (!sameIndicator(data, input)) return;
+    const parameters = resolveParameters(current.parameters, data);
     if (!sameParameters(parameters, current.parameters)) {
       selectParameters(parameters);
-      return;
+      return true;
     }
     pendingSelectionStore.update((value) => withoutKeys(value, ['parameters']));
   }
@@ -574,13 +586,16 @@ export function createRuntimeCatalog({
     }
     currentPercentileAvailabilityInput = input;
     await percentileAvailabilityRequest.run(input);
-    if (currentPercentileAvailabilityInput !== input) return;
     const state = get(percentileAvailabilityRequest.state);
-    if (state.status !== 'success' || !matchesScenarioAvailabilityInput(input)) return;
+    if (percentileAvailabilityRequest.isFresh()) applyPercentileAvailability(state.data, input);
+  }
+
+  function applyPercentileAvailability(data, input) {
+    if (currentPercentileAvailabilityInput !== input || !matchesScenarioAvailabilityInput(input)) return;
     const current = get(selectionStore);
 
     const next = resolveScenarioSelection({
-      availability: { status: 'success', data: state.data.scenarios ?? [] },
+      availability: { status: 'success', data: data.scenarios ?? [] },
       current: current.scenarios,
       defaults: defaultScenarios,
     });
@@ -603,14 +618,39 @@ export function createRuntimeCatalog({
   async function loadScenarioDetails(id) {
     const selection = get(selectionStore);
     if (!selection.indicator || !id) {
-      scenarioDetailsRequest.clear();
+      clearScenarioDetails();
       return;
     }
     const input = { id, instance: selection.indicator.instance };
     await scenarioDetailsRequest.run(input);
   }
 
+  function clearScenarioDetails() {
+    scenarioDetailsRequest.clear();
+  }
+
+  function clearFilterGroups() {
+    filterGroupsRequest.clear();
+  }
+
+  function releaseRequests() {
+    indicatorSelectionRevision += 1;
+    geographySelectionRevision += 1;
+    currentGeographyAvailabilityInput = undefined;
+    currentIndicatorDetailsInput = undefined;
+    currentPercentileAvailabilityInput = undefined;
+    currentWarmingLevelAvailabilityInput = undefined;
+    clearAllSelectionDependentRequests();
+    clearFilteredIndicators();
+    indicatorIndexRequest.clear();
+    clearFilterGroups();
+    scenarioDetailsCache.set(new Map());
+    geographiesRequest.clear();
+    geographyTypesRequest.clear();
+  }
+
   return {
+    releaseRequests,
     indicators: readonly(indicatorsStore),
     selection: readonly(selectionStore),
     pendingSelection: readonly(pendingSelectionStore),
@@ -618,7 +658,7 @@ export function createRuntimeCatalog({
     indicatorIndex: indicatorIndexRequest.state,
     filteredIndicators: filteredIndicatorsRequest.state,
     filterGroups: filterGroupsRequest.state,
-    geographyIndex: geographyIndexRequest.state,
+    geographyIndex: geographyIndexState,
     geographyAvailability: geographyAvailabilityRequest.state,
     indicatorDetails: indicatorDetailsRequest.state,
     percentileAvailability: percentileAvailabilityRequest.state,
@@ -635,20 +675,23 @@ export function createRuntimeCatalog({
     loadFilteredIndicators,
     clearFilteredIndicators,
     loadFilterGroups,
+    clearFilterGroups,
     loadGeographyIndex,
     loadGeographyAvailability,
     loadIndicatorDetails,
     loadPercentileAvailability,
     loadWarmingLevelAvailability,
     loadScenarioDetails,
+    clearScenarioDetails,
   };
 }
 
-const indicatorStorage = typeof localStorage === 'undefined' ? undefined : localStorage;
+const indicatorStorage = browser && typeof localStorage !== 'undefined' ? localStorage : undefined;
 
 export const runtimeCatalog = createRuntimeCatalog({
   fetch: (...args) => fetch(...args),
   apiUrl: import.meta.env.VITE_API_URL ?? '/api',
   defaultScenarios: DEFAULT_SCENARIOS_UID,
   storage: indicatorStorage,
+  resources: browser ? requestResources : undefined,
 });

@@ -44,7 +44,8 @@ test.each([
     data: { ...data, unitFallback: unit, groupBy: 'region', regions: ['Austria'] },
   };
   const url = new URL(`https://example.test/embed/chart?${stringify({ chart, instance: 'provide-internal', ...selections }, queryOptions)}`);
-  const fetch = (input, init) => {
+  const fetch = (input, { signal, ...init }) => {
+    signal.throwIfAborted();
     const target = new URL(input, url);
     return api.request(`${target.pathname}${target.search}`, init, { DB: {}, IXMP4_USERNAME: 'test', IXMP4_PASSWORD: 'test' });
   };
@@ -84,7 +85,8 @@ test.each([
     data: { ...data, groupBy: 'region', regions: ['Austria'] },
   };
   const url = new URL(`https://example.test/embed/chart?${stringify({ chart, instance: 'provide-internal', ...selections }, queryOptions)}`);
-  const fetch = (input, init) => {
+  const fetch = (input, { signal, ...init }) => {
+    signal.throwIfAborted();
     const target = new URL(input, url);
     return api.request(`${target.pathname}${target.search}`, init, { DB: {}, IXMP4_USERNAME: 'test', IXMP4_PASSWORD: 'test' });
   };

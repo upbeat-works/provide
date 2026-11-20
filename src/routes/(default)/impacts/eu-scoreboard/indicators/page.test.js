@@ -135,6 +135,35 @@ test('renders a map and a ready chart while another chart is still loading', asy
   expect(screen.queryByRole('heading', { name: scoreboard.charts[1].title })).toBeNull();
 });
 
+test('loads the map and charts in parallel and cancels unfinished work on unmount', async () => {
+  const pending = new Map();
+  const fetcher = vi.fn((path, { signal }) => new Promise((resolve, reject) => {
+    pending.set(path, { signal, resolve });
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+  }));
+  vi.stubGlobal('fetch', fetcher);
+  const charts = scoreboard.charts.slice(0, 2).map((definition) => ({ definition, result: { status: 'loading' } }));
+  const { unmount } = render(Page, {
+    data: {
+      ...common,
+      selection: { ...common.selection, scenario: option('parallel-load') },
+      map: { definition: scoreboard.indicator, status: 'loading' },
+      charts,
+    },
+  });
+
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
+  const map = [...pending].find(([path]) => path.includes('/map?'))?.[1];
+  const chartRequests = [...pending].filter(([path]) => path.includes('/charts/'));
+  expect(chartRequests).toHaveLength(2);
+  map.resolve(Response.json(common.map));
+  await waitFor(() => expect(JSON.parse(screen.getByRole('img', { name: 'Mock country map' }).dataset.values)).toEqual(common.map.values));
+  expect(screen.getAllByRole('status')).toHaveLength(2);
+
+  unmount();
+  for (const [, { signal }] of chartRequests) expect(signal.aborted).toBe(true);
+});
+
 test('ignores an old map result after the selection changes', async () => {
   let finish;
   const slow = new Promise((resolve) => {

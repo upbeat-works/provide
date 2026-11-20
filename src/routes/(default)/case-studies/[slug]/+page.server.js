@@ -5,7 +5,7 @@ import { loadCaseStudyAvoidingTables } from '$lib/server/case-study-avoiding.js'
 import { safeCaseStudyExplorerUrl } from '$lib/catalog/case-study-explorer-url.js';
 import { safeCaseStudyEmbedUrl } from '$lib/catalog/case-study-embed-url.js';
 
-export const load = async ({ fetch, params }) => {
+export const load = async ({ fetch, params, request }) => {
   const [geographies, indicatorIndex, caseStudiesRaw, caseStudyOutroRaw] = await Promise.all([
     loadGeographies(fetch),
     loadIndicatorIndex(fetch),
@@ -87,6 +87,7 @@ export const load = async ({ fetch, params }) => {
                   geographyId: caseStudyRaw.Slug,
                   indicatorIndex,
                   section: c,
+                  signal: request?.signal,
                 }),
               };
             case 'future-impacts': {

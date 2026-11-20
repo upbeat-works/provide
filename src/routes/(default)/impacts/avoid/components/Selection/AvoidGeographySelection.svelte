@@ -3,6 +3,7 @@
   import { AVOID_CITY_UID, AVOID_GEOGRAPHY_LABEL, AVOID_IS_EMPTY_GEOGRAPHY, AVOID_AVAILABLE_CITIES } from '$stores/avoid-catalog.js';
   import { END_GEO_SHAPE } from '$src/config.js';
   import { writable } from 'svelte/store';
+  import { onDestroy } from 'svelte';
   import { fetchData } from '$lib/api/api';
   import SelectionModal from '$lib/components/controls/components/SelectionModal.svelte';
   import SelectionPanel from '$lib/components/controls/components/SelectionPanel.svelte';
@@ -43,11 +44,10 @@
   }
 
   let GEO_SHAPE_DATA = writable({});
-  // Cities + country base layers from the legacy API (default fetchData base).
-  fetchData(GEO_SHAPE_DATA, [
+  onDestroy(fetchData(GEO_SHAPE_DATA, [
     { endpoint: END_GEO_SHAPE, params: { 'geography-type': 'admin0' } },
     { endpoint: END_GEO_SHAPE, params: { 'geography-type': 'cities' } },
-  ]);
+  ]));
 </script>
 
 <SelectionModal

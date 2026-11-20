@@ -105,7 +105,10 @@ describe('GET /app/scenario-details/:id', () => {
     });
   });
 
-  test('returns technical data without a description when Strapi fails', async () => {
+  test.each([
+    ['a failed CMS request', () => HttpResponse.error(), 'no-store'],
+    ['a successful empty CMS response', () => HttpResponse.json({ data: [] }), null],
+  ])('returns technical data without a description after %s', async (_label, cmsResponse, cacheControl) => {
     server.use(
       http.get('https://catalog-api.example/api/scenario-details/:id', () =>
         HttpResponse.json({
@@ -118,12 +121,14 @@ describe('GET /app/scenario-details/:id', () => {
           characteristics: {},
         })
       ),
-      http.get('https://catalog-cms.example/api/scenarios', () => HttpResponse.error())
+      http.get('https://catalog-cms.example/api/scenarios', cmsResponse)
     );
 
     const response = await getScenarioDetails('SSP2', 'provide');
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe(cacheControl);
+    expect(response.headers.get('x-content-incomplete')).toBe(cacheControl ? 'true' : null);
     await expect(response.json()).resolves.toEqual({
       id: 'SSP2',
       label: 'SSP2',

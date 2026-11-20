@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { delay, http, HttpResponse } from 'msw';
@@ -167,13 +168,16 @@ describe('catalog page flow', () => {
     const filters = { Sector: ['Water'] };
 
     const loading = flow.applyFilters(filters, context);
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
     await flow.applyFilters({}, context);
     finish(Response.json({ indicators: [], failedInstances: [] }));
     await loading;
 
     expect(get(catalog.selection).indicator).toEqual({ id: 'Heat', instance: 'provide-external' });
 
+    finish = undefined;
     const reapplied = flow.applyFilters(filters, context);
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
     finish(Response.json({ indicators: [], failedInstances: [] }));
     await reapplied;
     expect(get(catalog.selection).indicator).toBeUndefined();

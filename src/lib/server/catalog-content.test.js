@@ -77,6 +77,26 @@ describe('catalog editorial clients', () => {
     vi.useRealTimers();
   });
 
+  test('uses a five-second budget for editorial descriptions and includes the response body', async () => {
+    const { loadIndicatorDescription } = await import('./catalog-content.js');
+    vi.useFakeTimers();
+    try {
+      let signal;
+      const request = vi.fn(async (_url, options) => {
+        signal = options.signal;
+        return { ok: true, json: () => new Promise(() => {}) };
+      });
+      const result = loadIndicatorDescription(request, { id: 'Heat', signal: new AbortController().signal });
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(signal.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(signal.aborted).toBe(true);
+      await expect(result).resolves.toEqual({ failed: true });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test.each([
     ['indicator', 'indicators', 'Heat / wet?', 'Indicator text.', 'loadIndicatorDescription'],
     ['scenario', 'scenarios', 'SSP / 2?', 'Scenario text.', 'loadScenarioDescription'],
@@ -108,7 +128,7 @@ describe('catalog editorial clients', () => {
 
     const result = await catalogContent[exportName](fetch, { id });
 
-    expect(result).toBe(description);
+    expect(result).toEqual({ description, failed: false });
   });
 
   test.each([
@@ -138,13 +158,15 @@ describe('catalog editorial clients', () => {
       signal: controller.signal,
     });
 
-    expect(receivedSignal).toBe(controller.signal);
+    await Promise.resolve();
+    expect(receivedSignal.aborted).toBe(false);
     controller.abort();
-    await expect(result).resolves.toBeUndefined();
+    expect(receivedSignal.aborted).toBe(true);
+    await expect(result).resolves.toEqual({ failed: true });
   });
 
   test.each([
-    ['missing indicator', 'indicators', 'loadIndicatorDescription', HttpResponse.json({ data: [], meta: {} })],
+    ['missing indicator', 'indicators', 'loadIndicatorDescription', HttpResponse.json({ data: [], meta: {} }), { description: undefined, failed: false }],
     [
       'failed scenario',
       'scenarios',
@@ -160,13 +182,14 @@ describe('catalog editorial clients', () => {
         },
         { status: 503 }
       ),
+      { failed: true },
     ],
-  ])('returns undefined for %s optional text', async (_, collection, exportName, response) => {
+  ])('distinguishes a %s lookup', async (_, collection, exportName, response, expected) => {
     server.use(http.get(`https://catalog-cms.example/api/${collection}`, () => response));
     const catalogContent = await import('./catalog-content.js');
 
     const result = await catalogContent[exportName](fetch, { id: 'Missing' });
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual(expected);
   });
 });

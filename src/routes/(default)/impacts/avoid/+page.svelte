@@ -2,8 +2,8 @@
   import ThresholdLevels from './components/ThresholdLevels/ThresholdLevels.svelte';
   import StudyLocations from './components/StudyLocations/StudyLocations.svelte';
   import SimpleNav from '$lib/components/navigation/SimpleNav.svelte';
-  import { AVOID_IS_EMPTY, AVOID_IS_AVAILABLE, AVOID_GEOGRAPHY, AVOID_CITY_UID, AVOID_INDICATOR_UID, AVOID_INSTANCE, AVOID_PARAMS } from '$stores/avoid-catalog.js';
-  import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
+  import { AVOID_IS_EMPTY, AVOID_IS_AVAILABLE, AVOID_INDICATOR, AVOID_GEOGRAPHY, AVOID_CITY_UID, AVOID_INDICATOR_UID, AVOID_INSTANCE, AVOID_PARAMS } from '$stores/avoid-catalog.js';
+  import { IS_EMPTY_LEVEL_OF_IMPACT, IS_EMPTY_LIKELIHOOD_LEVEL, LEVEL_OF_IMPACT, SELECTED_LIKELIHOOD_LEVEL } from '$stores/avoid.js';
   import FallbackMessage from '$lib/components/ui/FallbackMessage.svelte';
   import SelectionCertaintyLevels from './components/Selection/CertaintyLevels/CertaintyLevels.svelte';
   import SelectionStudyLocations from './components/Selection/StudyLocations/StudyLocations.svelte';
@@ -21,7 +21,10 @@
   import AvoidParameterSelection from './components/Selection/AvoidParameterSelection.svelte';
   import AvoidParamFilters from './components/Selection/AvoidParamFilters.svelte';
   import { page } from '$app/stores';
-  import { resolveCanonicalAvoidUrlSelection } from '$lib/catalog/translate.js';
+  import { END_AVOIDING_IMPACTS, URL_PATH_LEVEL_OF_IMPACT, URL_PATH_CERTAINTY_LEVEL } from '$config';
+  import { fetchData } from '$lib/api/api';
+  import { sendLegacyAvoidRequest } from '$lib/catalog/legacy-avoid-request.js';
+  import { toLegacyAvoidRequest, resolveCanonicalAvoidUrlSelection } from '$lib/catalog/translate.js';
 
   export let data;
 
@@ -51,7 +54,17 @@
 
   $: caseStudy = findCaseStudy(data.caseStudies, $AVOID_GEOGRAPHY);
 
-  let THRESHOLD_LEVELS_DATA = writable({});
+  const THRESHOLD_LEVELS_DATA = writable({});
+  $: legacyParams = toLegacyAvoidRequest({ geography: $AVOID_GEOGRAPHY, indicator: $AVOID_INDICATOR, parameters: $AVOID_PARAMS });
+  $: if (isValidSelection && legacyParams) {
+    sendLegacyAvoidRequest(fetchData, THRESHOLD_LEVELS_DATA, END_AVOIDING_IMPACTS, legacyParams, {
+      [URL_PATH_LEVEL_OF_IMPACT]: $LEVEL_OF_IMPACT,
+      [URL_PATH_CERTAINTY_LEVEL]: $SELECTED_LIKELIHOOD_LEVEL,
+    });
+  } else {
+    fetchData(THRESHOLD_LEVELS_DATA);
+  }
+  onDestroy(() => fetchData(THRESHOLD_LEVELS_DATA));
 
   $: sections = [
     { component: FallbackMessage, disabled: isValidSelection },

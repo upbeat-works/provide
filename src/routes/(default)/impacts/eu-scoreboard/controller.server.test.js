@@ -1,9 +1,10 @@
 import { beforeEach, expect, test, vi } from 'vitest';
-import { loadFromStrapi, loadScoreboardChart, loadScoreboardMap } from '$utils/apis.js';
+import { loadFromStrapi, loadScoreboardChart, loadScoreboardDefinition, loadScoreboardMap } from '$utils/apis.js';
+import { GET as getChart } from '$routes/app/scoreboard/charts/[chartId]/+server.js';
 import { loadChart, loadMap, selectionsFromUrl } from './controller.server.js';
 import { getTestScoreboard as getScoreboard } from '../../../../../test/fixtures/scoreboard.js';
 
-vi.mock('$utils/apis.js', () => ({ loadScoreboardChart: vi.fn(), loadScoreboardMap: vi.fn(), loadFromStrapi: vi.fn() }));
+vi.mock('$utils/apis.js', () => ({ loadScoreboardChart: vi.fn(), loadScoreboardDefinition: vi.fn(), loadScoreboardMap: vi.fn(), loadFromStrapi: vi.fn() }));
 
 beforeEach(() => vi.resetAllMocks());
 
@@ -15,7 +16,7 @@ test('loads the selected indicator map', async () => {
   loadScoreboardMap.mockResolvedValue(ready);
 
   await expect(loadMap({ scoreboard, selections, fetch: vi.fn() })).resolves.toBe(ready);
-  expect(loadScoreboardMap).toHaveBeenCalledWith(expect.any(Function), { sector: 'testing', ...selections });
+  expect(loadScoreboardMap).toHaveBeenCalledWith(expect.any(Function), { sector: 'testing', ...selections }, expect.any(Object));
 });
 
 test('keeps chart and map failures inside their own result', async () => {
@@ -50,7 +51,7 @@ test('requests only the linked case study and keeps the chart if the CMS fails',
   const result = await loadChart({ scoreboard: { ...scoreboard, charts: [definition] }, chartId: definition.chartId, selections, fetch: vi.fn() });
 
   expect(result).toEqual(chart);
-  expect(loadFromStrapi).toHaveBeenCalledWith('case-study-dynamics', expect.any(Function), expect.any(String), 'filters[documentId][$eq]=lisbon-document');
+  expect(loadFromStrapi).toHaveBeenCalledWith('case-study-dynamics', expect.any(Function), expect.any(String), 'filters[documentId][$eq]=lisbon-document', expect.any(Object));
 });
 
 test('attaches the linked case study by its document identity', async () => {
@@ -85,5 +86,24 @@ test('uses the configured map indicator when the request omits it', async () => 
   await expect(loadMap({ scoreboard: configured, selections: choices, fetch })).resolves.toMatchObject({ status: 'ready' });
   expect(loadScoreboardMap).toHaveBeenCalledWith(fetch, {
     sector: 'example', indicator: 'Population', ...choices,
-  });
+  }, expect.any(Object));
+});
+
+test.each([
+  ['CMS failure', () => loadFromStrapi.mockRejectedValue(new Error('CMS unavailable')), 'no-store'],
+  ['successful empty lookup', () => loadFromStrapi.mockResolvedValue([]), null],
+])('chart cache policy after a %s', async (_label, configureCMS, cacheControl) => {
+  const definition = { ...scoreboard.charts[0], caseStudyId: 'lisbon-document' };
+  const chart = { definition, status: 'ready', data: [] };
+  loadScoreboardDefinition.mockResolvedValue({ ...scoreboard, charts: [definition] });
+  loadScoreboardChart.mockResolvedValue(chart);
+  configureCMS();
+  const url = new URL('https://example.test/app/scoreboard/charts/test?sector=testing&scenario=1.5C&region=Austria&year=2050');
+
+  const response = await getChart({ fetch: vi.fn(), url, params: { chartId: definition.chartId } });
+
+  expect(response.status).toBe(200);
+  expect(response.headers.get('cache-control')).toBe(cacheControl);
+  expect(response.headers.get('x-content-incomplete')).toBe(cacheControl ? 'true' : null);
+  await expect(response.json()).resolves.toEqual(chart);
 });

@@ -1,4 +1,5 @@
 import { buildAvoidMeta } from '$lib/catalog/avoid-meta.js';
+import { CATALOG_TIMEOUT_MS, CMS_TIMEOUT_MS, HEAVY_TIMEOUT_MS, requestJson } from '$lib/requests/index.js';
 
 // We use different locals to simulate different versions of the content.
 // Version 0: `en` and fallback version
@@ -41,42 +42,28 @@ export const catalogScenarioLabelsUrl = (ids) => {
   return `${joinUrl(ENV_URL_CONTENT, 'api/scenarios')}?${query}`;
 };
 
-export const loadFromStrapi = function (path, fetch, populate = 'populate=*', qs) {
-  return new Promise(async (resolve, reject) => {
-    if (typeof ENV_URL_CONTENT === 'undefined') {
-      reject(new Error('Content URL is not defined. Check environment variables.'));
-    }
-    if (typeof ENV_CONTENT_LOCALE === 'undefined') {
-      console.warn(`Content version variable in undefined. Fallback version is used.`);
-    }
-    const url = `${ENV_URL_CONTENT}/api/${path}?${populate}&locale=${localCode}&pagination[limit]=9999${qs ? `&${qs}` : ''}`;
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
-      resolve(data.data);
-    } catch (e) {
-      console.warn(`Failed to fetch url ${url} with error ${e}.`);
-      reject(new Error('Failed to fetch.'));
-    }
-  });
-};
+export async function loadFromStrapi(path, fetch, populate = 'populate=*', qs, { signal, timeoutMs = CATALOG_TIMEOUT_MS } = {}) {
+  if (typeof ENV_URL_CONTENT === 'undefined') {
+    throw new Error('Content URL is not defined. Check environment variables.');
+  }
+  if (typeof ENV_CONTENT_LOCALE === 'undefined') {
+    console.warn('Content locale is undefined. Using the default locale.');
+  }
+  const url = `${ENV_URL_CONTENT}/api/${path}?${populate}&locale=${localCode}&pagination[limit]=9999${qs ? `&${qs}` : ''}`;
+  const data = await requestJson(url, { fetch, signal, timeoutMs });
+  return data.data;
+}
 
-// Load data from Climate Analytics API
-// We use the fetch function provided by Svelte if provided.
-export const loadFromAPI = async function (url, svelteFetch = fetch, props = {}) {
+export async function loadFromAPI(url, { fetch, signal } = {}) {
   try {
-    const res = await svelteFetch(url);
-    if (!res.ok) {
-      console.warn(`loadFromAPI ${url} → HTTP ${res.status}`);
-      return undefined;
-    }
-    const data = await res.json();
-    return { ...props, ...data };
-  } catch (e) {
-    console.warn(`loadFromAPI ${url} threw:`, e);
+    return await requestJson(url, { fetch, signal, timeoutMs: HEAVY_TIMEOUT_MS });
+  } catch (error) {
+    signal?.throwIfAborted();
+    if (error?.name === 'AbortError') throw error;
+    console.warn('Data API request failed', { status: error?.status, errorType: error?.name });
     return undefined;
   }
-};
+}
 
 // Singular labels used as a backup when the API doesn't supply one.
 const labelsSingular = {
@@ -87,14 +74,8 @@ const labelsSingular = {
 // The catalog API (Hono adapter) speaks JSON with strict:false trailing slashes.
 const apiUrl = (path) => `${catalogApiUrl(path)}/`;
 
-async function getJSON(url, svelteFetch = fetch) {
-  const res = await svelteFetch(url);
-  if (!res.ok) {
-    const error = new Error('Request failed');
-    error.status = res.status;
-    throw error;
-  }
-  return res.json();
+function getJSON(url, svelteFetch, { signal, timeoutMs = CATALOG_TIMEOUT_MS } = {}) {
+  return requestJson(url, { fetch: svelteFetch, signal, timeoutMs });
 }
 
 // Geography slice — the selectable place tree. Sourced from the `/geographies`
@@ -166,20 +147,21 @@ export const loadMethodologyScenarios = async function (svelteFetch = fetch, { i
   }));
 };
 
-async function scoreboardResource(resource, svelteFetch, selections, fields) {
+async function scoreboardResource(resource, svelteFetch, selections, fields, options) {
   const params = new URLSearchParams();
   for (const key of fields) {
     if (selections[key] !== undefined) params.set(key, selections[key]);
   }
-  return getJSON(`${apiUrl(`scoreboard/${resource}`)}?${params}`, svelteFetch);
+  return getJSON(`${apiUrl(`scoreboard/${resource}`)}?${params}`, svelteFetch, options);
 }
 
 const SCOREBOARD_SHARED_FIELDS = ['sector', 'scenario', 'region', 'year'];
 
-export const loadScoreboardDefinition = (svelteFetch = fetch, selections = {}) => scoreboardResource('definition', svelteFetch, selections, ['sector', 'indicator']);
-export const loadScoreboardMap = (svelteFetch = fetch, selections = {}) => scoreboardResource('map', svelteFetch, selections, ['sector', 'indicator', 'scenario', 'region', 'year']);
-export const loadScoreboardChart = (svelteFetch = fetch, selections = {}) =>
-  scoreboardResource(`charts/${encodeURIComponent(selections.chartId)}`, svelteFetch, selections, SCOREBOARD_SHARED_FIELDS);
+export const loadScoreboardDefinition = (svelteFetch = fetch, selections = {}, options) => scoreboardResource('definition', svelteFetch, selections, ['sector', 'indicator'], options);
+export const loadScoreboardMap = (svelteFetch = fetch, selections = {}, { signal } = {}) =>
+  scoreboardResource('map', svelteFetch, selections, ['sector', 'indicator', 'scenario', 'region', 'year'], { signal, timeoutMs: HEAVY_TIMEOUT_MS });
+export const loadScoreboardChart = (svelteFetch = fetch, selections = {}, { signal } = {}) =>
+  scoreboardResource(`charts/${encodeURIComponent(selections.chartId)}`, svelteFetch, selections, SCOREBOARD_SHARED_FIELDS, { signal, timeoutMs: HEAVY_TIMEOUT_MS });
 
 // Curation slice — the transitional study-locations + likelihoods remnants not
 // yet derivable from conventions. Tiny static data; loaded only by the sections
@@ -198,7 +180,7 @@ export const loadCuration = async function (svelteFetch = fetch) {
 export const loadAvoidMeta = async function (svelteFetch = fetch) {
   // Scenario labels come from the frozen /meta itself; only indicator
   // descriptions need Strapi enrichment.
-  const [meta, indicators] = await Promise.all([getJSON(`${ENV_URL_DATA}/meta/`, svelteFetch), loadFromStrapi('indicators', svelteFetch)]);
+  const [meta, indicators] = await Promise.all([getJSON(`${ENV_URL_DATA}/meta/`, svelteFetch), loadFromStrapi('indicators', svelteFetch, undefined, undefined, { timeoutMs: CMS_TIMEOUT_MS }).catch(() => [])]);
   return buildAvoidMeta(meta, { indicators });
 };
 

@@ -44,6 +44,7 @@ function selectionFromRequest(c: Context<Env>): Selection | null {
 }
 
 function failure(c: Context<Env>, message: string, reason: unknown) {
+  if (c.req.raw.signal.aborted) return c.body(null, 499);
   console.error(message, { path: c.req.path, sector: c.req.query('sector'), reasonName: reason instanceof Error ? reason.name : typeof reason });
   return c.json({ error: message }, 502);
 }
@@ -121,7 +122,7 @@ scoreboard.on(['GET', 'POST'], '/map', async (c) => {
         spatial: indicator.spatial,
         scenario: scenarioDefinition.rasterName ?? scenario,
         year,
-      });
+      }, fetch, c.req.raw.signal);
       return c.json(await rasterMapResult(raster, indicator));
     } catch (reason) {
       if (reason instanceof ImpactGeoCoverageNotFoundError) return c.json(emptyRasterMapResult(indicator));

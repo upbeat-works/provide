@@ -1,31 +1,19 @@
 <script>
-  import { AVOID_INDICATOR, AVOID_GEOGRAPHY, AVOID_PARAMS, AVOID_TEMPLATE_PROPS, AVOID_IS_EMPTY, AVOID_IS_AVAILABLE } from '$stores/avoid-catalog.js';
+  import { AVOID_INDICATOR, AVOID_TEMPLATE_PROPS } from '$stores/avoid-catalog.js';
+  import { END_AVOIDING_IMPACTS } from '$config';
   import { STUDY_LOCATIONS } from '$stores/meta.js';
-  import { LEVEL_OF_IMPACT, SELECTED_LIKELIHOOD_LEVEL_LABEL, SELECTED_LIKELIHOOD_LEVEL, SELECTED_STUDY_LOCATION } from '$stores/avoid.js';
-  import { END_AVOIDING_IMPACTS, URL_PATH_LEVEL_OF_IMPACT, URL_PATH_CERTAINTY_LEVEL } from '$config';
+  import { LEVEL_OF_IMPACT, SELECTED_LIKELIHOOD_LEVEL_LABEL, SELECTED_STUDY_LOCATION } from '$stores/avoid.js';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
-  import { fetchData } from '$lib/api/api';
   import { formatValue, formatUnit } from '$lib/utils/formatting';
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import Locations from './Locations.svelte';
   import Map from './Map.svelte';
-  import { toLegacyAvoidRequest } from '$lib/catalog/translate.js';
-  import { sendLegacyAvoidRequest } from '$lib/catalog/legacy-avoid-request.js';
 
   export let store;
   export let tagline;
 
   $: labelWithinSentence = $AVOID_INDICATOR?.labelWithinSentence ?? $AVOID_INDICATOR?.label;
-  $: legacyParams = toLegacyAvoidRequest({ geography: $AVOID_GEOGRAPHY, indicator: $AVOID_INDICATOR, parameters: $AVOID_PARAMS });
-
-  $: !$AVOID_IS_EMPTY &&
-    $AVOID_IS_AVAILABLE &&
-    sendLegacyAvoidRequest(fetchData, store, END_AVOIDING_IMPACTS, legacyParams, {
-      [URL_PATH_LEVEL_OF_IMPACT]: $LEVEL_OF_IMPACT,
-      [URL_PATH_CERTAINTY_LEVEL]: $SELECTED_LIKELIHOOD_LEVEL,
-    });
-
   $: process = ({ thresholdLevelsData }) => {
     const studyLocations = $STUDY_LOCATIONS.map(({ uid, label, order, isAverage }) => {
       const datum = thresholdLevelsData.data.study_locations[uid];

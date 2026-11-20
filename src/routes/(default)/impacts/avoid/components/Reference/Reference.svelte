@@ -4,6 +4,7 @@
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import { END_AVOIDING_REFERENCE, URL_PATH_STUDY_LOCATION } from '$config';
+  import { onDestroy } from 'svelte';
   import { fetchData } from '$lib/api/api';
   import ImpactLevel from './ImpactLevel.svelte';
   import { mean } from 'd3-array';
@@ -28,7 +29,12 @@
   };
   $: legacyParams = toLegacyAvoidRequest({ geography: $AVOID_GEOGRAPHY, indicator: $AVOID_INDICATOR, parameters: $AVOID_PARAMS });
 
-  $: !$AVOID_IS_EMPTY && $AVOID_IS_AVAILABLE && sendLegacyAvoidRequest(fetchData, store, END_AVOIDING_REFERENCE, legacyParams, { [URL_PATH_STUDY_LOCATION]: $SELECTED_STUDY_LOCATION });
+  onDestroy(() => fetchData(store));
+  $: if (!$AVOID_IS_EMPTY && $AVOID_IS_AVAILABLE && legacyParams) {
+    sendLegacyAvoidRequest(fetchData, store, END_AVOIDING_REFERENCE, legacyParams, { [URL_PATH_STUDY_LOCATION]: $SELECTED_STUDY_LOCATION });
+  } else {
+    fetchData(store);
+  }
 
   function getDecimalsOfNumber(n) {
     const parts = String(n).split('.');

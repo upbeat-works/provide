@@ -14,9 +14,10 @@ test('map requests and cache identity include sector, indicator, country, scenar
   await loadResource('map', 'testing', selection, fetcher);
 
   expect(fetcher).toHaveBeenCalledWith(
-    '/app/scoreboard/map?sector=testing&indicator=Maximum+Air+Temperature&region=Austria&scenario=CurrentPolicies&year=2050'
+    '/app/scoreboard/map?sector=testing&indicator=Maximum+Air+Temperature&region=Austria&scenario=CurrentPolicies&year=2050',
+    { signal: expect.any(AbortSignal) }
   );
-  expect(mapResourceKey('testing', selection)).toBe('testing|Maximum Air Temperature|Austria|CurrentPolicies|2050');
+  expect(mapResourceKey('testing', selection)).toBe('map?sector=testing&indicator=Maximum+Air+Temperature&region=Austria&scenario=CurrentPolicies&year=2050');
 });
 
 test('chart requests keep their independent parameters', async () => {

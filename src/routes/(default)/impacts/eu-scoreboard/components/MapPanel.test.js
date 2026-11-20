@@ -28,6 +28,19 @@ const selection = {
 const result = (status, values = [], metadata = null) => ({ definition, status, values, metadata });
 const props = { definition, result: result('empty'), selection, sector: 'testing' };
 
+test('cancels a pending map retry when the panel closes', async () => {
+  let signal;
+  vi.stubGlobal('fetch', (_path, options) => {
+    signal = options?.signal;
+    return new Promise(() => {});
+  });
+  const panel = render(MapPanel, { ...props, sector: 'closing', result: { ...result('error'), error: 'Map failed' } });
+  await fireEvent.click(screen.getByRole('button', { name: 'Retry map' }));
+  await waitFor(() => expect(signal).toBeDefined());
+  panel.unmount();
+  expect(signal.aborted).toBe(true);
+});
+
 test.each([
   ['pending', new Promise(() => {})],
   ['empty', result('empty')],
@@ -49,7 +62,8 @@ test('retries a failed map with its full identity and treats zero as data', asyn
 
   await waitFor(() => expect(JSON.parse(screen.getByRole('img', { name: 'Regional scoreboard map' }).dataset.values)).toEqual(ready.values));
   expect(fetcher).toHaveBeenCalledWith(
-    '/app/scoreboard/map?sector=testing&indicator=Maximum+Air+Temperature&region=Austria&scenario=CurrentPolicies&year=2050'
+    '/app/scoreboard/map?sector=testing&indicator=Maximum+Air+Temperature&region=Austria&scenario=CurrentPolicies&year=2050',
+    { signal: expect.any(AbortSignal) }
   );
   // The unit is named once in the subtitle, so the legend's tick is the bare
   // value — a zero still being a value, not missing data.
@@ -134,7 +148,7 @@ test('stops comparison requests and keeps the country outline when the next sect
       })
   );
   vi.stubGlobal('fetch', fetcher);
-  const other = option('1.5C');
+  const other = option('Net Zero');
   const comparison = {
     compareBy: option('scenario'),
     sides: [selection.scenario, other],

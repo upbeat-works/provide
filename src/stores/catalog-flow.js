@@ -47,6 +47,14 @@ export function createCatalogFlow(catalog) {
     return selectionChecks.delete(pending);
   }
 
+  function stop() {
+    activeIndicatorScopeKey = undefined;
+    activeIndicatorScopeRequest = undefined;
+    selectionChecks.clear();
+    warmingVisible = false;
+    catalog.releaseRequests();
+  }
+
   async function start() {
     await Promise.all([catalog.loadIndicatorIndex(), catalog.loadGeographyIndex()]);
   }
@@ -105,6 +113,10 @@ export function createCatalogFlow(catalog) {
     await catalog.loadFilterGroups({ region });
   }
 
+  function closeAdvancedFilters() {
+    catalog.clearFilterGroups();
+  }
+
   async function applyFilters(filters, context) {
     catalog.indicatorFilters.set(filters);
     await syncIndicatorScope({ ...context, filters });
@@ -153,6 +165,7 @@ export function createCatalogFlow(catalog) {
 
   return {
     start,
+    stop,
     chooseGeography,
     chooseIndicator,
     changeParameters,
@@ -160,6 +173,7 @@ export function createCatalogFlow(catalog) {
     restoreSelection,
     toggleScenario,
     openAdvancedFilters,
+    closeAdvancedFilters,
     applyFilters,
     syncIndicatorScope,
     retryIndicatorScope,

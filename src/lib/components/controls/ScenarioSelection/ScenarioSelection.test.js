@@ -58,7 +58,7 @@ test('replaces pending and failed scenario details and lets the user retry', asy
     expect(screen.getByRole('heading', { name: 'Example pathway' })).toBeTruthy();
   });
   expect(fetcher).toHaveBeenCalledTimes(2);
-  expect(fetcher).toHaveBeenLastCalledWith('/app/scenario-details/Example%20pathway?instance=provide-internal');
+  expect(fetcher).toHaveBeenLastCalledWith('/app/scenario-details/Example%20pathway?instance=provide-internal', { signal: expect.any(AbortSignal) });
 });
 
 test('keeps the chart mounted when hovering between loaded scenarios', async () => {

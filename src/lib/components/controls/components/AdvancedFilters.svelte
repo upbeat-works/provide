@@ -1,4 +1,6 @@
 <script>
+  import { onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
   import Button from '$lib/components/ui/Button.svelte';
   import ExpandIcon from '$lib/components/icons/Expand.svelte';
   import FilterPill from '$lib/components/ui/FilterPill.svelte';
@@ -23,7 +25,10 @@
   $: selectedOf = (key) => $FACET_FILTERS[key] ?? [];
   $: activeGroupCount = activeFacetGroupCount($FACET_FILTERS);
   $: region = $SELECTION_MODE === 'geography' ? $CURRENT_GEOGRAPHY_UID : undefined;
-  $: if (isOpen) void catalogFlow.openAdvancedFilters({ region });
+  $: if (browser && isOpen) void catalogFlow.openAdvancedFilters({ region });
+  onDestroy(() => {
+    if (browser && isOpen) catalogFlow.closeAdvancedFilters();
+  });
   $: view = advancedFilterControlView({
     request: $FILTER_GROUPS_REQUEST,
     region,
@@ -31,6 +36,7 @@
 
   function togglePanel() {
     isOpen = !isOpen;
+    if (!isOpen) catalogFlow.closeAdvancedFilters();
   }
 
   const toggle = (key, value) => FACET_FILTERS.update(($f) => toggleFacetValue($f, key, value));

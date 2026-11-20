@@ -2,7 +2,7 @@ import { EMBED_UID } from '$lib/charts/chart-embed.js';
 import { loadChartFromDefinition } from '$lib/server/charts.js';
 import { parse } from 'qs';
 
-export const load = async ({ fetch, params, url }) => {
+export const load = async ({ fetch, params, request, url }) => {
   if (params.embed !== EMBED_UID) return {};
   const instance = url.searchParams.get('instance');
   const scenario = url.searchParams.get('scenario');
@@ -15,5 +15,5 @@ export const load = async ({ fetch, params, url }) => {
   if (typeof chart?.decimals === 'string' && chart.decimals.trim()) chart.decimals = Number(chart.decimals);
   if (chart?.hideInEuropeView === 'true') chart.hideInEuropeView = true;
   if (chart?.hideInEuropeView === 'false') chart.hideInEuropeView = false;
-  return { chart: await loadChartFromDefinition({ definition: chart, instance, fetch, selections }), instance, selection };
+  return { chart: await loadChartFromDefinition({ definition: chart, instance, fetch, selections, signal: request?.signal }), instance, selection };
 };

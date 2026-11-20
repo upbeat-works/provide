@@ -1,4 +1,6 @@
 <script>
+  import { onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import ScoreboardMap from './ScoreboardMap.svelte';
@@ -6,7 +8,7 @@
   import FilterSelect from './FilterSelect.svelte';
   import { legendOf, numericClasses } from './choropleth.js';
   import { combinedValues, comparisonViews, legendParts, mapValues } from './comparison.js';
-  import { loadResource, mapResourceKey } from './resource.js';
+  import { startResource, mapResourceKey } from './resource.js';
   import { mapBoundaryLevel } from '../../../../../../api/scoreboard/choices.js';
   import { SCOREBOARD_COUNTRIES } from '../../../../../../api/scoreboard/countries.ts';
 
@@ -25,18 +27,22 @@
   const failed = () => ({ status: 'error', values: [], metadata: null, error: 'Map data could not be loaded.' });
   const unavailable = () => ({ status: 'unavailable', values: [], metadata: null });
 
-  let cache = new Map();
-  let cacheScope;
+  let comparisons = new Map();
   let revision = 0;
-  let own = { key: undefined, input: undefined, token: 0, map: loading() };
+  let own = { key: undefined, input: undefined, request: undefined, map: loading() };
 
   $: views = comparisonViews(compareBy?.uid, sides, selection);
-  $: scope = `${sector}|${definition?.name ?? ''}`;
-  $: resetCache(scope);
-  $: ownSelection = withIndicator(selection);
+  $: ownSelection = withIndicator(selection, definition);
   $: ownKey = mapResourceKey(sector, ownSelection);
-  $: syncOwn(ownKey, result);
+  $: syncOwn(ownKey, result, ownSelection, sector, preview);
+  $: syncComparisons(views, ownKey, sector, preview, definition);
   $: maps = definition ? collect(views, ownKey, own, revision) : views.map(unavailable);
+  onDestroy(() => {
+    own.request?.lease?.release();
+    own = { ...own, request: undefined };
+    for (const entry of comparisons.values()) entry.request.lease.release();
+    comparisons.clear();
+  });
   $: unit = maps.find((map) => map?.metadata?.unit)?.metadata.unit;
   // A sector's JSON may give an indicator its own `colorRamp`; without one the
   // choropleth keeps the default ramp.
@@ -44,71 +50,96 @@
   $: legend = legendOf(classes, { labelMode: 'boundaries' });
   $: compareSelectProps = compareBy?.uid === 'region' ? { placeholder: 'Search region' } : {};
 
-  function withIndicator(view) {
+  function withIndicator(view, definition) {
     const name = definition?.name;
     return { ...view, indicator: name ? { uid: name, label: name } : undefined };
   }
 
-  function resetCache(nextScope) {
-    if (nextScope === cacheScope) return;
-    cacheScope = nextScope;
-    cache = new Map();
-  }
-
-  function syncOwn(key, input) {
+  function syncOwn(key, input, selected, nextSector, draft) {
     if (own.key === key && own.input === input) return;
-    const token = own.token + 1;
-    if (own.key !== undefined && own.input === input) {
-      own = { key, input, token, map: loading() };
+    const previous = own;
+    if (browser && input?.status === 'loading' && draft === undefined) {
+      observeOwn(key, input, startResource('map', nextSector, selected, fetch, { onError: failed }));
       return;
     }
-    own = { key, input, token, map: loading() };
-    if (typeof input?.then === 'function') {
-      input.then((map) => settleOwn(key, token, map)).catch(() => settleOwn(key, token, failed()));
+    if (previous.key !== undefined && previous.input === input) {
+      own = { key, input, map: loading() };
+      previous.request?.lease?.release();
       return;
     }
-    own = { key, input, token, map: input ?? loading() };
+    observeOwn(key, input, input);
   }
 
-  function settleOwn(key, token, map) {
-    if (own.key !== key || own.token !== token) return;
-    own = { ...own, map };
+  function observeOwn(key, input, request) {
+    const previous = own.request;
+    const lease = request?.lease;
+    const entry = { key, input, request, map: loading() };
+    own = entry;
+    if (previous !== request) previous?.lease?.release();
+    if (typeof request?.then !== 'function') {
+      own = { ...entry, map: request ?? loading() };
+      return;
+    }
+    function publish(map) {
+      if (own.request === request && own.key === key) own = { ...own, map };
+    }
+    if (lease?.success !== undefined) publish(lease.success);
+    lease?.subscribe(publish);
+    request.then(publish, () => publish(failed()));
   }
 
   function collect(nextViews, currentKey) {
     return nextViews.map((view) => {
-      const key = mapResourceKey(sector, withIndicator(view));
+      const key = mapResourceKey(sector, withIndicator(view, definition));
       if (key === currentKey) return own.map;
-      return cachedMap(key, view);
+      return comparisons.get(key)?.map ?? loading();
     });
   }
 
-  function cachedMap(key, view) {
-    let entry = cache.get(key);
-    if (entry) return entry.map;
-    entry = { map: loading() };
-    cache.set(key, entry);
-    load(view).then((map) => {
-      if (cache.get(key) !== entry) return;
+  function syncComparisons(nextViews, currentKey, nextSector, nextPreview, nextDefinition) {
+    if (!browser) return;
+    const active = new Set();
+    if (nextDefinition) {
+      for (const view of nextViews) {
+        const selected = withIndicator(view, nextDefinition);
+        const key = mapResourceKey(nextSector, selected);
+        if (key === currentKey) continue;
+        active.add(key);
+        const existing = comparisons.get(key);
+        if (!existing || existing.preview !== nextPreview) startComparison(key, selected, nextSector, nextPreview);
+      }
+    }
+    for (const [key, entry] of comparisons) {
+      if (active.has(key)) continue;
+      comparisons.delete(key);
+      entry.request.lease.release();
+    }
+    revision += 1;
+  }
+
+  function startComparison(key, selected, nextSector, nextPreview, options = {}) {
+    const previous = comparisons.get(key);
+    const request = startResource('map', nextSector, selected, fetch, { preview: nextPreview, onError: failed, ...options });
+    const entry = { request, preview: nextPreview, map: request.lease.success ?? loading() };
+    comparisons.set(key, entry);
+    previous?.request.lease.release();
+    function publish(map) {
+      if (comparisons.get(key) !== entry) return;
       entry.map = map;
       revision += 1;
-    });
-    return entry.map;
-  }
-
-  function load(view) {
-    return loadResource('map', sector, withIndicator(view), fetch, { preview }).catch(failed);
+    }
+    request.lease.subscribe(publish);
+    request.then(publish);
   }
 
   function retry(view) {
-    const key = mapResourceKey(sector, withIndicator(view));
+    const selected = withIndicator(view, definition);
+    const key = mapResourceKey(sector, selected);
     if (key === ownKey) {
-      const token = own.token + 1;
-      own = { ...own, token, map: loading() };
-      load(view).then((map) => settleOwn(key, token, map));
+      observeOwn(key, own.input, startResource('map', sector, selected, fetch, { preview, retry: true, onError: failed }));
       return;
     }
-    cache.delete(key);
+    startComparison(key, selected, sector, preview, { retry: true });
     revision += 1;
   }
 

@@ -1,3 +1,4 @@
+import { CMS_TIMEOUT_MS } from '$lib/requests/index.js';
 import { loadFromStrapi, loadMethodologyScenarios } from '$utils/apis.js';
 import { generatePageTitle } from '$utils/meta.js';
 import { groupBy, kebabCase } from 'lodash-es';
@@ -10,7 +11,7 @@ const selectableTimeframes = [
 ];
 
 async function loadScenarios(fetch) {
-  const [technicalScenarios, contentRows] = await Promise.all([loadMethodologyScenarios(fetch), loadFromStrapi('scenarios', fetch, 'fields[0]=UID&fields[1]=Description').catch(() => [])]);
+  const [technicalScenarios, contentRows] = await Promise.all([loadMethodologyScenarios(fetch), loadFromStrapi('scenarios', fetch, 'fields[0]=UID&fields[1]=Description', undefined, { timeoutMs: CMS_TIMEOUT_MS }).catch(() => [])]);
   const descriptions = new Map();
   for (const row of contentRows ?? []) {
     const uid = row?.UID;

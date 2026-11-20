@@ -71,23 +71,31 @@
 
   let cancelGridLoad;
   let loadedRequest;
-  onDestroy(() => cancelGridLoad?.());
+  onDestroy(() => {
+    cancelGridLoad?.();
+    fetchData(GEO_SHAPE_DATA);
+  });
 
   $: loadMap(impactGeoRequests);
 
-  function loadMap(requests) {
+  function loadMap(requests, { retry = false } = {}) {
     const requestKey = JSON.stringify(requests);
-    if (requestKey === loadedRequest) return;
+    if (!retry && requestKey === loadedRequest) return;
     loadedRequest = requestKey;
-    cancelGridLoad?.();
-    if (!browser || !requests) return;
-    cancelGridLoad = startMapGridLoad(requests.data, IMPACT_GEO_DATA.set);
-    fetchData(GEO_SHAPE_DATA, requests.shape);
+    const previous = cancelGridLoad;
+    if (!browser || !requests) {
+      previous?.();
+      cancelGridLoad = undefined;
+      fetchData(GEO_SHAPE_DATA);
+      return;
+    }
+    cancelGridLoad = startMapGridLoad(requests.data, IMPACT_GEO_DATA.set, { retry });
+    previous?.();
+    fetchData(GEO_SHAPE_DATA, requests.shape, { retry });
   }
 
   function retryMapRequest() {
-    loadedRequest = undefined;
-    loadMap(impactGeoRequests);
+    loadMap(impactGeoRequests, { retry: true });
   }
 
   $: process = ({ data, shape }, { scenarios, indicator, urlParams, geography, legacyGeography: geoId }) => {

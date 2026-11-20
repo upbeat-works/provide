@@ -1,10 +1,12 @@
 <script>
+  import { onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
   import ScoreboardSection from '$lib/components/layouts/ScoreboardSection.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
   import ChartWithSeriesPicker from './charts/ChartWithSeriesPicker.svelte';
   import { isChartVisible } from './charts/adapter.js';
   import { PATH_ADAPTATION } from '$config';
-  import { loadResource } from './resource.js';
+  import { startResource } from './resource.js';
   import { chartEyebrow } from './comparison.js';
   import { SCOREBOARD_INSTANCE } from '../../../../../../api/scoreboard/choices.js';
 
@@ -18,30 +20,47 @@
 
   let chart;
   let settled = 0;
+  let active;
+  onDestroy(() => {
+    settled += 1;
+    active?.release();
+  });
 
   $: eyebrow = chartEyebrow(selection, comparing);
-  $: sync(result);
+  $: showResult(result, definition, sector, selection, preview);
 
   const failed = () => ({ definition, status: 'error', error: 'Chart data could not be loaded.', data: [] });
 
   // A result that is already a value is taken synchronously: the page hands one
   // over on first render, and deferring it by even a microtask would blank the
   // chart between every selection change.
+  function showResult(input, nextDefinition, nextSector, nextSelection, draft) {
+    if (browser && input?.status === 'loading' && draft === undefined) {
+      sync(startResource(`charts/${encodeURIComponent(nextDefinition.chartId)}`, nextSector, nextSelection, fetch, { onError: failed }));
+      return;
+    }
+    sync(input);
+  }
+
   function sync(input) {
     const token = ++settled;
+    if (active !== input?.lease) active?.release();
+    active = input?.lease;
     if (typeof input?.then !== 'function') {
       chart = input;
       return;
     }
-    chart = undefined;
+    chart = active?.success;
+    const publish = (next) => token === settled && (chart = next);
+    active?.subscribe(publish);
     input.then(
-      (next) => token === settled && (chart = next),
+      publish,
       () => token === settled && (chart = failed())
     );
   }
 
   function retry() {
-    sync(loadResource(`charts/${encodeURIComponent(definition.chartId)}`, sector, selection, fetch, { preview }).catch(failed));
+    sync(startResource(`charts/${encodeURIComponent(definition.chartId)}`, sector, selection, fetch, { preview, retry: true, onError: failed }));
   }
 </script>
 

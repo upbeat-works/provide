@@ -115,7 +115,7 @@ describe('GET /app/indicator-details/:id', () => {
     void GET({ fetch: endpointFetch, params: { id: technicalDetails.id }, url }).then((value) => {
       response = value;
     });
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(5000);
 
     expect(contentSignal?.aborted).toBe(true);
     expect(response).toBeDefined();
@@ -149,7 +149,7 @@ describe('GET /app/indicator-details/:id', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ description: 'Editorial text.' });
     expect(contentSignal?.aborted).toBe(false);
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(5000);
     expect(contentSignal?.aborted).toBe(false);
   });
 
@@ -287,4 +287,40 @@ describe('GET /app/indicator-details/:id', () => {
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ error: 'Catalog API request failed' });
   });
+});
+
+test('requests the CMS again after an uncached fallback and caches recovered details', async () => {
+  const { GET } = await import('./+server.js');
+  const { createRequestResources } = await import('$lib/requests/index.js');
+  const url = 'http://localhost/app/indicator-details/Heat?instance=provide';
+  const technical = { id: 'Heat', instance: 'provide', ixmp4Description: 'Technical fallback.' };
+  let cmsRequests = 0;
+  let snapshot;
+  server.use(
+    http.get('https://catalog-api.example/api/indicator-details/Heat', () => HttpResponse.json(technical)),
+    http.get('https://catalog-cms.example/api/indicators', () => {
+      cmsRequests += 1;
+      if (cmsRequests === 1) return HttpResponse.error();
+      return HttpResponse.json({ data: [{ UID: 'Heat', Description: 'Editorial text.' }] });
+    }),
+  );
+  const resources = createRequestResources({
+    fetch: (url, { signal }) => GET({ fetch, params: { id: 'Heat' }, url: new URL(url), request: new Request(url, { signal }) }),
+    persistence: {
+      persistClient(value) { snapshot = value; },
+      restoreClient() { return snapshot; },
+      removeClient() {},
+    },
+  });
+
+  const first = resources.acquire(url, { persist: true });
+  await expect(first.promise).resolves.toMatchObject({ description: 'Technical fallback.' });
+  first.release();
+  expect(resources.getCached(url)).toBeUndefined();
+
+  const recovered = resources.acquire(url, { persist: true });
+  await expect(recovered.promise).resolves.toMatchObject({ description: 'Editorial text.' });
+  recovered.release();
+  expect(cmsRequests).toBe(2);
+  await vi.waitFor(() => expect(snapshot?.clientState.queries[0]?.state.data.data.description).toBe('Editorial text.'));
 });

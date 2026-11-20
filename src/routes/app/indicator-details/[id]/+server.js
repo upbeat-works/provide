@@ -2,9 +2,7 @@ import { json } from '@sveltejs/kit';
 import { CatalogApiError, loadIndicatorTechnicalDetails } from '$lib/server/catalog-api.js';
 import { loadIndicatorDescription } from '$lib/server/catalog-content.js';
 
-const OPTIONAL_DESCRIPTION_LIMIT_MS = 1000;
-
-export async function GET({ fetch, params, url }) {
+export async function GET({ fetch, params, request, url }) {
   const id = params.id;
   const instance = url.searchParams.get('instance');
   if (!instance) {
@@ -12,29 +10,30 @@ export async function GET({ fetch, params, url }) {
   }
 
   const descriptionController = new AbortController();
-  const descriptionTimer = setTimeout(() => descriptionController.abort(), OPTIONAL_DESCRIPTION_LIMIT_MS);
-  const descriptionResultsPromise = Promise.allSettled([loadIndicatorDescription(fetch, { id, signal: descriptionController.signal })]).finally(() => clearTimeout(descriptionTimer));
+  const signal = request?.signal;
+  const descriptionSignal = signal ? AbortSignal.any([signal, descriptionController.signal]) : descriptionController.signal;
+  const descriptionPromise = loadIndicatorDescription(fetch, { id, signal: descriptionSignal });
 
   try {
-    const technicalDetails = await loadIndicatorTechnicalDetails(fetch, { id, instance });
-    const [descriptionResult] = await descriptionResultsPromise;
+    const technicalDetails = await loadIndicatorTechnicalDetails(fetch, { id, instance, signal });
+    const { description: editorialDescription, failed } = await descriptionPromise;
+    signal?.throwIfAborted();
     let description = technicalDetails.ixmp4Description;
 
-    if (descriptionResult.status === 'fulfilled' && descriptionResult.value) {
-      description = descriptionResult.value;
+    if (editorialDescription) {
+      description = editorialDescription;
     }
 
     const details = { ...technicalDetails };
     if (description !== undefined) details.description = description;
-    return json(details);
+    const headers = failed ? { 'Cache-Control': 'no-store', 'X-Content-Incomplete': 'true' } : undefined;
+    return json(details, { headers });
   } catch (error) {
     descriptionController.abort();
-    await descriptionResultsPromise;
+    await descriptionPromise;
     if (error instanceof CatalogApiError) {
       return json({ error: error.message }, { status: error.status });
     }
     throw error;
-  } finally {
-    clearTimeout(descriptionTimer);
   }
 }

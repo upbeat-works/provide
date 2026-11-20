@@ -117,7 +117,7 @@ impactGeo.get('/', async (c) => {
     const config = geoServerConfig(c);
     const format = c.req.query('format');
     if (format === 'geotiff' || format === 'netcdf') {
-      const raster = await fetchImpactGeoDownload(config, params, format);
+      const raster = await fetchImpactGeoDownload(config, params, format, fetch, c.req.raw.signal);
       const extension = format === 'netcdf' ? 'nc' : 'tif';
       const fallbackContentType = format === 'netcdf' ? 'application/x-netcdf' : 'image/tiff';
       const filename = `impact-geo_${coverageIdSegment(scenario)}_${year}.${extension}`;
@@ -125,15 +125,17 @@ impactGeo.get('/', async (c) => {
         status: 200,
         headers: {
           'content-type': raster.headers.get('content-type') ?? fallbackContentType,
+          'cache-control': 'no-store',
           'content-disposition': `attachment; filename="${filename}"`,
         },
       });
     }
-    const raster = await fetchImpactGeoRaster(config, params);
+    const raster = await fetchImpactGeoRaster(config, params, fetch, c.req.raw.signal);
     return new Response(raster.body, {
       headers: { 'content-type': raster.headers.get('content-type') ?? 'image/tiff' },
     });
   } catch (error) {
+    if (c.req.raw.signal.aborted) return new Response(null, { status: 499, headers: { 'cache-control': 'no-store' } });
     return errorResponse(c, error, started);
   }
 });

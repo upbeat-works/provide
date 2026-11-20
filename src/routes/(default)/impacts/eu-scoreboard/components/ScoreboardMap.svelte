@@ -1,4 +1,6 @@
 <script>
+  import { onDestroy } from 'svelte';
+  import { requestResources } from '$lib/requests/index.js';
   import { browser } from '$app/environment';
   import MapProvider from '$lib/components/maps/MapboxMap/MapProvider.svelte';
   import ZoomControl from '$lib/components/maps/MapboxMap/ZoomControl.svelte';
@@ -29,22 +31,28 @@
   export let level = undefined;
   export let grid = undefined;
 
+  let activeShapes;
   let shapes = start();
+  onDestroy(() => {
+    activeShapes?.release();
+    boundaryRequest += 1;
+  });
 
-  function start() {
+  function start(options) {
     if (!browser) return new Promise(() => {});
-    return load();
+    activeShapes = requestResources.acquire(COUNTRY_SOURCE, { persist: true, ...options });
+    const lease = activeShapes;
+    lease.subscribe((shape) => {
+      if (activeShapes === lease) shapes = shape;
+    });
+    return lease.success ?? lease.promise;
   }
 
-  async function load() {
-    const response = await fetch(COUNTRY_SOURCE);
-    if (!response.ok) throw new Error(`${COUNTRY_SOURCE} → ${response.status}`);
-    return response.json();
+  function retry() {
+    const previous = activeShapes;
+    shapes = start({ retry: true });
+    previous?.release();
   }
-
-  const retry = () => {
-    shapes = load();
-  };
 
   let boundaryAttempt = 0;
   let boundaryRequest = 0;

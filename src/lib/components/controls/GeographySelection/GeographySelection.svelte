@@ -15,6 +15,7 @@
   } from '$stores/state.js';
   import { END_GEO_SHAPE } from '$src/config.js';
   import { writable } from 'svelte/store';
+  import { onDestroy } from 'svelte';
   import { fetchData } from '$lib/api/api';
   import { GEOGRAPHIES, GEOGRAPHY_INDEX } from '$stores/meta.js';
   import { geoIdOf, plainLabel } from './geography-tree.js';
@@ -111,8 +112,8 @@
     void catalogFlow.catalog.loadGeographyIndex();
   }
 
-  $: currentFilterUid &&
-    fetchData(GEO_SHAPE_DATA, [
+  onDestroy(() => fetchData(GEO_SHAPE_DATA));
+  $: fetchData(GEO_SHAPE_DATA, currentFilterUid ? [
       {
         endpoint: END_GEO_SHAPE,
         params: {
@@ -125,7 +126,7 @@
           'geography-type': currentFilterUid,
         },
       },
-    ]);
+    ] : undefined);
 
 </script>
 

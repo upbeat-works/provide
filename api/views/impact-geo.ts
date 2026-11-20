@@ -38,7 +38,7 @@ export class ImpactGeoUpstreamError extends Error {
 }
 export class ImpactGeoConfigurationError extends Error {}
 
-const WCS_TIMEOUT_MS = 15_000;
+const WCS_TIMEOUT_MS = 30_000;
 
 export function coverageIdSegment(value: string): string {
   return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -70,7 +70,7 @@ export function buildGetCoverageUrl(config: GeoServerConfig, id: string, format:
   return url;
 }
 
-async function boundedRequest<T>(url: URL, config: GeoServerConfig, fetcher: typeof fetch, consume: (response: Response) => Promise<T>): Promise<T> {
+async function boundedRequest<T>(url: URL, config: GeoServerConfig, fetcher: typeof fetch, callerSignal: AbortSignal | undefined, consume: (response: Response) => Promise<T>): Promise<T> {
   if (Boolean(config.username) !== Boolean(config.password)) {
     throw new ImpactGeoConfigurationError('GeoServer username and password must be configured together');
   }
@@ -80,34 +80,40 @@ async function boundedRequest<T>(url: URL, config: GeoServerConfig, fetcher: typ
   }
   const timeoutMs = config.timeoutMs ?? WCS_TIMEOUT_MS;
   const controller = new AbortController();
+  const signal = callerSignal ? AbortSignal.any([callerSignal, controller.signal]) : controller.signal;
+  signal.throwIfAborted();
   let timer: ReturnType<typeof setTimeout>;
+  let onAbort: () => void;
   let response: Response | undefined;
-  const deadline = new Promise<never>((_resolve, reject) => {
+  const cancellation = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
     timer = setTimeout(() => {
       const error = new ImpactGeoUpstreamError(`GeoServer did not respond within ${timeoutMs / 1000} seconds. Please try again.`, {
         code: 'GEOSERVER_TIMEOUT', timeoutMs,
       });
-      reject(error);
       controller.abort(error);
     }, timeoutMs);
   });
   try {
     const request = (async () => {
-      response = await fetcher(url, { headers, signal: controller.signal });
-      if (controller.signal.aborted) {
+      response = await fetcher(url, { headers, signal });
+      if (signal.aborted) {
         void response.body?.cancel().catch(() => {});
-        throw controller.signal.reason;
+        throw signal.reason;
       }
       return consume(response);
     })();
-    return await Promise.race([request, deadline]);
+    return await Promise.race([request, cancellation]);
   } catch (error) {
     void response?.body?.cancel().catch(() => {});
+    callerSignal?.throwIfAborted();
     if (error instanceof ImpactGeoUpstreamError || error instanceof ImpactGeoCoverageNotFoundError) throw error;
     const message = response ? 'Could not read the GeoServer response.' : 'Could not connect to GeoServer.';
     throw new ImpactGeoUpstreamError(message, { code: 'GEOSERVER_NETWORK_ERROR', upstreamStatus: response?.status });
   } finally {
     clearTimeout(timer!);
+    signal.removeEventListener('abort', onAbort!);
   }
 }
 
@@ -121,16 +127,16 @@ function isMissingCoverageCode(code?: string): boolean {
 }
 
 export async function fetchImpactGeoRaster(
-  config: GeoServerConfig, params: ImpactGeoParams, fetcher: typeof fetch = fetch,
+  config: GeoServerConfig, params: ImpactGeoParams, fetcher: typeof fetch = fetch, signal?: AbortSignal,
 ): Promise<Response> {
-  return fetchImpactGeoCoverage(config, params, 'geotiff', fetcher);
+  return fetchImpactGeoCoverage(config, params, 'geotiff', fetcher, signal);
 }
 
 async function fetchImpactGeoCoverage(
-  config: GeoServerConfig, params: ImpactGeoParams, format: ImpactGeoDownloadFormat, fetcher: typeof fetch,
+  config: GeoServerConfig, params: ImpactGeoParams, format: ImpactGeoDownloadFormat, fetcher: typeof fetch, signal?: AbortSignal,
 ): Promise<Response> {
   const id = coverageId(params);
-  return boundedRequest(buildGetCoverageUrl(config, id, format), config, fetcher, async (response) => {
+  return boundedRequest(buildGetCoverageUrl(config, id, format), config, fetcher, signal, async (response) => {
     const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
     let isExpectedFormat = contentType.includes('image/tiff') || contentType.includes('application/octet-stream');
     if (format === 'netcdf') isExpectedFormat = contentType.includes('application/x-netcdf');
@@ -157,7 +163,7 @@ async function fetchImpactGeoCoverage(
 
 export async function fetchImpactGeoDownload(
   config: GeoServerConfig, params: ImpactGeoParams, format: ImpactGeoDownloadFormat,
-  fetcher: typeof fetch = fetch,
+  fetcher: typeof fetch = fetch, signal?: AbortSignal,
 ): Promise<Response> {
-  return fetchImpactGeoCoverage(config, params, format, fetcher);
+  return fetchImpactGeoCoverage(config, params, format, fetcher, signal);
 }

@@ -218,3 +218,15 @@ describe('WCS raster boundary', () => {
   });
 
 });
+
+test('cancels a download when the caller disconnects after receiving headers', async () => {
+  const caller = new AbortController();
+  let signal: AbortSignal | null | undefined;
+  const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    signal = init?.signal;
+    return new Response('download', { headers: { 'content-type': 'application/x-netcdf' } });
+  }) as typeof fetch;
+  await fetchImpactGeoDownload(geoserver, params, 'netcdf', fetcher, caller.signal);
+  caller.abort();
+  expect(signal?.aborted).toBe(true);
+});

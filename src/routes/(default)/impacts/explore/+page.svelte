@@ -73,6 +73,7 @@
   let initializationRevision = 0;
   let mounted = false;
   let urlSync;
+  let initializationController;
 
   onMount(() => {
     mounted = true;
@@ -90,10 +91,14 @@
       mounted = false;
       initializationRevision += 1;
       urlSync.destroy();
+      initializationController?.abort();
+      catalogFlow.stop();
     };
   });
 
   async function initializeCatalog({ sourceUrl = new URL(window.location.href) } = {}) {
+    initializationController?.abort();
+    initializationController = new AbortController();
     const revision = ++initializationRevision;
     initialization = { status: 'loading' };
     const pending = parseCatalogUrlSelection(sourceUrl);
@@ -102,6 +107,7 @@
       catalog: runtimeCatalog,
       flow: catalogFlow,
       requestFetch: fetch,
+      signal: initializationController.signal,
       isCurrent: () => mounted && revision === initializationRevision,
     });
     if (!mounted || revision !== initializationRevision) return false;

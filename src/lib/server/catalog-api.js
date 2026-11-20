@@ -1,3 +1,4 @@
+import { CATALOG_TIMEOUT_MS, requestJson } from '$lib/requests/index.js';
 import { catalogApiUrl } from '$lib/utils/apis.js';
 
 export class CatalogApiError extends Error {
@@ -13,28 +14,28 @@ function errorType(error) {
   return 'NonErrorRejection';
 }
 
-async function loadTechnicalDetails(fetch, resource, { id, instance }) {
+async function loadTechnicalDetails(fetch, resource, { id, instance, signal }) {
   try {
     const path = `${resource}/${encodeURIComponent(id)}`;
     const url = `${catalogApiUrl(path)}?instance=${encodeURIComponent(instance)}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new CatalogApiError(response.status);
-    return await response.json();
+    return await requestJson(url, { fetch, signal, timeoutMs: CATALOG_TIMEOUT_MS });
   } catch (error) {
+    signal?.throwIfAborted();
+    if (error?.name === 'AbortError') throw error;
     console.error('Catalog technical request failed', {
       resource,
       instance,
       errorType: errorType(error),
     });
-    if (error instanceof CatalogApiError) throw error;
-    throw new CatalogApiError(502);
+    if (error?.name === 'TimeoutError') throw new CatalogApiError(504);
+    throw new CatalogApiError(error?.status ?? 502);
   }
 }
 
-export async function loadIndicatorTechnicalDetails(fetch, { id, instance }) {
-  return loadTechnicalDetails(fetch, 'indicator-details', { id, instance });
+export async function loadIndicatorTechnicalDetails(fetch, { id, instance, signal }) {
+  return loadTechnicalDetails(fetch, 'indicator-details', { id, instance, signal });
 }
 
-export async function loadScenarioTechnicalDetails(fetch, { id, instance }) {
-  return loadTechnicalDetails(fetch, 'scenario-details', { id, instance });
+export async function loadScenarioTechnicalDetails(fetch, { id, instance, signal }) {
+  return loadTechnicalDetails(fetch, 'scenario-details', { id, instance, signal });
 }

@@ -5,7 +5,22 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { get } from 'svelte/store';
 import IndicatorSelection from './IndicatorSelection.svelte';
 import { runtimeCatalog } from '$stores/runtime-catalog.js';
+import { catalogFlow } from '$stores/catalog-flow.js';
 import { CURRENT_INDICATOR, SELECTION_MODE } from '$stores/state.js';
+
+const resourceFixture = vi.hoisted(() => ({ client: undefined }));
+vi.mock('$lib/requests/index.js', async (importOriginal) => {
+  const core = await importOriginal();
+  return {
+    ...core,
+    requestResources: {
+      acquire(...args) {
+        resourceFixture.client ??= core.createRequestResources();
+        return resourceFixture.client.acquire(...args);
+      },
+    },
+  };
+});
 
 const nativeFetch = globalThis.fetch;
 const indicator = {
@@ -16,6 +31,7 @@ const indicator = {
 };
 
 beforeEach(() => {
+  resourceFixture.client = undefined;
   HTMLElement.prototype.scrollTo = vi.fn();
   globalThis.IntersectionObserver = class {
     observe() {}
@@ -36,12 +52,13 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
+  catalogFlow.stop();
   runtimeCatalog.selectIndicator(undefined);
   runtimeCatalog.selectGeography(undefined);
   runtimeCatalog.indicatorFilters.set({});
   SELECTION_MODE.set('geography');
   globalThis.fetch = nativeFetch;
-  cleanup();
   vi.restoreAllMocks();
 });
 
@@ -106,7 +123,7 @@ describe('IndicatorSelection', () => {
     SELECTION_MODE.set('indicator');
     await waitFor(() => expect(get(runtimeCatalog.filteredIndicators).status).toBe('idle'));
     index = [{ ...heat, unit: 'hours' }];
-    await runtimeCatalog.loadIndicatorIndex();
+    await runtimeCatalog.loadIndicatorIndex({ refresh: true });
 
     await waitFor(() => expect(get(CURRENT_INDICATOR).unit.uid).toBe('hours'));
     expect(screen.queryByRole('radio', { name: 'Flood' })).toBeNull();
@@ -209,8 +226,8 @@ describe('IndicatorSelection', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(screen.getByRole('button', { name: 'Flood depth' })).toBeTruthy();
-      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/app\/indicator-details\/flood%2Fdepth\?instance=source-b$/));
-      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/api\/geography-availability\?indicator=flood%2Fdepth&instance=source-b$/));
+      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/app\/indicator-details\/flood%2Fdepth\?instance=source-b$/), { signal: expect.any(AbortSignal) });
+      expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/api\/geography-availability\?indicator=flood%2Fdepth&instance=source-b$/), { signal: expect.any(AbortSignal) });
     });
   });
 });

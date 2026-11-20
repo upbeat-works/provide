@@ -1,4 +1,5 @@
 import { expect, test, vi } from 'vitest';
+import { createRequestResources } from '$lib/requests/index.js';
 import { startMapGridLoad } from './map-grid-loader.js';
 
 const requests = ['Low Demand', '2020 Climate Policies'].map((scenario) => ({
@@ -6,59 +7,111 @@ const requests = ['Low Demand', '2020 Climate Policies'].map((scenario) => ({
 }));
 
 function setup() {
-  const worker = { postMessage: vi.fn(), terminate: vi.fn() };
-  const set = vi.fn();
-  const cancel = startMapGridLoad(requests, set, { createWorker: () => worker, baseUrl: 'https://app.test/embed/map' });
-  return { worker, set, cancel };
+  const createWorker = vi.fn(() => ({ postMessage: vi.fn(), terminate: vi.fn() }));
+  const resources = createRequestResources({ maxInactive: 4 });
+  function open(selection = requests) {
+    const set = vi.fn();
+    const cancel = startMapGridLoad(selection, set, { createWorker, resources, baseUrl: 'https://app.test/embed/map' });
+    return { set, cancel };
+  }
+  function worker(index) {
+    return createWorker.mock.results[index]?.value;
+  }
+  function finish(index, result) {
+    worker(index).onmessage({ data: { index: 0, result } });
+  }
+  return { createWorker, open, worker, finish };
 }
 
-test('loads ordered scenarios using absolute URLs and releases the worker when done', () => {
-  const { worker, set } = setup();
-  expect(worker.postMessage).toHaveBeenCalledWith(requests.map(({ params }) => ({
-    url: `https://app.test/api/impact-geo/?${new URLSearchParams(params)}`, params,
-  })));
-  worker.onmessage({ data: { index: 0, result: { status: 'success', data: { year: 2050 } } } });
-  expect(set.mock.lastCall[0]).toEqual([{ status: 'success', data: { year: 2050 } }, { status: 'loading', data: null }]);
-  worker.onmessage({ data: { index: 1, result: { status: 'success', data: { year: 2050 } } } });
-  expect(set.mock.lastCall[0].every(({ status }) => status === 'success')).toBe(true);
-  expect(worker.terminate).toHaveBeenCalledTimes(1);
+const success = { status: 'success', data: { year: 2050 } };
+
+test('shares a pending grid across maps until the last map closes', async () => {
+  const { createWorker, open, worker } = setup();
+  const first = open(requests.slice(0, 1));
+  const second = open(requests.slice(0, 1));
+  await vi.waitFor(() => expect(createWorker).toHaveBeenCalledTimes(1));
+  first.cancel();
+  expect(worker(0).terminate).not.toHaveBeenCalled();
+  second.cancel();
+  expect(worker(0).terminate).toHaveBeenCalledTimes(1);
 });
 
-test('cancels old work and ignores late results when a selection changes or a map closes', () => {
-  const { worker, set, cancel } = setup();
+test('loads each scenario using an absolute URL and renders results in selection order', async () => {
+  const { createWorker, open, finish, worker } = setup();
+  const { set, cancel } = open();
+  await vi.waitFor(() => expect(createWorker).toHaveBeenCalledTimes(2));
+  for (const [index, { params }] of requests.entries()) {
+    expect(worker(index).postMessage).toHaveBeenCalledWith([{ url: `https://app.test/api/impact-geo/?${new URLSearchParams(params)}`, params }]);
+  }
+  finish(1, success);
+  await vi.waitFor(() => expect(set.mock.lastCall[0]).toEqual([{ status: 'loading', data: null }, success]));
+  finish(0, success);
+  await vi.waitFor(() => expect(set.mock.lastCall[0]).toEqual([success, success]));
+  expect(worker(0).terminate).toHaveBeenCalledTimes(1);
+  expect(worker(1).terminate).toHaveBeenCalledTimes(1);
+  cancel();
+});
+
+test('ignores late results from a worker after the map closes', async () => {
+  const { createWorker, open, worker, finish } = setup();
+  const { set, cancel } = open(requests.slice(0, 1));
+  await vi.waitFor(() => expect(createWorker).toHaveBeenCalledTimes(1));
   cancel();
   const calls = set.mock.calls.length;
-  worker.onmessage?.({ data: { index: 0, result: { status: 'success', data: 'old' } } });
-  expect(worker.terminate).toHaveBeenCalledTimes(1);
+  finish(0, success);
+  await Promise.resolve();
+  expect(worker(0).terminate).toHaveBeenCalledTimes(1);
   expect(set).toHaveBeenCalledTimes(calls);
 });
 
-test('settles the comparison and releases the worker after one scenario fails', () => {
-  const { worker, set } = setup();
-  worker.onmessage({
-    data: {
-      index: 0,
-      result: { status: 'failed', message: 'GeoServer unavailable', isExpected: false },
-    },
-  });
-  expect(set.mock.lastCall[0]).toEqual(requests.map(() => ({
-    status: 'failed', message: 'GeoServer unavailable', isExpected: false,
-  })));
-  expect(worker.terminate).toHaveBeenCalledTimes(1);
+test('settles the comparison and releases its workers after one scenario fails', async () => {
+  const { createWorker, open, worker, finish } = setup();
+  const { set } = open();
+  await vi.waitFor(() => expect(createWorker).toHaveBeenCalledTimes(2));
+  const failure = { status: 'failed', message: 'GeoServer unavailable', isExpected: false };
+  finish(0, failure);
+  await vi.waitFor(() => expect(set.mock.lastCall[0]).toEqual([failure, failure]));
+  expect(worker(0).terminate).toHaveBeenCalledTimes(1);
+  expect(worker(1).terminate).toHaveBeenCalledTimes(1);
 });
 
-test.each(['onerror', 'onmessageerror'])('reports a worker failure through %s and allows a fresh load', (event) => {
-  const { worker, set } = setup();
-  worker[event]?.({ preventDefault() {} });
-  expect(set.mock.lastCall[0]).toEqual(requests.map(() => ({ status: 'failed', message: 'Map worker failed' })));
-  expect(worker.terminate).toHaveBeenCalledTimes(1);
-  const retry = setup();
-  expect(retry.worker.postMessage).toHaveBeenCalledTimes(1);
+test.each(['onerror', 'onmessageerror'])('lets the map retry after a worker error through %s', async (event) => {
+  const { createWorker, open, worker, finish } = setup();
+  const { set } = open(requests.slice(0, 1));
+  await vi.waitFor(() => expect(createWorker).toHaveBeenCalledTimes(1));
+  worker(0)[event]?.({ preventDefault() {} });
+  await vi.waitFor(() => expect(set.mock.lastCall[0]).toEqual([{ status: 'failed', message: 'Map worker failed' }]));
+  const retry = open(requests.slice(0, 1));
+  await vi.waitFor(() => expect(createWorker).toHaveBeenCalledTimes(2));
+  finish(1, success);
+  await vi.waitFor(() => expect(retry.set.mock.lastCall[0]).toEqual([success]));
   retry.cancel();
 });
 
-test('reports worker startup failures so the map can offer retry', () => {
-  const set = vi.fn();
-  startMapGridLoad(requests, set, { createWorker: () => { throw new Error('Worker unavailable'); }, baseUrl: 'https://app.test' });
-  expect(set.mock.lastCall[0]).toEqual(requests.map(() => ({ status: 'failed', message: 'Worker unavailable' })));
+test('reports worker startup failures so the map can offer retry', async () => {
+  const { open, createWorker } = setup();
+  createWorker.mockImplementation(() => { throw new Error('Worker unavailable'); });
+  const { set } = open();
+  await vi.waitFor(() => expect(set.mock.lastCall[0]).toEqual(requests.map(() => ({ status: 'failed', message: 'Worker unavailable' }))));
+});
+
+test('can revisit only the four newest inactive grids without starting workers', async () => {
+  const { open, worker, createWorker, finish } = setup();
+  const grids = [2030, 2050, 2070, 2090, 2100].map((year) => [{ ...requests[0], params: { ...requests[0].params, year } }]);
+  for (const [index, selection] of grids.entries()) {
+    const map = open(selection);
+    await vi.waitFor(() => expect(worker(index)).toBeDefined());
+    const result = { status: 'success', data: selection[0].params };
+    finish(index, result);
+    await vi.waitFor(() => expect(map.set.mock.lastCall[0]).toEqual([result]));
+    map.cancel();
+  }
+  for (const selection of grids.slice(1)) {
+    const map = open(selection);
+    expect(map.set.mock.lastCall[0]).toEqual([{ status: 'success', data: selection[0].params }]);
+    map.cancel();
+  }
+  const first = open(grids[0]);
+  await vi.waitFor(() => expect(createWorker).toHaveBeenCalledTimes(6));
+  first.cancel();
 });

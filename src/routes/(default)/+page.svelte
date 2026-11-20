@@ -18,11 +18,17 @@
   });
 
   onMount(() => {
-    void initializeCatalog();
+    let active = true;
+    void initializeCatalog(() => active);
+    return () => {
+      active = false;
+      catalogFlow.stop();
+    };
   });
 
-  async function initializeCatalog() {
+  async function initializeCatalog(isActive) {
     await catalogFlow.start();
+    if (!isActive()) return;
     const indicator = $RUNTIME_CATALOG_SELECTION.indicator;
     if (indicator) await catalogFlow.chooseIndicator(indicator);
   }

@@ -1,25 +1,42 @@
-export async function loadResource(resource, sector, selection, fetcher = fetch, { preview } = {}) {
+import { HEAVY_TIMEOUT_MS, requestResources } from '$lib/requests/index.js';
+
+export function resourceUrl(resource, sector, selection) {
   const params = new URLSearchParams({ sector });
   const dimensions = ['map', 'definition'].includes(resource) ? ['indicator', 'region', 'scenario', 'year'] : ['region', 'scenario', 'year'];
   for (const key of dimensions) {
     const value = selection[key];
     if (value?.uid) params.set(key, value.uid);
   }
-  let response;
+  return `${resource}?${params}`;
+}
+
+export function startResource(resource, sector, selection, fetcher = fetch, { preview, signal, onError, retry } = {}) {
+  const path = resourceUrl(resource, sector, selection);
+  const options = { fetch: fetcher, signal, retry, timeoutMs: HEAVY_TIMEOUT_MS };
+  let url = `/app/scoreboard/${path}`;
   if (preview !== undefined) {
-    response = await fetcher(`/app/scoreboard/preview/${resource}?${params}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(preview),
-    });
+    url = `/app/scoreboard/preview/${path}`;
+    options.method = 'POST';
+    options.headers = { 'Content-Type': 'application/json' };
+    options.body = JSON.stringify(preview);
   } else {
-    response = await fetcher(`/app/scoreboard/${resource}?${params}`);
+    options.persist = true;
+    options.cacheWhen = (data) => data.status !== 'error';
   }
-  if (!response.ok) {
-    const result = await response.json().catch(() => ({}));
-    throw new Error(result.error ?? 'Data could not be loaded.');
+  const lease = requestResources.acquire(url, options);
+  const result = onError ? lease.promise.catch(onError) : lease.promise;
+  return Object.assign(result, { lease });
+}
+
+export async function loadResource(...args) {
+  const result = startResource(...args);
+  try {
+    return await result;
+  } finally {
+    result.lease.release();
   }
-  return response.json();
 }
 
 export function mapResourceKey(sector, selection = {}) {
-  return [sector, selection.indicator?.uid, selection.region?.uid, selection.scenario?.uid, selection.year?.uid].map((value) => value ?? '').join('|');
+  return resourceUrl('map', sector, selection);
 }

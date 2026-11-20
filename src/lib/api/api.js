@@ -1,148 +1,90 @@
-import { STATUS_FAILED, STATUS_LOADING, STATUS_SUCCESS } from '$src/config';
 import qs from 'qs';
-import { forEach, reduce } from 'lodash-es';
 import { browser } from '$app/environment';
+import { END_AVOIDING_IMPACTS, END_AVOIDING_REFERENCE, END_GEO_SHAPE, END_IMPACT_TIME, END_UN_AVOIDABLE_RISK, STATUS_FAILED, STATUS_LOADING, STATUS_SUCCESS } from '$src/config';
+import { HEAVY_TIMEOUT_MS, requestResources } from '$lib/requests/index.js';
 
-/*
- * These functions are intended to dynamically load data from the client upon user interaction
- * They will not do anything when called on the server, other than returning an emty "loading" response
- */
+const owners = new WeakMap();
+const publicEndpoints = new Set([END_AVOIDING_IMPACTS, END_AVOIDING_REFERENCE, END_GEO_SHAPE, END_IMPACT_TIME, END_UN_AVOIDABLE_RISK]);
+const loading = { status: STATUS_LOADING, data: null };
+const success = (data) => ({ status: STATUS_SUCCESS, data });
 
-const cache = {}; // Initializes an object to serve as a cache for storing fetch responses.
-
-function cachedRequest(url) {
-  const cached = cache[url];
-  if (cached && cached.status !== STATUS_FAILED) return cached;
-  const pending = {
-    status: STATUS_LOADING,
-    data: null,
-    loading: loadFromAPI(url).then((result) => {
-      cache[url] = result;
-      return result;
-    }),
-  };
-  cache[url] = pending;
-  return pending;
-}
-
-function buildStatusError(message, isExpected) {
-  return {
-    status: STATUS_FAILED,
-    message,
-    isExpected,
-  };
-}
-
-function buildStatusSuccess(data) {
-  return {
-    status: STATUS_SUCCESS,
-    data,
-  };
-}
-
-/*
- * Loads data from Climate Analytics API
- */
-export const loadFromAPI = async function (url) {
-  // If this is executed on the server, we simply pretend to be loading so the rest
-  // of the loading process doesn't need to be altered
-  if (!browser) return new Promise((res) => res);
-  try {
-    const res = await fetch(url); // ${import.meta.env.VITE_DATA_API_URL}
-    const data = await res.json();
-
-    // Error handling based on the response status or the presence of a message in the data.
-    if (res.status != 200 || data.message) {
-      console.warn(`Request failed with status code: ${res.status}`);
-      // Returning an object with detailed information about the failure
-      return buildStatusError(data.message ?? `Request failed with status code: ${res.status}`, data.isExpected ?? false);
-    }
-    // If successful, returning an object with status and the parsed JSON data.
-    return buildStatusSuccess(data);
-  } catch (e) {
-    // Catching and handling any errors that occur during the fetch request.
-    return buildStatusError(e.toString(), false);
-  }
-};
-
-/*
- * This function accepts an array or dictionary of config objects.
- * For each config, data is either retreived from cache or loaded from the api
- * Data is then stored on a svelte store.
- */
-const fetchMultiple = (store, configs) => {
-  const isObject = configs.constructor === Object;
-  // Create object/array of url string used to retrieve data either from cache or api
-  const urls = reduce(
-    configs,
-    (acc, { endpoint, params, base, arrayFormat }, keyOrIndex) => {
-      const query = qs.stringify(params, {
-        encodeValuesOnly: true,
-        arrayFormat: arrayFormat ?? 'indices',
-      });
-      const url = `${base ?? import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`;
-      acc[keyOrIndex] = url;
-      return acc;
-    },
-    isObject ? {} : []
-  );
-
-  // console.log(urls);
-
-  // Create array or object containing either cached data or empty objects
-  const initialData = reduce(
-    configs,
-    (acc, config, keyOrIndex) => {
-      const url = urls[keyOrIndex];
-      acc[keyOrIndex] = cachedRequest(url);
-      return acc;
-    },
-    isObject ? {} : []
-  );
-
-  // Set initial data
-  store.set(initialData);
-
-  // Go through initial data and check if there is a pending promise
-  // If promise is present, update data on resolve
-  forEach(initialData, (d, keyOrIndex) => {
-    if (typeof d.loading?.then !== 'function') return;
-    d.loading.then((res) => {
-      store.update((old) => {
-        // Simple check to make sure no newer data has been requested in the meantime
-        if (old[keyOrIndex] !== d) return old;
-        const next = isObject ? { ...old } : [...old];
-        next[keyOrIndex] = res;
-        return next;
-      });
-    });
-  });
-};
-
-const fetchSingle = (store, { endpoint, params, base, arrayFormat }) => {
-  if (typeof store === 'undefined') {
-    console.warn('Store to save fetch result is undefined');
-    return false;
-  }
-  // console.log(`Fetching single ${endpoint}`, get(store), { id });
-  // The Hono adapter reads repeated array params (`scenarios=a&scenarios=b`);
-  // the legacy API uses qs's default indices format. Callers pick via arrayFormat.
+function requestUrl({ endpoint, params, base, arrayFormat }) {
   const query = qs.stringify(params, {
     encodeValuesOnly: true,
     arrayFormat: arrayFormat ?? 'indices',
+    sort: (left, right) => left.localeCompare(right),
   });
-  // `base` lets a caller target the new Hono adapter (VITE_API_URL); defaults to
-  // the legacy Climate Analytics API for endpoints not yet migrated.
-  const url = `${base ?? import.meta.env.VITE_DATA_API_URL}/${endpoint}/?${query}`;
-  const current = cachedRequest(url);
-  store.set(current);
-  if (!current.loading) return;
-  current.loading.then((result) => {
-    store.update((value) => (value === current ? result : value));
-  });
-};
+  return `${(base ?? import.meta.env.VITE_DATA_API_URL ?? '').replace(/\/$/, '')}/${endpoint}/?${query}`;
+}
 
-export const fetchData = (store, config = []) => {
-  if (config.endpoint && config.params) fetchSingle(store, config);
-  else fetchMultiple(store, config);
-};
+function validate(data) {
+  if (data?.message) throw Object.assign(new Error(data.message), { isExpected: data.isExpected });
+}
+
+export function fetchData(store, config, { retry = false } = {}) {
+  const previous = owners.get(store);
+  if (!config) {
+    previous?.stop();
+    return;
+  }
+
+  const single = Boolean(config.endpoint && config.params);
+  const entries = single ? [['0', config]] : Object.entries(config);
+  const urls = entries.map(([key, entry]) => [key, requestUrl(entry), entry.endpoint]);
+  const slots = new Map();
+
+  function render() {
+    if (owners.get(store) !== owner) return;
+    const values = urls.map(([key, url]) => [key, slots.get(url)?.value ?? loading]);
+    if (single) store.set(values[0][1]);
+    else if (Array.isArray(config)) store.set(values.map(([, value]) => value));
+    else store.set(Object.fromEntries(values));
+  }
+
+  const owner = {
+    slots,
+    render,
+    stop() {
+      if (owners.get(store) !== owner) return;
+      owners.delete(store);
+      for (const slot of slots.values()) slot.release();
+    },
+  };
+  if (browser) {
+    for (const [, url, endpoint] of urls) {
+      if (slots.has(url)) continue;
+      const existing = previous?.slots.get(url);
+      if (!retry && existing?.value.status === STATUS_LOADING) {
+        slots.set(url, existing);
+        continue;
+      }
+      const lease = requestResources.acquire(url, { timeoutMs: HEAVY_TIMEOUT_MS, retry, validate, persist: publicEndpoints.has(endpoint) });
+      const slot = { value: loading, release: lease.release };
+      if (lease.success !== undefined) slot.value = success(lease.success);
+      slots.set(url, slot);
+      function publish(value) {
+        if (value.status === STATUS_SUCCESS && slot.value.status === STATUS_SUCCESS && slot.value.data === value.data) return;
+        slot.value = value;
+        const current = owners.get(store);
+        if (current?.slots.get(url) === slot) current.render();
+      }
+      const show = (data) => publish(success(data));
+      lease.subscribe(show);
+      lease.promise.then(show, (error) => {
+        const body = error.data;
+        publish({
+          status: STATUS_FAILED,
+          message: body?.message ?? error.message,
+          isExpected: (body?.isExpected ?? error.isExpected) === true,
+        });
+      });
+    }
+  }
+
+  owners.set(store, owner);
+  for (const [url, slot] of previous?.slots ?? []) {
+    if (slots.get(url) !== slot) slot.release();
+  }
+  render();
+  return owner.stop;
+}

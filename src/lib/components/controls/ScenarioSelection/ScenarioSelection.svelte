@@ -1,4 +1,6 @@
 <script>
+  import { onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
   import {
     AVAILABLE_SCENARIOS,
     CURRENT_SCENARIOS,
@@ -99,14 +101,20 @@
   $: renderedScenario = requestView.status === 'ready' ? options.find((s) => s.isHighlighted && s.endYear === currentTimeframe) : undefined;
   let loadedScenarioKey;
   $: renderedScenarioKey = scenarioDetailLoadKey({ scenarioId: renderedScenario?.uid, indicator: $RUNTIME_CATALOG_SELECTION.indicator });
-  $: loadRenderedScenario(renderedScenarioKey, renderedScenario?.uid);
+  $: if (browser) loadRenderedScenario(renderedScenarioKey, renderedScenario?.uid);
+  onDestroy(() => {
+    if (browser && loadedScenarioKey) catalogFlow.catalog.clearScenarioDetails();
+  });
   $: detailIsLoading = loadedScenarioKey === renderedScenarioKey && $SCENARIO_DETAILS_REQUEST.status === 'loading';
   $: detailHasFailed = loadedScenarioKey === renderedScenarioKey && $SCENARIO_DETAILS_REQUEST.status === 'failure';
 
   function loadRenderedScenario(key, id) {
-    if (!key) return;
     if (key === loadedScenarioKey) return;
     loadedScenarioKey = key;
+    if (!key) {
+      catalogFlow.catalog.clearScenarioDetails();
+      return;
+    }
     void catalogFlow.loadScenarioDetails(id);
   }
 

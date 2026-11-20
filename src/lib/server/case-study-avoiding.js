@@ -33,7 +33,7 @@ function uniqueScenario(legacyId, scenarios, instance) {
   };
 }
 
-export async function loadCaseStudyAvoidingTables({ curation, dataApiUrl, fetch, geographyId, indicatorIndex, scenarios, section }) {
+export async function loadCaseStudyAvoidingTables({ curation, dataApiUrl, fetch, geographyId, indicatorIndex, scenarios, section, signal }) {
   const indicators = (section.Indicators ?? []).map(({ Uid, Instance }) => uniqueIndicator(Uid, Instance, indicatorIndex)).filter(Boolean);
   const studyLocations = (section.StudyLocations ?? [])
     .map(({ Uid }) => curation.studyLocations.find((studyLocation) => studyLocation.uid === Uid))
@@ -47,7 +47,7 @@ export async function loadCaseStudyAvoidingTables({ curation, dataApiUrl, fetch,
         [URL_PATH_GEOGRAPHY]: geographyId,
         [URL_PATH_INDICATOR]: toLegacyAvoidIndicatorUid(indicator.uid),
       };
-      const data = await loadFromAPI(requestUrl(dataApiUrl, END_AVOIDING_REFERENCE, params), fetch);
+      const data = await loadFromAPI(requestUrl(dataApiUrl, END_AVOIDING_REFERENCE, params), { fetch, signal });
       return { data, indicator };
     })
   );
@@ -66,7 +66,7 @@ export async function loadCaseStudyAvoidingTables({ curation, dataApiUrl, fetch,
           [URL_PATH_CERTAINTY_LEVEL]: viewLikelihood.uid,
         };
         impactRequests.push(
-          loadFromAPI(requestUrl(dataApiUrl, END_AVOIDING_IMPACTS, params), fetch).then((data) => ({
+          loadFromAPI(requestUrl(dataApiUrl, END_AVOIDING_IMPACTS, params), { fetch, signal }).then((data) => ({
             data,
             impactLevel,
             indicator,

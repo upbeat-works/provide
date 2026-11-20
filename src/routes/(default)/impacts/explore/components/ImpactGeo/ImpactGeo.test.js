@@ -31,6 +31,7 @@ vi.mock('@mapbox/mapbox-gl-sync-move', () => ({ default: vi.fn() }));
 
 const worker = { posts: 0 };
 let requests = [];
+let caseNumber = 0;
 let mismatchComparison = false;
 let rasterUnit;
 let failMapRequests = false;
@@ -66,7 +67,8 @@ vi.mock('$lib/workers/impact-geo.js?worker', () => ({
 beforeEach(() => {
   unavailableMapStatus = undefined;
   vi.stubEnv('VITE_DATA_API_URL', 'https://data.example/api');
-  vi.stubEnv('VITE_API_URL', 'https://app.example/api');
+  caseNumber += 1;
+  vi.stubEnv('VITE_API_URL', `https://app-${caseNumber}.example/api`);
   vi.stubGlobal('fetch', vi.fn(async (input) => {
     const url = new URL(String(input));
     requests.push(url);
@@ -179,7 +181,7 @@ test('downloads the selected map in NetCDF or GeoTIFF at its native resolution',
   await fireEvent.click(screen.getByRole('button', { name: 'Download data' }));
   const dataLink = await screen.findByRole('link', { name: 'Download data' });
   const dataUrl = new URL(dataLink.href);
-  expect(dataUrl.origin + dataUrl.pathname).toBe('https://app.example/api/impact-geo/');
+  expect(dataUrl.origin + dataUrl.pathname).toBe(`${import.meta.env.VITE_API_URL}/impact-geo/`);
   expect(dataUrl.searchParams.get('scenario')).toBe('Low Demand');
   expect(dataUrl.searchParams.get('year')).toBe('2050');
   expect(dataUrl.searchParams.get('instance')).toBe('provide-internal');

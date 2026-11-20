@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import ScoreboardMap from './ScoreboardMap.svelte';
+import { createRequestResources } from '$lib/requests/index.js';
 import { COUNTRY_SOURCE } from './choropleth.js';
 import { loadRegionalBoundaries } from '../../../../../../api/scoreboard/boundaries.ts';
 
+let resources;
+vi.mock('$lib/requests/index.js', async (importOriginal) => ({
+  ...await importOriginal(),
+  requestResources: { acquire: (...args) => resources.acquire(...args) },
+}));
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/components/maps/MapboxMap/MapProvider.svelte', () => import('./ScoreboardMap.test.fixture.svelte'));
 vi.mock('$lib/components/maps/MapboxMap/ZoomControl.svelte', () => import('./Empty.test.fixture.svelte'));
@@ -13,6 +19,8 @@ vi.mock('./NutsChoropleth.svelte', () => import('./CountryMapLayer.test.fixture.
 vi.mock('./RegionalChoropleth.svelte', () => import('./RegionalMapLayer.test.fixture.svelte'));
 vi.mock('./RasterGrid.svelte', () => import('./RasterGrid.test.fixture.svelte'));
 vi.mock('../../../../../../api/scoreboard/boundaries.ts', () => ({ loadRegionalBoundaries: vi.fn() }));
+
+beforeEach(() => { resources = createRequestResources(); });
 
 afterEach(() => {
   cleanup();
@@ -69,15 +77,18 @@ test('shows loading and lets the user retry failed country geometry', async () =
 
 test('fetches the bundled NUTS source once and frames the selection from it', async () => {
   const fetcher = stubFetch(async () => Response.json(shapes));
-  const { rerender } = render(ScoreboardMap, { fitCountries: ['ESP'] });
+  const { rerender, unmount } = render(ScoreboardMap, { fitCountries: ['ESP'] });
   await waitFor(() => expect(screen.getByText('Country map')).toBeTruthy());
   expect(fetcher).toHaveBeenCalledTimes(1);
-  expect(fetcher).toHaveBeenCalledWith(COUNTRY_SOURCE);
+  expect(fetcher).toHaveBeenCalledWith(COUNTRY_SOURCE, { signal: expect.any(AbortSignal) });
   expect(JSON.parse(screen.getByText('Country map').dataset.bounds)).toEqual([-9, 36, 4, 44]);
 
   await rerender({ fitCountries: ['ESP', 'FIN'] });
   expect(JSON.parse(screen.getByText('Country map').dataset.bounds)).toEqual([-9, 36, 31, 70]);
-  // Reframing reads the geometry already in hand rather than fetching again.
+  unmount();
+
+  render(ScoreboardMap, { fitCountries: ['FIN'] });
+  await waitFor(() => expect(JSON.parse(screen.getByText('Country map').dataset.bounds)).toEqual([19, 59, 31, 70]));
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
 

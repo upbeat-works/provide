@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { encodePreview, decodePreview } from '../preview.js';
   import { createScoreboardOptions, resolveSelection } from '../selection.js';
-  import { loadResource } from './resource.js';
+  import { loadResource, startResource } from './resource.js';
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
   import JsonEditor from './JsonEditor.svelte';
   import { chartsForRegion } from '../../../../../../api/scoreboard/choices.js';
@@ -21,9 +21,19 @@
   let request = 0;
   let seen;
   let appliedHash;
+  let active;
+
+  function begin() {
+    active?.abort();
+    active = new AbortController();
+    return { token: ++request, signal: active.signal };
+  }
 
   onMount(() => { mounted = true; });
-  onDestroy(() => { request += 1; });
+  onDestroy(() => {
+    request += 1;
+    active?.abort();
+  });
   $: if (!preview) shown = data;
   $: if (mounted) sync($page.url.hash, $page.url.search);
 
@@ -35,7 +45,7 @@
     const key = `${hash}${search}`;
     if (key === seen) return;
     seen = key;
-    const token = ++request;
+    const { token, signal } = begin();
     if (hash === '#preview') {
       busy = false;
       editor = true;
@@ -55,7 +65,8 @@
     error = '';
     try {
       const draft = await decodePreview(hash.slice('#preview='.length));
-      const next = await buildPreview(draft, search);
+      if (signal.aborted) return;
+      const next = await buildPreview(draft, search, signal);
       if (token !== request) return;
       preview = draft;
       shown = next;
@@ -68,28 +79,28 @@
     }
   }
 
-  async function buildPreview(draft, search) {
+  async function buildPreview(draft, search, signal) {
     const requested = Object.fromEntries(new URLSearchParams(search));
-    const scoreboard = await loadResource('definition', 'preview', { indicator: { uid: requested.indicator } }, fetch, { preview: draft });
+    const scoreboard = await loadResource('definition', 'preview', { indicator: { uid: requested.indicator } }, fetch, { preview: draft, signal });
     const options = createScoreboardOptions(scoreboard, data.scenarioLabels);
     const selection = resolveSelection(scoreboard, options, requested);
-    const load = (resource) => loadResource(resource, 'preview', selection, fetch, { preview: draft });
+    const load = (resource, onError) => startResource(resource, 'preview', selection, fetch, { preview: draft, signal, onError });
     let map;
-    if (scoreboard.indicator) map = load('map').catch(() => ({ status: 'error', values: [], error: 'Map data could not be loaded.' }));
+    if (scoreboard.indicator) map = load('map', () => ({ status: 'error', values: [], error: 'Map data could not be loaded.' }));
     const charts = chartsForRegion(scoreboard.charts, selection.region?.uid).map((definition) => ({
       definition,
-      result: load(`charts/${encodeURIComponent(definition.chartId)}`).catch(() => ({ definition, status: 'error', data: [], error: 'Chart data could not be loaded.' })),
+      result: load(`charts/${encodeURIComponent(definition.chartId)}`, () => ({ definition, status: 'error', data: [], error: 'Chart data could not be loaded.' })),
     }));
     return { ...data, ...options, scoreboard, selection, map, charts };
   }
 
   async function apply() {
-    const token = ++request;
+    const { token, signal } = begin();
     busy = true;
     error = '';
     try {
       const draft = JSON.parse(text);
-      await loadResource('definition', 'preview', {}, fetch, { preview: draft });
+      await loadResource('definition', 'preview', {}, fetch, { preview: draft, signal });
       const encoded = await encodePreview(draft);
       if (token !== request) return;
       const url = new URL($page.url);

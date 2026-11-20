@@ -1,4 +1,5 @@
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
+// @vitest-environment node
+import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { delay, http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -37,6 +38,50 @@ function memoryStorage(entries = []) {
 }
 
 describe('runtime catalog selection', () => {
+  test('aborts unavailable indicator details as soon as the selection changes', async () => {
+    let signal;
+    const catalog = createCatalog({
+      fetch: (_url, options) => {
+        signal = options?.signal;
+        return new Promise(() => {});
+      },
+    });
+    catalog.selectIndicator(indicator('Heat'));
+    void catalog.loadIndicatorDetails();
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    catalog.selectIndicator(indicator('Flood'));
+    expect(signal?.aborted).toBe(true);
+    expect(get(catalog.indicatorDetails).status).toBe('idle');
+  });
+
+  test('joining a cold index load keeps the initial geography request in flight', async () => {
+    let finishIndex;
+    const index = new Promise((resolve) => { finishIndex = resolve; });
+    const scoped = [];
+    const heat = indicator('Heat');
+    const catalog = createCatalog({
+      fetch: (input, { signal }) => {
+        const url = new URL(input);
+        if (!url.searchParams.has('region')) return index;
+        return new Promise((finish) => scoped.push({ signal, finish }));
+      },
+    });
+    await catalog.selectGeography('Austria');
+    const loadingScope = catalog.loadFilteredIndicators({ region: 'Austria' });
+    await vi.waitFor(() => expect(scoped).toHaveLength(1));
+
+    const loadingIndex = catalog.loadIndicatorIndex();
+    finishIndex(Response.json({ indicators: [heat], failedInstances: [] }));
+    await vi.waitFor(() => expect(get(catalog.indicatorIndex).status).toBe('success'));
+    expect(scoped[0].signal.aborted).toBe(false);
+    expect(scoped).toHaveLength(1);
+
+    scoped[0].finish(Response.json({ indicators: [heat], failedInstances: [] }));
+    await Promise.all([loadingScope, loadingIndex]);
+    expect(get(catalog.filteredIndicators)).toMatchObject({ status: 'success', data: { indicators: [heat] } });
+    expect(scoped).toHaveLength(1);
+  });
+
   test.each(['active', 'cleared'])('a delayed %s geography request cannot undo a full index refresh or refill its cache', async (scope) => {
     const oldIndicators = [indicator('Heat'), indicator('Flood')];
     const freshIndicators = [{ ...indicator('Heat'), unit: 'hours' }];
@@ -58,10 +103,11 @@ describe('runtime catalog selection', () => {
     await catalog.loadIndicatorIndex();
     catalog.selectGeography('Austria');
     const pending = catalog.loadFilteredIndicators({ region: 'Austria' });
+    await vi.waitFor(() => expect(regionRequests).toBe(1));
     if (scope === 'cleared') catalog.clearFilteredIndicators();
 
     index = freshIndicators;
-    await catalog.loadIndicatorIndex();
+    await catalog.loadIndicatorIndex({ refresh: true });
     finishOldRequest(Response.json({ indicators: oldIndicators, failedInstances: [] }));
     await pending;
 
@@ -94,15 +140,43 @@ describe('runtime catalog selection', () => {
       indicators: [updatedHeat],
       failedInstances: [{ instance: 'sparccle-internal', code: 'unavailable' }],
     };
-    await catalog.loadIndicatorIndex();
+    await catalog.loadIndicatorIndex({ refresh: true });
 
     expect(get(catalog.indicators)).toHaveLength(2);
     expect(get(catalog.indicators)).toEqual(expect.arrayContaining([updatedHeat, sparccleHeat]));
 
     response = { indicators: [updatedHeat], failedInstances: [] };
-    await catalog.loadIndicatorIndex();
+    await catalog.loadIndicatorIndex({ refresh: true });
 
     expect(get(catalog.indicators)).toEqual([updatedHeat]);
+  });
+
+  test('reconciles an active filtered list when the catalog refreshes in the background', async () => {
+    const events = new EventTarget();
+    vi.stubGlobal('window', events);
+    let now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const heat = indicator('Heat');
+    const flood = indicator('Flood');
+    let indicators = [heat];
+    const catalog = createCatalog({
+      fetch: async () => Response.json({ indicators, failedInstances: [] }),
+    });
+    try {
+      await catalog.loadIndicatorIndex();
+      catalog.selectGeography('Austria');
+      await catalog.loadFilteredIndicators({ region: 'Austria' });
+      indicators = [flood];
+      now += 3600_001;
+      events.dispatchEvent(new Event('focus'));
+      expect(get(catalog.filteredIndicators)).toMatchObject({ status: 'success', data: { indicators: [heat] } });
+      await vi.waitFor(() => expect(get(catalog.filteredIndicators)).toMatchObject({ status: 'success', data: { indicators: [flood] } }));
+      expect(get(catalog.indicators)).toEqual([flood]);
+    } finally {
+      catalog.releaseRequests();
+      clock.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 
   test('loads the two geography index resources into one focused state', async () => {
@@ -498,7 +572,7 @@ describe('runtime catalog selection', () => {
       { id: 'admin0', label: 'Countries', isSelectable: true, order: 1 },
     ];
 
-    await catalog.loadGeographyIndex();
+    await catalog.loadGeographyIndex({ refresh: true });
 
     expect(get(catalog.selection).geography).toBe('ZWE');
   });
@@ -583,6 +657,113 @@ describe('runtime catalog selection', () => {
       scenarios: ['Low Demand'],
     });
   });
+
+  test.each(['index', 'scoped index', 'geography index', 'geography availability', 'indicator details', 'scenario availability'])(
+    'preserves linked selections while a stale %s refreshes',
+    async (resource) => {
+      const link = {
+        indicator: 'Flood',
+        instance: 'provide-internal',
+        geography: 'DEU',
+        parameters: { time: 'Seasonal' },
+        scenarios: ['Low Demand'],
+      };
+      const fresh = {
+        index: { indicators: [indicator('Heat'), indicator('Flood')], failedInstances: [] },
+        'scoped index': { indicators: [indicator('Heat'), indicator('Flood')], failedInstances: [] },
+        'geography index': [
+          { id: 'ESP', label: 'Spain', geographyType: 'admin0' },
+          { id: 'DEU', label: 'Germany', geographyType: 'admin0' },
+        ],
+        'geography availability': { geographyIds: ['ESP', 'DEU'] },
+        'indicator details': {
+          ...indicator('Flood'),
+          parameters: [{ id: 'time', options: [{ id: 'Annual' }, { id: 'Seasonal' }] }],
+        },
+        'scenario availability': { scenarios: [{ id: 'Low Demand' }] },
+      };
+      const stale = {
+        index: { indicators: [indicator('Heat')], failedInstances: [] },
+        'scoped index': { indicators: [indicator('Heat')], failedInstances: [] },
+        'geography index': fresh['geography index'].slice(0, 1),
+        'geography availability': { geographyIds: ['ESP'] },
+        'indicator details': {
+          ...indicator('Flood'),
+          parameters: [{ id: 'time', options: [{ id: 'Annual' }] }],
+        },
+        'scenario availability': { scenarios: [{ id: 'Other' }] },
+      };
+      let finish;
+      const refresh = new Promise((resolve) => { finish = resolve; });
+      let serveRefresh = false;
+      const catalog = createCatalog({
+        fetch: async (input) => {
+          if (new URL(input).pathname.endsWith('/geographies/types')) {
+            if (serveRefresh) await refresh;
+            return Response.json([{ id: 'admin0', label: 'Countries', isSelectable: true }]);
+          }
+          if (serveRefresh) {
+            await refresh;
+            return Response.json(fresh[resource]);
+          }
+          return Response.json(stale[resource]);
+        },
+      });
+      const load = {
+        index: catalog.loadIndicatorIndex,
+        'scoped index': () => catalog.loadFilteredIndicators({ region: 'DEU' }),
+        'geography index': catalog.loadGeographyIndex,
+        'geography availability': catalog.loadGeographyAvailability,
+        'indicator details': catalog.loadIndicatorDetails,
+        'scenario availability': catalog.loadPercentileAvailability,
+      }[resource];
+      const view = {
+        index: catalog.indicatorIndex,
+        'scoped index': catalog.filteredIndicators,
+        'geography index': catalog.geographyIndex,
+        'geography availability': catalog.geographyAvailability,
+        'indicator details': catalog.indicatorDetails,
+        'scenario availability': catalog.percentileAvailability,
+      }[resource];
+      const now = vi.spyOn(Date, 'now');
+      const stamp = now();
+      now.mockReturnValue(stamp);
+      try {
+        catalog.setPendingSelection(link);
+        await load();
+        serveRefresh = true;
+        now.mockReturnValue(stamp + 60 * 60 * 1000);
+        catalog.setPendingSelection(link);
+        await load();
+
+        expect(get(view).status).toBe('success');
+        const expectedSelection = {
+          indicator: { id: 'Flood', instance: 'provide-internal' },
+          geography: 'DEU',
+          parameters: { time: 'Seasonal' },
+          scenarios: ['Low Demand'],
+        };
+        expect(get(catalog.selection)).toEqual(expectedSelection);
+        expect(get(catalog.pendingSelection)).toEqual(link);
+
+        finish();
+        const freshData = resource === 'geography index' ? { geographies: fresh[resource] } : fresh[resource];
+        await vi.waitFor(() => expect(get(view).data).toMatchObject(freshData));
+        expect(get(catalog.selection)).toEqual(expectedSelection);
+        const confirmedField = {
+          index: 'indicator',
+          'geography availability': 'geography',
+          'indicator details': 'parameters',
+          'scenario availability': 'scenarios',
+        }[resource];
+        if (confirmedField) expect(get(catalog.pendingSelection)[confirmedField]).toBeUndefined();
+      } finally {
+        finish();
+        catalog.releaseRequests();
+        now.mockRestore();
+      }
+    },
+  );
 
   test('does not let slow URL validation replace a newer user choice', async () => {
     server.use(
@@ -1134,30 +1315,25 @@ describe('runtime catalog selection', () => {
     expect(get(catalog.scenarioDetails)).toMatchObject({ status: 'success', data: { description: 'sparccle-internal: Low Demand' } });
   });
 
-  test('shares a pending scenario request across hovers and keeps the latest hover visible', async () => {
+  test('shares the same pending hover and cancels it when another scenario is selected', async () => {
     const requests = [];
-    const finish = {};
     const catalog = createCatalog({
-      fetch: (input) => {
+      fetch: (input, { signal }) => {
         const id = decodeURIComponent(new URL(input).pathname.split('/').at(-1));
-        requests.push(id);
-        return new Promise((resolve) => { finish[id] = resolve; });
+        return new Promise((resolve) => requests.push({ id, signal, resolve }));
       },
     });
     catalog.selectIndicator(indicator('Heat'));
     const first = catalog.loadScenarioDetails('Low Demand');
+    const repeated = catalog.loadScenarioDetails('Low Demand');
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+
     const second = catalog.loadScenarioDetails('High Renewables');
-    const revisit = catalog.loadScenarioDetails('Low Demand');
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[0].signal.aborted).toBe(true);
+    requests[1].resolve(Response.json({ id: 'High Renewables', instance: 'provide-internal' }));
+    await Promise.all([first, repeated, second]);
 
-    expect(requests).toEqual(['Low Demand', 'High Renewables']);
-    finish['Low Demand'](Response.json({ id: 'Low Demand', instance: 'provide-internal' }));
-    await Promise.all([first, revisit]);
-    finish['High Renewables'](Response.json({ id: 'High Renewables', instance: 'provide-internal' }));
-    await second;
-
-    expect(get(catalog.scenarioDetails)).toMatchObject({ status: 'success', data: { id: 'Low Demand' } });
-    await catalog.loadScenarioDetails('High Renewables');
-    expect(requests).toHaveLength(2);
     expect(get(catalog.scenarioDetails)).toMatchObject({ status: 'success', data: { id: 'High Renewables' } });
   });
 

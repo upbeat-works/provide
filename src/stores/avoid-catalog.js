@@ -97,19 +97,11 @@ export const AVOID_SECTOR_INDICATORS = derived([AVOID_AVAILABLE_INDICATORS, AVOI
 export const AVOID_ALL_PARAMETERS = derived([AVOID_INDICATOR, AVOID_INDICATOR_PARAMETERS_ALL], ([$ind, $params]) => avoidAllIndicatorParameters($ind, $params));
 export const AVOID_PARAMETERS = derived(AVOID_ALL_PARAMETERS, ($all) => $all.filter((p) => p.options.length > 1));
 
-// Keep AVOID_PARAMS valid (all params defaulted) whenever the indicator changes.
-export function syncAvoidParams() {
-  const params = getStore(AVOID_ALL_PARAMETERS);
-  AVOID_PARAMS.update((prev) => reconcileAvoidParams(params, prev));
-}
-
-// Default/reconcile params as soon as the indicator resolves — including the
-// initial (restored-from-localStorage) selection — so the first chart request
-// carries its params instead of firing once with an empty set. Also keep the
-// active sector pill valid when the available sectors change (e.g. switching to
-// a city whose indicators no longer include the selected sector).
 if (browser) {
-  AVOID_INDICATOR.subscribe(() => syncAvoidParams());
+  // An indicator notification can arrive before its derived options have updated.
+  AVOID_ALL_PARAMETERS.subscribe((options) => {
+    AVOID_PARAMS.update((previous) => reconcileAvoidParams(options, previous));
+  });
   AVOID_SECTORS.subscribe(($sectors) => {
     const reconciled = reconcileSector(getStore(AVOID_CURRENT_SECTOR), $sectors);
     if (reconciled !== getStore(AVOID_CURRENT_SECTOR)) AVOID_CURRENT_SECTOR.set(reconciled);

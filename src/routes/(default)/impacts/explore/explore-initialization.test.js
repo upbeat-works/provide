@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { writable } from 'svelte/store';
+import { createRequestResources } from '$lib/requests/index.js';
 import { initializeExplore } from './explore-initialization.js';
 
 function setup({ pending, instances = ['source-a'], response } = {}) {
@@ -21,7 +22,7 @@ function setup({ pending, instances = ['source-a'], response } = {}) {
   const requestFetch = vi.fn(async () =>
     Response.json(response ?? { indicator: { id: 'Heat', instance: 'source-a' }, geography: 'Algeria', parameters: { time: 'Annual' }, scenarios: pending.scenarios })
   );
-  return { catalog, flow, requestFetch };
+  return { catalog, flow, requestFetch, resources: createRequestResources() };
 }
 
 describe('Explore initialization', () => {
@@ -30,9 +31,39 @@ describe('Explore initialization', () => {
     const context = setup({ pending });
 
     expect(await initializeExplore({ pending, ...context })).toEqual({ status: 'ready' });
-    expect(context.requestFetch).toHaveBeenCalledWith('/api/explore-defaults?instance=source-a&scenario=Low+Demand');
+    expect(context.requestFetch).toHaveBeenCalledWith('/api/explore-defaults?instance=source-a&scenario=Low+Demand', { signal: expect.any(AbortSignal) });
     expect(context.flow.restoreSelection).toHaveBeenLastCalledWith({ indicator: 'Heat', instance: 'source-a', geography: 'Algeria', parameters: { time: 'Annual' }, scenarios: ['Low Demand'] });
     expect(context.flow.chooseIndicator).toHaveBeenCalledWith({ id: 'Heat', instance: 'source-a' });
+  });
+
+  test('keeps refreshing stale defaults after choosing the cached selection', async () => {
+    const pending = { instance: 'source-a', parameters: {}, scenarios: ['Low Demand'] };
+    const context = setup({ pending });
+    const url = '/api/explore-defaults?instance=source-a&scenario=Low+Demand';
+    let now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const controller = new AbortController();
+    try {
+      expect(await initializeExplore({ pending, ...context })).toEqual({ status: 'ready' });
+      now += 3600_001;
+      const next = { ...context.resources.getCached(url), geography: 'Portugal' };
+      let finishRefresh;
+      context.requestFetch.mockImplementationOnce((_path, { signal }) => new Promise((resolve) => {
+        signal.addEventListener('abort', () => resolve(Response.json({}, { status: 503 })), { once: true });
+        finishRefresh = () => resolve(Response.json(next));
+      }));
+
+      expect(await initializeExplore({ pending, ...context, signal: controller.signal })).toEqual({ status: 'ready' });
+      expect(context.flow.restoreSelection).toHaveBeenLastCalledWith(expect.objectContaining({ geography: 'Algeria' }));
+      await vi.waitFor(() => expect(finishRefresh).toBeTypeOf('function'));
+      expect(context.requestFetch.mock.calls.at(-1)[1].signal.aborted).toBe(false);
+      finishRefresh();
+      await vi.waitFor(() => expect(context.resources.getCached(url)).toEqual(next));
+      expect(context.flow.restoreSelection).toHaveBeenLastCalledWith(expect.objectContaining({ geography: 'Algeria' }));
+    } finally {
+      controller.abort();
+      clock.mockRestore();
+    }
   });
 
   test('does not request defaults for an explicit selection', async () => {

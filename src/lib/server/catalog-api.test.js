@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -65,6 +66,21 @@ const scenarioDetails = {
 };
 
 describe('catalog technical clients', () => {
+  test('stops waiting for technical details when the response body exceeds 30 seconds', async () => {
+    const { loadIndicatorTechnicalDetails } = await import('./catalog-api.js');
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi.fn(async () => ({ ok: true, json: () => new Promise(() => {}) }));
+      const result = loadIndicatorTechnicalDetails(fetcher, { id: 'Heat', instance: 'provide' });
+      const failure = result.catch((error) => error);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(await failure).toMatchObject({ status: 504 });
+      expect(fetcher.mock.calls[0][1].signal.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test('loads indicator details from the internal API with encoded source identity', async () => {
     server.use(
       http.get('https://catalog-api.example/api/indicator-details/:id', ({ params, request }) => {

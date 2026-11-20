@@ -40,6 +40,26 @@ describe('case-study avoiding tables', () => {
     expect(tables[0][0].indicator).toMatchObject({ uid: 'Heatwave Days per Year', instance: 'provide-internal' });
   });
 
+  test('stops after the reference request when the page is cancelled', async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn(async (_url, { signal }) => {
+      controller.abort();
+      return Response.json({ impact_levels: { range_of_interest: [1, 2] } });
+    });
+
+    await expect(loadCaseStudyAvoidingTables({
+      curation,
+      dataApiUrl: 'https://legacy.example/api',
+      fetch,
+      geographyId: 'lisbon',
+      indicatorIndex,
+      scenarios: [],
+      section: { Indicators: [{ Uid: 'Heatwave Days per Year', Instance: 'provide-internal' }], StudyLocations: [{ Uid: 'city-centre' }] },
+      signal: controller.signal,
+    })).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   test('does not fall back to an equal ID from another instance', async () => {
     const fetch = vi.fn();
     const tables = await loadCaseStudyAvoidingTables({

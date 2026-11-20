@@ -30,7 +30,7 @@ afterEach(() => {
 
 describe('GET /api/impact-geo errors', () => {
   test.each([
-    { code: 'GEOSERVER_TIMEOUT', status: 504, timeoutMs: 15000, upstreamStatus: undefined, message: 'GeoServer did not respond within 15 seconds. Please try again.' },
+    { code: 'GEOSERVER_TIMEOUT', status: 504, timeoutMs: 30000, upstreamStatus: undefined, message: 'GeoServer did not respond within 30 seconds. Please try again.' },
     { code: 'GEOSERVER_HTTP_ERROR', status: 502, timeoutMs: undefined, upstreamStatus: 403, message: 'GeoServer WCS request failed with HTTP 403' },
   ])('explains and logs $code with a request ID', async ({ code, status, timeoutMs, upstreamStatus, message }) => {
     const log = spyOn(console, 'error').mockImplementation(() => {});
@@ -86,7 +86,7 @@ describe('GET /api/impact-geo', () => {
       workspace: 'climate-risk-dashboard',
       username: 'map-reader',
       password: 'secret',
-    }, expect.objectContaining({ scenario: '2020 Climate Policies', year: 2030 }));
+    }, expect.objectContaining({ scenario: '2020 Climate Policies', year: 2030 }), expect.any(Function), expect.any(AbortSignal));
   });
 
   test('passes raster chunks through before the upstream download finishes', async () => {
@@ -111,17 +111,19 @@ describe('GET /api/impact-geo', () => {
     const response = await api.request(`/api/impact-geo?${gridQuery}&format=geotiff`, {}, env);
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('image/tiff');
+    expect(response.headers.get('cache-control')).toBe('no-store');
     expect(response.headers.get('content-disposition')).toBe('attachment; filename="impact-geo_2020-climate-policies_2030.tif"');
     expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([1, 2, 3]);
-    expect(downloadSpy).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ year: 2030 }), 'geotiff');
+    expect(downloadSpy).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ year: 2030 }), 'geotiff', expect.any(Function), expect.any(AbortSignal));
   });
 
   test('streams a NetCDF attachment from the same selection', async () => {
     const response = await api.request(`/api/impact-geo?${gridQuery}&format=netcdf&resolution=native`, {}, env);
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('application/x-netcdf');
+    expect(response.headers.get('cache-control')).toBe('no-store');
     expect(response.headers.get('content-disposition')).toBe('attachment; filename="impact-geo_2020-climate-policies_2030.nc"');
-    expect(downloadSpy).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ year: 2030 }), 'netcdf');
+    expect(downloadSpy).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ year: 2030 }), 'netcdf', expect.any(Function), expect.any(AbortSignal));
   });
 
   test('validates instance, selection params, format, resolution, frequency, and threshold', async () => {
@@ -145,7 +147,7 @@ describe('GET /api/impact-geo', () => {
   test('allows anonymous GeoServer configuration and rejects partial credentials safely', async () => {
     const anonymous = { ...env, GEOSERVER_WORKSPACE: undefined, GEOSERVER_USERNAME: undefined, GEOSERVER_PASSWORD: undefined };
     expect((await api.request(`/api/impact-geo?${gridQuery}`, {}, anonymous)).status).toBe(200);
-    expect(rasterSpy).toHaveBeenLastCalledWith(expect.objectContaining({ workspace: 'provide', username: undefined, password: undefined }), expect.anything());
+    expect(rasterSpy).toHaveBeenLastCalledWith(expect.objectContaining({ workspace: 'provide', username: undefined, password: undefined }), expect.anything(), expect.any(Function), expect.any(AbortSignal));
 
     const partial = { ...env, GEOSERVER_USERNAME: 'map-reader', GEOSERVER_PASSWORD: undefined };
     const response = await api.request(`/api/impact-geo?${gridQuery}`, {}, partial);

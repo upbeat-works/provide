@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeAll, afterAll, describe, expect, test, vi } from 'vitest';
 import { get, writable } from 'svelte/store';
 import { http, HttpResponse } from 'msw';
@@ -7,9 +8,15 @@ import { fetchData } from './api.js';
 vi.mock('$app/environment', () => ({ browser: true }));
 
 const server = setupServer();
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeAll(() => {
+  vi.stubGlobal('window', new EventTarget());
+  server.listen({ onUnhandledRequest: 'error' });
+});
 afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+afterAll(() => {
+  vi.unstubAllGlobals();
+  server.close();
+});
 
 function deferred() {
   let resolve;
@@ -124,5 +131,57 @@ describe('chart requests', () => {
     oldResponse.resolve();
     await vi.waitFor(() => expect(get(oldStore).status).toBe('success'));
     expect(get(store).data).toEqual({ values: [2] });
+  });
+
+  test('keeps a chart visible when a stale refresh fails', async () => {
+    let now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const delayed = deferred();
+    let attempts = 0;
+    server.use(http.get('https://charts.example/stale/', async () => {
+      attempts += 1;
+      if (attempts === 1) return HttpResponse.json({ values: [1] });
+      await delayed.promise;
+      return HttpResponse.json({ message: 'Unavailable' }, { status: 503 });
+    }));
+    const store = writable();
+    const close = fetchData(store, request('stale'));
+    try {
+      const success = { status: 'success', data: { values: [1] } };
+      await vi.waitFor(() => expect(get(store)).toEqual(success));
+      now += 3600_001;
+      window.dispatchEvent(new Event('focus'));
+      await vi.waitFor(() => expect(attempts).toBe(2));
+      expect(get(store)).toEqual(success);
+      delayed.resolve();
+      await vi.waitFor(() => expect(get(store)).toEqual(success));
+    } finally {
+      delayed.resolve();
+      close();
+      clock.mockRestore();
+    }
+  });
+
+  test('aborts a request when its last widget closes', async () => {
+    const delayed = deferred();
+    let signal;
+    server.use(http.get('https://charts.example/closing/', async ({ request }) => {
+      signal = request.signal;
+      await delayed.promise;
+      return HttpResponse.json({ values: [1] });
+    }));
+    const first = writable();
+    const second = writable();
+    const stopFirst = fetchData(first, request('closing'));
+    const stopSecond = fetchData(second, request('closing'));
+    try {
+      await vi.waitFor(() => expect(signal).toBeDefined());
+      stopFirst?.();
+      expect(signal.aborted).toBe(false);
+      stopSecond?.();
+      await vi.waitFor(() => expect(signal.aborted).toBe(true));
+    } finally {
+      delayed.resolve();
+    }
   });
 });

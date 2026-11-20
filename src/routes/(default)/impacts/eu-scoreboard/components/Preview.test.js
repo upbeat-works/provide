@@ -75,13 +75,15 @@ test('opens a shared link and reports a broken link', async () => {
   expect((await screen.findByRole('alert')).textContent).toContain('Showing the last valid preview');
 });
 
-test('ignores an older draft response after a newer draft has loaded', async () => {
+test('cancels an older draft when a newer draft loads', async () => {
   let resolveFirst;
+  let firstSignal;
   const first = { ...draft, label: 'Old draft' };
   const next = { ...draft, label: 'Latest draft' };
   const handler = fetcher.getMockImplementation();
   fetcher.mockImplementation((url, options) => {
     if (url.includes('/definition?') && JSON.parse(options.body).label === first.label) {
+      firstSignal = options.signal;
       return new Promise((resolve) => { resolveFirst = resolve; });
     }
     return handler(url, options);
@@ -91,8 +93,11 @@ test('ignores an older draft response after a newer draft has loaded', async () 
   await waitFor(() => expect(resolveFirst).toBeTypeOf('function'));
   page.set({ url: new URL(`http://localhost/impacts/eu-scoreboard/indicators#preview=${await encodePreview(next)}`) });
   await screen.findByText('Latest draft');
+  expect(firstSignal.aborted).toBe(true);
+  await waitFor(() => expect(fetcher.mock.calls.some(([path, options]) => path.includes('/charts/') && JSON.parse(options.body).label === next.label)).toBe(true));
   resolveFirst(Response.json(previewScoreboard(first)));
-  await waitFor(() => expect(fetcher.mock.calls.some(([path, options]) => path.includes('/charts/') && JSON.parse(options.body).label === first.label)).toBe(true));
+  await Promise.resolve();
+  expect(fetcher.mock.calls.some(([path, options]) => path.includes('/charts/') && JSON.parse(options.body).label === first.label)).toBe(false);
   expect(screen.queryByText('Old draft')).toBeNull();
 });
 

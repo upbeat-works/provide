@@ -13,7 +13,7 @@ test('forwards a draft and selections to the API without putting JSON in the URL
   const fetch = vi.fn(async () => Response.json({ error: 'map.years must contain four-digit numbers' }, { status: 400 }));
   const response = await POST(event('definition', fetch));
   expect(fetch).toHaveBeenCalledWith('http://api.test/api/scoreboard/definition?sector=preview&scenario=Draft&region=Austria&year=2050', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"label":"Draft"}',
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"label":"Draft"}', signal: expect.any(AbortSignal),
   });
   expect(response.status).toBe(400);
   expect(response.headers.get('cache-control')).toBe('no-store');
@@ -32,4 +32,19 @@ test('does not proxy unrelated resources', async () => {
   const fetch = vi.fn();
   expect((await POST(event('../indicators', fetch))).status).toBe(404);
   expect(fetch).not.toHaveBeenCalled();
+});
+
+test('returns an uncached timeout when preview data stalls after its headers', async () => {
+  vi.useFakeTimers();
+  try {
+    const fetch = vi.fn(async () => new Response(new ReadableStream()));
+    const result = POST(event('map', fetch));
+    await vi.advanceTimersByTimeAsync(60_000);
+    const response = await result;
+    expect(response.status).toBe(504);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);
+  } finally {
+    vi.useRealTimers();
+  }
 });

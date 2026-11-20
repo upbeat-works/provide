@@ -20,7 +20,8 @@
   import InteractiveListItem from '$lib/components/ui/InteractiveListItem.svelte';
   import { RadioGroup, RadioGroupOption } from '@rgossiaux/svelte-headlessui';
   import { derived } from 'svelte/store';
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
+  import { browser } from '$app/environment';
   import Fuse from 'fuse.js';
   import { indicatorTags } from '$lib/catalog/indicator-tags.js';
   import Button from '$lib/components/ui/Button.svelte';
@@ -101,14 +102,16 @@
     indexRequest: $INDICATOR_INDEX_REQUEST,
     filteredRequest: $FILTERED_INDICATORS_REQUEST,
   });
-  $: if (control.syncContext) void syncFilters(control.syncContext);
+  let filterRevision = 0;
+  onDestroy(() => { filterRevision += 1; });
+  $: if (browser && control.syncContext) void syncFilters(control.syncContext);
   $: listView = listRequestView({ request: control.request, items: searchedItems });
 
   async function syncFilters(context) {
     if (!context) return;
-    // Start the request after the control has finished reading the current state.
+    const revision = ++filterRevision;
     await tick();
-    void catalogFlow.syncIndicatorScope(context);
+    if (revision === filterRevision) void catalogFlow.syncIndicatorScope(context);
   }
 
   function retryIndicators() {
@@ -120,7 +123,7 @@
       void catalogFlow.retryIndicatorScope(filterContext);
       return;
     }
-    void catalogFlow.catalog.loadIndicatorIndex();
+    void catalogFlow.catalog.loadIndicatorIndex({ refresh: true });
   }
 
   function applyIndicator() {

@@ -1,3 +1,4 @@
+import { requestResources } from '$lib/requests/index.js';
 import { get } from 'svelte/store';
 
 function isScenarioOnly(pending) {
@@ -22,7 +23,7 @@ function inferredInstance(pending, indicatorIndex) {
   return undefined;
 }
 
-export async function initializeExplore({ pending, catalog, flow, requestFetch, apiUrl = '/api', isCurrent = () => true }) {
+export async function initializeExplore({ pending, catalog, flow, requestFetch, apiUrl = '/api', signal, resources = requestResources, isCurrent = () => true }) {
   const hasPending = pending.indicator || pending.geography || pending.scenarios.length || Object.keys(pending.parameters).length;
   if (hasPending) flow.restoreSelection(pending);
   await flow.start();
@@ -41,19 +42,28 @@ export async function initializeExplore({ pending, catalog, flow, requestFetch, 
 
   const query = new URLSearchParams({ instance });
   for (const scenario of pending.scenarios) query.append('scenario', scenario);
-  let response;
+  const compatibleDefaults = (defaults) => defaults?.indicator?.instance === instance
+    && JSON.stringify(defaults.scenarios) === JSON.stringify(pending.scenarios);
+  const lease = resources.acquire(`${apiUrl}/explore-defaults?${query}`, {
+    fetch: requestFetch,
+    signal,
+    persist: true,
+    cacheWhen: compatibleDefaults,
+  });
   let defaults;
   try {
-    response = await requestFetch(`${apiUrl}/explore-defaults?${query}`);
-    if (response.ok) defaults = await response.json();
-  } catch {
+    defaults = await lease.promise;
+  } catch (error) {
+    lease.release();
+    if (!isCurrent() || signal?.aborted) return { status: 'cancelled' };
+    if (error.status === 404) return { status: 'failure', message: 'No compatible Explore selection was found.' };
     return { status: 'failure', message: 'Defaults could not be loaded.' };
+  } finally {
+    if (!signal) lease.release();
   }
   if (!isCurrent() || !sameSelection(get(catalog.selection), expectedSelection)) return { status: 'cancelled' };
-  if (response.status === 404) return { status: 'failure', message: 'No compatible Explore selection was found.' };
-  if (!response.ok) return { status: 'failure', message: 'Defaults could not be loaded.' };
-  if (!isCurrent() || !sameSelection(get(catalog.selection), expectedSelection)) return { status: 'cancelled' };
-  if (defaults.indicator?.instance !== instance || JSON.stringify(defaults.scenarios) !== JSON.stringify(pending.scenarios)) {
+  if (!compatibleDefaults(defaults)) {
+    lease.release();
     return { status: 'failure', message: 'No compatible Explore selection was found.' };
   }
 

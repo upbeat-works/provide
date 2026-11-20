@@ -7,6 +7,7 @@
   import { formatPercentPoints, formatValue, findDecimalsForDistinctValues } from '$lib/utils/formatting';
   import { URL_PATH_SCENARIOS, END_UN_AVOIDABLE_RISK, UNAVOIDABLE_UID, KEY_MODEL, KEY_SOURCE, KEY_SCENARIO_ENDYEAR } from '$src/config.js';
   import { sortBy, reverse, find, without, isObject, isString, has } from 'lodash-es';
+  import { onDestroy } from 'svelte';
   import { fetchData } from '$lib/api/api';
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
   import LoadingPlaceholder from '$lib/components/ui/LoadingPlaceholder.svelte';
@@ -42,10 +43,11 @@
       endpoint: END_UN_AVOIDABLE_RISK,
       params: warmingRequest,
     } : undefined;
-  $: if (requestConfig) fetchData(STORE, requestConfig);
+  onDestroy(() => fetchData(STORE));
+  $: fetchData(STORE, requestConfig);
 
   function retryWarmingRequest() {
-    fetchData(STORE, requestConfig);
+    fetchData(STORE, requestConfig, { retry: true });
   }
 
   $: process = ({ data }, { selectedScenarios, urlParams, allScenarios, indicator = {}, geography, unitUid }) => {

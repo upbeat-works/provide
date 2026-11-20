@@ -2,6 +2,7 @@
   import { END_IMPACT_TIME, KEY_MODEL, KEY_SOURCE, URL_PATH_GEOGRAPHY, URL_PATH_INDICATOR, URL_PATH_SCENARIOS } from '$config';
   import LoadingWrapper from '$lib/components/ui/LoadingWrapper.svelte';
   import { writable } from 'svelte/store';
+  import { onDestroy } from 'svelte';
   import { fetchData } from '$lib/api/api';
   import { formatValue } from '$lib/utils/formatting';
   import ChartFrame from '$lib/components/charts/ChartFrame/ChartFrame.svelte';
@@ -32,10 +33,11 @@
       ...context.parameters,
     },
   } : undefined;
-  $: if (impactTimeRequest) fetchData(IMPACT_TIME_DATA, impactTimeRequest);
+  onDestroy(() => fetchData(IMPACT_TIME_DATA));
+  $: fetchData(IMPACT_TIME_DATA, impactTimeRequest);
 
   function retryChartRequest() {
-    fetchData(IMPACT_TIME_DATA, impactTimeRequest);
+    fetchData(IMPACT_TIME_DATA, impactTimeRequest, { retry: true });
   }
 
   const colorMarkers = [-Infinity, 1.5, 2, 2.5, Infinity];
