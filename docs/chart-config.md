@@ -1,8 +1,8 @@
-# EU scoreboard chart reference
+# Chart reference
 
-Use this reference when editing an entry in a topic's `charts` array.
-For the file location, topic and map settings, preview checks and release steps,
-start with [Add and update EU scoreboard topics](eu-scoreboard-topics.md).
+Use this reference to define a chart in an embed URL or a scoreboard topic.
+For scoreboard files, map settings and release steps, see
+[Add and update EU scoreboard topics](eu-scoreboard-topics.md).
 
 [Chart fields](#chart-fields) · [Chart types](#choose-a-chart-type) ·
 [Variables and units](#variables-models-and-units) · [Source units](#select-source-units) · [Grouping](#grouping) ·
@@ -10,13 +10,13 @@ start with [Add and update EU scoreboard topics](eu-scoreboard-topics.md).
 
 ## Chart fields
 
-A chart belongs inside `charts` in a file under
-[`api/scoreboard/topics/`](../api/scoreboard/topics/). It does not need its own
-topic ID or a rendering component name.
+A chart definition can be passed directly to `/embed/chart`. For the scoreboard,
+place it in the `charts` array of a file under
+[`api/scoreboard/topics/`](../api/scoreboard/topics/).
 
 | Field | Purpose |
 | --- | --- |
-| `chartId` | Unique ID within the topic, used in chart requests, page links and export filenames. |
+| `chartId` | Chart name used in export filenames. Within a scoreboard topic, it must be unique and also identifies chart requests and page links. |
 | `title` | Chart heading. |
 | `description` | Text explaining what the reader sees. |
 | `chartType` | One of the types below. |
@@ -44,7 +44,7 @@ A complete chart definition:
 
 ## Embed a chart
 
-Use `/embed/eu-scoreboard-chart` with a full chart definition in nested `chart[...]`
+Use `/embed/chart` with a full chart definition in nested `chart[...]`
 query parameters. It accepts the same fields as a topic's `charts` entry, so the
 chart does not need to be saved in a topic. The scoreboard's graph export
 links use this format too.
@@ -52,8 +52,9 @@ links use this format too.
 | Query param | Value |
 | --- | --- |
 | `chart[...]` | The full chart definition. Pass the object to `qs.stringify`. |
+| `instance` | Required data source: `provide-internal` or `sparccle-internal`. |
 | `scenario` | Exact source scenario ID, such as `CurrentPolicies`. |
-| `region` | Country name, such as `Austria`, or `all` for Europe. |
+| `region` | Region name in the chosen source, such as `Austria`, or `all` for Europe. |
 | `year` | Four-digit year, such as `2050`. |
 | `static` | Optional. Set to `true` to hide controls for image export. |
 
@@ -64,11 +65,12 @@ import { stringify } from 'qs';
 
 const params = stringify({
   chart,
+  instance: 'sparccle-internal',
   scenario: 'CurrentPolicies',
   region: 'Austria',
   year: '2050',
 }, { arrayFormat: 'comma', commaRoundTrip: true, encodeValuesOnly: true });
-const url = new URL('/embed/eu-scoreboard-chart', 'https://your-provide-host.example');
+const url = new URL('/embed/chart', 'https://your-provide-host.example');
 url.search = params;
 iframe.src = url.href;
 ```
@@ -83,6 +85,8 @@ The widget reads it with `qs.parse` and `comma: true`, then restores the types o
 The widget reads the definition from the URL. `chartId` inside that definition
 names the chart; it does not look up a saved chart. Topic edits do not change
 an existing embed's definition. Source data is loaded when the widget opens.
+The separate `instance` parameter selects the data source; it is not part of the
+chart schema. Variables, models, scenarios and regions must exist in that source.
 All chart types, roles, units and grouping settings below apply to embeds.
 
 ## Choose a chart type
@@ -96,8 +100,9 @@ All chart types, roles, units and grouping settings below apply to embeds.
 | `bubble` | Two values, with a third shown by size. | `x`, `y`, `size`. | Selected year. |
 | `box_plot` | A median and a range. | `median`, `boxLow`, `boxHigh`; optional `whiskerLow` and `whiskerHigh` together. | Selected year. |
 
-Changing the map indicator does not change the charts. Charts read default runs from
-`sparccle-internal`; run versions are not set in JSON.
+Charts read default runs from the selected `instance`; run versions are not set
+in the schema. Scoreboard charts use `sparccle-internal`, and changing the map
+indicator does not change them.
 
 ## Variables, models and units
 

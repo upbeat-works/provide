@@ -90,11 +90,11 @@ Every embed link points at a stand-alone chart page, `/embed/<chart>`. The Live 
 | `/embed/impact-time` | Impact over time | `indicator`, `instance`, `geography`, `scenarios`, `timeframe` |
 | `/embed/impact-geo` | Impact map | the above plus `year` |
 | `/embed/unavoidable-risk` | Unavoidable risk by warming level | the above plus `threshold` |
-| `/embed/eu-scoreboard-chart` | EU Scoreboard chart | `chart[...]` (definition fields encoded with `qs.stringify`), `scenario`, `region`, `year` |
+| `/embed/chart` | Chart defined by a schema | `chart[...]` (definition fields encoded with `qs.stringify`), `instance`, `scenario`, `region`, `year` |
 
-Add `static=true` to hide the controls. The scoreboard embed is documented in the [EU scoreboard chart reference](eu-scoreboard-chart-config.md#embed-a-chart).
+Add `static=true` to hide the controls. Schema embeds are documented in the [chart reference](chart-config.md#embed-a-chart).
 
-Prefer **Copy embed link** over writing links by hand. It fills in labels and units; a hand-written link without `unit` shows "undefined" on the axis.
+Prefer **Copy embed link** over writing links by hand. It includes the settings needed to load the chart.
 
 ## Troubleshooting
 

@@ -5,6 +5,7 @@ import { stringify } from 'qs';
 import { safeCaseStudyEmbedUrl } from '$lib/catalog/case-study-embed-url.js';
 import { load } from './+page.server.js';
 import Fixture from './page.test.fixture.svelte';
+import ChartPanel from '$routes/(default)/impacts/eu-scoreboard/components/ChartPanel.svelte';
 
 const { saveAs, copy } = vi.hoisted(() => ({ saveAs: vi.fn(), copy: vi.fn(() => true) }));
 vi.mock('file-saver', () => ({ default: saveAs }));
@@ -24,6 +25,7 @@ const result = {
   series: [{ line: { variable: 'Temperature|Mean', model: 'Model', unit: '°C' } }],
   data: [{ line: [{ year: 2040, value: 10 }, { year: 2050, value: 12 }] }],
 };
+const instance = 'provide-internal';
 const selections = { scenario: 'Custom scenario', region: 'Austria', year: '2050' };
 const queryOptions = { arrayFormat: 'comma', commaRoundTrip: true, encodeValuesOnly: true };
 
@@ -44,9 +46,12 @@ afterEach(() => {
 });
 
 async function renderEmbed(query = {}, chartResult = result) {
-  const params = { embed: 'eu-scoreboard-chart' };
-  const url = new URL(`https://provide.example/embed/${params.embed}?${stringify({ chart: chartResult.definition, ...selections, ...query }, queryOptions)}`);
+  const params = { embed: 'chart' };
+  const url = new URL(`https://provide.example/embed/${params.embed}?${stringify({ chart: chartResult.definition, instance, ...selections, ...query }, queryOptions)}`);
   const fetch = vi.fn(async (_input, init) => {
+    const target = new URL(_input, url);
+    expect(target.pathname.replace(/\/$/, '')).toBe('/api/charts');
+    expect(target.searchParams.get('instance')).toBe(instance);
     expect(JSON.parse(init.body)).toEqual(chartResult.definition);
     return Response.json(chartResult);
   });
@@ -65,8 +70,8 @@ test('renders a URL-defined chart and downloads that chart as an image', async (
   const download = await screen.findByRole('button', { name: 'Download graph as png file' });
   const url = new URL(download.getAttribute('data-graph'));
   expect(url.searchParams.get('static')).toBe('true');
-  const exported = await load({ fetch: fetchChart, params: { embed: 'eu-scoreboard-chart' }, url });
-  expect(exported.scoreboardChart).toEqual(result);
+  const exported = await load({ fetch: fetchChart, params: { embed: 'chart' }, url });
+  expect(exported.chart).toEqual(result);
   expect(exported.selection).toEqual(Object.fromEntries(Object.entries(selections).map(([key, uid]) => [key, { uid, label: uid }])));
 
   const fetchImage = vi.fn(async () => new Response(new Blob(['image'], { type: 'image/png' })));
@@ -97,8 +102,8 @@ test('copies a live chart link that loads the same chart in a case study', async
   expect(copy).toHaveBeenCalledOnce();
   const url = new URL(safeCaseStudyEmbedUrl(copy.mock.calls[0][0]), 'https://provide.example');
   expect(url.searchParams.get('static')).toBeNull();
-  const embedded = await load({ fetch: fetchChart, params: { embed: 'eu-scoreboard-chart' }, url });
-  expect(embedded.scoreboardChart).toEqual(chartResult);
+  const embedded = await load({ fetch: fetchChart, params: { embed: 'chart' }, url });
+  expect(embedded.chart).toEqual(chartResult);
   expect(embedded.selection).toEqual(Object.fromEntries(Object.entries(selections).map(([key, uid]) => [key, { uid, label: uid }])));
 });
 
@@ -155,4 +160,19 @@ test('renders grouped lines with a legend and no picker in static mode', async (
   expect(screen.getByText('Austria', { selector: 'span' })).toBeTruthy();
   expect(screen.getByText('Belgium', { selector: 'span' })).toBeTruthy();
   expect(screen.getByText('France', { selector: 'span' })).toBeTruthy();
+});
+
+test('copies a scoreboard chart with its data source', async () => {
+  const selection = Object.fromEntries(Object.entries(selections).map(([key, uid]) => [key, { uid, label: uid }]));
+  render(ChartPanel, { definition, result, selection, sector: 'testing' });
+  await fireEvent.click(screen.getByRole('button', { name: 'Download graph' }));
+  await fireEvent.click(await screen.findByRole('button', { name: 'Click to copy the link to the clipboard' }));
+  const url = new URL(copy.mock.calls[0][0]);
+  const fetchChart = vi.fn(async (input) => {
+    expect(new URL(input, url).searchParams.get('instance')).toBe('sparccle-internal');
+    return Response.json(result);
+  });
+  const embedded = await load({ fetch: fetchChart, params: { embed: url.pathname.split('/').at(-1) }, url });
+  expect(embedded.chart).toEqual(result);
+  expect(fetchChart).toHaveBeenCalledOnce();
 });

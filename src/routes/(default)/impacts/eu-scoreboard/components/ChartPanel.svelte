@@ -6,6 +6,7 @@
   import { PATH_ADAPTATION } from '$config';
   import { loadResource } from './resource.js';
   import { chartEyebrow } from './comparison.js';
+  import { SCOREBOARD_INSTANCE } from '../../../../../../api/scoreboard/choices.js';
 
   export let definition;
   export let result;
@@ -60,6 +61,6 @@
       <a class="mb-4 block text-sm font-bold text-theme-base" href="/{PATH_ADAPTATION}/{chart.caseStudy.slug}">See {chart.caseStudy.title ?? 'case study'} →</a>
     {/if}
 
-    <ChartWithSeriesPicker result={chart} {selection} {retry} staticMode={Boolean(preview)} />
+    <ChartWithSeriesPicker instance={SCOREBOARD_INSTANCE} result={chart} {selection} {retry} staticMode={Boolean(preview)} />
   </ScoreboardSection>
 {/if}

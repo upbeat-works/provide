@@ -15,6 +15,7 @@ import { scenarioDetails } from './routes/scenario-details';
 import { tags } from './routes/tags';
 import { exploreDefaults } from './routes/explore-defaults';
 import { scoreboard } from './routes/scoreboard';
+import { charts } from './routes/charts';
 import { impactGeo } from './routes/impact-geo';
 
 // strict: false makes /foo and /foo/ both match the same handler. The legacy
@@ -38,6 +39,7 @@ api.route('/scenario-details', scenarioDetails);
 api.route('/tags', tags);
 api.route('/explore-defaults', exploreDefaults);
 api.route('/scoreboard', scoreboard);
+api.route('/charts', charts);
 api.route('/impact-geo', impactGeo);
 
 api.get('/', (c) => {

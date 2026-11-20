@@ -1,26 +1,27 @@
 // @vitest-environment node
 import { afterEach, expect, test, vi } from 'vitest';
-import { Hono } from 'hono';
 import { stringify } from 'qs';
 import { safeCaseStudyEmbedUrl } from '$lib/catalog/case-study-embed-url.js';
-import { scoreboard } from '../../../../../api/routes/scoreboard';
+import { api } from '../../../../../api/index';
 import { getTestScoreboard as getScoreboard } from '../../../../../test/fixtures/scoreboard.js';
 import * as platform from '../../../../../api/platform';
-import { graphParamsFor, EMBED_UID } from '$routes/(default)/impacts/eu-scoreboard/components/charts/catalog.js';
+import { graphParamsFor } from '$lib/charts/chart-embed.js';
 import { load } from './+page.server.js';
+
+const EMBED_UID = 'chart';
 
 const definition = {
   chartId: 'custom-temperature', title: 'Temperature & heat', description: 'Custom temperature range in °C.', chartType: 'line_with_range',
   data: { variables: ['Temperature|Mean', 'Temperature|Low', 'Temperature|High'], line: 'Mean', rangeLow: 'Low', rangeHigh: 'High', unit: '°C' },
 };
 const selections = { scenario: 'Custom scenario', region: 'Austria', year: '2050' };
-const api = new Hono({ strict: false }).route('/api/scoreboard', scoreboard);
+const instance = 'provide-internal';
 function requestFetch(input, init) {
   const url = new URL(input, 'https://example.test');
   return api.request(`${url.pathname}${url.search}`, init, { DB: {}, IXMP4_USERNAME: 'test', IXMP4_PASSWORD: 'test' });
 }
 const queryOptions = { arrayFormat: 'comma', commaRoundTrip: true, encodeValuesOnly: true };
-const embedUrl = (query = {}) => new URL(`https://example.test/embed/${EMBED_UID}?${stringify({ chart: definition, ...selections, ...query }, queryOptions)}`);
+const embedUrl = (query = {}) => new URL(`https://example.test/embed/${EMBED_UID}?${stringify({ chart: definition, instance, ...selections, ...query }, queryOptions)}`);
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -37,11 +38,12 @@ test('loads the full chart definition from a URL without a saved topic', async (
   const tabulate = source();
   const fetch = vi.fn(requestFetch);
   const data = await load({ fetch, params: { embed: EMBED_UID }, url: embedUrl() });
-  expect(data.scoreboardChart).toMatchObject({
+  expect(data.chart).toMatchObject({
     definition, status: 'ready',
     data: [{ line: [{ year: 2040, value: 11 }, { year: 2050, value: 12 }], rangeLow: [{ year: 2040, value: 7 }, { year: 2050, value: 8 }] }],
   });
   expect(data.selection).toEqual(Object.fromEntries(Object.entries(selections).map(([key, uid]) => [key, { uid, label: uid }])));
+  expect(platform.createPlatform).toHaveBeenCalledWith(expect.objectContaining({ slug: instance }), 'test', 'test');
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(tabulate).toHaveBeenCalledTimes(3);
 });
@@ -51,18 +53,18 @@ test('loads a scoreboard export from its definition without a topic lookup', asy
   source({ [definition.data.variables[0]]: 12 });
   const fetch = vi.fn(requestFetch);
   const selection = Object.fromEntries(Object.entries(selections).map(([key, uid]) => [key, { uid }]));
-  const query = stringify(graphParamsFor(definition, selection), queryOptions);
+  const query = stringify(graphParamsFor(definition, selection, instance), queryOptions);
   const data = await load({ fetch, params: { embed: EMBED_UID }, url: new URL(`https://example.test/embed/${EMBED_UID}?${query}`) });
-  expect(data.scoreboardChart).toMatchObject({ definition, status: 'ready', data: [{ line: [{ year: 2040, value: 11 }, { year: 2050, value: 12 }] }] });
+  expect(data.chart).toMatchObject({ definition, status: 'ready', data: [{ line: [{ year: 2040, value: 11 }, { year: 2050, value: 12 }] }] });
   expect(fetch).toHaveBeenCalledTimes(1);
 });
 
 test('keeps a custom chart definition when building its image export URL', async () => {
   source();
   const selection = Object.fromEntries(Object.entries(selections).map(([key, uid]) => [key, { uid }]));
-  const query = stringify({ ...graphParamsFor(definition, selection), static: 'true' }, queryOptions);
+  const query = stringify({ ...graphParamsFor(definition, selection, instance), static: 'true' }, queryOptions);
   const data = await load({ fetch: requestFetch, params: { embed: EMBED_UID }, url: new URL(`https://example.test/embed/${EMBED_UID}?${query}`) });
-  expect(data.scoreboardChart).toMatchObject({ definition, status: 'ready' });
+  expect(data.chart).toMatchObject({ definition, status: 'ready' });
 });
 
 test.each(['invalid', { ...definition, data: { ...definition.data, rangeLow: 'Missing' } }])('rejects an invalid chart definition: %j', async (chart) => {
@@ -72,10 +74,18 @@ test.each(['invalid', { ...definition, data: { ...definition.data, rangeLow: 'Mi
   expect(source).not.toHaveBeenCalled();
 });
 
-test.each([{ scenario: '' }, { region: '' }, { year: 'bad' }])('does not query data when chart selections are incomplete: %j', async (query) => {
+test.each([{ instance: '' }, { scenario: '' }, { region: '' }, { year: 'bad' }])('does not query data when chart selections are incomplete: %j', async (query) => {
   const fetch = vi.fn(requestFetch);
   const data = await load({ fetch, params: { embed: EMBED_UID }, url: embedUrl(query) });
-  expect(data.scoreboardChart).toBeUndefined();
+  expect(data.chart).toBeUndefined();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test('rejects an unknown instance before making a chart request', async () => {
+  const fetch = vi.fn(requestFetch);
+  await expect(load({ fetch, params: { embed: EMBED_UID }, url: embedUrl({ instance: 'unknown' }) })).rejects.toMatchObject({
+    status: 404, body: { message: 'Unknown instance: unknown' },
+  });
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -95,7 +105,7 @@ test('reports an incomplete URL when the chart definition is missing', async () 
   const url = embedUrl({ chart: undefined });
   const fetch = vi.fn(requestFetch);
   const data = await load({ fetch, params: { embed: EMBED_UID }, url });
-  expect(data.scoreboardChart).toBeUndefined();
+  expect(data.chart).toBeUndefined();
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -103,17 +113,17 @@ test('returns a chart error that can be retried when the source fails', async ()
   vi.spyOn(platform, 'createPlatform').mockRejectedValue(new Error('Private source details'));
   vi.spyOn(console, 'error').mockImplementation(() => {});
   const data = await load({ fetch: requestFetch, params: { embed: EMBED_UID }, url: embedUrl() });
-  expect(data.scoreboardChart).toMatchObject({ definition, status: 'error', error: 'Chart data could not be loaded.' });
+  expect(data.chart).toMatchObject({ definition, status: 'error', error: 'Chart data could not be loaded.' });
 });
 
 test.each([[0, false], [3, true]])('keeps decimal precision %i and Europe visibility %s in an exported chart', async (decimals, hideInEuropeView) => {
   source();
   const chart = { ...definition, chartId: '001', description: '', decimals, hideInEuropeView };
   const selection = Object.fromEntries(Object.entries(selections).map(([key, uid]) => [key, { uid }]));
-  const query = stringify(graphParamsFor(chart, selection), queryOptions);
+  const query = stringify(graphParamsFor(chart, selection, instance), queryOptions);
   const url = new URL(`https://example.test/embed/${EMBED_UID}?${query}`);
   const data = await load({ fetch: requestFetch, params: { embed: EMBED_UID }, url });
-  expect(data.scoreboardChart).toMatchObject({ definition: chart, status: 'ready' });
+  expect(data.chart).toMatchObject({ definition: chart, status: 'ready' });
 });
 
 test('loads every variable and fixed region from a long chart definition', async () => {
@@ -122,7 +132,7 @@ test('loads every variable and fixed region from a long chart definition', async
   const chart = { ...definition, chartType: 'line', data: { variables, groupBy: 'region', regions } };
   const tabulate = source(Object.fromEntries(variables.map((variable) => [variable, 12])));
   const data = await load({ fetch: requestFetch, params: { embed: EMBED_UID }, url: embedUrl({ chart }) });
-  expect(data.scoreboardChart).toMatchObject({ definition: chart, status: 'ready' });
+  expect(data.chart).toMatchObject({ definition: chart, status: 'ready' });
   expect(tabulate).toHaveBeenCalledTimes(variables.length);
   expect(tabulate.mock.calls.map(([query]) => query.variable.name)).toEqual(variables);
   expect(tabulate.mock.calls[0][0].region.name_in).toEqual(regions);
@@ -142,7 +152,7 @@ test.each([
   const path = safeCaseStudyEmbedUrl(embedUrl({ chart }).href);
   const url = new URL(path, 'https://example.test');
   const data = await load({ fetch: requestFetch, params: { embed: EMBED_UID }, url });
-  expect(data.scoreboardChart).toMatchObject({ definition: chart, status: 'ready' });
+  expect(data.chart).toMatchObject({ definition: chart, status: 'ready' });
   expect(tabulate.mock.calls.map(([query]) => query.variable.name)).toEqual(variables);
 });
 

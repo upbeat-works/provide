@@ -8,7 +8,7 @@ The API reads these files on each request. Once a file reaches the running API,
 reload the page to see it. No code imports, restart or web rebuild are needed.
 
 For chart types, variable roles and grouping, use the
-[EU scoreboard chart reference](eu-scoreboard-chart-config.md).
+[chart reference](chart-config.md).
 
 [Add a topic](#add-a-topic) · [Update a topic](#update-a-topic) ·
 [Check and release](#check-and-release) · [Field reference](#field-reference) ·
@@ -124,7 +124,7 @@ The link contains the draft, compressed with gzip. Copy the link to share it;
 opening it loads the same config. Filters and comparisons use the draft too.
 Empty charts show a message so missing data is visible. Preview hides image
 export controls. To embed a draft chart, use its
-[chart definition in the widget URL](eu-scoreboard-chart-config.md#embed-a-chart).
+[chart definition in the widget URL](chart-config.md#embed-a-chart).
 
 Preview sends the JSON to the API in POST bodies. It does not write topic files
 or change the published scoreboard. **Exit preview** returns to saved settings.
@@ -227,7 +227,7 @@ For example, this selects heat-risk days when the source also has rows in `°C`:
 The unit must match the source exactly. It selects rows before map values or
 country totals are built; it does not rename or convert them. Omitting it sends
 no unit filter. A chart needs its own `data.unit`; the map setting does not apply
-to charts. See [chart units](eu-scoreboard-chart-config.md#select-source-units)
+to charts. See [chart units](chart-config.md#select-source-units)
 for charts that combine different measurements.
 
 Map totals should add counts or losses, never means, rates or percentiles.
@@ -260,17 +260,17 @@ selected. The Europe view skips the chart, its menu link and its data request.
 This is set for **Population by age and sex** in the socioeconomic topic.
 
 The `charts` array controls chart order. The complete topic example above shows
-where a chart belongs; the [chart reference](eu-scoreboard-chart-config.md)
+where a chart belongs; the [chart reference](chart-config.md)
 explains its fields and provides examples for each type.
 
 | To configure… | Read… |
 | --- | --- |
-| Chart type, ID, title or linked case study | [Chart fields and types](eu-scoreboard-chart-config.md#chart-fields). |
-| Variables, role names, models or units | [Variables, models and units](eu-scoreboard-chart-config.md#variables-models-and-units). |
-| Regional or scenario comparisons | [Grouping](eu-scoreboard-chart-config.md#grouping). |
-| Country totals from regional data | [Country totals](eu-scoreboard-chart-config.md#country-totals). |
-| Ranges, bars, scatter, bubbles or box plots | [Examples](eu-scoreboard-chart-config.md#examples). |
-| Relative risk colours | [Risk colours](eu-scoreboard-chart-config.md#risk-colours). |
+| Chart type, ID, title or linked case study | [Chart fields and types](chart-config.md#chart-fields). |
+| Variables, role names, models or units | [Variables, models and units](chart-config.md#variables-models-and-units). |
+| Regional or scenario comparisons | [Grouping](chart-config.md#grouping). |
+| Country totals from regional data | [Country totals](chart-config.md#country-totals). |
+| Ranges, bars, scatter, bubbles or box plots | [Examples](chart-config.md#examples). |
+| Relative risk colours | [Risk colours](chart-config.md#risk-colours). |
 
 ## Troubleshooting
 

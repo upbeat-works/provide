@@ -52,6 +52,7 @@ geography.
 | `/api/scoreboard/definition` | Read and validate topic files, then return the selected topic and menu choices without querying ixmp4. The response uses `Cache-Control: no-store`. |
 | `/api/scoreboard/map` | Load one configured regional map for the selected indicator, country, scenario, and year. |
 | `/api/scoreboard/charts/:chartId` | Load one configured chart for the selected country, scenario, and year. |
+| `POST /api/charts` | Load a chart from its schema, using the separate `instance`, `scenario`, `region`, and `year` parameters. Used by `/embed/chart`. |
 | `/app/scoreboard/map` and `/app/scoreboard/charts/:chartId` | Same-origin SvelteKit routes that call the matching API request and return its result. |
 
 The overview loads no map values or chart values. Its country shape comes from

@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { scoreboard } from './scoreboard';
+import { api } from '../index';
+import { instances } from '../instances';
 import * as platform from '../platform';
 
 const definition = {
@@ -15,14 +16,14 @@ const definition = {
     groupBy: 'region', regions: ['Austria', 'France'],
   },
 };
-const selections = { scenario: 'Custom scenario', region: 'Germany', year: '2050' };
-const post = (chart: unknown = definition, choices = selections) => scoreboard.request(`/charts?${new URLSearchParams(choices)}`, {
+const selections = { instance: 'provide-internal', scenario: 'Custom scenario', region: 'Germany', year: '2050' };
+const post = (chart: unknown = definition, choices = selections) => api.request(`/api/charts?${new URLSearchParams(choices)}`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(chart),
 }, { DB: {}, IXMP4_USERNAME: 'test', IXMP4_PASSWORD: 'test' } as never);
 
 afterEach(() => vi.restoreAllMocks());
 
-test('loads an unsaved chart with its roles, units, model and fixed regions', async () => {
+test.each(instances)('loads an unsaved chart from $slug with its roles, units, model and fixed regions', async (instance) => {
   const values = { 'Heat|Mean': 12, 'Heat|High': 25, 'Population|Exposed': 100 };
   const tabulate = vi.fn(async (query) => ({
     columns: ['variable', 'scenario', 'region', 'model', 'unit', '2050'],
@@ -30,7 +31,7 @@ test('loads an unsaved chart with its roles, units, model and fixed regions', as
   }));
   vi.spyOn(platform, 'createPlatform').mockResolvedValue({ iamc: { tabulate } } as never);
 
-  const response = await post();
+  const response = await post(definition, { ...selections, instance: instance.slug });
 
   expect(response.status).toBe(200);
   expect(response.headers.get('cache-control')).toBe('no-store');
@@ -42,6 +43,7 @@ test('loads an unsaved chart with its roles, units, model and fixed regions', as
       { region: { uid: 'France' }, series: [{ x: 12, y: 25, size: 100 }] },
     ],
   });
+  expect(platform.createPlatform).toHaveBeenCalledWith(instance, 'test', 'test');
   expect(tabulate).toHaveBeenCalledTimes(3);
   for (const [query] of tabulate.mock.calls) {
     expect(query).toMatchObject({ scenario: { name: 'Custom scenario' }, region: { name_in: ['Austria', 'France'] }, model: { name: 'Custom model' }, stepYear: 2050 });
@@ -64,6 +66,7 @@ test.each([
 });
 
 test.each([
+  { ...selections, instance: '' },
   { ...selections, scenario: '' },
   { ...selections, region: '' },
   { ...selections, year: 'invalid' },
@@ -99,4 +102,12 @@ test('reports source failures without exposing their details', async () => {
   const response = await post();
   expect(response.status).toBe(502);
   expect(await response.json()).toEqual({ error: 'Chart data unavailable' });
+});
+
+test('rejects an unknown data source before querying data', async () => {
+  const source = vi.spyOn(platform, 'createPlatform');
+  const response = await post(definition, { ...selections, instance: 'unknown' });
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual({ error: 'Unknown instance: unknown' });
+  expect(source).not.toHaveBeenCalled();
 });

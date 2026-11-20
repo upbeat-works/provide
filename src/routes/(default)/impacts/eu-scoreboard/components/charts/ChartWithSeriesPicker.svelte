@@ -4,6 +4,7 @@
   import { assignColors, colorOf, defaultSelection, filterGroups, groupsOf, isPickable, SERIES_COLORS } from '../series-filter.js';
 
   export let result;
+  export let instance = undefined;
   export let selection = {};
   export let staticMode = false;
   export let retry = undefined;
@@ -45,5 +46,5 @@
 {#if pickable && !selected.length}
   <p class="py-8 text-sm text-text-weaker" role="status">No {pickerLabel.toLowerCase()} selected.</p>
 {:else}
-  <ChartRenderer result={shown} {selection} {retry} {colorFor} hideLegend={pickable} {staticMode} />
+  <ChartRenderer {instance} result={shown} {selection} {retry} {colorFor} hideLegend={pickable} {staticMode} />
 {/if}

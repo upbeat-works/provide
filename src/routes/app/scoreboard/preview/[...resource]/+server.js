@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { catalogApiUrl } from '$utils/apis.js';
-import { enrichChart } from '$routes/(default)/impacts/eu-scoreboard/controller.server.js';
+import { enrichChart } from '$lib/server/charts.js';
 
 export const POST = async ({ fetch, request, url, params }) => {
   const [kind, chartId, extra] = params.resource.split('/');

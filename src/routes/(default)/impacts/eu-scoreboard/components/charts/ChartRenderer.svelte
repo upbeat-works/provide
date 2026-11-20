@@ -4,10 +4,11 @@
   import BubbleChart from './BubbleChart.svelte';
   import BoxPlotChart from './BoxPlotChart.svelte';
   import { adaptChartResult } from './adapter.js';
-  import { EMBED_UID, EMBED_QUERY_OPTIONS, graphParamsFor } from './catalog.js';
+  import { EMBED_UID, EMBED_QUERY_OPTIONS, graphParamsFor } from '$lib/charts/chart-embed.js';
   import { invalidateAll } from '$app/navigation';
 
   export let result;
+  export let instance = undefined;
   export let selection = {};
   export let staticMode = false;
   // Set by a chart whose groups are chosen above it, so each group keeps its
@@ -30,7 +31,7 @@
 
   $: chart = adaptChartResult(result, selection, { colorFor });
   $: component = components[chart.kind];
-  $: graphDownloadParams = graphParamsFor(result.definition, selection);
+  $: graphDownloadParams = graphParamsFor(result.definition, selection, instance);
   $: graphDownloadSettings = {
     filename: [result.definition.chartId, selection.scenario?.uid, selection.region?.uid, selection.year?.uid].filter(Boolean).join(' '),
     graphQueryOptions: EMBED_QUERY_OPTIONS,

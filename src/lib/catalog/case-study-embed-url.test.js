@@ -14,7 +14,7 @@ describe('case-study embed URL', () => {
     );
   });
 
-  test.each(['impact-time', 'impact-geo', 'unavoidable-risk', 'eu-scoreboard-chart'])('accepts the %s embed', (embed) => {
+  test.each(['impact-time', 'impact-geo', 'unavoidable-risk', 'chart'])('accepts the %s embed', (embed) => {
     expect(safeCaseStudyEmbedUrl(`/embed/${embed}`)).toBe(`/embed/${embed}?inline=true`);
   });
 

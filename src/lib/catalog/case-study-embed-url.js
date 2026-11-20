@@ -2,7 +2,7 @@
 // in a same-origin iframe. Editors usually copy the link from a chart's menu, so
 // an absolute URL from any PROVIDE host (local, staging, production) is accepted
 // and reduced to its path: the chart always loads from the site serving the page.
-export const CASE_STUDY_EMBEDS = ['impact-time', 'impact-geo', 'unavoidable-risk', 'eu-scoreboard-chart'];
+export const CASE_STUDY_EMBEDS = ['impact-time', 'impact-geo', 'unavoidable-risk', 'chart'];
 
 const BASE = 'https://provide.local';
 

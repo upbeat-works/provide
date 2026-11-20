@@ -4,6 +4,7 @@
   import { isChartVisible } from './adapter.js';
 
   export let result;
+  export let instance = undefined;
   export let selection = {};
   export let staticMode = false;
 
@@ -16,9 +17,9 @@
     <p class="leading-relaxed">{result.definition.description}</p>
   </header>
   {#if staticMode}
-    <ChartRenderer {result} {selection} {staticMode} />
+    <ChartRenderer {instance} {result} {selection} {staticMode} />
   {:else}
-    <ChartWithSeriesPicker {result} {selection} />
+    <ChartWithSeriesPicker {instance} {result} {selection} />
   {/if}
 {:else if !result}
   <p role="alert">The chart URL is incomplete.</p>
