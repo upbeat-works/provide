@@ -42,6 +42,7 @@ export async function createTestEnv(): Promise<Env['Bindings']> {
   const client = new Client({ ...pgBaseConfig(), options: `-c search_path=${name}` });
   await client.connect();
   for (const stmt of MIGRATION_SQL) await client.query(stmt);
+  await client.query('TRUNCATE indicators');
   active.push({ schema: name, client });
   return {
     DB: drizzle(client, { schema }),
