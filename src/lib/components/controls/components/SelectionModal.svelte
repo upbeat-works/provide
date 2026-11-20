@@ -14,6 +14,7 @@
   export let isOpen = false;
   export let colors = undefined;
   export let wrapperClass = undefined;
+  export let buttonAriaLabel = undefined;
 </script>
 
 <ModalSelect {panelClass} bind:isOpen>
@@ -30,6 +31,7 @@
       {colors}
       {open}
       {wrapperClass}
+      {buttonAriaLabel}
       on:click={toggle}
     />
   </svelte:fragment>
