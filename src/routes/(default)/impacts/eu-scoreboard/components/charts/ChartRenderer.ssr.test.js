@@ -73,11 +73,20 @@ describe('chart renderer', () => {
     expect(html.match(/M/g)).toHaveLength(2);
   });
 
-  test('hides the whole embed for empty data but keeps incomplete URLs visible', async () => {
+  test.each([
+    { status: 'empty', data: [] },
+    { status: 'ready', data: [{ line: [{ year: 2050, value: null }] }] },
+  ])('explains when an embedded chart has no values: $status', async (result) => {
     const fixture = await vite.ssrLoadModule('/src/routes/(default)/impacts/eu-scoreboard/indicators/embed.ssr.fixture.svelte');
-    const empty = fixture.default.render({ result: { definition, status: 'empty', data: [] } }).html;
-    expect(empty).not.toContain(definition.title);
-    expect(empty).not.toContain(definition.description);
+    const { html } = fixture.default.render({ result: { definition, ...result } });
+    expect(html).toMatch(/role="status"/);
+    expect(html).toContain('No data is available for this selection.');
+    expect(html).not.toMatch(/<figure\b/);
+    expect(html).not.toMatch(/role="alert"/);
+  });
+
+  test('reports an incomplete embed URL', async () => {
+    const fixture = await vite.ssrLoadModule('/src/routes/(default)/impacts/eu-scoreboard/indicators/embed.ssr.fixture.svelte');
     const incomplete = fixture.default.render({ result: undefined }).html;
     expect(incomplete).toMatch(/role="alert"/);
   });

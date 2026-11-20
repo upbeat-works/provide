@@ -20,13 +20,11 @@ export async function loadChart({ scoreboard, fetch, selections, chartId }) {
   return enrichChart(result, fetch);
 }
 
-export async function loadChartFromDefinition({ chart, fetch, selections }) {
-  let definition;
+export async function loadChartFromDefinition({ definition, fetch, selections }) {
   try {
-    definition = JSON.parse(chart);
     validateChart(definition);
   } catch (reason) {
-    error(400, reason instanceof SyntaxError ? 'chart must contain valid JSON.' : reason.message);
+    error(400, reason.message);
   }
   let result;
   try {

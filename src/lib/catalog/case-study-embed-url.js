@@ -22,7 +22,8 @@ export function safeCaseStudyEmbedUrl(href) {
   const match = url.pathname.match(/^\/embed\/([^/]+)\/?$/);
   if (!match || !CASE_STUDY_EMBEDS.includes(match[1])) return undefined;
 
-  // `inline` drops the embed page's own logo footer: the chart sits inside a PROVIDE page.
-  url.searchParams.set('inline', 'true');
-  return `/embed/${match[1]}${url.search}`;
+  // Keep list separators distinct from encoded commas inside values.
+  const query = url.search.slice(1).split('&').filter((param) => param && !new URLSearchParams(param).has('inline'));
+  query.push('inline=true');
+  return `/embed/${match[1]}?${query.join('&')}`;
 }

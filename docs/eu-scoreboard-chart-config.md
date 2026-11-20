@@ -44,14 +44,14 @@ A complete chart definition:
 
 ## Embed a chart
 
-Use `/embed/eu-scoreboard-chart` with a full chart definition in the `chart`
-query param. It accepts the same fields as a topic's `charts` entry, so the
+Use `/embed/eu-scoreboard-chart` with a full chart definition in nested `chart[...]`
+query parameters. It accepts the same fields as a topic's `charts` entry, so the
 chart does not need to be saved in a topic. The scoreboard's graph export
 links use this format too.
 
 | Query param | Value |
 | --- | --- |
-| `chart` | The full chart definition as JSON. Use `URLSearchParams` to encode it. |
+| `chart[...]` | The full chart definition. Pass the object to `qs.stringify`. |
 | `scenario` | Exact source scenario ID, such as `CurrentPolicies`. |
 | `region` | Country name, such as `Austria`, or `all` for Europe. |
 | `year` | Four-digit year, such as `2050`. |
@@ -60,16 +60,25 @@ links use this format too.
 For example, set an iframe's `src` using the chart definition above:
 
 ```js
-const params = new URLSearchParams({
-  chart: JSON.stringify(chart),
+import { stringify } from 'qs';
+
+const params = stringify({
+  chart,
   scenario: 'CurrentPolicies',
   region: 'Austria',
   year: '2050',
-});
+}, { arrayFormat: 'comma', commaRoundTrip: true, encodeValuesOnly: true });
 const url = new URL('/embed/eu-scoreboard-chart', 'https://your-provide-host.example');
-url.search = params.toString();
+url.search = params;
 iframe.src = url.href;
 ```
+
+Fields become parameters such as `chart[chartType]=line` and
+`chart[data][variables]=Temperature%7CMean,Temperature%7CHigh`. Lists use commas;
+a one-item list uses `[]` on its key so it stays a list. Commas inside names are
+encoded as `%2C`. Keep the generated query intact when adding other parameters.
+The widget reads it with `qs.parse` and `comma: true`, then restores the types of
+`decimals` and `hideInEuropeView`. IDs and labels stay strings.
 
 The widget reads the definition from the URL. `chartId` inside that definition
 names the chart; it does not look up a saved chart. Topic edits do not change

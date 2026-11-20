@@ -18,6 +18,13 @@ describe('case-study embed URL', () => {
     expect(safeCaseStudyEmbedUrl(`/embed/${embed}`)).toBe(`/embed/${embed}?inline=true`);
   });
 
+  test('replaces existing inline settings with a single inline flag', () => {
+    const path = safeCaseStudyEmbedUrl('/embed/impact-time?inline=false&indicator=Heat&%69nline=false');
+    const url = new URL(path, 'https://provide.example');
+    expect(url.searchParams.getAll('inline')).toEqual(['true']);
+    expect(url.searchParams.get('indicator')).toBe('Heat');
+  });
+
   test.each([
     ['nothing', undefined],
     ['an empty string', '  '],

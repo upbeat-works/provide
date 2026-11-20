@@ -1,5 +1,6 @@
 <script>
   import ChartRenderer from './ChartRenderer.svelte';
+  import ChartWithSeriesPicker from './ChartWithSeriesPicker.svelte';
   import { isChartVisible } from './adapter.js';
 
   export let result;
@@ -14,7 +15,13 @@
     <h1 class="mb-3 text-2xl font-normal">{result.definition.title}</h1>
     <p class="leading-relaxed">{result.definition.description}</p>
   </header>
-  <ChartRenderer {result} {selection} {staticMode} />
+  {#if staticMode}
+    <ChartRenderer {result} {selection} {staticMode} />
+  {:else}
+    <ChartWithSeriesPicker {result} {selection} />
+  {/if}
 {:else if !result}
   <p role="alert">The chart URL is incomplete.</p>
+{:else}
+  <p role="status">No data is available for this selection.</p>
 {/if}

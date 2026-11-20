@@ -9,6 +9,7 @@
   import CopyLink from '$lib/components/ui/CopyLink.svelte';
 
   export let graphParams = {};
+  export let graphQueryOptions = {};
   export let filename = undefined;
   export let width = 1000;
   export let processingIntensity = 1;
@@ -34,7 +35,7 @@
     .map((str) => snakeCase(str))
     .join('-');
 
-  $: graphQuery = stringify({ ...graphParams, static: true });
+  $: graphQuery = stringify({ ...graphParams, static: true }, graphQueryOptions);
 
   function buildGraphURL(embedUid, graphQuery) {
     if (browser) {
@@ -56,7 +57,7 @@
 
   $: graphUrl = buildGraphURL(embedUid, graphQuery);
   // Same chart with its controls: what editors paste into a case study's live-chart block.
-  $: embedLink = buildGraphURL(embedUid, stringify(graphParams))?.href;
+  $: embedLink = buildGraphURL(embedUid, stringify(graphParams, graphQueryOptions))?.href;
 
   function buildScreenshotUrl(format, width, processingIntensity, graphUrl) {
     if (!graphUrl) {

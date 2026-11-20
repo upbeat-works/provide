@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { Hono } from 'hono';
+import { stringify } from 'qs';
 import { scoreboard } from '../../../../../../../api/routes/scoreboard';
 import * as platform from '../../../../../../../api/platform';
 import { load } from '$routes/(embed)/embed/[embed]/+page.server.js';
@@ -8,6 +9,7 @@ import Fixture from './ChartRenderer.test.fixture.svelte';
 
 const api = new Hono({ strict: false }).route('/api/scoreboard', scoreboard);
 const selections = { scenario: 'SSP1', region: 'Austria', year: '2050' };
+const queryOptions = { arrayFormat: 'comma', commaRoundTrip: true, encodeValuesOnly: true };
 const unit = '<img src=x onerror="window.chartReview=true"> & people';
 
 beforeEach(() => {
@@ -43,7 +45,7 @@ test.each([
     chartId: 'population', title: 'Population', description: '', chartType,
     data: { ...data, unitFallback: unit, groupBy: 'region', regions: ['Austria'] },
   };
-  const url = new URL(`https://example.test/embed/eu-scoreboard-chart?${new URLSearchParams({ chart: JSON.stringify(chart), ...selections })}`);
+  const url = new URL(`https://example.test/embed/eu-scoreboard-chart?${stringify({ chart, ...selections }, queryOptions)}`);
   const fetch = (input, init) => {
     const target = new URL(input, url);
     return api.request(`${target.pathname}${target.search}`, init, { DB: {}, IXMP4_USERNAME: 'test', IXMP4_PASSWORD: 'test' });
@@ -83,7 +85,7 @@ test.each([
     chartId: 'decimals', title: 'Decimals', description: '', chartType, decimals: 3,
     data: { ...data, groupBy: 'region', regions: ['Austria'] },
   };
-  const url = new URL(`https://example.test/embed/eu-scoreboard-chart?${new URLSearchParams({ chart: JSON.stringify(chart), ...selections })}`);
+  const url = new URL(`https://example.test/embed/eu-scoreboard-chart?${stringify({ chart, ...selections }, queryOptions)}`);
   const fetch = (input, init) => {
     const target = new URL(input, url);
     return api.request(`${target.pathname}${target.search}`, init, { DB: {}, IXMP4_USERNAME: 'test', IXMP4_PASSWORD: 'test' });

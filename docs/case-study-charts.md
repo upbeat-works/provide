@@ -90,7 +90,7 @@ Every embed link points at a stand-alone chart page, `/embed/<chart>`. The Live 
 | `/embed/impact-time` | Impact over time | `indicator`, `instance`, `geography`, `scenarios`, `timeframe` |
 | `/embed/impact-geo` | Impact map | the above plus `year` |
 | `/embed/unavoidable-risk` | Unavoidable risk by warming level | the above plus `threshold` |
-| `/embed/eu-scoreboard-chart` | EU Scoreboard chart | `chart` (JSON definition), `scenario`, `region`, `year` |
+| `/embed/eu-scoreboard-chart` | EU Scoreboard chart | `chart[...]` (definition fields encoded with `qs.stringify`), `scenario`, `region`, `year` |
 
 Add `static=true` to hide the controls. The scoreboard embed is documented in the [EU scoreboard chart reference](eu-scoreboard-chart-config.md#embed-a-chart).
 

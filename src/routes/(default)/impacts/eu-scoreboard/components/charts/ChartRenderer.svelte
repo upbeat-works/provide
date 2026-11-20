@@ -4,7 +4,7 @@
   import BubbleChart from './BubbleChart.svelte';
   import BoxPlotChart from './BoxPlotChart.svelte';
   import { adaptChartResult } from './adapter.js';
-  import { EMBED_UID, graphParamsFor } from './catalog.js';
+  import { EMBED_UID, EMBED_QUERY_OPTIONS, graphParamsFor } from './catalog.js';
   import { invalidateAll } from '$app/navigation';
 
   export let result;
@@ -33,6 +33,7 @@
   $: graphDownloadParams = graphParamsFor(result.definition, selection);
   $: graphDownloadSettings = {
     filename: [result.definition.chartId, selection.scenario?.uid, selection.region?.uid, selection.year?.uid].filter(Boolean).join(' '),
+    graphQueryOptions: EMBED_QUERY_OPTIONS,
   };
 </script>
 
