@@ -2,9 +2,9 @@
   "label": "Socioeconomic",
   "order": 30,
   "map": {
-    "defaultIndicator": "Population aged 65 and over",
+    "defaultIndicator": "Old age dependency ratio",
     "ranking": {
-      "variable": "Population|Age 65+",
+      "variable": "Population|Old Age Dependency [Ratio]",
       "bins": [
         1,
         5,
@@ -13,8 +13,22 @@
     },
     "indicators": [
       {
-        "name": "Population aged 65 and over",
-        "variable": "Population|Age 65+",
+        "name": "Old age dependency ratio",
+        "variable": "Population|Old Age Dependency [Ratio]",
+        "type": "choropleth",
+        "europeLevel": "NUTS2",
+        "level": "NUTS2"
+      },
+      {
+        "name": "Gender Differential Vulnerability",
+        "variable": "Gender Differential Vulnerability|Frozen Spread",
+        "type": "choropleth",
+        "europeLevel": "NUTS2",
+        "level": "NUTS2"
+      },
+      {
+        "name": "Gender Differential Adaptive Capacity",
+        "variable": "Gender Differential Adaptive Capacity|Frozen Spread",
         "type": "choropleth",
         "europeLevel": "NUTS2",
         "level": "NUTS2"
@@ -139,6 +153,23 @@
         "unitFallback": "people",
         "x": "Educational Attainment Low",
         "y": "Educational Attainment High"
+      }
+    },
+    {
+      "chartId": "european-index-gender-equality-region",
+      "title": "European index of gender equality",
+      "hideInEuropeView": true,
+      "description": "ADD DESCRIPTION OF INDICATOR HERE!",
+      "chartType": "line",
+      "data": {
+        "model": "Gender Vulnerability v1.0.0",
+        "variables": [
+          "European Index of Gender Equality Projections",
+          "European Index of Gender Equality Projections|Composite",
+          "European Index of Gender Equality Projections|Health",
+          "European Index of Gender Equality Projections|Money",
+          "European Index of Gender Equality Projections|Work"
+        ]
       }
     },
     {
