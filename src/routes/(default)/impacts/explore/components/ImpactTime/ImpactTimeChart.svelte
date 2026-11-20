@@ -94,18 +94,21 @@
       color: colorForStep(colorScales[i], entry?.step, scenario.color),
       ...entry,
     };
-  });
+  }).filter(({ min, value, max }) => [min, value, max].every(Number.isFinite));
+  $: scenarioIds = data.map(({ uid }) => uid);
 
   $: requiredDecimalsForBoxplots = findDecimalsForDistinctValues(endBoundsData.map(({ value, min, max }) => [min, max, value]).flat(), unit.uid);
   $: formatBoxplotValueY = (d) => formatValue(d, unitUID, { addSuffix: false, decimals: requiredDecimalsForBoxplots });
 
   // Data for generating popovers
-  $: popoverData = (isMultiLine ? flatMap(lineData, (d) => d.values.map((v) => ({ ...v, scenario: d.scenario }))) : flatData).map((d) => ({
-    ...d,
-    formattedValue: `${formatTooltipValueY(d.value)}`,
-    formattedGmt: d.gmt,
-    label: indicatorLabel.label,
-  }));
+  $: popoverData = (isMultiLine ? flatMap(lineData, (d) => d.values.map((v) => ({ ...v, scenario: d.scenario }))) : flatData)
+    .filter(({ value }) => Number.isFinite(value))
+    .map((d) => ({
+      ...d,
+      formattedValue: `${formatTooltipValueY(d.value)}`,
+      formattedGmt: d.gmt,
+      label: indicatorLabel.label,
+    }));
 
   $: yDomain = extent(flatData, (d) => d.value);
   $: mainChartWidth = ['w-full', 'w-10/12', 'w-9/12'][data.length - 1];
@@ -142,7 +145,7 @@
   </div>
   {#if isMultiLine}
     <div class="h-full {sideChartWidth}">
-      <LayerCake padding={sideChartPadding} x="uid" y={yKey} z="color" {yDomain} data={endBoundsData} xScale={scaleBand()}>
+      <LayerCake padding={sideChartPadding} x="uid" xDomain={scenarioIds} y={yKey} z="color" {yDomain} data={endBoundsData} xScale={scaleBand()}>
         <Svg>
           <AxisY padding={sideChartPadding} ticks={yTicks} {yDomain} xTick={-3} ticksHighlighted={ticksYHighlighted} showTickLabels={false} />
           <BoxLayer formatValue={formatBoxplotValueY} />

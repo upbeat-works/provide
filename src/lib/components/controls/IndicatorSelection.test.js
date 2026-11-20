@@ -53,7 +53,7 @@ describe('IndicatorSelection', () => {
       if (url.pathname.startsWith('/app/indicator-details/')) return Response.json({ ...heat, parameters: [] });
       if (url.pathname.endsWith('/api/geography-availability')) return Response.json({ geographyIds: ['Austria'] });
       if (url.pathname.endsWith('/api/scenario-availability')) return Response.json({ scenarios: [] });
-      if (!url.pathname.endsWith('/api/indicators')) throw new Error(`Unexpected request: ${url}`);
+      if (!url.pathname.endsWith('/api/indicators') && !url.pathname.endsWith('/api/indicators/filters')) throw new Error(`Unexpected request: ${url}`);
       if (!url.searchParams.has('region')) {
         return Response.json({ indicators: [], failedInstances: [{ instance: 'source-b', code: 'unavailable' }] });
       }
@@ -91,7 +91,7 @@ describe('IndicatorSelection', () => {
     let index = [heat, flood];
     globalThis.fetch = vi.fn(async (input) => {
       const url = new URL(String(input), 'http://localhost');
-      if (!url.pathname.endsWith('/api/indicators')) throw new Error(`Unexpected request: ${url}`);
+      if (!url.pathname.endsWith('/api/indicators') && !url.pathname.endsWith('/api/indicators/filters')) throw new Error(`Unexpected request: ${url}`);
       const indicators = url.searchParams.has('region') ? [heat, flood] : index;
       return Response.json({ indicators, failedInstances: [] });
     });
@@ -128,7 +128,7 @@ describe('IndicatorSelection', () => {
       // The component fetches a relative path; give it a base so the mock can
       // read its params instead of throwing on an invalid URL.
       const url = new URL(String(input), 'http://localhost');
-      if (!url.pathname.endsWith('/api/indicators')) throw new Error(`Unexpected request: ${url}`);
+      if (!url.pathname.endsWith('/api/indicators') && !url.pathname.endsWith('/api/indicators/filters')) throw new Error(`Unexpected request: ${url}`);
       if (url.searchParams.get('Sector') === 'Health') return pendingResponse;
       return Response.json({ indicators: [heat], failedInstances: [], filters });
     });
@@ -160,7 +160,7 @@ describe('IndicatorSelection', () => {
       // The component fetches a relative path; give it a base so the mock can
       // read its params instead of throwing on an invalid URL.
       const url = new URL(String(input), 'http://localhost');
-      if (!url.pathname.endsWith('/api/indicators')) throw new Error(`Unexpected request: ${url}`);
+      if (!url.pathname.endsWith('/api/indicators') && !url.pathname.endsWith('/api/indicators/filters')) throw new Error(`Unexpected request: ${url}`);
       if (url.searchParams.get('Sector') === 'Health') return Response.json({ indicators: [], failedInstances: [], filters: emptyFilters });
       if (url.searchParams.get('region') === 'DEU' && !url.searchParams.has('Sector')) {
         regionRequests++;

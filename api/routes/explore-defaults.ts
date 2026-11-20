@@ -38,7 +38,7 @@ exploreDefaults.get('/', async (c) => {
   try {
     const platform = await createPlatform(instance, c.env.IXMP4_USERNAME, c.env.IXMP4_PASSWORD);
     const variableSets = await Promise.all(
-      scenarios.map(async (scenario) => medianFacetedVariables((await platform.iamc.variables.list({ run: { scenario: { name_ilike: scenario } } })).map(({ name }) => name)))
+      scenarios.map(async (scenario) => medianFacetedVariables((await platform.iamc.variables.list({ name_ilike: '*|50th Percentile', run: { scenario: { name_ilike: scenario } } })).map(({ name }) => name)))
     );
     const candidates = [...intersection(variableSets)].sort(candidateOrder);
     const selectableRows = await c.env.DB.select({ id: schema.geographies.id })
@@ -47,9 +47,11 @@ exploreDefaults.get('/', async (c) => {
       .where(and(eq(schema.geographyTypes.isAvailable, true), eq(schema.geographyTypes.isSelectable, true)));
     const selectable = new Set(selectableRows.map(({ id }) => id));
 
+    if (!selectable.size) return c.json({ error: 'No shared impact data for the requested scenarios' }, 404);
+
     for (const candidate of candidates) {
       const regionSets = await Promise.all(
-        scenarios.map(async (scenario) => new Set((await platform.regions.list({ iamc: { variable: { name: candidate }, run: { scenario: { name_ilike: scenario } } } })).map(({ name }) => name)))
+        scenarios.map(async (scenario) => new Set((await platform.regions.list({ name_in: [...selectable], iamc: { variable: { name: candidate }, run: { scenario: { name_ilike: scenario } } } })).map(({ name }) => name)))
       );
       const geography = [...intersection(regionSets)].filter((id) => selectable.has(id)).sort((a, b) => a.localeCompare(b))[0];
       if (!geography) continue;

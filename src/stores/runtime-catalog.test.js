@@ -170,8 +170,8 @@ describe('runtime catalog selection', () => {
 
   test('loads first-use filter groups without applying active filters', async () => {
     server.use(
-      http.get(`${API_URL}/indicators`, ({ request }) => {
-        if (new URL(request.url).search !== '?Sector=') return HttpResponse.json({ error: 'Missing blank facet query' }, { status: 400 });
+      http.get(`${API_URL}/indicators/filters`, ({ request }) => {
+        if (new URL(request.url).search) return HttpResponse.json({ error: 'Unexpected filter query' }, { status: 400 });
         return HttpResponse.json({
           indicators: [indicator('Heat')],
           failedInstances: [],

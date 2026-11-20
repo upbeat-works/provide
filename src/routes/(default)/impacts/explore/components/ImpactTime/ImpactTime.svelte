@@ -73,9 +73,7 @@
             const gmt = hasGmt ? formatValue(gmtValue, 'degrees-warming') : undefined;
             const wlvl = hasGmt ? parseFloat(gmt) : undefined;
             const step = hasGmt ? colorSteps(wlvl) : undefined;
-            // This values are not always in the correct order of min, average (?), max.
-            // https://stackoverflow.com/a/7000895/2314684
-            const [min, value, max] = values.sort((a, b) => a - b);
+            const [min, value, max] = values.every(Number.isFinite) ? [...values].sort((a, b) => a - b) : values;
             return {
               gmt,
               wlvl,

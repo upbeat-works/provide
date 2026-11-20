@@ -110,23 +110,29 @@ describe('GET /api/indicators', () => {
     });
   });
 
-  test('returns unselected filter groups when a known facet key is blank', async () => {
-    useFacetHandlers();
-    const env = await createTestEnv();
-    await env.DB.insert(schema.indicators).values([
-      { id: 'Heat', sector: 'health' },
-      { id: 'Glacier area', sector: 'cryosphere' },
-    ]);
+  test('returns the plain index without loading runs or metadata when a facet is blank', async () => {
+    const facetRequests: string[] = [];
+    server.use(
+      http.patch(`${instance.url}/iamc/variables/`, () => HttpResponse.json(listEnvelope([variable(1, 'Heat')]))),
+      http.patch(`${instance.url}/runs/`, () => {
+        facetRequests.push('runs');
+        return HttpResponse.json(listEnvelope([]));
+      }),
+      http.patch(`${instance.url}/meta/`, () => {
+        facetRequests.push('meta');
+        return HttpResponse.json(tabulateEnvelope(['run__id', 'key', 'value'], []));
+      })
+    );
+    useUnit(instance, 'days');
 
-    const res = await api.request('/api/indicators?Sector=', {}, env);
-    const json = (await res.json()) as IndicatorIndexResponse & { filters: IndicatorFilterGroup[] };
+    const res = await api.request('/api/indicators?Sector=', {}, await createTestEnv());
 
     expect(res.status).toBe(200);
-    expect(json.filters.every(({ selected }) => selected.length === 0)).toBe(true);
-    expect(json.filters.find(({ key }) => key === 'Sector')?.options).toEqual([
-      { value: 'Cryosphere', count: 1 },
-      { value: 'Health', count: 1 },
-    ]);
+    expect(facetRequests).toEqual([]);
+    expect(await res.json()).toEqual({
+      indicators: [{ id: 'Heat', label: 'Heat', unit: 'days', instance: instance.slug }],
+      failedInstances: [],
+    });
   });
 
   test('drops a malformed faceted variable with an empty indicator ID', async () => {
@@ -228,10 +234,39 @@ describe('GET /api/indicators', () => {
     }
   });
 
+  test('loads filter options without units, citations, or per-run variable lists', async () => {
+    useFacetHandlers();
+    const variableFilters: unknown[] = [];
+    const metaFilters: unknown[] = [];
+    let unitRequests = 0;
+    server.use(
+      http.patch(`${instance.url}/iamc/variables/`, async ({ request }) => {
+        variableFilters.push(await request.json().catch(() => ({})));
+        return HttpResponse.json(listEnvelope([variable(1, 'Heat'), variable(2, 'Glacier area')]));
+      }),
+      http.patch(`${instance.url}/units/`, () => {
+        unitRequests++;
+        return HttpResponse.json(listEnvelope([{ id: 1, name: 'days' }]));
+      }),
+      http.patch(`${instance.url}/meta/`, async ({ request }) => {
+        metaFilters.push(await request.json());
+        return HttpResponse.json(tabulateEnvelope(['run__id', 'key', 'value'], [[1, 'Temporal Resolution', 'Annual']]));
+      }),
+    );
+    const res = await api.request('/api/indicators/filters', {}, await createTestEnv());
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.filters.find(({ key }) => key === 'Temporal Resolution').options).toEqual([{ value: 'Annual', count: 1 }]);
+    expect(json).not.toHaveProperty('indicators');
+    expect(variableFilters).toEqual([{}]);
+    expect(unitRequests).toBe(0);
+    expect(metaFilters).toEqual([{ key__in: ['Data Source', 'Spatial Resolution', 'Temporal Resolution'] }]);
+  });
+
   test('applies other selected groups to each cascading option count', async () => {
     useFacetHandlers();
 
-    const query = new URLSearchParams({ 'Temporal Resolution': '5 years' });
+    const query = new URLSearchParams({ Sector: '', 'Temporal Resolution': '5 years' });
     const res = await api.request(`/api/indicators?${query}`, {}, await createTestEnv());
     const json = (await res.json()) as IndicatorIndexResponse & { filters: IndicatorFilterGroup[] };
 
@@ -268,11 +303,7 @@ describe('GET /api/indicators', () => {
     useFacetHandlers(({ request }) => {
       const body = request.json().catch(() => ({}));
       return body.then((value) => {
-        const filter = value as { run?: { id__in?: number[] }; region?: unknown };
-        const runId = filter.run?.id__in?.[0];
-        if (runId === 1) return HttpResponse.json(listEnvelope([variable(1, 'Heat')]));
-        if (runId === 2) return HttpResponse.json(listEnvelope([variable(2, 'Glacier area')]));
-        indexFilter = filter;
+        indexFilter = value as Record<string, unknown>;
         return HttpResponse.json(listEnvelope([variable(2, 'Glacier area')]));
       });
     });
@@ -295,19 +326,14 @@ describe('GET /api/indicators', () => {
 
   test('applies region availability to each run before a run facet', async () => {
     const runFilters: Array<Record<string, unknown>> = [];
-    useFacetHandlers(async ({ request }) => {
-      const filter = (await request.json().catch(() => ({}))) as {
-        run?: { id__in?: number[] };
-        region?: { name?: string };
-      };
-      const runId = filter.run?.id__in?.[0];
-      if (!runId) return HttpResponse.json(listEnvelope([variable(1, 'Heat')]));
-
+    useFacetHandlers(() => HttpResponse.json(listEnvelope([variable(1, 'Heat')])));
+    server.use(http.patch(`${instance.url}/runs/`, async ({ request }) => {
+      const filter = await request.json() as { iamc?: { region?: { name?: string } } };
       runFilters.push(filter);
-      if (runId === 1) return HttpResponse.json(listEnvelope([variable(1, 'Heat')]));
-      if (filter.region?.name !== 'DEU') return HttpResponse.json(listEnvelope([variable(2, 'Heat')]));
-      return HttpResponse.json(listEnvelope([]));
-    });
+      const runs = [{ id: 1, model: { name: 'M' }, scenario: { name: 'a' }, version: 1, is_default: true }];
+      if (filter.iamc?.region?.name !== 'DEU') runs.push({ id: 2, model: { name: 'M' }, scenario: { name: 'b' }, version: 1, is_default: true });
+      return HttpResponse.json(listEnvelope(runs));
+    }));
 
     const query = new URLSearchParams({
       region: 'DEU',
@@ -318,8 +344,8 @@ describe('GET /api/indicators', () => {
 
     expect(res.status).toBe(200);
     expect(json.indicators).toEqual([]);
-    expect(runFilters).toHaveLength(2);
-    expect(runFilters.every((filter) => filter.region && (filter.region as { name?: string }).name === 'DEU')).toBe(true);
+    expect(runFilters).toHaveLength(1);
+    expect(runFilters[0]).toMatchObject({ iamc: { region: { name: 'DEU' } } });
   });
 
   test('does not send q to IXMP4', async () => {
@@ -341,23 +367,18 @@ describe('GET /api/indicators', () => {
 });
 
 function useFacetHandlers(
-  variablesHandler: Parameters<typeof http.patch>[1] = async ({ request }) => {
-    const filter = (await request.json().catch(() => ({}))) as { run?: { id__in?: number[] } };
-    const runId = filter.run?.id__in?.[0];
-    if (runId === 1) return HttpResponse.json(listEnvelope([variable(1, 'Heat')]));
-    if (runId === 2) return HttpResponse.json(listEnvelope([variable(2, 'Glacier area')]));
-    return HttpResponse.json(listEnvelope([variable(1, 'Heat'), variable(2, 'Glacier area')]));
-  }
+  variablesHandler: Parameters<typeof http.patch>[1] = () => HttpResponse.json(listEnvelope([variable(1, 'Heat'), variable(2, 'Glacier area')]))
 ) {
   server.use(
-    http.patch(`${instance.url}/runs/`, () =>
-      HttpResponse.json(
-        listEnvelope([
-          { id: 1, model: { name: 'M' }, scenario: { name: 'a' }, version: 1, is_default: true },
-          { id: 2, model: { name: 'M' }, scenario: { name: 'b' }, version: 1, is_default: true },
-        ])
-      )
-    ),
+    http.patch(`${instance.url}/runs/`, async ({ request }) => {
+      const filter = await request.json() as { iamc?: { variable?: { name__in?: string[] } } };
+      const names = filter.iamc?.variable?.name__in;
+      const rows = [
+        { id: 1, model: { name: 'M' }, scenario: { name: 'a' }, version: 1, is_default: true },
+        { id: 2, model: { name: 'M' }, scenario: { name: 'b' }, version: 1, is_default: true },
+      ].filter((run) => !names || names.some((name) => name.startsWith(run.id === 1 ? 'Heat|' : 'Glacier area|')));
+      return HttpResponse.json(listEnvelope(rows));
+    }),
     http.patch(`${instance.url}/meta/`, () =>
       HttpResponse.json(
         tabulateEnvelope(

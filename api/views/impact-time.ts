@@ -1,10 +1,11 @@
 import { createPlatform } from '../platform';
+import { canonicalScenarioNames } from '../scenario-names';
 import { composeVariable, FACET_DEFAULTS } from '../conventions';
 import { caseInsensitiveLookup } from '../util';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
 import { toCsv, type CsvCell } from '../csv';
 import type { Ixmp4Instance } from '../types';
-import { fetchCitationsByModel } from '../facets';
+import { fetchModelCitations } from '../facets';
 import { fetchGmtSeries, gmtBandsForYears } from './gmt';
 
 export interface ImpactTimeParams {
@@ -157,8 +158,24 @@ interface FetchedBands {
   unit?: string;
 }
 
+function regularYearAxis(years: number[]): number[] {
+  if (years.length < 3) return years;
+  let step = years[1] - years[0];
+  // The response uses start + step * index, so the step must divide every gap.
+  for (let i = 2; i < years.length; i++) {
+    let gap = years[i] - years[i - 1];
+    while (gap > 0) {
+      const remainder = step % gap;
+      step = gap;
+      gap = remainder;
+    }
+  }
+  const length = (years[years.length - 1] - years[0]) / step + 1;
+  return Array.from({ length }, (_, index) => years[0] + step * index);
+}
+
 /**
- * Align the wide rows of each percentile onto a single union year axis, so the
+ * Align the wide rows of each percentile onto a regular union year axis, so the
  * three series for a scenario index by the SAME years in zipBands. A year a
  * scenario lacks (missing column or null cell) becomes NaN rather than shifting
  * later years left. Pure.
@@ -171,7 +188,7 @@ export function alignBands(rowsByPct: Record<string, WideRow[]>): {
   for (const rows of Object.values(rowsByPct)) {
     for (const row of rows) for (const y of yearColumns(row)) yearSet.add(y);
   }
-  const years = [...yearSet].sort((a, b) => a - b);
+  const years = regularYearAxis([...yearSet].sort((a, b) => a - b));
   const byPct: Record<string, PercentileSeries> = {};
   for (const [value, rows] of Object.entries(rowsByPct)) {
     const perScenario: PercentileSeries = {};
@@ -193,12 +210,14 @@ async function fetchBands(
   platform: any,
   region: string,
   base: VariableBase,
+  scenarios: string[],
 ): Promise<FetchedBands> {
   const dfs = await Promise.all(
     PERCENTILES.map((value) =>
       platform.iamc.tabulate({
         region: { name: region },
         variable: { name: composeVariable({ ...base, value }) },
+        scenario: { name_in: scenarios },
         wide: true,
       }),
     ),
@@ -238,15 +257,12 @@ export async function fetchImpactTime(
     spatial: params.spatial ?? DEFAULTS.spatial,
   };
 
-  const [indicatorBands, gmtSeries, citations] = await Promise.all([
-    fetchBands(platform, params.geography, base),
-    fetchGmtSeries(platform),
-    fetchCitationsByModel(platform),
+  const scenarios = await canonicalScenarioNames(platform, params.scenarios);
+  const [indicatorBands, gmtSeries] = await Promise.all([
+    fetchBands(platform, params.geography, base, scenarios),
+    fetchGmtSeries(platform, { scenarios }),
   ]);
-
-  // Prefer the curated citation strings the run carries; fall back to the bare
-  // model name off the datapoints when a run has no meta.
-  const cited = citations.get((indicatorBands.model ?? '').toLowerCase());
+  const citations = await fetchModelCitations(platform, indicatorBands.model);
   const response = assembleImpactTime({
     indicator: params.indicator,
     years: indicatorBands.years,
@@ -254,8 +270,8 @@ export async function fetchImpactTime(
     p50: indicatorBands.p50,
     p95: indicatorBands.p95,
     scenarios: params.scenarios,
-    model: cited?.model ?? indicatorBands.model,
-    source: cited?.source ?? '',
+    model: citations.model ?? indicatorBands.model,
+    source: citations.source ?? '',
   });
   // Real global warming (World region, the emulator's own 10/50/90 axis with
   // band edges taken numerically), resampled onto the indicator's year axis —

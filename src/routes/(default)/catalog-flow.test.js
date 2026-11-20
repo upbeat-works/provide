@@ -88,6 +88,7 @@ test('scenario choices enforce availability, timeframe, and the selection limit'
 
 function useIndexHandlers(requests = []) {
   server.use(
+    http.get(`${API_URL}/indicators/filters`, () => HttpResponse.json({ filters: [{ key: 'Sector', options: [{ value: 'Health', count: 1 }] }], failedInstances: [] })),
     http.get(`${API_URL}/indicators`, ({ request }) => {
       const url = new URL(request.url);
       requests.push(`${url.pathname}${url.search}`);
@@ -203,14 +204,12 @@ describe('catalog page flow', () => {
     await flow.retryIndicatorDetails();
 
     expect(get(catalog.selection).parameters).toEqual({ time: 'Annual' });
-    for (const availability of [catalog.percentileAvailability, catalog.warmingLevelAvailability]) {
-      expect(get(availability)).toMatchObject({
-        status: 'success',
-        data: { context: { parameters: { time: 'Annual' } } },
-      });
-    }
+    expect(get(catalog.percentileAvailability)).toMatchObject({
+      status: 'success',
+      data: { context: { parameters: { time: 'Annual' } } },
+    });
     expect(requests.some((request) => request.includes('time=Annual') && request.includes('axis=percentile'))).toBe(true);
-    expect(requests.some((request) => request.includes('time=Annual') && request.includes('axis=warmingLevel'))).toBe(true);
+    expect(get(catalog.warmingLevelAvailability).status).toBe('idle');
   });
 
   test('landing and Explore server loads request editorial data without a catalog scan', async () => {
@@ -269,7 +268,7 @@ describe('catalog page flow', () => {
     await flow.start();
 
     expect(get(catalog.indicatorIndex)).toEqual({ status: 'failure', error: 'Indicator sources unavailable' });
-    expect(get(catalog.filterGroups).status).toBe('success');
+    expect(get(catalog.filterGroups).status).toBe('idle');
     expect(get(catalog.geographyIndex)).toMatchObject({
       status: 'success',
       data: { geographies: [{ id: 'DEU' }] },
@@ -293,13 +292,13 @@ describe('catalog page flow', () => {
     });
     expect(get(catalog.indicatorDetails)).toMatchObject({ status: 'success', data: { description: 'Useful detail' } });
     expect(get(catalog.percentileAvailability)).toMatchObject({ status: 'success', data: { scenarios: [{ id: 'Low' }] } });
-    expect(get(catalog.warmingLevelAvailability)).toMatchObject({ status: 'success', data: { scenarios: [{ id: 'High' }] } });
-    expect(requests.filter((request) => request.includes('instance=provide-external'))).toHaveLength(5);
+    expect(get(catalog.warmingLevelAvailability).status).toBe('idle');
+    expect(requests.filter((request) => request.includes('instance=provide-external'))).toHaveLength(4);
     expect(requests.some((request) => request.includes('axis=percentile'))).toBe(true);
-    expect(requests.some((request) => request.includes('axis=warmingLevel'))).toBe(true);
+    expect(requests.some((request) => request.includes('axis=warmingLevel'))).toBe(false);
   });
 
-  test('supports indicator-first, reloads both availability axes after a parameter change, and keeps them separate', async () => {
+  test('loads percentile availability on selection changes and leaves warming checks idle', async () => {
     const requests = [];
     useSelectionHandlers(requests);
     const { catalog, flow } = createFlow();
@@ -311,9 +310,9 @@ describe('catalog page flow', () => {
 
     expect(get(catalog.selection).parameters).toEqual({ time: 'Seasonal' });
     expect(get(catalog.percentileAvailability).data.scenarios[0].id).toBe('Low');
-    expect(get(catalog.warmingLevelAvailability).data.scenarios[0].id).toBe('High');
+    expect(get(catalog.warmingLevelAvailability).status).toBe('idle');
     const seasonalRequests = requests.filter((request) => request.includes('time=Seasonal'));
-    expect(seasonalRequests).toHaveLength(2);
+    expect(seasonalRequests).toHaveLength(1);
     expect(seasonalRequests.every((request) => request.includes('instance=provide-external'))).toBe(true);
   });
 
@@ -460,6 +459,7 @@ describe('catalog page flow', () => {
 
   test('keeps both chart axes gated until a failed filtered scope and each availability request recover', async () => {
     let scopeAttempts = 0;
+    useSelectionHandlers([]);
     server.use(
       http.get(`${API_URL}/indicators`, ({ request }) => {
         const url = new URL(request.url);
@@ -479,7 +479,7 @@ describe('catalog page flow', () => {
     catalog.selectGeography('DEU');
 
     await flow.applyFilters(context.filters, context);
-    const selection = get(catalog.selection);
+    let selection = get(catalog.selection);
     const failedScope = get(catalog.filteredIndicators);
     const failedPercentileView = percentileChartView({
       combinationAvailable: true,
@@ -510,7 +510,10 @@ describe('catalog page flow', () => {
     });
     expect(waitingPercentileView).toEqual({ status: 'loading' });
 
-    await Promise.all([flow.retryPercentileAvailability(), flow.retryWarmingLevelAvailability()]);
+    await flow.chooseIndicator(indicator());
+    selection = get(catalog.selection);
+    flow.setWarmingVisible(true);
+    await vi.waitFor(() => expect(get(catalog.warmingLevelAvailability).status).toBe('success'));
     const percentileView = percentileChartView({
       combinationAvailable: true,
       availability: get(catalog.percentileAvailability),
@@ -535,20 +538,26 @@ describe('catalog page flow', () => {
     {
       axis: 'percentile',
       retryChart: retryPercentileChartRequest,
-      failAvailability: (flow) => flow.retryPercentileAvailability(),
+      startAvailability: (flow) => flow.retryPercentileAvailability(),
+      otherStatus: 'idle',
       availabilityState: (catalog) => get(catalog.percentileAvailability),
       otherAvailabilityState: (catalog) => get(catalog.warmingLevelAvailability),
     },
     {
       axis: 'warmingLevel',
       retryChart: retryWarmingChartRequest,
-      failAvailability: (flow) => flow.retryWarmingLevelAvailability(),
+      async startAvailability(flow) {
+        await flow.chooseIndicator(indicator());
+        flow.setWarmingVisible(true);
+      },
+      otherStatus: 'success',
       availabilityState: (catalog) => get(catalog.warmingLevelAvailability),
       otherAvailabilityState: (catalog) => get(catalog.percentileAvailability),
     },
-  ])('routes $axis chart retries to the failed public request', async ({ axis, retryChart, failAvailability, availabilityState, otherAvailabilityState }) => {
+  ])('routes $axis chart retries to the failed public request', async ({ axis, retryChart, startAvailability, otherStatus, availabilityState, otherAvailabilityState }) => {
     let scopeAttempts = 0;
     let availabilityAttempts = 0;
+    useSelectionHandlers([]);
     server.use(
       http.get(`${API_URL}/indicators`, ({ request }) => {
         const url = new URL(request.url);
@@ -558,7 +567,7 @@ describe('catalog page flow', () => {
         return HttpResponse.json({ indicators: [indicator()], failedInstances: [], filters: [] });
       }),
       http.get(`${API_URL}/scenario-availability`, ({ request }) => {
-        if (new URL(request.url).searchParams.get('axis') !== axis) return HttpResponse.json({ error: 'Wrong availability axis' }, { status: 400 });
+        if (new URL(request.url).searchParams.get('axis') !== axis) return HttpResponse.json({ scenarios: [{ id: 'Low' }] });
         availabilityAttempts += 1;
         if (availabilityAttempts === 1) return HttpResponse.json({ error: 'Availability failed' }, { status: 503 });
         return HttpResponse.json({ scenarios: [{ id: 'Low', label: 'Low' }] });
@@ -575,19 +584,19 @@ describe('catalog page flow', () => {
     expect(get(catalog.filteredIndicators).status).toBe('success');
     expect(scopeAttempts).toBe(2);
 
-    await failAvailability(flow);
-    expect(availabilityState(catalog).status).toBe('failure');
+    await startAvailability(flow);
+    await vi.waitFor(() => expect(availabilityState(catalog).status).toBe('failure'));
     await retryChart({ view: { status: 'failure', failedRequest: 'availability' }, flow, indicatorScopeContext });
 
     expect(availabilityState(catalog).status).toBe('success');
-    expect(otherAvailabilityState(catalog).status).toBe('idle');
+    expect(otherAvailabilityState(catalog).status).toBe(otherStatus);
     expect(availabilityAttempts).toBe(2);
   });
 
   test('retries failed advanced-filter loading from the filter control', async () => {
     let attempts = 0;
     server.use(
-      http.get(`${API_URL}/indicators`, () => {
+      http.get(`${API_URL}/indicators/filters`, () => {
         attempts += 1;
         if (attempts === 1) return HttpResponse.json({ error: 'Temporary failure' }, { status: 502 });
         return HttpResponse.json({ indicators: [], failedInstances: [], filters: [] });

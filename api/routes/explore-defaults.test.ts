@@ -77,12 +77,12 @@ describe('GET /api/explore-defaults', () => {
       scenarios: ['Scenario A', 'Scenario B'],
     });
     expect(variableFilters).toEqual([
-      { run: { scenario: { name__ilike: 'Scenario A' } } },
-      { run: { scenario: { name__ilike: 'Scenario B' } } },
+      { name__ilike: '*|50th Percentile', run: { scenario: { name__ilike: 'Scenario A' } } },
+      { name__ilike: '*|50th Percentile', run: { scenario: { name__ilike: 'Scenario B' } } },
     ]);
     expect(regionFilters).toEqual([
-      { iamc: { variable: { name: shared }, run: { scenario: { name__ilike: 'Scenario A' } } } },
-      { iamc: { variable: { name: shared }, run: { scenario: { name__ilike: 'Scenario B' } } } },
+      { name__in: ['France', 'Germany'], iamc: { variable: { name: shared }, run: { scenario: { name__ilike: 'Scenario A' } } } },
+      { name__in: ['France', 'Germany'], iamc: { variable: { name: shared }, run: { scenario: { name__ilike: 'Scenario B' } } } },
     ]);
     expect(datapointFilters).toHaveLength(0);
   });

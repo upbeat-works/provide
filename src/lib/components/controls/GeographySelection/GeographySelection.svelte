@@ -105,7 +105,7 @@
 
   function retryGeographies() {
     if (usingAvailability) {
-      void catalogFlow.catalog.loadGeographyAvailability();
+      void catalogFlow.retryGeographyAvailability();
       return;
     }
     void catalogFlow.catalog.loadGeographyIndex();

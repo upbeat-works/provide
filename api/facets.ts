@@ -17,8 +17,8 @@ const RUN_KEYS = FACET_KEYS.filter((f) => f.source === 'run').map((f) => f.key);
 // Per-run display strings, read by the chart footer — never facets.
 export const CITATION_KEYS = { model: 'Model Information', source: 'References' } as const;
 
-import type { Platform, VariableFilter } from '@iiasa/ixmp4-ts';
-import { parseVariable } from './conventions';
+import type { Platform } from '@iiasa/ixmp4-ts';
+import type { IndicatorVariableGroup } from './catalog/availability';
 
 export type FacetFilters = Record<string, string[]>;
 export type IndicatorIdentity = string;
@@ -117,50 +117,33 @@ export function resolveFacetSelection(runTags: RunTags, runIndicators: RunIndica
 export interface RunFacetData {
   runTags: RunTags;
   runIndicators: RunIndicators;
-  /** run -> citation strings for the chart footer. */
-  citations: Map<RunKey, { model?: string; source?: string }>;
 }
 
-/**
- * The I/O edge: read every run's meta and its indicators, keyed per instance so
- * run ids from different platforms can't collide.
- */
-export async function fetchRunFacetData(platforms: Array<{ instance: { slug: string }; platform: Platform }>, options: { region?: string } = {}): Promise<RunFacetData> {
+export async function fetchRunFacetData(platform: Platform, instance: string, groups: IndicatorVariableGroup[], options: { region?: string } = {}): Promise<RunFacetData> {
   const runTags: RunTags = new Map();
   const runIndicators: RunIndicators = new Map();
-  const citations: RunFacetData['citations'] = new Map();
-
-  await Promise.all(
-    platforms.map(async ({ instance, platform }) => {
-      const runs = await platform.runs.list();
-      const key = (runId: number) => `${instance.slug}#${runId}`;
-
-      const meta = await platform.meta.tabulate({ joinRunIndex: false });
-      const runIds = meta.columnValues('run__id') as number[];
-      const keys = meta.columnValues('key') as string[];
-      const values = meta.columnValues('value') as unknown[];
-      keys.forEach((k, i) => {
-        const rk = key(runIds[i]);
-        const value = String(values[i]);
-        if (k === CITATION_KEYS.model) citations.set(rk, { ...citations.get(rk), model: value });
-        else if (k === CITATION_KEYS.source) citations.set(rk, { ...citations.get(rk), source: value });
-        else runTags.set(rk, { ...(runTags.get(rk) ?? {}), [k]: value });
+  const key = (runId: number) => `${instance}#${runId}`;
+  const [meta] = await Promise.all([
+    platform.meta.tabulate({ key_in: RUN_KEYS, joinRunIndex: false }),
+    ...groups.map(async (group) => {
+      const runs = await platform.runs.list({
+        iamc: { variable: { name_in: group.names }, ...(options.region ? { region: { name: options.region } } : {}) },
       });
-
-      await Promise.all(
-        runs.map(async (run) => {
-          const rk = key(run.id);
-          if (!runTags.has(rk)) runTags.set(rk, {});
-          const filter: VariableFilter = { run: { id_in: [run.id] } };
-          if (options.region) filter.region = { name: options.region };
-          const names = (await platform.iamc.variables.list(filter)).map((v) => v.name);
-          runIndicators.set(rk, [...new Set(names.map((n) => parseVariable(n).indicator))]);
-        })
-      );
-    })
-  );
-
-  return { runTags, runIndicators, citations };
+      for (const run of runs) {
+        const rk = key(run.id);
+        runTags.set(rk, {});
+        runIndicators.set(rk, [...(runIndicators.get(rk) ?? []), group.id]);
+      }
+    }),
+  ]);
+  const runIds = meta.columnValues('run__id') as number[];
+  const keys = meta.columnValues('key') as string[];
+  const values = meta.columnValues('value') as unknown[];
+  keys.forEach((k, i) => {
+    const rk = key(runIds[i]);
+    runTags.set(rk, { ...(runTags.get(rk) ?? {}), [k]: String(values[i]) });
+  });
+  return { runTags, runIndicators };
 }
 
 export interface IndicatorCitations {
@@ -189,31 +172,24 @@ export function citationsByIndicator(runIndicators: RunIndicators, citations: Ma
   return out;
 }
 
-/**
- * Citations keyed by the model name the datapoint rows carry, for the chart
- * footer (which knows a model/scenario, not a run id). Pure.
- */
-export function citationsByModel(rows: Array<{ model: string; key: string; value: string }>): Map<string, { model?: string; source?: string }> {
-  const out = new Map<string, { model?: string; source?: string }>();
-  for (const { model, key, value } of rows) {
-    if (!model || !value || value.trim() === '-') continue;
-    const id = model.toLowerCase();
-    const entry = out.get(id) ?? {};
-    if (key === CITATION_KEYS.model) entry.model = value;
-    else if (key === CITATION_KEYS.source) entry.source = value;
-    else continue;
-    out.set(id, entry);
-  }
-  return out;
-}
-
-/** I/O edge for {@link citationsByModel}: one joined meta tabulate. */
-export async function fetchCitationsByModel(platform: Platform) {
-  const df = await platform.meta.tabulate({});
-  const models = df.columnValues('model') as string[];
+export async function fetchModelCitations(platform: Platform, model: string | undefined): Promise<{ model?: string; source?: string }> {
+  if (!model) return {};
+  const df = await platform.meta.tabulate({
+    joinRunIndex: false,
+    key_in: Object.values(CITATION_KEYS),
+    run: { model: { name: model } },
+  });
   const keys = df.columnValues('key') as string[];
   const values = df.columnValues('value') as unknown[];
-  return citationsByModel(keys.map((key, i) => ({ model: models[i], key, value: String(values[i]) })));
+  const citations: { model?: string; source?: string } = {};
+  keys.forEach((key, index) => {
+    const value = String(values[index] ?? '');
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === '-') return;
+    if (key === CITATION_KEYS.model) citations.model = value;
+    if (key === CITATION_KEYS.source) citations.source = value;
+  });
+  return citations;
 }
 
 /** `terrestrial-climate` -> `Terrestrial Climate`. Slugs are stored; labels are shown. */

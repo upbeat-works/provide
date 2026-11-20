@@ -407,8 +407,7 @@ describe('catalog consumer adapters', () => {
     [{ status: 'success', data: { filters: [] } }, 'empty'],
     [{ status: 'success', data: { filters: [{ key: 'Sector' }] } }, 'ready'],
   ])('shows advanced-filter request state as %s', (request, expected) => {
-    const groups = request.data?.filters ?? [];
-    expect(advancedFilterControlView({ request, groups }).status).toBe(expected);
+    expect(advancedFilterControlView({ request }).status).toBe(expected);
   });
 
   test('uses the full selected indicator pair in the scenario detail load key', () => {

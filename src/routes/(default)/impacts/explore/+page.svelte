@@ -50,6 +50,7 @@
   import { retryWarmingChartRequest } from '$stores/catalog-adapters.js';
   import { withScenarioTimeframe } from '$lib/utils/utils.js';
   import { KEY_SCENARIO_ENDYEAR } from '$config';
+  import { observeWarmingAvailability } from './warming-availability.js';
 
   export let data;
 
@@ -259,9 +260,9 @@
       </div>
     {:else}
       <div bind:this={contentEl}>
-        {#each sections as section, i}
+        {#each sections as section, i (section.slug ?? 'fallback')}
           {#if !section.disabled}
-            <section id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-contour-weakest border-b last:border-none">
+            <section use:observeWarmingAvailability={{ slug: section.slug }} id={section.slug} name={section.slug} class="scroll-mt-4 mb-8 pb-8 -mx-6 px-6 border-contour-weakest border-b last:border-none">
               <svelte:component this={section.component} {...section.props} />
             </section>
             {#if (section.slug === 'impact-geo' || ($MAP_CHART_VIEW.status === 'empty' && section.slug === 'impact-time')) && $CURRENT_GEOGRAPHY}

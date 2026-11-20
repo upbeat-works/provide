@@ -193,13 +193,14 @@ async function fetchOptionalGmtFrame(platform: PlatformLike, query: unknown): Pr
  * per-scenario calls. A missing variable yields an empty map rather than an
  * error, so an instance without the emulator runs degrades to "no GMT".
  */
-export async function fetchGmtSeries(platform: PlatformLike): Promise<GmtByScenario> {
+export async function fetchGmtSeries(platform: PlatformLike, options: { scenarios?: string[] } = {}): Promise<GmtByScenario> {
   const dfs = await Promise.all(
     GMT_PERCENTILES.map(async (value) => {
       try {
         return await platform.iamc.tabulate({
           region: { name: GMT_REGION },
           variable: { name: composeGmtVariable(value) },
+          ...(options.scenarios ? { scenario: { name_in: options.scenarios } } : {}),
           wide: true,
         });
       } catch {

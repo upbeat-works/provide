@@ -11,6 +11,7 @@ describe('fetchImpactTime — which series it asks ixmp4 for', () => {
   function recordingPlatform(queries: Array<Record<string, never>>) {
     const empty = { columns: [], values: [] };
     return {
+      scenarios: { list: async ({ name_ilike }: { name_ilike: string }) => [{ name: name_ilike }] },
       iamc: {
         tabulate: async (query: Record<string, never>) => {
           queries.push(query);
@@ -35,7 +36,6 @@ describe('fetchImpactTime — which series it asks ixmp4 for', () => {
     const asked = queries.map((q) => [q.region?.name, q.variable?.name] as [string, string]);
     expect(asked).toContainEqual(['World', 'Global Mean Temperature|50th Percentile']);
     expect(asked).toContainEqual(['World', 'Global Mean Temperature|10th Percentile']);
-    // The interim proxy — regional pre-industrial Mean Temperature — is gone.
     expect(asked.map(([, name]) => name)).not.toContain(
       'Mean Temperature|1850-1900 (Pre-industrial)|Annual|Area|50th Percentile',
     );
@@ -49,6 +49,7 @@ describe('fetchImpactTime — which series it asks ixmp4 for', () => {
   test('aligns GMT to the selected impact span after removing another scenario tail', async () => {
     const columns = ['model', 'scenario', 'unit', '2080', '2090', '2100', '2110', '2300'];
     const platform = {
+      scenarios: { list: async ({ name_ilike }: { name_ilike: string }) => [{ name: name_ilike }] },
       iamc: {
         tabulate: async (query: { region?: { name?: string } }) => {
           if (query.region?.name === 'World') {
@@ -81,6 +82,12 @@ describe('fetchImpactTime — which series it asks ixmp4 for', () => {
 });
 
 describe('alignBands', () => {
+  test('uses a regular grid that retains years with different gaps', () => {
+    const { years, byPct } = alignBands({ '50th Percentile': [{ scenario: 'A', '2030': 1, '2036': 2, '2040': 3 }] });
+    expect(years).toEqual([2030, 2032, 2034, 2036, 2038, 2040]);
+    expect(byPct['50th Percentile'].A).toEqual([1, NaN, NaN, 2, NaN, 3]);
+  });
+
   test('aligns percentiles to a union year axis; a year a percentile lacks becomes NaN, not a left-shift', () => {
     const rowsByPct = {
       '5th Percentile': [{ scenario: 'A', '2020': 1, '2025': 2 }], // stops at 2025

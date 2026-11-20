@@ -1,9 +1,10 @@
 import { createPlatform } from '../platform';
+import { canonicalScenarioNames } from '../scenario-names';
 import { composeVariable, indicatorsFromVariables, FACET_DEFAULTS, BASELINE_SCENARIO } from '../conventions';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
 import { toCsv, type CsvCell } from '../csv';
 import type { Ixmp4Instance } from '../types';
-import { fetchCitationsByModel } from '../facets';
+import { fetchModelCitations } from '../facets';
 
 export interface EnsembleParams {
   indicator: string;
@@ -202,18 +203,21 @@ export async function fetchEnsemble(
 
   // Discover the exceedance thresholds for this indicator: the warming-level
   // value segments present on its variables, derived from the naming convention.
-  const variables = await platform.iamc.variables.list();
+  const [variables, scenarios] = await Promise.all([
+    platform.iamc.variables.list({ name_ilike: `${params.indicator}|*` }),
+    canonicalScenarioNames(platform, [...params.scenarios, TODAY_SCENARIO]),
+  ]);
   const facets = indicatorsFromVariables(variables.map((v) => v.name)).find((f) => f.uid === params.indicator);
   const levels = (facets?.warmingLevels ?? [])
     .map((raw) => ({ raw, threshold: parseWarmingLevel(raw) }))
     .filter((l) => Number.isFinite(l.threshold));
 
-  // One wide tabulate per threshold (each returns all scenarios, incl. Today).
   const dfs = await Promise.all(
     levels.map((l) =>
       platform.iamc.tabulate({
         region: { name: params.geography },
         variable: { name: composeVariable({ ...base, value: l.raw }) },
+        scenario: { name_in: scenarios },
         wide: true,
       }),
     ),
@@ -226,15 +230,13 @@ export async function fetchEnsemble(
     return { threshold: l.threshold, rows };
   });
 
-  // Prefer the curated citation strings the run carries; fall back to the bare
-  // model name off the datapoints when a run has no meta.
-  const cited = (await fetchCitationsByModel(platform)).get((model ?? '').toLowerCase());
+  const citations = await fetchModelCitations(platform, model);
   return assembleEnsemble({
     indicator: params.indicator,
     thresholdRows,
     scenarios: params.scenarios,
     todayScenario: TODAY_SCENARIO,
-    model: cited?.model ?? model,
-    source: cited?.source ?? '',
+    model: citations.model ?? model,
+    source: citations.source ?? '',
   });
 }

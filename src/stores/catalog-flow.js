@@ -11,32 +11,65 @@ export { selectionUrlParams };
 export function createCatalogFlow(catalog) {
   let activeIndicatorScopeKey;
   let activeIndicatorScopeRequest;
+  let warmingVisible = false;
+  const selectionChecks = new Set();
 
-  async function loadScenarioAvailability() {
-    await Promise.all([catalog.loadPercentileAvailability(), catalog.loadWarmingLevelAvailability()]);
+  function canLoadWarming() {
+    if (!warmingVisible || selectionChecks.size) return false;
+    const selection = get(catalog.selection);
+    const details = get(catalog.indicatorDetails);
+    return selection.geography &&
+      details.status === 'success' &&
+      details.data.id === selection.indicator?.id &&
+      details.data.instance === selection.indicator?.instance;
+  }
+
+  function loadWarmingWhenVisible() {
+    if (canLoadWarming() && get(catalog.warmingLevelAvailability).status === 'idle') {
+      void catalog.loadWarmingLevelAvailability();
+    }
+  }
+
+  function setWarmingVisible(visible) {
+    warmingVisible = visible;
+    loadWarmingWhenVisible();
+  }
+
+  async function finishSelectionChange() {
+    loadWarmingWhenVisible();
+    await catalog.loadPercentileAvailability();
+  }
+
+  async function checkSelection(check) {
+    const pending = Symbol();
+    selectionChecks.add(pending);
+    await check();
+    return selectionChecks.delete(pending);
   }
 
   async function start() {
-    await Promise.all([catalog.loadIndicatorIndex(), catalog.loadFilterGroups(), catalog.loadGeographyIndex()]);
+    await Promise.all([catalog.loadIndicatorIndex(), catalog.loadGeographyIndex()]);
   }
 
   async function chooseGeography(id, options = {}) {
     if (options.history === 'push') markCatalogSelectionChange();
     catalog.selectGeography(id);
-    await loadScenarioAvailability();
+    await finishSelectionChange();
   }
 
   async function chooseIndicator(indicator, options = {}) {
     if (options.history === 'push') markCatalogSelectionChange();
+    selectionChecks.clear();
     catalog.selectIndicator(indicator);
-    await Promise.all([catalog.loadIndicatorDetails(), catalog.loadGeographyAvailability()]);
-    await loadScenarioAvailability();
+    if (await checkSelection(() => Promise.all([catalog.loadIndicatorDetails(), catalog.loadGeographyAvailability()]))) {
+      await finishSelectionChange();
+    }
   }
 
   async function changeParameters(parameters, options = {}) {
     if (options.history === 'push') markCatalogSelectionChange();
     catalog.selectParameters(parameters);
-    await loadScenarioAvailability();
+    await finishSelectionChange();
   }
 
   function chooseScenarios(scenarios) {
@@ -44,6 +77,7 @@ export function createCatalogFlow(catalog) {
   }
 
   function restoreSelection(selection) {
+    selectionChecks.clear();
     catalog.setPendingSelection(selection);
   }
 
@@ -97,8 +131,11 @@ export function createCatalogFlow(catalog) {
   }
 
   async function retryIndicatorDetails() {
-    await catalog.loadIndicatorDetails();
-    await loadScenarioAvailability();
+    if (await checkSelection(catalog.loadIndicatorDetails)) await finishSelectionChange();
+  }
+
+  async function retryGeographyAvailability() {
+    if (await checkSelection(catalog.loadGeographyAvailability)) loadWarmingWhenVisible();
   }
 
   async function retryPercentileAvailability() {
@@ -106,6 +143,7 @@ export function createCatalogFlow(catalog) {
   }
 
   async function retryWarmingLevelAvailability() {
+    if (!canLoadWarming() || get(catalog.warmingLevelAvailability).status !== 'failure') return;
     await catalog.loadWarmingLevelAvailability();
   }
 
@@ -126,8 +164,10 @@ export function createCatalogFlow(catalog) {
     syncIndicatorScope,
     retryIndicatorScope,
     retryIndicatorDetails,
+    retryGeographyAvailability,
     retryPercentileAvailability,
     retryWarmingLevelAvailability,
+    setWarmingVisible,
     loadScenarioDetails,
     catalog,
   };

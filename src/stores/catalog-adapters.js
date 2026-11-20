@@ -196,8 +196,11 @@ export function ownedScenarioControlView(items) {
   return listRequestView({ request: { status: 'success' }, items });
 }
 
-export function advancedFilterControlView({ request, groups }) {
-  return listRequestView({ request, items: groups });
+export function advancedFilterControlView({ request, scopeRequest, context }) {
+  if (scopeRequest && indicatorFilterInput(context) && indicatorScopeMatches(scopeRequest, context) && Array.isArray(scopeRequest.data.filters)) {
+    return listRequestView({ request: scopeRequest, items: scopeRequest.data.filters });
+  }
+  return listRequestView({ request, items: request.data?.filters ?? [] });
 }
 
 export function scenarioDetailLoadKey({ scenarioId, indicator }) {

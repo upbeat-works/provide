@@ -164,25 +164,25 @@ export const FACET_FILTERS = runtimeCatalog.indicatorFilters;
 export const HAS_ACTIVE_FACET_FILTERS = derived(FACET_FILTERS, ($filters) => activeFacetGroupCount($filters) > 0);
 
 export const FACET_SELECTION = derived(
-  [FACETS_INITIAL, FACET_FILTERS, FILTERED_INDICATORS_REQUEST, CURRENT_GEOGRAPHY_UID, SELECTION_MODE, RUNTIME_CATALOG_SELECTION],
-  ([$initial, $filters, $filtered, $geography, $mode, $selection], set) => {
+  [FACET_FILTERS, FILTERED_INDICATORS_REQUEST, CURRENT_GEOGRAPHY_UID, SELECTION_MODE, RUNTIME_CATALOG_SELECTION],
+  ([$filters, $filtered, $geography, $mode, $selection], set) => {
     const filtersAreActive = activeFacetGroupCount($filters) > 0;
     const geographyNarrowsIndicators = $mode === 'geography' && Boolean($geography);
     if (!filtersAreActive && !geographyNarrowsIndicators) {
-      set({ groups: $initial, indicatorIds: null });
+      set({ groups: null, indicatorIds: null });
       return;
     }
     if ($filtered.status === 'success') {
       set({
-        groups: $filtered.data.filters ?? $initial,
+        groups: $filtered.data.filters ?? null,
         indicatorIds: filteredIndicatorIds({ request: $filtered, selection: $selection }),
       });
     }
   },
-  { groups: [], indicatorIds: null }
+  { groups: null, indicatorIds: null }
 );
 
-export const FACET_GROUPS = derived(FACET_SELECTION, ($selection) => $selection.groups);
+export const FACET_GROUPS = derived([FACET_SELECTION, FACETS_INITIAL], ([$selection, $initial]) => $selection.groups ?? $initial);
 
 export const AVAILABLE_INDICATORS = derived(
   [INDICATORS, CURRENT_GEOGRAPHY_UID, SELECTION_MODE, FACET_SELECTION],

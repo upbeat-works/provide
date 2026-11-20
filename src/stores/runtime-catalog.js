@@ -220,10 +220,8 @@ export function createRuntimeCatalog({
   let indicatorIndexRevision = 0;
 
   const indicatorIndexRequest = createLatestRequest(() => getJson(requestFetch, joinUrl(apiUrl, 'indicators')));
-  const filterGroupsRequest = createLatestRequest(() => {
-    const query = new URLSearchParams({ Sector: '' });
-    return getJson(requestFetch, `${joinUrl(apiUrl, 'indicators')}?${query}`);
-  });
+  const filterGroupsRequest = createLatestRequest(() => getJson(requestFetch, joinUrl(apiUrl, 'indicators/filters')));
+  let pendingFilterGroups;
   const filteredIndicatorsRequest = createLatestRequest(async (input) => {
     const revision = indicatorIndexRevision;
     const query = indicatorQuery(input);
@@ -446,8 +444,14 @@ export function createRuntimeCatalog({
     if (!allowed) selectIndicator(undefined);
   }
 
-  async function loadFilterGroups() {
-    await filterGroupsRequest.run();
+  function loadFilterGroups() {
+    const state = get(filterGroupsRequest.state);
+    if (state.status === 'success' && !(state.data.failedInstances ?? []).length) return;
+    if (pendingFilterGroups) return pendingFilterGroups;
+    pendingFilterGroups = filterGroupsRequest.run().finally(() => {
+      pendingFilterGroups = undefined;
+    });
+    return pendingFilterGroups;
   }
 
   function applyGeographyIndex(response) {

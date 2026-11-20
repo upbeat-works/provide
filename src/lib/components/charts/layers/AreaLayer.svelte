@@ -13,6 +13,7 @@
   $: chartData = chartData || $data;
 
   $: areaGen = area()
+    .defined((d) => Number.isFinite(d[y0Key]) && Number.isFinite(d[y1Key]))
     .x((d) => $xGet(d))
     .y0((d) => $yScale(d[y0Key]))
     .y1((d) => $yScale(d[y1Key]));
