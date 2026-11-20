@@ -1,3 +1,7 @@
+import { PROJECTION_YEARS } from '../shared/years.js';
+
+export { PROJECTION_YEARS };
+
 export const TITLE_SITE = 'CLIMATE RISK DASHBOARD';
 export const TITLE_PROJECT = 'PROVIDE';
 
@@ -152,8 +156,7 @@ export const DIVERGING_RANGE = ['#437E8E', '#F4E4D6', '#C91C1C'];
 
 export const MAX_NUMBER_SELECTABLE_SCENARIOS = 3;
 
-export const DEFAULT_IMPACT_GEO_YEAR = 2030;
-export const IMPACT_GEO_YEARS = [2030, 2050, 2070, 2090, 2100, 2200, 2300];
+export const DEFAULT_IMPACT_GEO_YEAR = PROJECTION_YEARS[0];
 
 export const IMPACT_GEO_KEY_DIFFERENCE = 'difference';
 export const IMPACT_GEO_KEY_SIDE_BY_SIDE = 'side-by-side';

@@ -12,10 +12,13 @@ export function createLatestRequest(load) {
 
   async function run(input) {
     const requestId = ++currentRequestId;
-    requestState.set({ status: 'loading' });
 
     try {
-      const data = await load(input);
+      let data = load(input);
+      if (typeof data?.then === 'function') {
+        requestState.set({ status: 'loading' });
+        data = await data;
+      }
       if (requestId !== currentRequestId) return;
       requestState.set({ status: 'success', data });
     } catch (error) {

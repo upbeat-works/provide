@@ -37,6 +37,32 @@ describe('createLatestRequest', () => {
     expect(get(request.state)).toEqual({ status: 'success', data: { id: 'Heat' } });
   });
 
+  test('shows immediately available data without a loading state', async () => {
+    const request = createLatestRequest(() => ({ id: 'Heat' }));
+    const states = [];
+    const unsubscribe = request.state.subscribe((state) => states.push(state));
+
+    await request.run('Heat');
+    unsubscribe();
+
+    expect(states).toEqual([{ status: 'idle' }, { status: 'success', data: { id: 'Heat' } }]);
+  });
+
+  test('an immediate result prevents an older pending request from replacing it', async () => {
+    const pending = deferred();
+    const request = createLatestRequest((id) => {
+      if (id === 'Cached') return { id };
+      return pending.promise;
+    });
+
+    const oldRequest = request.run('Slow');
+    await request.run('Cached');
+    pending.resolve({ id: 'Slow' });
+    await oldRequest;
+
+    expect(get(request.state)).toEqual({ status: 'success', data: { id: 'Cached' } });
+  });
+
   test('stores a useful failure', async () => {
     const request = createLatestRequest(() => Promise.reject(new Error('Network unavailable')));
 

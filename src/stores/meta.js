@@ -76,19 +76,20 @@ function scenarioGmt(details) {
 }
 
 export const SCENARIOS = derived(
-  [runtimeCatalog.percentileAvailability, runtimeCatalog.scenarioDetails],
+  [runtimeCatalog.percentileAvailability, runtimeCatalog.loadedScenarioDetails],
   ([$availability, $details], set) => {
     if ($availability.status !== 'success') return;
-    const detail = $details.status === 'success' ? $details.data : undefined;
+    const instance = $availability.data.context.indicator.instance;
+    const details = new Map([...$details.values()].filter((detail) => detail.instance === instance).map((detail) => [detail.id, detail]));
     set(
       ($availability.data.scenarios ?? []).map((scenario) => {
-        const currentDetail = detail?.id === scenario.id ? detail : undefined;
+        const currentDetail = details.get(scenario.id);
         return {
           uid: scenario.id,
           label: currentDetail?.label ?? scenario.label,
-          startYear: currentDetail?.yearStart ?? scenario.yearStart,
+          startYear: scenario.yearStart ?? currentDetail?.yearStart,
           yearStep: currentDetail?.yearStep,
-          endYear: currentDetail?.yearEnd ?? scenario.yearEnd,
+          endYear: scenario.yearEnd ?? currentDetail?.yearEnd,
           description: currentDetail?.description,
           characteristics: currentDetail?.characteristics,
           gmt: scenarioGmt(currentDetail),

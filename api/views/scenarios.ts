@@ -1,4 +1,4 @@
-import type { Platform } from '@iiasa/ixmp4-ts';
+import { PROJECTION_TIMEFRAME } from '../../shared/years.js';
 import { createPlatform } from '../platform';
 import { representativeVariable, composeVariable, indicatorsFromVariables, FACET_DEFAULTS, BASELINE_SCENARIO } from '../conventions';
 import { dfToRows, yearColumns, type DataFrameLike, type WideRow } from '../tabulate';
@@ -69,23 +69,16 @@ export function scenarioDetailsFromSources(
   return details;
 }
 
-async function fetchScenarioTimeframe(platform: Platform, scenario: string): Promise<ScenarioTimeframe | undefined> {
-  const df = await platform.iamc.tabulate({ scenario: { name_ilike: scenario }, wide: true });
-  return scenarioTimeframesFromRows(dfToRows(df as DataFrameLike)).get(scenario.toLowerCase());
-}
-
 export async function fetchScenarioDetail(instance: Ixmp4Instance, creds: { username: string; password: string }, requestedId: string): Promise<ScenarioDetailsResponse | null> {
   const platform = await createPlatform(instance, creds.username, creds.password);
-  const [runs, timeframe, fetchedGmt] = await Promise.all([
+  const [runs, fetchedGmt] = await Promise.all([
     platform.runs.list({ scenario: { name_ilike: requestedId } }),
-    fetchScenarioTimeframe(platform, requestedId),
     fetchGmtScenario(platform, requestedId),
   ]);
   const key = requestedId.toLowerCase();
   const scenarioNames = runs.map((run) => run.scenario.name).filter((name) => name.toLowerCase() === key);
   const gmt = new Map([...fetchedGmt].filter(([scenarioKey]) => scenarioKey === key));
-  const timeframes = new Map<string, ScenarioTimeframe>();
-  if (timeframe) timeframes.set(key, timeframe);
+  const timeframes = new Map<string, ScenarioTimeframe>([[key, PROJECTION_TIMEFRAME]]);
   return scenarioDetailsFromSources(instance.slug, scenarioNames, timeframes, gmt)[0] ?? null;
 }
 
@@ -175,41 +168,6 @@ export interface ScenarioTimeframe {
   yearStart: number;
   yearStep: number;
   yearEnd: number;
-}
-
-/**
- * Scenario-intrinsic timeframes: the union of every row's year span, keyed by
- * lowercased scenario name. Unlike `scenarioAvailabilityFromRows` (one region,
- * first row wins) this is fed rows spanning many regions and both value axes, so
- * a scenario's span is the widest one it has anywhere. Merging case-insensitively
- * also reunites the case-only duplicate runs, whose two axes are split across the
- * two casings. Pure.
- */
-export function scenarioTimeframesFromRows(rows: WideRow[]): Map<string, ScenarioTimeframe> {
-  const years = new Map<string, Set<number>>();
-  for (const row of rows) {
-    const finite = yearColumns(row).filter((y) => {
-      const v = row[String(y)];
-      return v != null && Number.isFinite(Number(v));
-    });
-    if (!finite.length) continue;
-    const key = row.scenario.toLowerCase();
-    let set = years.get(key);
-    if (!set) years.set(key, (set = new Set()));
-    for (const y of finite) set.add(y);
-  }
-
-  const out = new Map<string, ScenarioTimeframe>();
-  for (const [key, set] of years) {
-    const sorted = [...set].sort((a, b) => a - b);
-    const gaps = sorted.slice(1).map((y, i) => y - sorted[i]);
-    out.set(key, {
-      yearStart: sorted[0],
-      yearStep: gaps.length ? Math.min(...gaps) : 0,
-      yearEnd: sorted[sorted.length - 1],
-    });
-  }
-  return out;
 }
 
 /**

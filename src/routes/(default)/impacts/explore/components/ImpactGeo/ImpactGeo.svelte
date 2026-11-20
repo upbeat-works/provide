@@ -9,7 +9,7 @@
     IMPACT_GEO_KEY_DIFFERENCE,
     IMPACT_GEO_KEY_SIDE_BY_SIDE,
     DEFAULT_IMPACT_GEO_YEAR,
-    IMPACT_GEO_YEARS,
+    PROJECTION_YEARS,
     GEOGRAPHY_TYPE_CITY,
     COLOR_SCALES,
   } from '$config';
@@ -45,7 +45,7 @@
   let IMPACT_GEO_DATA = writable([]);
   let GEO_SHAPE_DATA = writable({});
 
-  const yearOptions = IMPACT_GEO_YEARS;
+  const yearOptions = PROJECTION_YEARS;
 
   $: if (!yearOptions.includes(year)) {
     year = DEFAULT_IMPACT_GEO_YEAR;

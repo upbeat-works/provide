@@ -1067,6 +1067,88 @@ describe('runtime catalog selection', () => {
     expect(get(catalog.selection).indicator).toEqual({ id: 'Heat', instance: 'provide-internal' });
   });
 
+  test('reuses scenario details when returning to a hover or changing indicators in the same instance', async () => {
+    const requests = [];
+    server.use(http.get(`${APP_URL}/scenario-details/:id`, ({ params, request }) => {
+      const instance = new URL(request.url).searchParams.get('instance');
+      requests.push([instance, params.id]);
+      return HttpResponse.json({ id: params.id, instance, description: `${instance}: ${params.id}` });
+    }));
+    const catalog = createCatalog();
+    catalog.selectIndicator(indicator('Heat'));
+
+    await catalog.loadScenarioDetails('Low Demand');
+    await catalog.loadScenarioDetails('High Renewables');
+    catalog.selectIndicator(indicator('Flood'));
+    const revisitStates = [];
+    const unsubscribe = catalog.scenarioDetails.subscribe((state) => revisitStates.push(state.status));
+    await catalog.loadScenarioDetails('Low Demand');
+    unsubscribe();
+
+    expect(revisitStates).toEqual(['idle', 'success']);
+    expect(requests).toEqual([
+      ['provide-internal', 'Low Demand'],
+      ['provide-internal', 'High Renewables'],
+    ]);
+    expect(get(catalog.scenarioDetails)).toMatchObject({ status: 'success', data: { description: 'provide-internal: Low Demand' } });
+
+    catalog.selectIndicator(indicator('Heat', 'sparccle-internal'));
+    await catalog.loadScenarioDetails('Low Demand');
+
+    expect(requests).toHaveLength(3);
+    expect(get(catalog.scenarioDetails)).toMatchObject({ status: 'success', data: { description: 'sparccle-internal: Low Demand' } });
+  });
+
+  test('shares a pending scenario request across hovers and keeps the latest hover visible', async () => {
+    const requests = [];
+    const finish = {};
+    const catalog = createCatalog({
+      fetch: (input) => {
+        const id = decodeURIComponent(new URL(input).pathname.split('/').at(-1));
+        requests.push(id);
+        return new Promise((resolve) => { finish[id] = resolve; });
+      },
+    });
+    catalog.selectIndicator(indicator('Heat'));
+    const first = catalog.loadScenarioDetails('Low Demand');
+    const second = catalog.loadScenarioDetails('High Renewables');
+    const revisit = catalog.loadScenarioDetails('Low Demand');
+
+    expect(requests).toEqual(['Low Demand', 'High Renewables']);
+    finish['Low Demand'](Response.json({ id: 'Low Demand', instance: 'provide-internal' }));
+    await Promise.all([first, revisit]);
+    finish['High Renewables'](Response.json({ id: 'High Renewables', instance: 'provide-internal' }));
+    await second;
+
+    expect(get(catalog.scenarioDetails)).toMatchObject({ status: 'success', data: { id: 'Low Demand' } });
+    await catalog.loadScenarioDetails('High Renewables');
+    expect(requests).toHaveLength(2);
+    expect(get(catalog.scenarioDetails)).toMatchObject({ status: 'success', data: { id: 'High Renewables' } });
+  });
+
+  test.each(['timeout', 'wrong scenario', 'wrong instance'])('retries scenario details after a %s response', async (failure) => {
+    let attempts = 0;
+    server.use(http.get(`${APP_URL}/scenario-details/:id`, ({ params }) => {
+      attempts += 1;
+      if (attempts === 1) {
+        if (failure === 'timeout') return HttpResponse.json({ error: 'Timed out' }, { status: 504 });
+        if (failure === 'wrong scenario') return HttpResponse.json({ id: 'Other', instance: 'provide-internal' });
+        return HttpResponse.json({ id: params.id, instance: 'sparccle-internal' });
+      }
+      return HttpResponse.json({ id: params.id, instance: 'provide-internal', description: 'Loaded' });
+    }));
+    const catalog = createCatalog();
+    catalog.selectIndicator(indicator('Heat'));
+
+    await catalog.loadScenarioDetails('Low Demand');
+    expect(get(catalog.scenarioDetails).status).toBe('failure');
+    await catalog.loadScenarioDetails('Low Demand');
+    await catalog.loadScenarioDetails('Low Demand');
+
+    expect(attempts).toBe(2);
+    expect(get(catalog.scenarioDetails)).toMatchObject({ status: 'success', data: { description: 'Loaded' } });
+  });
+
   test('keeps nullable GMT cells as missing values', async () => {
     server.use(
       http.get(`${APP_URL}/scenario-details/Low%20Demand`, () =>

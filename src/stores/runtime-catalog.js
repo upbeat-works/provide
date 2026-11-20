@@ -267,12 +267,26 @@ export function createRuntimeCatalog({
     const response = await getJson(requestFetch, joinUrl(apiUrl, scenarioAvailabilityPath(input)));
     return scenarioAvailabilityResult(response, input);
   });
-  const scenarioDetailsRequest = createLatestRequest(async ({ id, instance }) => {
-    const details = await getJson(requestFetch, joinUrl(appUrl, scenarioDetailsPath(id, instance)));
-    if (details.id !== id || details.instance !== instance) {
-      throw new Error('Scenario detail response does not match the request');
-    }
-    return details;
+  const scenarioDetailsCache = writable(new Map());
+  const pendingScenarioDetails = new Map();
+  const scenarioDetailsRequest = createLatestRequest(({ id, instance }) => {
+    const path = scenarioDetailsPath(id, instance);
+    const cached = get(scenarioDetailsCache).get(path);
+    if (cached) return cached;
+    if (pendingScenarioDetails.has(path)) return pendingScenarioDetails.get(path);
+    const request = getJson(requestFetch, joinUrl(appUrl, path))
+      .then((details) => {
+        if (details.id !== id || details.instance !== instance) {
+          throw new Error('Scenario detail response does not match the request');
+        }
+        scenarioDetailsCache.update((cache) => new Map(cache).set(path, details));
+        return details;
+      })
+      .finally(() => {
+        pendingScenarioDetails.delete(path);
+      });
+    pendingScenarioDetails.set(path, request);
+    return request;
   });
 
   let currentFilteredIndicatorInput;
@@ -596,6 +610,7 @@ export function createRuntimeCatalog({
     percentileAvailability: percentileAvailabilityRequest.state,
     warmingLevelAvailability: warmingLevelAvailabilityRequest.state,
     scenarioDetails: scenarioDetailsRequest.state,
+    loadedScenarioDetails: readonly(scenarioDetailsCache),
     indicatorFilters: indicatorFiltersStore,
     setPendingSelection,
     selectIndicator,

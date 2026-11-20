@@ -107,9 +107,9 @@ describe('GET /api/scenario-details/:id', () => {
       id: 'CurPol',
       label: 'CurPol',
       instance: testInstance.slug,
-      yearStart: 2020,
-      yearStep: 40,
-      yearEnd: 2100,
+      yearStart: 2030,
+      yearStep: 10,
+      yearEnd: 2300,
       gmt: {
         data: [
           [1.1, 1.3, 1.5],
@@ -170,7 +170,7 @@ describe('GET /api/scenario-details/:id', () => {
     expect(await res.json()).toEqual({ error: 'Scenario not found: Missing' });
   });
 
-  test('scopes run, timeframe, and GMT requests to the requested scenario', async () => {
+  test('returns details using only scenario runs and World GMT data', async () => {
     let variableRequests = 0;
     let runFilter: unknown;
     const datapointFilters: unknown[] = [];
@@ -187,7 +187,7 @@ describe('GET /api/scenario-details/:id', () => {
         const body = (await request.json()) as { variable?: { name?: string } };
         datapointFilters.push(body);
         if (!body.variable) {
-          return HttpResponse.json(tabulateEnvelope(['model', 'scenario', '2020', '2030'], [['M', 'Scoped', 1, 2]]));
+          return HttpResponse.json({ error: 'Scenario-wide data query is too large' }, { status: 503 });
         }
         return HttpResponse.json(tabulateEnvelope(['model', 'scenario', 'unit', '2020', '2030'], [['FaIR', 'Scoped', '°C', 1, 2]]));
       })
@@ -196,21 +196,22 @@ describe('GET /api/scenario-details/:id', () => {
     const res = await api.request(`/api/scenario-details/Scoped?instance=${testInstance.slug}`, {}, await createTestEnv());
 
     expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ id: 'Scoped', yearStart: 2030, yearStep: 10, yearEnd: 2300 });
     expect(variableRequests).toBe(0);
     expect(runFilter).toMatchObject({ scenario: { name__ilike: 'Scoped' } });
-    expect(datapointFilters).toHaveLength(4);
+    expect(datapointFilters).toHaveLength(3);
     for (const filter of datapointFilters) {
-      expect(filter).toMatchObject({ scenario: { name__ilike: 'Scoped' } });
+      expect(filter).toMatchObject({ scenario: { name__ilike: 'Scoped' }, region: { name: 'World' }, variable: { name: expect.stringContaining('Global Mean Temperature|') } });
     }
   });
 
-  test('returns 404 instead of inventing a timeframe for an empty run', async () => {
+  test('returns the shared year range for a known scenario without GMT data', async () => {
     server.use(http.patch(`${testInstance.url}/runs/`, () => HttpResponse.json(listEnvelope([{ id: 1, model: { name: 'M' }, scenario: { name: 'Empty' }, version: 1, is_default: true }]))));
 
     const res = await api.request(`/api/scenario-details/Empty?instance=${testInstance.slug}`, {}, await createTestEnv());
 
-    expect(res.status).toBe(404);
-    expect(await res.json()).toEqual({ error: 'Scenario not found: Empty' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ id: 'Empty', label: 'Empty', instance: testInstance.slug, yearStart: 2030, yearStep: 10, yearEnd: 2300, characteristics: {} });
   });
 
   test('returns run details when the source has no GMT variable', async () => {
@@ -231,15 +232,15 @@ describe('GET /api/scenario-details/:id', () => {
     expect(res.status).toBe(200);
     expect(json).toMatchObject({
       id: 'Impact only',
-      yearStart: 2020,
-      yearStep: 80,
-      yearEnd: 2100,
+      yearStart: 2030,
+      yearStep: 10,
+      yearEnd: 2300,
       characteristics: {},
     });
     expect(json).not.toHaveProperty('gmt');
   });
 
-  test('returns 502 when a selected-source timeframe request fails', async () => {
+  test('returns 502 when a selected-source GMT request fails', async () => {
     const errorLog = spyOn(console, 'error').mockImplementation(() => {});
     try {
       server.use(

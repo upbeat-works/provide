@@ -17,6 +17,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY server.ts ./
 COPY api ./api
+COPY shared ./shared
 
 ENV NODE_ENV=production
 ENV PORT=8080

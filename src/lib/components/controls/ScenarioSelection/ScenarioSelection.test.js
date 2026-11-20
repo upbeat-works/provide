@@ -60,3 +60,43 @@ test('replaces pending and failed scenario details and lets the user retry', asy
   expect(fetcher).toHaveBeenCalledTimes(2);
   expect(fetcher).toHaveBeenLastCalledWith('/app/scenario-details/Example%20pathway?instance=provide-internal');
 });
+
+test('keeps the chart mounted when hovering between loaded scenarios', async () => {
+  const scenarios = ['Cached pathway A', 'Cached pathway B'].map((uid) => ({ uid, label: uid }));
+  const fetcher = vi.fn(async (input) => {
+    const url = new URL(input, 'http://localhost');
+    if (url.pathname.endsWith('/scenario-availability')) {
+      return Response.json({ scenarios: scenarios.map((scenario) => ({ id: scenario.uid, label: scenario.label, yearStart: 2020, yearEnd: 2100 })) });
+    }
+    const id = decodeURIComponent(url.pathname.split('/').at(-1));
+    return Response.json({
+      id, instance: 'provide-internal', yearStart: 2030, yearEnd: 2300,
+      gmt: { yearStart: 2020, yearStep: 80, data: [[1, 1.2, 1.4], [1.3, 1.5, 1.7]] },
+    });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
+  THEME.set({ color: colors });
+  runtimeCatalog.selectScenarios([]);
+  runtimeCatalog.selectIndicator({ id: 'Mean Temperature', instance: 'provide-internal' });
+  runtimeCatalog.selectGeography('Germany');
+  await runtimeCatalog.loadPercentileAvailability();
+  await runtimeCatalog.loadScenarioDetails(scenarios[0].uid);
+  await runtimeCatalog.loadScenarioDetails(scenarios[1].uid);
+
+  render(ScenarioSelection, { props: { disabled: '' }, context: new Map([['theme', THEME]]) });
+  await fireEvent.click(screen.getByRole('button', { name: scenarios[0].label }));
+  await fireEvent.mouseOver(screen.getByRole('checkbox', { name: scenarios[0].label }));
+  await waitFor(() => expect(screen.getByRole('heading', { name: scenarios[0].label })).toBeTruthy());
+  const chart = screen.getByRole('figure');
+
+  await fireEvent.mouseOver(screen.getByRole('checkbox', { name: scenarios[1].label }));
+  await waitFor(() => expect(screen.getByRole('heading', { name: scenarios[1].label })).toBeTruthy());
+  expect(chart.isConnected).toBe(true);
+  expect(screen.getByRole('figure')).toBe(chart);
+  await fireEvent.mouseOver(screen.getByRole('checkbox', { name: scenarios[0].label }));
+  await waitFor(() => expect(screen.getByRole('heading', { name: scenarios[0].label })).toBeTruthy());
+  expect(screen.getByRole('figure')).toBe(chart);
+  expect(screen.queryByRole('status')).toBeNull();
+  expect(fetcher).toHaveBeenCalledTimes(3);
+});

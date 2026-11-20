@@ -59,6 +59,7 @@ services:
       - 'host.docker.internal:host-gateway'
     volumes:
       - ./api:/app/api # hot-reload: source only; node_modules stays from the image
+      - ./shared:/app/shared
       - ./server.ts:/app/server.ts
 
   cms:

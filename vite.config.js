@@ -7,6 +7,7 @@ const config = {
   server: {
     fs: {
       allow: [
+        fileURLToPath(new URL('./shared', import.meta.url)),
         fileURLToPath(new URL('./api/scoreboard', import.meta.url)),
         fileURLToPath(new URL('./api/db/import/country-iso3.ts', import.meta.url)),
         fileURLToPath(new URL('./api/conventions.ts', import.meta.url)),
