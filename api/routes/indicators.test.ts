@@ -1,5 +1,7 @@
 import { describe, test, expect, spyOn } from 'bun:test';
 import { http, HttpResponse } from 'msw';
+import { sql } from 'drizzle-orm';
+import { buildIndicatorsSeedSql, parseIndicatorsYaml } from '../db/import/import-indicators';
 import { api } from '../index';
 import { instances } from '../instances';
 import { schema } from '../db';
@@ -35,6 +37,47 @@ function useUnit(instanceUnderTest: Ixmp4Instance, unit: string) {
 }
 
 describe('GET /api/indicators', () => {
+  test('sector and project totals count the same entries, including shared names', async () => {
+    await useInstances([instance, secondInstance], async () => {
+      const env = await createTestEnv();
+      await env.DB.execute(sql.raw(buildIndicatorsSeedSql(parseIndicatorsYaml(`- id: Heat
+  sector: urban-climate
+- id: Cold
+  sector: terrestrial-climate
+`))));
+      for (const [source, ids] of [[instance, ['Heat', 'Cold']], [secondInstance, ['Heat']]] as const) {
+        server.use(
+          http.patch(`${source.url}/iamc/variables/`, () => HttpResponse.json(listEnvelope(ids.map((id, index) => variable(index + 1, id))))),
+          http.patch(`${source.url}/runs/`, () => HttpResponse.json(listEnvelope([{ id: 1, model: { name: 'M' }, scenario: { name: 'S' }, version: 1, is_default: true }]))),
+        );
+        useUnit(source, 'days');
+      }
+
+      const filterCases: Array<Record<string, string>> = [
+        { Project: 'PROVIDE,SPARCCLE' },
+        { Project: 'PROVIDE' },
+        { Sector: 'Urban Climate' },
+      ];
+      for (const filters of filterCases) {
+        const res = await api.request(`/api/indicators?${new URLSearchParams(filters)}`, {}, env);
+        const json = await res.json() as IndicatorIndexResponse & { filters: IndicatorFilterGroup[] };
+        expect(res.status).toBe(200);
+        expect(json.failedInstances).toEqual([]);
+        const expected = [
+          { id: 'Heat', instance: instance.slug, project: 'PROVIDE', sector: 'Urban Climate' },
+          { id: 'Cold', instance: instance.slug, project: 'PROVIDE', sector: 'Terrestrial Climate' },
+          { id: 'Heat', instance: secondInstance.slug, project: 'SPARCCLE', sector: 'Urban Climate' },
+        ].filter((entry) => (!filters.Project || filters.Project.split(',').includes(entry.project)) && (!filters.Sector || entry.sector === filters.Sector));
+        expect(json.indicators.map(({ id, instance }) => ({ id, instance }))).toEqual(expected.map(({ id, instance }) => ({ id, instance })));
+        for (const key of ['Sector', 'Project']) {
+          if (key in filters) continue;
+          const total = json.filters.find((group) => group.key === key)!.options.reduce((sum, option) => sum + option.count, 0);
+          expect(total).toBe(json.indicators.length);
+        }
+      }
+    });
+  });
+
   test('includes SPARCCLE Internal indicators using the shared login', async () => {
     const logins: unknown[] = [];
     let authorization: string | null = null;

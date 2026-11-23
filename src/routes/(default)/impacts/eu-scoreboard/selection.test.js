@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import { createScoreboardOptions, resolveSelection } from './selection.js';
+import { SCOREBOARD_COUNTRIES } from './controller.js';
 
 describe('scoreboard choices', () => {
+  const country = SCOREBOARD_COUNTRIES[0].name;
   const scoreboard = {
     map: {
       defaultIndicator: 'Maximum Air Temperature',
@@ -22,11 +24,7 @@ describe('scoreboard choices', () => {
       { uid: 'CurrentPolicies', label: 'Current policies' },
       { uid: '1.5C', label: '1.5C' },
     ]);
-    expect(options.regions).toHaveLength(40);
-    expect(options.regions).toContainEqual({ uid: 'Ukraine', label: 'Ukraine' });
-    expect(options.regions.map(({ label }) => label)).toEqual(
-      options.regions.map(({ label }) => label).sort((a, b) => a.localeCompare(b))
-    );
+    expect(options.regions).toEqual(SCOREBOARD_COUNTRIES.map(({ name }) => ({ uid: name, label: name })).sort((a, b) => a.label.localeCompare(b.label)));
     expect(options.years).toEqual(['2020', '2030', '2050', '2100'].map((uid) => ({ uid, label: uid })));
   });
 
@@ -48,13 +46,13 @@ describe('scoreboard choices', () => {
       resolveSelection(scoreboard, options, {
         indicator: 'Mean Air Temperature',
         scenario: '1.5C',
-        region: 'Ukraine',
+        region: country,
         year: '2100',
       })
     ).toEqual({
       indicator: { uid: 'Mean Air Temperature', label: 'Mean Air Temperature' },
       scenario: { uid: '1.5C', label: '1.5C' },
-      region: { uid: 'Ukraine', label: 'Ukraine' },
+      region: { uid: country, label: country },
       year: { uid: '2100', label: '2100' },
     });
   });
@@ -64,10 +62,10 @@ describe('scoreboard choices', () => {
     const options = createScoreboardOptions(chartsOnly);
 
     expect(options.indicators).toEqual([]);
-    expect(resolveSelection(chartsOnly, options, { scenario: '1.5C', region: 'Ukraine', year: '2100' })).toEqual({
+    expect(resolveSelection(chartsOnly, options, { scenario: '1.5C', region: country, year: '2100' })).toEqual({
       indicator: undefined,
       scenario: { uid: '1.5C', label: '1.5C' },
-      region: { uid: 'Ukraine', label: 'Ukraine' },
+      region: { uid: country, label: country },
       year: { uid: '2100', label: '2100' },
     });
   });

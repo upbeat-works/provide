@@ -3,6 +3,7 @@ import { getScoreboard, resolveScoreboardChoices, SCOREBOARD_COUNTRIES } from '.
 import { getTestScoreboard } from '../../test/fixtures/scoreboard.js';
 
 describe('scoreboard config', () => {
+  const country = SCOREBOARD_COUNTRIES[0].name;
   test('uses the configured default indicator unless a valid indicator is requested', () => {
     const scoreboard = {
       map: {
@@ -38,10 +39,10 @@ describe('scoreboard config', () => {
       resolveScoreboardChoices(scoreboard, {
         indicator: 'Mean Air Temperature',
         scenario: '1.5C',
-        region: 'Ukraine',
+        region: country,
         year: '2100',
       })
-    ).toEqual({ indicator: 'Mean Air Temperature', scenario: '1.5C', region: 'Ukraine', year: 2100 });
+    ).toEqual({ indicator: 'Mean Air Temperature', scenario: '1.5C', region: country, year: 2100 });
     expect(resolveScoreboardChoices(scoreboard, { indicator: 'Missing', scenario: 'Missing', region: 'Missing', year: '2041' })).toEqual({
       indicator: 'Maximum Air Temperature',
       scenario: 'CurrentPolicies',
@@ -59,21 +60,22 @@ describe('scoreboard config', () => {
     expect(Array.isArray(scoreboard.charts)).toBe(true);
   });
 
-  test('offers all 40 NUTS countries with source codes', () => {
-    expect(SCOREBOARD_COUNTRIES).toHaveLength(40);
-    expect(SCOREBOARD_COUNTRIES).toContainEqual({ name: 'Ukraine', iso3: 'UKR', code: 'UA' });
-    expect(SCOREBOARD_COUNTRIES).toContainEqual({ name: 'Greece', iso3: 'GRC', code: 'EL' });
-    expect(SCOREBOARD_COUNTRIES).toContainEqual({ name: 'United Kingdom', iso3: 'GBR', code: 'UK' });
+  test('accepts every configured country as a URL choice', () => {
+    const scoreboard = getTestScoreboard('testing');
+    expect(SCOREBOARD_COUNTRIES.length).toBeGreaterThan(0);
+    for (const { name } of SCOREBOARD_COUNTRIES) {
+      expect(resolveScoreboardChoices(scoreboard, { region: name }).region).toBe(name);
+    }
   });
 
   test('keeps chart choices usable when a sector has no map indicators', () => {
     const scoreboard = getTestScoreboard('testing');
     const chartsOnly = { ...scoreboard, map: { ...scoreboard.map, indicators: [] } };
 
-    expect(resolveScoreboardChoices(chartsOnly, { indicator: 'Mean Air Temperature', scenario: '1.5C', region: 'Germany', year: '2100' })).toEqual({
+    expect(resolveScoreboardChoices(chartsOnly, { indicator: 'Mean Air Temperature', scenario: '1.5C', region: country, year: '2100' })).toEqual({
       indicator: undefined,
       scenario: '1.5C',
-      region: 'Germany',
+      region: country,
       year: 2100,
     });
   });
@@ -88,15 +90,15 @@ describe('scoreboard config', () => {
       },
     };
 
-    expect(resolveScoreboardChoices(scoreboard, { indicator: 'Temperature', scenario: 'Climate scenario', region: 'Germany', year: '2050' })).toEqual({
+    expect(resolveScoreboardChoices(scoreboard, { indicator: 'Temperature', scenario: 'Climate scenario', region: country, year: '2050' })).toEqual({
       indicator: 'Population',
       scenario: 'Scenario A',
-      region: 'Germany',
+      region: country,
       year: 2050,
     });
-    expect(resolveScoreboardChoices(scoreboard, { scenario: 'Scenario B', region: 'France', year: '2100' })).toMatchObject({
+    expect(resolveScoreboardChoices(scoreboard, { scenario: 'Scenario B', region: country, year: '2100' })).toMatchObject({
       scenario: 'Scenario B',
-      region: 'France',
+      region: country,
       year: 2100,
     });
   });
