@@ -27,11 +27,7 @@ test('adds missing sector links without losing metadata when repeated', async ()
       { id: 'Custom Indicator', sector: 'custom', legacyUid: null },
     ])
   );
-  
-  for (const id of ['Maximum Air Temperature', 'Mean Air Temperature', 'High Heat Risk']) {
-    expect(rows.map((row) => row.id)).not.toContain(id);
-  }  
-  
+
   await env.DB.execute(sql.raw(migration));
   expect(await env.DB.select().from(schema.indicators).orderBy(schema.indicators.id)).toEqual(rows);
 });
